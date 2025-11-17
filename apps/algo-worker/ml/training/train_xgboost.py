@@ -57,10 +57,13 @@ class XGBoostTrainer:
         Returns:
             Tuple of (X, y) arrays
         """
-        # Separate features and label
-        self.feature_columns = [col for col in df.columns if col != "label"]
+        # Separate features and target
+        # Exclude timestamp and target columns
+        self.feature_columns = [
+            col for col in df.columns if col not in ["target", "timestamp"]
+        ]
         X = df[self.feature_columns].values
-        y = df["label"].values
+        y = df["target"].values
 
         print(f"Features shape: {X.shape}")
         print(f"Labels shape: {y.shape}")
@@ -88,27 +91,33 @@ class XGBoostTrainer:
             Training metrics
         """
         # XGBoost parameters from config
-        params = self.config["model"]["params"]
+        params = {
+            'max_depth': self.config['max_depth'],
+            'learning_rate': self.config['learning_rate'],
+            'subsample': self.config['subsample'],
+            'colsample_bytree': self.config['colsample_bytree'],
+            'min_child_weight': self.config['min_child_weight'],
+            'gamma': self.config['gamma'],
+            'reg_alpha': self.config['reg_alpha'],
+            'reg_lambda': self.config['reg_lambda'],
+            'n_jobs': self.config['n_jobs'],
+            'random_state': self.config['random_state'],
+            'objective': self.config['objective'],
+            'eval_metric': self.config['eval_metric'],
+        }
 
         # Create DMatrix for XGBoost
         dtrain = xgb.DMatrix(X_train, label=y_train)
         dval = xgb.DMatrix(X_val, label=y_val)
 
-        # Training parameters
-        train_params = {
-            **params,
-            "objective": "binary:logistic",
-            "eval_metric": ["logloss", "auc"],
-        }
-
         # Train with early stopping
         evals = [(dtrain, "train"), (dval, "val")]
         self.model = xgb.train(
-            train_params,
+            params,
             dtrain,
-            num_boost_round=self.config["training"]["num_boost_round"],
+            num_boost_round=self.config['n_estimators'],
             evals=evals,
-            early_stopping_rounds=self.config["training"]["early_stopping_rounds"],
+            early_stopping_rounds=self.config['early_stopping_rounds'],
             verbose_eval=50,
         )
 
@@ -139,7 +148,7 @@ class XGBoostTrainer:
         if output_dir is None:
             script_dir = Path(__file__).parent.parent.parent
             output_dir = script_dir / "models"
-        
+
         os.makedirs(output_dir, exist_ok=True)
 
         # Save XGBoost native format
@@ -254,10 +263,10 @@ def main():
     print("\n4. Saving model...")
     trainer.save_model()
 
-    # Optional: Cross-validation
-    if input("\nRun cross-validation? (y/n): ").lower() == "y":
-        print("\n5. Running cross-validation...")
-        cv_metrics = trainer.cross_validate(X, y, n_splits=5)
+    # Optional: Cross-validation (disabled for automated training)
+    # if input("\nRun cross-validation? (y/n): ").lower() == "y":
+    #     print("\n5. Running cross-validation...")
+    #     cv_metrics = trainer.cross_validate(X, y, n_splits=5)
 
     print("\n" + "=" * 80)
     print("Training completed successfully!")
