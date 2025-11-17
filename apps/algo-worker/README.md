@@ -32,12 +32,14 @@ Algo Worker is the core trading engine of the investment-trading-portfolio monor
 **Start here** → [`QUICK_START.md`](./QUICK_START.md) - Get up and running in 5 minutes
 
 ### Core Documentation
+
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System design and 4-engine architecture
 - **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - What's been built, what's next
 - **[PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)** - Complete file tree and code stats
 - **[QUICK_START.md](./QUICK_START.md)** - Developer guide and common tasks
 
 ### Additional Resources
+
 - **[.github/copilot-instructions.md](./.github/copilot-instructions.md)** - Design principles and coding standards
 - **[.env.example](./.env.example)** - Environment variable reference
 
@@ -46,6 +48,7 @@ Algo Worker is the core trading engine of the investment-trading-portfolio monor
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 20+
 - Python 3.13+ (for model training)
 - MongoDB 7+
@@ -129,22 +132,26 @@ pnpm test:watch
 ## 🛠️ Tech Stack
 
 ### Backend
+
 - **NestJS** - TypeScript framework
 - **ONNX Runtime** - ML inference (GPU/CPU)
 - **MongoDB** - Time-series data storage
 - **Zod** - Schema validation
 
 ### ML/AI
+
 - **XGBoost** - Gradient boosting
 - **TensorFlow** - Deep learning (CNN-LSTM)
 - **scikit-learn** - SVM, preprocessing
 - **GARCH** - Volatility modeling
 
 ### APIs
+
 - **Upstox** - Market data & order execution
 - **Yahoo Finance** - Historical data (backup)
 
 ### Shared Packages
+
 - `@repo/schema` - Zod schemas (9 trading schemas)
 - `@repo/database` - MongoDB client
 - `@repo/market-sdk` - Upstox wrapper
@@ -221,6 +228,7 @@ apps/algo-worker/
 ## 🎯 Current Status
 
 ### ✅ Completed (Phase 1)
+
 - [x] Complete 4-engine architecture
 - [x] All 13 services scaffolded
 - [x] Feature engineering logic
@@ -232,12 +240,14 @@ apps/algo-worker/
 - [x] Comprehensive documentation
 
 ### ⏳ In Progress (Phase 2)
+
 - [ ] @repo/database implementation
 - [ ] @repo/market-sdk implementation
 - [ ] Wire up services with DB/API
 - [ ] Real-time data streaming
 
 ### 📋 Roadmap (Phase 3+)
+
 - [ ] ML model training and ONNX export
 - [ ] Backtesting with walk-forward validation
 - [ ] RL agents (delta hedging, optimal execution)
@@ -251,17 +261,20 @@ apps/algo-worker/
 ## 🔧 Development
 
 ### Run in Watch Mode
+
 ```bash
 pnpm dev
 ```
 
 ### Build for Production
+
 ```bash
 pnpm build
 pnpm start
 ```
 
 ### Code Quality
+
 ```bash
 pnpm lint       # ESLint
 pnpm format     # Prettier
@@ -273,12 +286,14 @@ pnpm typecheck  # TypeScript
 ## 🌟 Key Highlights
 
 ### Research-Backed Implementation
+
 - **Kelly Criterion** for optimal position sizing
 - **Ensemble ML** (stacking) for robust predictions
 - **Walk-forward validation** to avoid overfitting
 - **Pessimistic assumptions** (costs, slippage) for realistic backtests
 
 ### Production-Grade Code
+
 - Type-safe (100% TypeScript, zero `any`)
 - Error handling & logging
 - Configurable via environment variables
@@ -286,6 +301,7 @@ pnpm typecheck  # TypeScript
 - DRY principles (zero schema duplication)
 
 ### Performance Targets
+
 - Signal latency: < 100ms (GPU)
 - Pipeline latency: < 2.5s end-to-end
 - Sharpe ratio: > 1.5 (target)
@@ -296,16 +312,19 @@ pnpm typecheck  # TypeScript
 ## 📖 Learning Resources
 
 ### For Beginners
+
 1. Start with [QUICK_START.md](./QUICK_START.md)
 2. Read [ARCHITECTURE.md](./ARCHITECTURE.md) overview
 3. Explore `src/engines/data/` (simplest engine)
 
 ### For Advanced
+
 1. Study [copilot-instructions.md](./.github/copilot-instructions.md)
 2. Review ML pipeline in `src/engines/signal/`
 3. Understand risk management in `src/engines/policy/`
 
 ### For Contributors
+
 1. Read [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)
 2. Check [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)
 3. Follow DRY principles from copilot instructions
@@ -331,6 +350,7 @@ This project is part of the investment-trading-portfolio monorepo.
 ## 🙏 Acknowledgments
 
 Built on research from:
+
 - XGBoost for financial prediction (Chen & Guestrin, 2016)
 - CNN-LSTM hybrids for time series (Livieris et al., 2020)
 - GARCH-Informed Neural Networks (Hansen et al., 2021)
@@ -343,6 +363,7 @@ Built on research from:
 ## 📧 Support
 
 For questions:
+
 - Check documentation in this README
 - Read [QUICK_START.md](./QUICK_START.md)
 - Review [ARCHITECTURE.md](./ARCHITECTURE.md)
