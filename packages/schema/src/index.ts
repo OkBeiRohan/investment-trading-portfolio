@@ -8,3 +8,6 @@ export * from "./user";
 
 // Common/shared schemas
 export * from "./common";
+
+// Trading-related schemas
+export * from "./trading";
