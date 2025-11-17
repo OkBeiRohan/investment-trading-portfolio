@@ -10,7 +10,7 @@ import type {
   PortfolioStreamCallback,
   ErrorCallback,
   ConnectionCallback,
-} from "../types";
+} from "@repo/schema";
 
 export class PortfolioStream {
   private feeder: any; // UpstoxClient.PortfolioDataStreamer

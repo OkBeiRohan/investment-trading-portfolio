@@ -6,6 +6,15 @@
 import { z } from "zod";
 
 // ============================================
+// Re-export all trading schemas
+// ============================================
+
+export * from "./market-data.schema";
+export * from "./portfolio.schema";
+export * from "./websocket.schema";
+export * from "./api.schema";
+
+// ============================================
 // Common Trading Enums
 // ============================================
 

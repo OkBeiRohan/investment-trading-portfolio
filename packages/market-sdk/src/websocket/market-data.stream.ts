@@ -10,8 +10,8 @@ import type {
   MarketDataCallback,
   ErrorCallback,
   ConnectionCallback,
-} from "../types";
-import { MarketDataMode } from "../types";
+  MarketDataMode,
+} from "@repo/schema";
 
 export class MarketDataStream {
   private feeder: any; // UpstoxClient.MarketDataFeederV3

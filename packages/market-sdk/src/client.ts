@@ -9,7 +9,7 @@ import { MarketDataApi } from "./api/market-data.api";
 import { PortfolioApi } from "./api/portfolio.api";
 import { MarketDataStream } from "./websocket/market-data.stream";
 import { PortfolioStream } from "./websocket/portfolio.stream";
-import type { ApiConfig } from "./types";
+import type { ApiConfig } from "@repo/schema";
 
 export class UpstoxSDK {
   private apiClient: typeof UpstoxClient.ApiClient;

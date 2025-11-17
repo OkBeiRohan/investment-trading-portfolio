@@ -10,8 +10,8 @@ import type {
   OptionChainData,
   HistoricalCandle,
   OptionGreeks,
-} from "../types";
-import { CandleInterval } from "../types";
+  CandleInterval,
+} from "@repo/schema";
 
 export class MarketDataApi {
   private apiClient: typeof UpstoxClient.ApiClient;

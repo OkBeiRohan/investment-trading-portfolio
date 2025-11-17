@@ -13,7 +13,7 @@ import type {
   Trade,
   MultiLegOrder,
   MultiLegOrderResponse,
-} from "../types";
+} from "@repo/schema";
 
 export class OrderApi {
   private apiClient: typeof UpstoxClient.ApiClient;

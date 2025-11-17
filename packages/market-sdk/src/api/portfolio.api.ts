@@ -4,7 +4,7 @@
  */
 
 import UpstoxClient from "upstox-js-sdk";
-import type { Position, Holding, Funds, PortfolioSummary } from "../types";
+import type { Position, Holding, Funds, PortfolioSummary } from "@repo/schema";
 
 export class PortfolioApi {
   private apiClient: typeof UpstoxClient.ApiClient;

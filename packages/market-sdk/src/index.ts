@@ -48,7 +48,10 @@
  * ```
  */
 
+// Re-export all types and schemas from @repo/schema
+export type * from "@repo/schema";
+
+// Export client and API implementations
 export { UpstoxSDK } from "./client";
-export * from "./types";
 export * from "./api";
 export * from "./websocket";

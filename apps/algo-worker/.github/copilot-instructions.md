@@ -35,6 +35,50 @@ import { UpstoxClient } from '@repo/market-sdk';
 import { UpstoxClient } from './utils/upstox'; // NEVER do this
 ```
 
+### CRITICAL: Schema Package is Single Source of Truth
+
+**ALL types, interfaces, and schemas MUST be defined in `@repo/schema` only.**
+
+- ✅ **DO**: Import all types from `@repo/schema`
+- ❌ **DON'T**: Create duplicate type definitions anywhere else
+- ❌ **DON'T**: Define interfaces in service files
+- ❌ **DON'T**: Create local type files
+
+```typescript
+// ✅ Correct - Import from schema
+import {
+  type Order,
+  type TradingSignal,
+  type Position,
+  OrderTypeEnum,
+  ExchangeEnum,
+} from '@repo/schema';
+
+// ❌ Wrong - Local type definitions
+interface Order {
+  // NEVER define types locally
+  orderId: string;
+  // ...
+}
+
+// ❌ Wrong - Local enums
+enum OrderType {
+  // NEVER define enums locally
+  MARKET = 'MARKET',
+  LIMIT = 'LIMIT',
+}
+```
+
+**Why?**
+
+- Ensures type consistency across all apps
+- Prevents schema drift and bugs
+- Single place to update types
+- Both compile-time (TypeScript) and runtime (Zod) validation
+- All packages re-export from `@repo/schema`
+
+**See**: `packages/schema/README.md` for full documentation
+
 ### Database: MongoDB
 
 **Primary Database**: MongoDB (shared across all apps via `@repo/database`)
@@ -441,14 +485,12 @@ await db.collection('orders').insertOne({
 const portfolioStream = upstox.createPortfolioStream();
 portfolioStream.on('fill', async (fill) => {
   // Update order status in MongoDB
-  await db
-    .collection('orders')
-    .updateOne(
-      { orderId: fill.orderId },
-      {
-        $set: { status: 'FILLED', filledAt: new Date(), fillPrice: fill.price },
-      },
-    );
+  await db.collection('orders').updateOne(
+    { orderId: fill.orderId },
+    {
+      $set: { status: 'FILLED', filledAt: new Date(), fillPrice: fill.price },
+    },
+  );
 });
 ```
 
