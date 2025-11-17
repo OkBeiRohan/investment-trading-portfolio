@@ -5,11 +5,11 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Collection } from 'mongodb';
-import { db } from '@repo/database';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import {
   type FeatureSnapshot,
-  type FeatureSnapshotCreateInput,
+  type FeatureSnapshotCreate,
   featureSnapshotSchema,
 } from '@repo/schema';
 
@@ -18,9 +18,9 @@ export class FeatureSnapshotRepository {
   private readonly logger = new Logger(FeatureSnapshotRepository.name);
   private readonly collection: any;
 
-  constructor() {
+  constructor(@InjectConnection() private connection: Connection) {
     // Time-series collection for efficient storage
-    this.collection = db.collection<FeatureSnapshot>('features');
+    this.collection = this.connection.collection('features');
   }
 
   /**

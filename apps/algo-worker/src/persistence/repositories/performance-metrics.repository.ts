@@ -4,13 +4,14 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Collection, ObjectId } from '@repo/database';
-import { db } from '@repo/database';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
+import { ObjectId } from 'mongodb';
 import {
   type PerformanceMetrics,
-  type PerformanceMetricsCreateInput,
+  type PerformanceMetricsCreate,
   performanceMetricsSchema,
-  type Period,
+  type PerformancePeriod,
 } from '@repo/schema';
 
 @Injectable()
@@ -18,8 +19,8 @@ export class PerformanceMetricsRepository {
   private readonly logger = new Logger(PerformanceMetricsRepository.name);
   private readonly collection: any;
 
-  constructor() {
-    this.collection = db.collection<PerformanceMetrics>('performanceMetrics');
+  constructor(@InjectConnection() private connection: Connection) {
+    this.collection = this.connection.collection('performanceMetrics');
   }
 
   /**
