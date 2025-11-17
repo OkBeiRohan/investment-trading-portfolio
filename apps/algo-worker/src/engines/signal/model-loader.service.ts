@@ -45,9 +45,9 @@ export class ModelLoaderService implements OnModuleInit {
       try {
         await this.loadModel(model.name, model.path);
       } catch (error) {
-        this.logger.warn(
-          `Failed to load model ${model.name}: ${error.message}`,
-        );
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Failed to load model ${model.name}: ${errorMessage}`);
       }
     }
   }
@@ -72,7 +72,11 @@ export class ModelLoaderService implements OnModuleInit {
 
       this.logger.log(`Successfully loaded model: ${name}`);
     } catch (error) {
-      this.logger.error(`Error loading model ${name}:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error loading model ${name}:`, {
+        error: errorMessage,
+      });
       throw error;
     }
   }
@@ -103,7 +107,11 @@ export class ModelLoaderService implements OnModuleInit {
       // Return the output tensor (adjust output name based on model)
       return results.output || Object.values(results)[0];
     } catch (error) {
-      this.logger.error(`Inference error for model ${modelName}:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Inference error for model ${modelName}:`, {
+        error: errorMessage,
+      });
       throw error;
     }
   }

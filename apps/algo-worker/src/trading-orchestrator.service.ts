@@ -93,7 +93,9 @@ export class TradingOrchestrator {
 
       this.logger.log('Trading cycle completed successfully');
     } catch (error) {
-      this.logger.error('Trading cycle failed', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Trading cycle failed', { error: errorMessage });
       throw error;
     }
   }

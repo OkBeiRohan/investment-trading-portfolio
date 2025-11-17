@@ -23,7 +23,11 @@ export class TrainingDataService {
     try {
       await mkdir(this.exportDir, { recursive: true });
     } catch (error) {
-      this.logger.error('Failed to create export directory', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to create export directory', {
+        error: errorMessage,
+      });
     }
   }
 

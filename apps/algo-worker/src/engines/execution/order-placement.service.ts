@@ -72,7 +72,9 @@ export class OrderPlacementService {
 
       return order as Order; // Cast for now
     } catch (error) {
-      this.logger.error('Order placement failed', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error('Order placement failed', { error: errorMessage });
       throw error;
     }
   }
