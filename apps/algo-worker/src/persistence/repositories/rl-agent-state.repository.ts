@@ -5,20 +5,20 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Collection, ObjectId } from 'mongodb';
+import { Collection, ObjectId } from '@repo/database';
 import { db } from '@repo/database';
 import {
   type RLAgentState,
   type RLAgentStateCreateInput,
   type RLAgentStateUpdateInput,
   rlAgentStateSchema,
-  type AgentType,
+  type RLAgentType,
 } from '@repo/schema';
 
 @Injectable()
 export class RLAgentStateRepository {
   private readonly logger = new Logger(RLAgentStateRepository.name);
-  private readonly collection: Collection<RLAgentState>;
+  private readonly collection: any;
 
   constructor() {
     this.collection = db.collection<RLAgentState>('rlAgentStates');
@@ -66,7 +66,7 @@ export class RLAgentStateRepository {
    * Find latest agent state by type
    */
   async findLatestByType(
-    agentType: AgentType,
+    agentType: RLAgentType,
     userId: string,
   ): Promise<RLAgentState | null> {
     try {
@@ -103,7 +103,7 @@ export class RLAgentStateRepository {
    * Find agent states by model version
    */
   async findByModelVersion(
-    agentType: AgentType,
+    agentType: RLAgentType,
     modelVersion: string,
     userId?: string,
   ): Promise<RLAgentState[]> {
@@ -238,7 +238,7 @@ export class RLAgentStateRepository {
    * Get training progress for agent type
    */
   async getTrainingProgress(
-    agentType: AgentType,
+    agentType: RLAgentType,
     userId: string,
   ): Promise<{
     totalEpisodes: number;
@@ -269,7 +269,7 @@ export class RLAgentStateRepository {
    * Find best performing agent checkpoints
    */
   async findBestPerformers(
-    agentType: AgentType,
+    agentType: RLAgentType,
     userId: string,
     limit = 5,
   ): Promise<RLAgentState[]> {
@@ -289,7 +289,7 @@ export class RLAgentStateRepository {
    * Delete old agent states (keep only recent N versions)
    */
   async deleteOldStates(
-    agentType: AgentType,
+    agentType: RLAgentType,
     userId: string,
     keepCount = 10,
   ): Promise<number> {

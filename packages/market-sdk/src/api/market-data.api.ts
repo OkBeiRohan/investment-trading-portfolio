@@ -3,7 +3,13 @@
  * Handles market quotes, historical data, and option chain
  */
 
-import UpstoxClient from "upstox-js-sdk";
+import {
+  ApiClient,
+  MarketQuoteApi,
+  MarketQuoteV3Api,
+  HistoryV3Api,
+  OptionsApi,
+} from "upstox-js-sdk";
 import type {
   Quote,
   MarketQuote,
@@ -15,18 +21,18 @@ import type {
 } from "@repo/schema";
 
 export class MarketDataApi {
-  private apiClient: typeof UpstoxClient.ApiClient;
-  private marketQuoteApi: UpstoxClient.MarketQuoteApi;
-  private marketQuoteApiV3: UpstoxClient.MarketQuoteV3Api;
-  private historyApi: UpstoxClient.HistoryV3Api;
-  private optionsApi: UpstoxClient.OptionsApi;
+  private apiClient: ApiClient;
+  private marketQuoteApi: MarketQuoteApi;
+  private marketQuoteApiV3: MarketQuoteV3Api;
+  private historyApi: HistoryV3Api;
+  private optionsApi: OptionsApi;
 
-  constructor(apiClient: typeof UpstoxClient.ApiClient) {
+  constructor(apiClient: ApiClient) {
     this.apiClient = apiClient;
-    this.marketQuoteApi = new UpstoxClient.MarketQuoteApi();
-    this.marketQuoteApiV3 = new UpstoxClient.MarketQuoteV3Api();
-    this.historyApi = new UpstoxClient.HistoryV3Api();
-    this.optionsApi = new UpstoxClient.OptionsApi();
+    this.marketQuoteApi = new MarketQuoteApi();
+    this.marketQuoteApiV3 = new MarketQuoteV3Api();
+    this.historyApi = new HistoryV3Api();
+    this.optionsApi = new OptionsApi();
   }
 
   /**
@@ -151,9 +157,15 @@ export class MarketDataApi {
     toDate: Date
   ): Promise<Candle[]> {
     return new Promise((resolve, reject) => {
+      // Parse interval like "1minute" -> unit="minute", interval=1
+      const match = interval.match(/^(\d+)(minute|day)$/);
+      const intervalValue = match ? parseInt(match[1]) : 1;
+      const unit = match ? match[2] : "minute";
+
       this.historyApi.getIntraDayCandleData(
         instrumentKey,
-        interval,
+        unit,
+        intervalValue,
         fromDate.toISOString().split("T")[0],
         toDate.toISOString().split("T")[0],
         (error: any, data: any, response: any) => {
@@ -180,9 +192,15 @@ export class MarketDataApi {
     toDate: Date
   ): Promise<Candle[]> {
     return new Promise((resolve, reject) => {
-      this.historyApi.getHistoricalCandleData(
+      // Parse interval like "1day", "1week", "1month"
+      const match = interval.match(/^(\d+)(minute|day|week|month)$/);
+      const intervalValue = match ? parseInt(match[1]) : 1;
+      const unit = match ? match[2] : "day";
+
+      this.historyApi.getHistoricalCandleData1(
         instrumentKey,
-        interval,
+        unit,
+        intervalValue,
         toDate.toISOString().split("T")[0],
         fromDate.toISOString().split("T")[0],
         (error: any, data: any, response: any) => {

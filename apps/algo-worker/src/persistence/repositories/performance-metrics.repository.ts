@@ -4,7 +4,7 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Collection, ObjectId } from 'mongodb';
+import { Collection, ObjectId } from '@repo/database';
 import { db } from '@repo/database';
 import {
   type PerformanceMetrics,

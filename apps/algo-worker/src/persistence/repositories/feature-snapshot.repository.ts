@@ -16,7 +16,7 @@ import {
 @Injectable()
 export class FeatureSnapshotRepository {
   private readonly logger = new Logger(FeatureSnapshotRepository.name);
-  private readonly collection: Collection<FeatureSnapshot>;
+  private readonly collection: any;
 
   constructor() {
     // Time-series collection for efficient storage
