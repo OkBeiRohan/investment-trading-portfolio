@@ -28,7 +28,7 @@ export class FeatureSnapshotRepository {
   /**
    * Save feature snapshot
    */
-  async create(data: FeatureSnapshotCreateInput): Promise<string> {
+  async create(data: Omit<IFeatureSnapshot, '_id'>): Promise<string> {
     try {
       // Validate with Zod
       const validated = featureSnapshotSchema.parse(data);
@@ -44,7 +44,7 @@ export class FeatureSnapshotRepository {
   /**
    * Batch insert feature snapshots (more efficient)
    */
-  async createMany(data: FeatureSnapshotCreateInput[]): Promise<number> {
+  async createMany(data: Omit<IFeatureSnapshot, '_id'>[]): Promise<number> {
     try {
       const validated = data.map((item) => featureSnapshotSchema.parse(item));
       const result = await this.featureSnapshotModel.insertMany(validated);
@@ -170,7 +170,7 @@ export class FeatureSnapshotRepository {
                 : '$last';
 
       const result = await this.featureSnapshotModel
-        .aggregate([
+        .aggregate<any>([
           {
             $match: {
               instrument,

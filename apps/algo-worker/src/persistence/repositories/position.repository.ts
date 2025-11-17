@@ -8,8 +8,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Position, PositionDocument } from '@repo/database';
 import {
-  type PositionCreate,
-  type PositionUpdate,
+  type PositionCreateInput,
+  type PositionUpdateInput,
   type PositionStatus,
   positionSchema,
 } from '@repo/schema';

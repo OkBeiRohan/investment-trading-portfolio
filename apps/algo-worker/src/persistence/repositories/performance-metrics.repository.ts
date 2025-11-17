@@ -8,9 +8,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PerformanceMetrics, PerformanceMetricsDocument } from '@repo/database';
 import {
-  type PerformanceMetricsCreate,
+  type PerformanceMetricsCreateInput,
   performanceMetricsSchema,
-  type PerformancePeriod,
+  type Period,
 } from '@repo/schema';
 
 @Injectable()
