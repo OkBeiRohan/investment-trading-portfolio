@@ -1,0 +1,78 @@
+# GARCH-Informed Neural Network Configuration
+
+# GARCH Model
+garch:
+  p: 1 # GARCH order
+  q: 1 # ARCH order
+  dist: 'normal' # Distribution: 'normal', 't', 'skewt'
+  mean: 'constant' # Mean model: 'constant', 'zero', 'AR'
+  vol: 'GARCH' # Volatility model
+  rescale: true
+
+# LSTM for GARCH Residuals
+lstm:
+  sequence_length: 60
+  units: 50
+  layers: 2
+  dropout: 0.2
+  recurrent_dropout: 0.2
+  bidirectional: false
+
+# Dense Layers
+dense:
+  - units: 32
+    activation: 'relu'
+    dropout: 0.3
+  - units: 16
+    activation: 'relu'
+    dropout: 0.2
+
+# Output Layer
+output:
+  units: 1
+  activation: 'sigmoid'
+
+# Training
+training:
+  batch_size: 32
+  epochs: 100
+  validation_split: 0.15
+  shuffle: false
+
+  optimizer:
+    type: 'adam'
+    learning_rate: 0.001
+
+  loss: 'binary_crossentropy'
+  metrics: ['accuracy', 'AUC']
+
+  callbacks:
+    early_stopping:
+      monitor: 'val_loss'
+      patience: 15
+      restore_best_weights: true
+
+    reduce_lr:
+      monitor: 'val_loss'
+      factor: 0.5
+      patience: 5
+      min_lr: 1e-6
+
+# Hybrid Ensemble
+ensemble:
+  # How to combine GARCH and LSTM predictions
+  combination_method: 'weighted_average' # 'weighted_average', 'stacking', 'addition'
+  garch_weight: 0.4
+  lstm_weight: 0.6
+
+# Data Processing
+data:
+  normalize: true
+  normalization_method: 'standard'
+  target_variable: 'atmIV' # Or 'indiaVix'
+
+# Classification
+threshold: 0.55
+
+# System
+random_state: 42

@@ -1,0 +1,47 @@
+# SVM Configuration
+
+# Model
+model:
+  kernel: 'rbf' # 'linear', 'poly', 'rbf', 'sigmoid'
+  C: 1.0 # Regularization parameter
+  gamma: 'scale' # 'scale', 'auto', or float
+  degree: 3 # For polynomial kernel
+  class_weight: 'balanced' # Handle class imbalance
+  probability: true # Enable probability estimates
+  shrinking: true
+  cache_size: 200 # MB
+  max_iter: -1 # No limit
+
+# Hyperparameter Grid Search
+grid_search:
+  enabled: true
+  cv_folds: 5
+  scoring: 'roc_auc'
+  n_jobs: -1
+
+  param_grid:
+    C: [0.1, 1.0, 10.0, 100.0]
+    gamma: ['scale', 'auto', 0.001, 0.01, 0.1]
+    kernel: ['rbf', 'poly']
+
+# Data Processing
+data:
+  normalize: true
+  normalization_method: 'standard'
+  balance_classes: true
+  balance_method: 'oversample'
+
+# Feature Selection
+feature_selection:
+  enabled: true
+  method: 'rfe' # 'rfe' (Recursive Feature Elimination) or 'select_k_best'
+  n_features: 15 # Number of features to select
+
+# Classification
+threshold: 0.55
+
+# System
+random_state: 42
+verbose: 1
+# Note: SVMs can produce higher economic gains despite lower accuracy
+# Focus on Sharpe ratio, not classification accuracy
