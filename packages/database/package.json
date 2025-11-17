@@ -8,10 +8,18 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "mongoose": "^8.19.4",
-    "@repo/schema": "workspace:*"
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/mongoose": "^11.0.3",
+    "@repo/schema": "workspace:*",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@types/node": "^24.10.1"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "@nestjs/core": "^10.0.0 || ^11.0.0"
   }
 }

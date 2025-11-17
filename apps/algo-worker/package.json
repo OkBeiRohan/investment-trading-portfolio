@@ -28,7 +28,7 @@
     "@nestjs/bullmq": "^11.0.4",
     "bullmq": "^5.63.2",
     "ioredis": "^5.8.2",
-    "mongoose": "^8.19.4",
+    "mongoose": "^8.20.0",
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*"
   },

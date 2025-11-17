@@ -1,19 +1,17 @@
 /**
  * @repo/database
- * Centralized MongoDB client and collections for the trading monorepo
+ * NestJS Mongoose database package with separate databases per module
  */
 
-export { DatabaseClient, db } from "./client";
-export { collections } from "./collections";
-export type { DatabaseConfig } from "./client";
-
-// Export all models for type inference
+// Export database modules
 export {
-  TradingSignalModel,
-  OrderModel,
-  PositionModel,
-  StrategyModel,
-  PerformanceMetricsModel,
-  RLAgentStateModel,
-  FeatureSnapshotModel,
-} from "./collections";
+  DatabaseModule,
+  TradingDatabaseModule,
+  UserDatabaseModule,
+  AnalyticsDatabaseModule,
+} from "./database.module";
+
+export type { DatabaseModuleOptions } from "./database.module";
+
+// Export all schemas and document types
+export * from "./schemas";
