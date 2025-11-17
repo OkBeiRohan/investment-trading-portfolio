@@ -20,17 +20,20 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.9",
     "@nestjs/platform-express": "^11.1.9",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2",
-    "@nestjs/bullmq": "^11.0.4",
+    "@repo/database": "workspace:*",
+    "@repo/market-sdk": "workspace:*",
+    "@repo/schema": "workspace:*",
     "bullmq": "^5.63.2",
     "ioredis": "^5.8.2",
-    "mongoose": "^8.20.0",
-    "@repo/database": "workspace:*",
-    "@repo/market-sdk": "workspace:*"
+    "mongoose": "^8.19.4",
+    "onnxruntime-node": "^1.23.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
