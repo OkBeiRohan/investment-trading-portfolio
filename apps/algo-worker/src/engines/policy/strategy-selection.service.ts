@@ -9,6 +9,8 @@ import type {
   TradingSignal,
   Strategy,
   StrategyCreateInput,
+  EntryConditions,
+  ExitConditions,
   Prediction,
 } from '@repo/schema';
 
@@ -143,33 +145,21 @@ export class StrategySelectionService {
   ): StrategyCreateInput {
     // TODO: Fill in actual entry/exit conditions based on strategy type
     return {
-      userId: signal.userId,
       name: config.name,
       description: config.description,
-      strategyType: this.mapStrategyType(config.name),
+      type: this.mapStrategyType(config.name),
+      legs: [], // TODO: Build legs from strategy config
       entryConditions: this.buildEntryConditions(config.name, signal),
       exitConditions: this.buildExitConditions(config.name),
       riskProfile: this.buildRiskProfile(config.name),
-      active: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
   }
 
   /**
    * Map strategy name to type enum
    */
-  private mapStrategyType(
-    strategyName: string,
-  ):
-    | 'LONG_STRADDLE'
-    | 'LONG_STRANGLE'
-    | 'IRON_CONDOR'
-    | 'SHORT_STRANGLE'
-    | 'BULL_PUT_SPREAD'
-    | 'BEAR_CALL_SPREAD'
-    | 'CUSTOM' {
-    const mapping: Record<string, Strategy['strategyType']> = {
+  private mapStrategyType(strategyName: string): Strategy['type'] {
+    const mapping: Record<string, Strategy['type']> = {
       LONG_STRADDLE: 'LONG_STRADDLE',
       LONG_STRANGLE: 'LONG_STRANGLE',
       IRON_CONDOR: 'IRON_CONDOR',
@@ -178,7 +168,7 @@ export class StrategySelectionService {
       BEAR_CALL_SPREAD: 'BEAR_CALL_SPREAD',
     };
 
-    return mapping[strategyName] ?? 'CUSTOM';
+    return mapping[strategyName] ?? 'LONG_STRADDLE';
   }
 
   /**
@@ -187,28 +177,24 @@ export class StrategySelectionService {
   private buildEntryConditions(
     strategyName: string,
     signal: TradingSignal,
-  ): Record<string, unknown> {
+  ): EntryConditions {
     return {
-      signal: signal._id,
+      minConfidence: signal.confidence,
       prediction: signal.prediction,
-      confidence: signal.confidence,
-      minIV: 15, // TODO: Calculate from signal features
-      maxIV: 40,
-      timestamp: new Date(),
+      minVIX: 15, // TODO: Calculate from signal features
+      maxVIX: 40,
     };
   }
 
   /**
    * Build exit conditions
    */
-  private buildExitConditions(strategyName: string): Record<string, unknown> {
+  private buildExitConditions(strategyName: string): ExitConditions {
     // Default exit conditions
     return {
-      maxLoss: -5000, // INR
-      maxGain: 10000, // INR
-      maxHoldingPeriod: 4 * 60 * 60 * 1000, // 4 hours in ms
-      stopLoss: 0.5, // 50% of max loss
-      takeProfit: 0.7, // 70% of max gain
+      profitTarget: 10000, // INR
+      stopLoss: -5000, // INR
+      timeBasedExit: 4, // 4 hours
     };
   }
 
@@ -220,37 +206,36 @@ export class StrategySelectionService {
   ): StrategyCreateInput['riskProfile'] {
     const profiles: Record<
       string,
-      { maxLoss: number; maxGain: number; breakeven: number[] }
+      { maxLoss: number; maxProfit: number; breakeven: number[] }
     > = {
       LONG_STRADDLE: {
         maxLoss: -10000, // Net debit
-        maxGain: -1, // Unlimited (represented as -1)
+        maxProfit: 999999, // Unlimited
         breakeven: [19000, 21000], // ATM ± premium
       },
       IRON_CONDOR: {
         maxLoss: -5000, // Width - credit
-        maxGain: 2000, // Net credit
+        maxProfit: 2000, // Net credit
         breakeven: [18500, 21500],
       },
       BULL_PUT_SPREAD: {
         maxLoss: -3000,
-        maxGain: 1500,
+        maxProfit: 1500,
         breakeven: [19500],
       },
     };
 
     const profile = profiles[strategyName] ?? {
       maxLoss: -5000,
-      maxGain: 5000,
+      maxProfit: 5000,
       breakeven: [20000],
     };
 
     return {
       maxLoss: profile.maxLoss,
-      maxGain: profile.maxGain,
-      probabilityOfProfit: 0.5, // TODO: Calculate based on Greeks
-      expectedValue: 0, // TODO: Calculate
+      maxProfit: profile.maxProfit,
       breakeven: profile.breakeven,
+      probabilityOfProfit: 0.5, // TODO: Calculate based on Greeks
     };
   }
 

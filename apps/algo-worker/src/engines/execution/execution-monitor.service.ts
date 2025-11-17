@@ -114,7 +114,7 @@ export class ExecutionMonitorService {
       const leg = legs[i];
       const expectedPrice = expectedPrices[i];
 
-      if (leg.status === 'FILLED' && leg.averagePrice) {
+      if (leg.status === 'COMPLETE' && leg.averagePrice) {
         const slippage = Math.abs(leg.averagePrice - expectedPrice);
         totalSlippage += slippage;
         filledLegs++;

@@ -32,12 +32,14 @@ export class PositionManagerService {
 
     const position: PositionCreateInput = {
       userId: order.userId,
+      provider: order.provider,
       strategy: order.strategy,
       instrument: 'NIFTY', // Primary underlying
+      instrumentKey: 'NSE_INDEX|Nifty 50',
+      exchange: 'NSE_INDEX' as const,
       legs: order.legs.map((leg) => ({
-        instrumentKey: leg.instrumentKey,
-        exchange: leg.exchange,
-        side: leg.transactionType,
+        instrument: leg.instrument,
+        side: leg.side,
         quantity: leg.quantity,
         entryPrice: leg.averagePrice ?? leg.price ?? 0,
         currentPrice: leg.averagePrice ?? leg.price ?? 0,
@@ -48,8 +50,6 @@ export class PositionManagerService {
       status: 'OPEN' as const,
       unrealizedPnL: 0,
       costs: this.calculateCosts(entryCost),
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
 
     // TODO: Persist to MongoDB
@@ -156,7 +156,7 @@ export class PositionManagerService {
       // const greeks = await marketData.getGreeks(leg.instrumentKey);
 
       // Adjust sign based on BUY/SELL
-      const multiplier = leg.transactionType === 'BUY' ? 1 : -1;
+      const multiplier = leg.side === 'BUY' ? 1 : -1;
 
       // Mock Greeks (TODO: Replace with actual)
       netDelta += 0.5 * leg.quantity * multiplier;
@@ -170,7 +170,6 @@ export class PositionManagerService {
       gamma: netGamma,
       vega: netVega,
       theta: netTheta,
-      iv: 20, // Placeholder
     };
   }
 
@@ -236,7 +235,7 @@ export class PositionManagerService {
     let pnl = 0;
 
     for (const leg of position.legs) {
-      const exitPrice = exitPrices[leg.instrumentKey] ?? leg.currentPrice;
+      const exitPrice = exitPrices[leg.instrument] ?? leg.currentPrice;
       const priceDiff = exitPrice - leg.entryPrice;
 
       const legPnL =

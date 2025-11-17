@@ -41,6 +41,9 @@ importers:
       '@repo/market-sdk':
         specifier: workspace:*
         version: link:../../packages/market-sdk
+      '@repo/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
       bullmq:
         specifier: ^5.63.2
         version: 5.63.2
@@ -296,13 +299,28 @@ importers:
 
   packages/database:
     dependencies:
+      '@nestjs/common':
+        specifier: ^11.1.9
+        version: 11.1.9(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/config':
+        specifier: ^4.0.2
+        version: 4.0.2(@nestjs/common@11.1.9(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^10.0.0 || ^11.0.0
+        version: 11.1.9(@nestjs/common@11.1.9(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.9)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/mongoose':
+        specifier: ^11.0.3
+        version: 11.0.3(@nestjs/common@11.1.9(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.9)(mongoose@8.19.4)(rxjs@7.8.2)
       '@repo/schema':
         specifier: workspace:*
         version: link:../schema
-      mongoose:
-        specifier: ^8.19.4
-        version: 8.19.4
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
     devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -6954,7 +6972,7 @@ snapshots:
       eslint: 9.39.1
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.1))(eslint@9.39.1)
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1)
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.1))(eslint@9.39.1))(eslint@9.39.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.1)
       eslint-plugin-react: 7.37.5(eslint@9.39.1)
       eslint-plugin-react-hooks: 7.0.1(eslint@9.39.1)
@@ -6991,7 +7009,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1)
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.1))(eslint@9.39.1))(eslint@9.39.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -7005,7 +7023,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.1):
+  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.1))(eslint@9.39.1))(eslint@9.39.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9

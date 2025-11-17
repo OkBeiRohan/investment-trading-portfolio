@@ -53,8 +53,6 @@ export class SignalEngineService {
         modelVersions: this.getModelVersions(),
         latencyMs,
       },
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
   }
 

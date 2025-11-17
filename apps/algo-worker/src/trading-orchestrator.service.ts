@@ -105,33 +105,52 @@ export class TradingOrchestrator {
     this.logger.debug('Collecting market data...');
 
     // Collect raw market data
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - 60 * 60 * 60 * 1000); // 60 hours ago
     const historicalData = await this.dataCollection.fetchHistoricalData(
       'NIFTY50',
-      60, // 60 periods
+      startDate,
+      endDate,
     );
 
-    const optionChain = await this.dataCollection.fetchOptionChain('NIFTY');
+    const nearestExpiry = new Date();
+    nearestExpiry.setDate(nearestExpiry.getDate() + 7); // Next weekly expiry
+    const optionChain = await this.dataCollection.fetchOptionChain(
+      'NIFTY',
+      nearestExpiry,
+    );
     const vix = await this.dataCollection.fetchIndiaVIX();
-    const pcr = await this.dataCollection.fetchPutCallRatio('NIFTY');
+    const pcr = await this.dataCollection.fetchPutCallRatio();
 
     // Engineer features
-    const features = await this.featureEngineering.engineerFeatures(
+    const features = this.featureEngineering.computeFeatures(
       historicalData,
       optionChain,
-      vix,
-      pcr,
+      [vix], // VIX array
     );
 
     // Validate features
     const validation = this.featureEngineering.validateFeatures(features);
 
-    if (!validation.valid) {
-      this.logger.error('Feature validation failed', validation.errors);
+    if (!validation.isValid) {
+      this.logger.error('Feature validation failed', {
+        missingFields: validation.missingFields,
+        quality: validation.quality,
+      });
       return null;
     }
 
     // Store features in MongoDB
-    await this.featureStore.saveFeatures('NIFTY50', features);
+    await this.featureStore.saveFeatures({
+      timestamp: new Date(),
+      instrument: 'NIFTY50',
+      features,
+      metadata: {
+        dataQuality: validation.quality,
+        missingFields: validation.missingFields,
+        version: '1.0.0',
+      },
+    });
 
     return features;
   }
@@ -252,6 +271,7 @@ export class TradingOrchestrator {
     const orderRequest = this.orderPlacement.buildMultiLegOrder(strategy, [
       {
         instrumentKey: 'NSE_FO|12345', // TODO: Get actual instrument keys
+        instrument: 'NIFTY 50 FUT', // TODO: Get actual instrument name
         side: 'BUY',
         quantity: 50,
         price: 100, // TODO: Get actual prices
@@ -259,9 +279,17 @@ export class TradingOrchestrator {
     ]);
 
     // Place order
+    // Note: orderRequest.legs are OrderPlacement[], need to convert to OrderLeg[]
+    const orderLegs = orderRequest.legs.map((leg) => ({
+      ...leg,
+      side: leg.transactionType,
+      status: 'PENDING' as const,
+      filledQuantity: 0,
+    }));
+
     const order = await this.orderPlacement.placeOrder(
       strategy,
-      orderRequest.legs,
+      orderLegs,
       userId,
     );
 

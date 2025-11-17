@@ -5,6 +5,7 @@ packages:
 onlyBuiltDependencies:
   - '@nestjs/core'
   - msgpackr-extract
+  - onnxruntime-node
   - protobufjs
   - sharp
   - unrs-resolver

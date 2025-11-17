@@ -9,6 +9,7 @@ import type {
   Order,
   OrderCreateInput,
   OrderLeg,
+  OrderPlacement,
   MultiLegOrderRequest,
   Strategy,
 } from '@repo/schema';
@@ -51,6 +52,7 @@ export class OrderPlacementService {
 
       const order: OrderCreateInput = {
         userId,
+        provider: 'upstox',
         orderId: mockOrderId,
         signalId: strategy._id as string, // Reference to signal that generated strategy
         strategy: strategy.name,
@@ -61,8 +63,6 @@ export class OrderPlacementService {
         })),
         status: 'PENDING' as const,
         totalCost: this.calculateTotalCost(legs),
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
       // TODO: Persist to MongoDB via @repo/database
@@ -187,7 +187,7 @@ export class OrderPlacementService {
       const legCost = (leg.price ?? 0) * leg.quantity;
 
       // BUY = debit (negative), SELL = credit (positive)
-      return leg.transactionType === 'BUY' ? total - legCost : total + legCost;
+      return leg.side === 'BUY' ? total - legCost : total + legCost;
     }, 0);
   }
 
@@ -198,27 +198,25 @@ export class OrderPlacementService {
     strategy: Strategy,
     instruments: Array<{
       instrumentKey: string;
+      instrument: string;
       side: 'BUY' | 'SELL';
       quantity: number;
       price?: number;
     }>,
   ): MultiLegOrderRequest {
-    const legs: OrderLeg[] = instruments.map((inst) => ({
+    const legs: OrderPlacement[] = instruments.map((inst) => ({
       instrumentKey: inst.instrumentKey,
-      exchange: 'NFO' as const, // NSE Futures & Options
+      instrument: inst.instrument,
       transactionType: inst.side,
       quantity: inst.quantity,
       orderType: inst.price ? ('LIMIT' as const) : ('MARKET' as const),
       price: inst.price,
-      status: 'PENDING' as const,
-      filledQuantity: 0,
     }));
 
     return {
       legs,
       strategy: strategy.name,
       executionPolicy: 'SIMULTANEOUS' as const, // Execute all legs together
-      userId: strategy.userId,
     };
   }
 }
