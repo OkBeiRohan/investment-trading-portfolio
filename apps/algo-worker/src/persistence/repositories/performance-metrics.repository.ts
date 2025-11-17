@@ -4,11 +4,10 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
-import { ObjectId } from 'mongodb';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { PerformanceMetrics, PerformanceMetricsDocument } from '@repo/database';
 import {
-  type PerformanceMetrics,
   type PerformanceMetricsCreate,
   performanceMetricsSchema,
   type PerformancePeriod,
@@ -17,11 +16,11 @@ import {
 @Injectable()
 export class PerformanceMetricsRepository {
   private readonly logger = new Logger(PerformanceMetricsRepository.name);
-  private readonly collection: any;
 
-  constructor(@InjectConnection() private connection: Connection) {
-    this.collection = this.connection.collection('performanceMetrics');
-  }
+  constructor(
+    @InjectModel(PerformanceMetrics.name, 'trading')
+    private readonly performanceMetricsModel: Model<PerformanceMetricsDocument>,
+  ) {}
 
   /**
    * Create new performance metrics
@@ -34,11 +33,9 @@ export class PerformanceMetricsRepository {
         createdAt: new Date(),
       });
 
-      const result = await this.collection.insertOne(
-        validated as PerformanceMetrics,
-      );
-      this.logger.log(`Performance metrics created: ${result.insertedId}`);
-      return result.insertedId.toString();
+      const created = await this.performanceMetricsModel.create(validated);
+      this.logger.log(`Performance metrics created: ${created._id}`);
+      return created._id.toString();
     } catch (error) {
       this.logger.error('Failed to create performance metrics', error);
       throw error;
@@ -53,7 +50,7 @@ export class PerformanceMetricsRepository {
     period: Period,
     startDate?: Date,
     endDate?: Date,
-  ): Promise<PerformanceMetrics[]> {
+  ): Promise<PerformanceMetricsDocument[]> {
     try {
       const filter: any = { userId, period };
 
@@ -63,10 +60,10 @@ export class PerformanceMetricsRepository {
         if (endDate) filter.startDate.$lte = endDate;
       }
 
-      return await this.collection
+      return await this.performanceMetricsModel
         .find(filter)
         .sort({ startDate: -1 })
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find performance metrics', error);
       throw error;
@@ -79,13 +76,12 @@ export class PerformanceMetricsRepository {
   async findLatest(
     userId: string,
     period: Period,
-  ): Promise<PerformanceMetrics | null> {
+  ): Promise<PerformanceMetricsDocument | null> {
     try {
-      return await this.collection
-        .find({ userId, period })
+      return await this.performanceMetricsModel
+        .findOne({ userId, period })
         .sort({ startDate: -1 })
-        .limit(1)
-        .next();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find latest metrics', error);
       throw error;
@@ -98,19 +94,19 @@ export class PerformanceMetricsRepository {
   async getMonthlySummary(
     userId: string,
     months = 12,
-  ): Promise<PerformanceMetrics[]> {
+  ): Promise<PerformanceMetricsDocument[]> {
     try {
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - months);
 
-      return await this.collection
+      return await this.performanceMetricsModel
         .find({
           userId,
           period: 'MONTHLY',
           startDate: { $gte: startDate },
         })
         .sort({ startDate: -1 })
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to get monthly summary', error);
       throw error;
@@ -133,7 +129,7 @@ export class PerformanceMetricsRepository {
     overallWinRate: number;
   }> {
     try {
-      const result = await this.collection
+      const result = await this.performanceMetricsModel
         .aggregate([
           {
             $match: {
@@ -154,7 +150,7 @@ export class PerformanceMetricsRepository {
             },
           },
         ])
-        .toArray();
+        .exec();
 
       if (result.length === 0) {
         return {
@@ -192,14 +188,14 @@ export class PerformanceMetricsRepository {
     userId: string,
     metricField: 'sharpeRatio' | 'sortinoRatio' | 'totalReturn',
     limit = 10,
-  ): Promise<PerformanceMetrics[]> {
+  ): Promise<PerformanceMetricsDocument[]> {
     try {
       const sortField = `metrics.${metricField}`;
-      return await this.collection
+      return await this.performanceMetricsModel
         .find({ userId })
         .sort({ [sortField]: -1 })
         .limit(limit)
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find best performers', error);
       throw error;
@@ -250,12 +246,14 @@ export class PerformanceMetricsRepository {
    */
   async delete(id: string, userId?: string): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.deleteOne(filter);
+      const result = await this.performanceMetricsModel
+        .deleteOne(filter)
+        .exec();
       this.logger.log(`Performance metrics deleted: ${id}`);
       return result.deletedCount > 0;
     } catch (error) {

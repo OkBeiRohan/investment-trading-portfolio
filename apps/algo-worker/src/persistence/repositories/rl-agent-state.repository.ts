@@ -5,11 +5,10 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
-import { ObjectId } from 'mongodb';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { RLAgentState, RLAgentStateDocument } from '@repo/database';
 import {
-  type RLAgentState,
   type RLAgentStateCreateInput,
   type RLAgentStateUpdateInput,
   rlAgentStateSchema,
@@ -19,11 +18,11 @@ import {
 @Injectable()
 export class RLAgentStateRepository {
   private readonly logger = new Logger(RLAgentStateRepository.name);
-  private readonly collection: any;
 
-  constructor(@InjectConnection() private connection: Connection) {
-    this.collection = this.connection.collection('rlAgentStates');
-  }
+  constructor(
+    @InjectModel(RLAgentState.name, 'trading')
+    private readonly rlAgentStateModel: Model<RLAgentStateDocument>,
+  ) {}
 
   /**
    * Create new RL agent state
@@ -37,9 +36,9 @@ export class RLAgentStateRepository {
         updatedAt: new Date(),
       });
 
-      const result = await this.collection.insertOne(validated as RLAgentState);
-      this.logger.log(`RL agent state created: ${result.insertedId}`);
-      return result.insertedId.toString();
+      const created = await this.rlAgentStateModel.create(validated);
+      this.logger.log(`RL agent state created: ${created._id}`);
+      return created._id.toString();
     } catch (error) {
       this.logger.error('Failed to create RL agent state', error);
       throw error;
@@ -49,14 +48,17 @@ export class RLAgentStateRepository {
   /**
    * Find agent state by ID
    */
-  async findById(id: string, userId?: string): Promise<RLAgentState | null> {
+  async findById(
+    id: string,
+    userId?: string,
+  ): Promise<RLAgentStateDocument | null> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      return await this.collection.findOne(filter);
+      return await this.rlAgentStateModel.findOne(filter).exec();
     } catch (error) {
       this.logger.error(`Failed to find RL agent state ${id}`, error);
       throw error;
@@ -69,13 +71,12 @@ export class RLAgentStateRepository {
   async findLatestByType(
     agentType: RLAgentType,
     userId: string,
-  ): Promise<RLAgentState | null> {
+  ): Promise<RLAgentStateDocument | null> {
     try {
-      return await this.collection
-        .find({ agentType, userId })
+      return await this.rlAgentStateModel
+        .findOne({ agentType, userId })
         .sort({ updatedAt: -1 })
-        .limit(1)
-        .next();
+        .exec();
     } catch (error) {
       this.logger.error(
         `Failed to find latest ${agentType} agent state`,
@@ -88,12 +89,12 @@ export class RLAgentStateRepository {
   /**
    * Find all agent states for user
    */
-  async findByUser(userId: string): Promise<RLAgentState[]> {
+  async findByUser(userId: string): Promise<RLAgentStateDocument[]> {
     try {
-      return await this.collection
+      return await this.rlAgentStateModel
         .find({ userId })
         .sort({ updatedAt: -1 })
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find agent states for user', error);
       throw error;
@@ -107,17 +108,17 @@ export class RLAgentStateRepository {
     agentType: RLAgentType,
     modelVersion: string,
     userId?: string,
-  ): Promise<RLAgentState[]> {
+  ): Promise<RLAgentStateDocument[]> {
     try {
       const filter: any = { agentType, modelVersion };
       if (userId) {
         filter.userId = userId;
       }
 
-      return await this.collection
+      return await this.rlAgentStateModel
         .find(filter)
         .sort({ updatedAt: -1 })
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find agent states by model version', error);
       throw error;
@@ -133,17 +134,19 @@ export class RLAgentStateRepository {
     userId?: string,
   ): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.updateOne(filter, {
-        $set: {
-          ...data,
-          updatedAt: new Date(),
-        },
-      });
+      const result = await this.rlAgentStateModel
+        .updateOne(filter, {
+          $set: {
+            ...data,
+            updatedAt: new Date(),
+          },
+        })
+        .exec();
 
       this.logger.log(`RL agent state updated: ${id}`);
       return result.modifiedCount > 0;
@@ -166,17 +169,19 @@ export class RLAgentStateRepository {
     userId?: string,
   ): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.updateOne(filter, {
-        $set: {
-          performance,
-          updatedAt: new Date(),
-        },
-      });
+      const result = await this.rlAgentStateModel
+        .updateOne(filter, {
+          $set: {
+            performance,
+            updatedAt: new Date(),
+          },
+        })
+        .exec();
 
       return result.modifiedCount > 0;
     } catch (error) {
@@ -190,15 +195,17 @@ export class RLAgentStateRepository {
    */
   async incrementEpisodeCount(id: string, userId?: string): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.updateOne(filter, {
-        $inc: { 'stateSnapshot.episodeCount': 1 },
-        $set: { updatedAt: new Date() },
-      });
+      const result = await this.rlAgentStateModel
+        .updateOne(filter, {
+          $inc: { 'stateSnapshot.episodeCount': 1 },
+          $set: { updatedAt: new Date() },
+        })
+        .exec();
 
       return result.modifiedCount > 0;
     } catch (error) {
@@ -216,17 +223,19 @@ export class RLAgentStateRepository {
     userId?: string,
   ): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.updateOne(filter, {
-        $set: {
-          'stateSnapshot.epsilon': epsilon,
-          updatedAt: new Date(),
-        },
-      });
+      const result = await this.rlAgentStateModel
+        .updateOne(filter, {
+          $set: {
+            'stateSnapshot.epsilon': epsilon,
+            updatedAt: new Date(),
+          },
+        })
+        .exec();
 
       return result.modifiedCount > 0;
     } catch (error) {
@@ -273,13 +282,13 @@ export class RLAgentStateRepository {
     agentType: RLAgentType,
     userId: string,
     limit = 5,
-  ): Promise<RLAgentState[]> {
+  ): Promise<RLAgentStateDocument[]> {
     try {
-      return await this.collection
+      return await this.rlAgentStateModel
         .find({ agentType, userId })
         .sort({ 'performance.avgReward': -1 })
         .limit(limit)
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find best performing agents', error);
       throw error;
@@ -296,24 +305,26 @@ export class RLAgentStateRepository {
   ): Promise<number> {
     try {
       // Find states to keep
-      const toKeep = await this.collection
+      const toKeep = await this.rlAgentStateModel
         .find({ agentType, userId })
         .sort({ updatedAt: -1 })
         .limit(keepCount)
-        .toArray();
+        .exec();
 
       if (toKeep.length === 0) {
         return 0;
       }
 
-      const keepIds = toKeep.map((state: RLAgentState) => state._id);
+      const keepIds = toKeep.map((state) => state._id);
 
       // Delete old states
-      const result = await this.collection.deleteMany({
-        agentType,
-        userId,
-        _id: { $nin: keepIds },
-      });
+      const result = await this.rlAgentStateModel
+        .deleteMany({
+          agentType,
+          userId,
+          _id: { $nin: keepIds },
+        })
+        .exec();
 
       this.logger.log(
         `Deleted ${result.deletedCount} old ${agentType} agent states`,
@@ -330,12 +341,12 @@ export class RLAgentStateRepository {
    */
   async delete(id: string, userId?: string): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.deleteOne(filter);
+      const result = await this.rlAgentStateModel.deleteOne(filter).exec();
       this.logger.log(`RL agent state deleted: ${id}`);
       return result.deletedCount > 0;
     } catch (error) {

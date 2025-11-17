@@ -5,10 +5,10 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { FeatureSnapshot, FeatureSnapshotDocument } from '@repo/database';
 import {
-  type FeatureSnapshot,
   type FeatureSnapshotCreate,
   featureSnapshotSchema,
 } from '@repo/schema';
@@ -16,38 +16,14 @@ import {
 @Injectable()
 export class FeatureSnapshotRepository {
   private readonly logger = new Logger(FeatureSnapshotRepository.name);
-  private readonly collection: any;
 
-  constructor(@InjectConnection() private connection: Connection) {
-    // Time-series collection for efficient storage
-    this.collection = this.connection.collection('features');
-  }
+  constructor(
+    @InjectModel(FeatureSnapshot.name, 'trading')
+    private readonly featureSnapshotModel: Model<FeatureSnapshotDocument>,
+  ) {}
 
-  /**
-   * Create time-series collection if not exists
-   * Should be called on application startup
-   */
-  async ensureTimeSeriesCollection(): Promise<void> {
-    try {
-      const collections = await db
-        .listCollections({ name: 'features' })
-        .toArray();
-
-      if (collections.length === 0) {
-        await db.createCollection('features', {
-          timeseries: {
-            timeField: 'timestamp',
-            metaField: 'instrument',
-            granularity: 'minutes',
-          },
-        });
-        this.logger.log('Created time-series collection: features');
-      }
-    } catch (error) {
-      this.logger.error('Failed to ensure time-series collection', error);
-      // Don't throw - collection might already exist
-    }
-  }
+  // Note: Time-series collection setup is handled in the database module
+  // The ensureTimeSeriesCollection method has been removed
 
   /**
    * Save feature snapshot
@@ -57,10 +33,8 @@ export class FeatureSnapshotRepository {
       // Validate with Zod
       const validated = featureSnapshotSchema.parse(data);
 
-      const result = await this.collection.insertOne(
-        validated as FeatureSnapshot,
-      );
-      return result.insertedId.toString();
+      const created = await this.featureSnapshotModel.create(validated);
+      return created._id.toString();
     } catch (error) {
       this.logger.error('Failed to save feature snapshot', error);
       throw error;
@@ -73,11 +47,9 @@ export class FeatureSnapshotRepository {
   async createMany(data: FeatureSnapshotCreateInput[]): Promise<number> {
     try {
       const validated = data.map((item) => featureSnapshotSchema.parse(item));
-      const result = await this.collection.insertMany(
-        validated as FeatureSnapshot[],
-      );
-      this.logger.log(`Inserted ${result.insertedCount} feature snapshots`);
-      return result.insertedCount;
+      const result = await this.featureSnapshotModel.insertMany(validated);
+      this.logger.log(`Inserted ${result.length} feature snapshots`);
+      return result.length;
     } catch (error) {
       this.logger.error('Failed to batch insert feature snapshots', error);
       throw error;
@@ -87,13 +59,14 @@ export class FeatureSnapshotRepository {
   /**
    * Get latest feature snapshot for instrument
    */
-  async findLatest(instrument: string): Promise<FeatureSnapshot | null> {
+  async findLatest(
+    instrument: string,
+  ): Promise<FeatureSnapshotDocument | null> {
     try {
-      return await this.collection
-        .find({ instrument })
+      return await this.featureSnapshotModel
+        .findOne({ instrument })
         .sort({ timestamp: -1 })
-        .limit(1)
-        .next();
+        .exec();
     } catch (error) {
       this.logger.error(
         `Failed to find latest features for ${instrument}`,
@@ -111,9 +84,9 @@ export class FeatureSnapshotRepository {
     startTime: Date,
     endTime: Date,
     limit?: number,
-  ): Promise<FeatureSnapshot[]> {
+  ): Promise<FeatureSnapshotDocument[]> {
     try {
-      const query = this.collection
+      const query = this.featureSnapshotModel
         .find({
           instrument,
           timestamp: { $gte: startTime, $lte: endTime },
@@ -124,7 +97,7 @@ export class FeatureSnapshotRepository {
         query.limit(limit);
       }
 
-      return await query.toArray();
+      return await query.exec();
     } catch (error) {
       this.logger.error('Failed to find features by time range', error);
       throw error;
@@ -159,16 +132,16 @@ export class FeatureSnapshotRepository {
     instrument: string,
     startTime: Date,
     endTime: Date,
-  ): Promise<FeatureSnapshot[]> {
+  ): Promise<FeatureSnapshotDocument[]> {
     try {
-      return await this.collection
+      return await this.featureSnapshotModel
         .find({
           instrument,
           timestamp: { $gte: startTime, $lte: endTime },
           'metadata.dataQuality': 'good',
         })
         .sort({ timestamp: -1 })
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find good quality features', error);
       throw error;
@@ -196,7 +169,7 @@ export class FeatureSnapshotRepository {
                 ? '$first'
                 : '$last';
 
-      const result = await this.collection
+      const result = await this.featureSnapshotModel
         .aggregate([
           {
             $match: {
@@ -220,7 +193,7 @@ export class FeatureSnapshotRepository {
             },
           },
         ])
-        .toArray();
+        .exec();
 
       return result.length > 0 ? result[0] : null;
     } catch (error) {
@@ -238,10 +211,12 @@ export class FeatureSnapshotRepository {
     endTime: Date,
   ): Promise<number> {
     try {
-      return await this.collection.countDocuments({
-        instrument,
-        timestamp: { $gte: startTime, $lte: endTime },
-      });
+      return await this.featureSnapshotModel
+        .countDocuments({
+          instrument,
+          timestamp: { $gte: startTime, $lte: endTime },
+        })
+        .exec();
     } catch (error) {
       this.logger.error('Failed to count feature snapshots', error);
       throw error;
@@ -256,9 +231,11 @@ export class FeatureSnapshotRepository {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
 
-      const result = await this.collection.deleteMany({
-        timestamp: { $lt: cutoffDate },
-      });
+      const result = await this.featureSnapshotModel
+        .deleteMany({
+          timestamp: { $lt: cutoffDate },
+        })
+        .exec();
 
       this.logger.log(
         `Deleted ${result.deletedCount} feature snapshots older than ${days} days`,

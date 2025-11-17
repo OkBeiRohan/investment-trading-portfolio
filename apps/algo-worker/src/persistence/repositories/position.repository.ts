@@ -4,24 +4,24 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
-import { ObjectId } from 'mongodb';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Position, PositionDocument } from '@repo/database';
 import {
-  type Position,
   type PositionCreate,
   type PositionUpdate,
   type PositionStatus,
+  positionSchema,
 } from '@repo/schema';
 
 @Injectable()
 export class PositionRepository {
   private readonly logger = new Logger(PositionRepository.name);
-  private readonly collection: any;
 
-  constructor(@InjectConnection() private connection: Connection) {
-    this.collection = this.connection.collection('positions');
-  }
+  constructor(
+    @InjectModel(Position.name, 'trading')
+    private readonly positionModel: Model<PositionDocument>,
+  ) {}
 
   /**
    * Create a new position
@@ -35,9 +35,9 @@ export class PositionRepository {
         updatedAt: new Date(),
       });
 
-      const result = await this.collection.insertOne(validated as Position);
-      this.logger.log(`Position created: ${result.insertedId}`);
-      return result.insertedId.toString();
+      const created = await this.positionModel.create(validated);
+      this.logger.log(`Position created: ${created._id}`);
+      return created._id.toString();
     } catch (error) {
       this.logger.error('Failed to create position', error);
       throw error;
@@ -47,14 +47,17 @@ export class PositionRepository {
   /**
    * Find position by ID
    */
-  async findById(id: string, userId?: string): Promise<Position | null> {
+  async findById(
+    id: string,
+    userId?: string,
+  ): Promise<PositionDocument | null> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      return await this.collection.findOne(filter);
+      return await this.positionModel.findOne(filter).exec();
     } catch (error) {
       this.logger.error(`Failed to find position ${id}`, error);
       throw error;
@@ -64,12 +67,12 @@ export class PositionRepository {
   /**
    * Find all open positions for a user
    */
-  async findOpenPositions(userId: string): Promise<Position[]> {
+  async findOpenPositions(userId: string): Promise<PositionDocument[]> {
     try {
-      return await this.collection
+      return await this.positionModel
         .find({ userId, status: 'OPEN' })
         .sort({ entryDate: -1 })
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find open positions', error);
       throw error;
@@ -79,12 +82,15 @@ export class PositionRepository {
   /**
    * Find positions by strategy
    */
-  async findByStrategy(userId: string, strategy: string): Promise<Position[]> {
+  async findByStrategy(
+    userId: string,
+    strategy: string,
+  ): Promise<PositionDocument[]> {
     try {
-      return await this.collection
+      return await this.positionModel
         .find({ userId, strategy })
         .sort({ entryDate: -1 })
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error(
         `Failed to find positions for strategy ${strategy}`,
@@ -103,17 +109,19 @@ export class PositionRepository {
     userId?: string,
   ): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.updateOne(filter, {
-        $set: {
-          ...data,
-          updatedAt: new Date(),
-        },
-      });
+      const result = await this.positionModel
+        .updateOne(filter, {
+          $set: {
+            ...data,
+            updatedAt: new Date(),
+          },
+        })
+        .exec();
 
       this.logger.log(`Position updated: ${id}`);
       return result.modifiedCount > 0;
@@ -133,19 +141,21 @@ export class PositionRepository {
     userId?: string,
   ): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.updateOne(filter, {
-        $set: {
-          status: 'CLOSED',
-          exitDate,
-          realizedPnL,
-          updatedAt: new Date(),
-        },
-      });
+      const result = await this.positionModel
+        .updateOne(filter, {
+          $set: {
+            status: 'CLOSED',
+            exitDate,
+            realizedPnL,
+            updatedAt: new Date(),
+          },
+        })
+        .exec();
 
       this.logger.log(`Position closed: ${id}, P&L: ${realizedPnL}`);
       return result.modifiedCount > 0;
@@ -165,7 +175,7 @@ export class PositionRepository {
     theta: number;
   }> {
     try {
-      const result = await this.collection
+      const result = await this.positionModel
         .aggregate([
           { $match: { userId, status: 'OPEN' } },
           {
@@ -178,7 +188,7 @@ export class PositionRepository {
             },
           },
         ])
-        .toArray();
+        .exec();
 
       if (result.length === 0) {
         return { delta: 0, gamma: 0, vega: 0, theta: 0 };
@@ -201,7 +211,7 @@ export class PositionRepository {
    */
   async calculateUnrealizedPnL(userId: string): Promise<number> {
     try {
-      const result = await this.collection
+      const result = await this.positionModel
         .aggregate([
           { $match: { userId, status: 'OPEN' } },
           {
@@ -211,7 +221,7 @@ export class PositionRepository {
             },
           },
         ])
-        .toArray();
+        .exec();
 
       return result.length > 0 ? result[0].totalUnrealizedPnL || 0 : 0;
     } catch (error) {
@@ -227,15 +237,15 @@ export class PositionRepository {
     userId: string,
     startDate: Date,
     endDate: Date,
-  ): Promise<Position[]> {
+  ): Promise<PositionDocument[]> {
     try {
-      return await this.collection
+      return await this.positionModel
         .find({
           userId,
           entryDate: { $gte: startDate, $lte: endDate },
         })
         .sort({ entryDate: -1 })
-        .toArray();
+        .exec();
     } catch (error) {
       this.logger.error('Failed to find positions by date range', error);
       throw error;
@@ -247,12 +257,12 @@ export class PositionRepository {
    */
   async delete(id: string, userId?: string): Promise<boolean> {
     try {
-      const filter: any = { _id: new ObjectId(id) };
+      const filter: any = { _id: id };
       if (userId) {
         filter.userId = userId;
       }
 
-      const result = await this.collection.deleteOne(filter);
+      const result = await this.positionModel.deleteOne(filter).exec();
       this.logger.log(`Position deleted: ${id}`);
       return result.deletedCount > 0;
     } catch (error) {
