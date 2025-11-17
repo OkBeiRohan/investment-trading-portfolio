@@ -7,6 +7,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit"
+  },
   "dependencies": {
     "@binance/connector": "^3.6.1",
     "@coingecko/coingecko-typescript": "^2.2.0",
