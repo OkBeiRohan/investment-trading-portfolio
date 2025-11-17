@@ -8,9 +8,10 @@ import type {
   Quote,
   MarketQuote,
   OptionChainData,
-  HistoricalCandle,
+  Candle,
   OptionGreeks,
   CandleInterval,
+  Exchange,
 } from "@repo/schema";
 
 export class MarketDataApi {
@@ -83,7 +84,7 @@ export class MarketDataApi {
    */
   async getOHLC(
     instrumentKeys: string[],
-    interval: CandleInterval = CandleInterval.ONE_DAY
+    interval: CandleInterval = "day"
   ): Promise<Map<string, any>> {
     return new Promise((resolve, reject) => {
       const instrumentKey = instrumentKeys.join(",");
@@ -148,7 +149,7 @@ export class MarketDataApi {
     interval: CandleInterval,
     fromDate: Date,
     toDate: Date
-  ): Promise<HistoricalCandle[]> {
+  ): Promise<Candle[]> {
     return new Promise((resolve, reject) => {
       this.historyApi.getIntraDayCandleData(
         instrumentKey,
@@ -177,7 +178,7 @@ export class MarketDataApi {
     interval: CandleInterval,
     fromDate: Date,
     toDate: Date
-  ): Promise<HistoricalCandle[]> {
+  ): Promise<Candle[]> {
     return new Promise((resolve, reject) => {
       this.historyApi.getHistoricalCandleData(
         instrumentKey,
@@ -242,7 +243,7 @@ export class MarketDataApi {
     let putOI = 0;
 
     optionChain.forEach((option) => {
-      if (option.optionType === "CE") {
+      if (option.optionType === "CALL") {
         callVolume += option.volume;
         callOI += option.openInterest;
       } else {
@@ -258,8 +259,12 @@ export class MarketDataApi {
   }
 
   private mapMarketQuote(instrumentKey: string, data: any): MarketQuote {
+    // Extract exchange from instrumentKey (e.g., "NSE_EQ|INE669E01016")
+    const exchange = instrumentKey.split("|")[0] as Exchange;
+
     return {
       instrumentKey,
+      exchange,
       lastPrice: data.last_price,
       lastQuantity: data.last_quantity,
       lastTradeTime: data.last_trade_time
@@ -297,7 +302,7 @@ export class MarketDataApi {
     };
   }
 
-  private mapCandle(data: any): HistoricalCandle {
+  private mapCandle(data: any): Candle {
     return {
       timestamp: new Date(data[0]),
       open: data[1],
@@ -305,7 +310,6 @@ export class MarketDataApi {
       low: data[3],
       close: data[4],
       volume: data[5],
-      openInterest: data[6],
     };
   }
 

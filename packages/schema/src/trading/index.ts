@@ -29,6 +29,7 @@ export const ExchangeEnum = z.enum([
   "NASDAQ",
   "CRYPTO",
 ]);
+export type Exchange = z.infer<typeof ExchangeEnum>;
 
 export const ProductTypeEnum = z.enum([
   "INTRADAY", // I
@@ -36,8 +37,10 @@ export const ProductTypeEnum = z.enum([
   "CARRYFORWARD", // CNC
   "MARGIN_INTRADAY", // MTF
 ]);
+export type ProductType = z.infer<typeof ProductTypeEnum>;
 
 export const TransactionTypeEnum = z.enum(["BUY", "SELL"]);
+export type TransactionType = z.infer<typeof TransactionTypeEnum>;
 
 export const OrderTypeEnum = z.enum([
   "MARKET",
@@ -45,12 +48,14 @@ export const OrderTypeEnum = z.enum([
   "STOP_LOSS",
   "STOP_LOSS_MARKET",
 ]);
+export type OrderType = z.infer<typeof OrderTypeEnum>;
 
 export const ValidityEnum = z.enum([
   "DAY",
   "IOC", // Immediate or Cancel
   "GTC", // Good Till Cancelled
 ]);
+export type Validity = z.infer<typeof ValidityEnum>;
 
 export const OrderStatusEnum = z.enum([
   "PENDING",
@@ -61,6 +66,7 @@ export const OrderStatusEnum = z.enum([
   "TRIGGER_PENDING",
   "PARTIALLY_FILLED",
 ]);
+export type OrderStatus = z.infer<typeof OrderStatusEnum>;
 
 export const InstrumentTypeEnum = z.enum([
   "EQUITY",
@@ -71,8 +77,10 @@ export const InstrumentTypeEnum = z.enum([
   "INDEX",
   "CRYPTO",
 ]);
+export type InstrumentType = z.infer<typeof InstrumentTypeEnum>;
 
 export const OptionTypeEnum = z.enum(["CALL", "PUT"]);
+export type OptionType = z.infer<typeof OptionTypeEnum>;
 
 export const CandleIntervalEnum = z.enum([
   "1minute",
@@ -84,6 +92,7 @@ export const CandleIntervalEnum = z.enum([
   "week",
   "month",
 ]);
+export type CandleInterval = z.infer<typeof CandleIntervalEnum>;
 
 // ============================================
 // Trading Signal Schema
