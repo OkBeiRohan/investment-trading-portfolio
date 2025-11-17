@@ -26,7 +26,7 @@ import json
 sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.data_loader import load_training_data
-from utils.model_export import export_to_onnx
+from utils.model_export_simple import export_to_onnx, save_model_metadata
 from utils.evaluation import calculate_metrics, plot_feature_importance
 
 
@@ -151,10 +151,21 @@ class XGBoostTrainer:
             )
         print(f"Saved feature metadata to {feature_path}")
 
-        # Save as ONNX
-        onnx_path = os.path.join(output_dir, "xgboost.onnx")
-        export_to_onnx(self.model, self.feature_columns, onnx_path)
-        print(f"Exported to ONNX: {onnx_path}")
+        # Save model (joblib format as workaround for ONNX compatibility issues)
+        model_path = os.path.join(output_dir, "xgboost.pkl")
+        export_to_onnx(self.model, model_path, self.feature_columns)
+
+        # Save metadata
+        metadata_path = os.path.join(output_dir, "metadata.json")
+        save_model_metadata(
+            metadata_path,
+            {
+                "model_type": "xgboost",
+                "n_features": len(self.feature_columns),
+                "features": self.feature_columns,
+                "threshold": self.config["threshold"],
+            },
+        )
 
         # Plot and save feature importance
         importance_plot_path = os.path.join(output_dir, "xgboost_importance.png")
