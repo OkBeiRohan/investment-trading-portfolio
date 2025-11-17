@@ -96,7 +96,7 @@ export class TradingOrchestrator {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error('Trading cycle failed', { error: errorMessage });
-      throw error;
+      throw error instanceof Error ? error : new Error(errorMessage);
     }
   }
 

@@ -6,11 +6,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import {
-  TradingSignal,
-  TradingSignalDocument,
-  type SignalPredictionEnum,
-} from '@repo/schema';
+import { TradingSignal, TradingSignalDocument } from '@repo/database';
+import type { Prediction } from '@repo/schema';
 
 export interface SignalStats {
   totalSignals: number;
@@ -22,6 +19,7 @@ export interface SignalStats {
 @Injectable()
 export class SignalRepository {
   constructor(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     @InjectModel(TradingSignal.name, 'trading')
     private readonly signalModel: Model<TradingSignalDocument>,
   ) {}
@@ -74,7 +72,7 @@ export class SignalRepository {
    */
   async findByPrediction(
     userId: string,
-    prediction: SignalPredictionEnum,
+    prediction: Prediction,
     limit = 50,
   ): Promise<TradingSignal[]> {
     return this.signalModel
@@ -127,7 +125,7 @@ export class SignalRepository {
 
     // Get prediction distribution
     const predictionDist = await this.signalModel
-      .aggregate([
+      .aggregate<{ _id: string; count: number }>([
         { $match: { userId, timestamp: { $gte: startDate } } },
         {
           $group: {
@@ -143,10 +141,18 @@ export class SignalRepository {
       distributionMap[item._id] = item.count;
     });
 
+    const firstResult = result[0] as
+      | {
+          totalSignals: number;
+          avgConfidence: number;
+          highConfidenceCount: number;
+        }
+      | undefined;
+
     return {
-      totalSignals: result[0]?.totalSignals || 0,
-      avgConfidence: result[0]?.avgConfidence || 0,
-      highConfidenceCount: result[0]?.highConfidenceCount || 0,
+      totalSignals: firstResult?.totalSignals || 0,
+      avgConfidence: firstResult?.avgConfidence || 0,
+      highConfidenceCount: firstResult?.highConfidenceCount || 0,
       predictionDistribution: distributionMap,
     };
   }
@@ -184,6 +190,7 @@ export class SignalRepository {
 
     signals.forEach((signal) => {
       Object.entries(signal.modelContributions).forEach(([model, value]) => {
+        const numValue = value; // Value is number from modelContributions schema
         if (!modelStats[model]) {
           modelStats[model] = {
             sum: 0,
@@ -192,9 +199,9 @@ export class SignalRepository {
             count: 0,
           };
         }
-        modelStats[model].sum += value;
-        modelStats[model].max = Math.max(modelStats[model].max, value);
-        modelStats[model].min = Math.min(modelStats[model].min, value);
+        modelStats[model].sum += numValue;
+        modelStats[model].max = Math.max(modelStats[model].max, numValue);
+        modelStats[model].min = Math.min(modelStats[model].min, numValue);
         modelStats[model].count++;
       });
     });

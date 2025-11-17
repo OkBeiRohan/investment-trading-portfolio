@@ -75,7 +75,7 @@ export class OrderPlacementService {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error('Order placement failed', { error: errorMessage });
-      throw error;
+      throw error instanceof Error ? error : new Error(errorMessage);
     }
   }
 

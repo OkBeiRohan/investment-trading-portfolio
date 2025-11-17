@@ -77,7 +77,7 @@ export class ModelLoaderService implements OnModuleInit {
       this.logger.error(`Error loading model ${name}:`, {
         error: errorMessage,
       });
-      throw error;
+      throw error instanceof Error ? error : new Error(errorMessage);
     }
   }
 
@@ -112,7 +112,7 @@ export class ModelLoaderService implements OnModuleInit {
       this.logger.error(`Inference error for model ${modelName}:`, {
         error: errorMessage,
       });
-      throw error;
+      throw error instanceof Error ? error : new Error(errorMessage);
     }
   }
 

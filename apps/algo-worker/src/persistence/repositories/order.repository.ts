@@ -6,12 +6,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import {
-  Order,
-  OrderDocument,
-  type OrderStatusEnum,
-  type OrderLegStatusEnum,
-} from '@repo/schema';
+import { Order, OrderDocument } from '@repo/database';
+import type { OrderStatus } from '@repo/schema';
 
 export interface OrderStats {
   totalOrders: number;
@@ -67,7 +63,7 @@ export class OrderRepository {
    */
   async findByStatus(
     userId: string,
-    status: OrderStatusEnum,
+    status: OrderStatus,
     limit = 50,
   ): Promise<Order[]> {
     return this.orderModel
@@ -117,7 +113,7 @@ export class OrderRepository {
    */
   async updateStatus(
     orderId: string,
-    status: OrderStatusEnum,
+    status: OrderStatus,
   ): Promise<Order | null> {
     return this.orderModel
       .findOneAndUpdate(
@@ -135,7 +131,7 @@ export class OrderRepository {
     orderId: string,
     legIndex: number,
     updates: {
-      status?: OrderLegStatusEnum;
+      status?: OrderStatus;
       filledQuantity?: number;
       averagePrice?: number;
       filledAt?: Date;
@@ -233,14 +229,15 @@ export class OrderRepository {
     filledOrders.forEach((order) => {
       // Find the last filled leg
       const lastFilledLeg = order.legs
-        .filter((leg) => leg.filledAt)
+        .filter((leg: any) => leg.filledAt)
         .sort(
-          (a, b) => (b.filledAt?.getTime() || 0) - (a.filledAt?.getTime() || 0),
+          (a: any, b: any) =>
+            (b.filledAt?.getTime() || 0) - (a.filledAt?.getTime() || 0),
         )[0];
 
       if (lastFilledLeg?.filledAt) {
         totalFillTime +=
-          lastFilledLeg.filledAt.getTime() - order.createdAt.getTime();
+          lastFilledLeg.filledAt.getTime() - (order as any).createdAt.getTime();
         filledCount++;
       }
     });
