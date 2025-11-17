@@ -22,11 +22,7 @@ from data_loader import (
     normalize_features,
     balance_classes,
 )
-from model_export import (
-    export_sklearn_to_onnx,
-    save_model_metadata,
-    test_onnx_inference,
-)
+from model_export_simple import save_model_metadata
 from evaluation import (
     calculate_metrics,
     plot_confusion_matrix,
@@ -233,24 +229,19 @@ class SVMTrainer:
         """Save SVM model"""
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-        # Save scikit-learn model
+        # Save scikit-learn model using joblib
         sklearn_path = f"{output_dir}/svm_model.pkl"
         joblib.dump(self.model, sklearn_path)
-        print(f"Scikit-learn model saved to {sklearn_path}")
-
-        # Export to ONNX
-        onnx_path = f"{output_dir}/svm_model.onnx"
-        n_features = self.model.n_features_in_
-
-        export_sklearn_to_onnx(self.model, onnx_path, n_features=n_features)
+        print(f"✓ SVM model saved to {sklearn_path}")
 
         # Save feature selector if used
         if self.feature_selector is not None:
             selector_path = f"{output_dir}/feature_selector.pkl"
             joblib.dump(self.feature_selector, selector_path)
-            print(f"Feature selector saved to {selector_path}")
+            print(f"✓ Feature selector saved to {selector_path}")
 
         # Save metadata
+        n_features = self.model.n_features_in_
         metadata = {
             "model_type": "SVM",
             "config": self.config,
@@ -265,11 +256,7 @@ class SVMTrainer:
 
         save_model_metadata(f"{output_dir}/metadata.json", metadata)
 
-        # Test ONNX inference
-        X_test_sample = np.random.randn(1, n_features).astype(np.float32)
-        test_onnx_inference(onnx_path, X_test_sample)
-
-        print(f"All model files saved to {output_dir}")
+        print(f"✓ All model files saved to {output_dir}")
 
 
 def main():

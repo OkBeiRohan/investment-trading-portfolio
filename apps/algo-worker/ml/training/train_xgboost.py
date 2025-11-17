@@ -92,18 +92,18 @@ class XGBoostTrainer:
         """
         # XGBoost parameters from config
         params = {
-            'max_depth': self.config['max_depth'],
-            'learning_rate': self.config['learning_rate'],
-            'subsample': self.config['subsample'],
-            'colsample_bytree': self.config['colsample_bytree'],
-            'min_child_weight': self.config['min_child_weight'],
-            'gamma': self.config['gamma'],
-            'reg_alpha': self.config['reg_alpha'],
-            'reg_lambda': self.config['reg_lambda'],
-            'n_jobs': self.config['n_jobs'],
-            'random_state': self.config['random_state'],
-            'objective': self.config['objective'],
-            'eval_metric': self.config['eval_metric'],
+            "max_depth": self.config["max_depth"],
+            "learning_rate": self.config["learning_rate"],
+            "subsample": self.config["subsample"],
+            "colsample_bytree": self.config["colsample_bytree"],
+            "min_child_weight": self.config["min_child_weight"],
+            "gamma": self.config["gamma"],
+            "reg_alpha": self.config["reg_alpha"],
+            "reg_lambda": self.config["reg_lambda"],
+            "n_jobs": self.config["n_jobs"],
+            "random_state": self.config["random_state"],
+            "objective": self.config["objective"],
+            "eval_metric": self.config["eval_metric"],
         }
 
         # Create DMatrix for XGBoost
@@ -115,9 +115,9 @@ class XGBoostTrainer:
         self.model = xgb.train(
             params,
             dtrain,
-            num_boost_round=self.config['n_estimators'],
+            num_boost_round=self.config["n_estimators"],
             evals=evals,
-            early_stopping_rounds=self.config['early_stopping_rounds'],
+            early_stopping_rounds=self.config["early_stopping_rounds"],
             verbose_eval=50,
         )
 
