@@ -54,3 +54,10 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Python Environment
+/venv
+/__pycache__/
+*.pyc
+.ipynb_checkpoints
+/.venv/
