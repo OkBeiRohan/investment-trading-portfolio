@@ -198,7 +198,8 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 
 1. **Documentation**
    - ✅ Complete architectural guide (.github/copilot-instructions.md)
-   - ✅ ML setup guide (ML_SETUP_GUIDE.md)
+   - ✅ ML setup guide (ML_SETUP_GUIDE.md) - **Updated with ONNX approach**
+   - ✅ ML integration architecture analysis (ML_INTEGRATION_ARCHITECTURE.md)
    - ✅ 4-engine modular design documented
 
 2. **ML Stack Guide**
@@ -209,7 +210,12 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
    - ✅ Logistic Regression Stacker (meta-model)
    - ✅ Walk-forward validation methodology
    - ✅ Feature engineering pipeline
-   - ✅ Inference server design
+   - ✅ **ONNX export pipeline for TypeScript inference**
+
+3. **Integration Strategy**
+   - ✅ Decided on ONNX Runtime approach (TypeScript inference)
+   - ✅ Python training + ONNX export workflow documented
+   - ✅ NestJS inference layer architecture designed
 
 #### Pending ⏳
 
@@ -223,11 +229,13 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 
 **Engine 2: ML Signal Engine**
 
-- [ ] Train 4 Level-0 models (XGBoost, CNN-LSTM, GINN, SVM)
+- [ ] Train 4 Level-0 models (XGBoost, CNN-LSTM, GINN, SVM) in Python
 - [ ] Train Level-1 meta-model (Logistic Regression)
-- [ ] Create SignalEngine module
-- [ ] Implement model inference pipeline
-- [ ] Persist signals to MongoDB
+- [ ] Export all models to ONNX format
+- [ ] Create SignalEngine module in NestJS
+- [ ] Create ModelLoaderService (onnxruntime-node)
+- [ ] Implement TypeScript inference pipeline
+- [ ] Persist signals to MongoDB via @repo/database
 
 **Engine 3: Policy & Risk Management**
 
