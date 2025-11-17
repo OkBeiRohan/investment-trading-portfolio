@@ -44,6 +44,61 @@ import { UpstoxClient } from './utils/upstox'; // NEVER do this
 - ❌ **DON'T**: Define interfaces in service files
 - ❌ **DON'T**: Create local type files
 
+### CRITICAL: DRY Principle for Schema Design
+
+**NEVER duplicate schemas. Use TypeScript's type system to compose types:**
+
+- ✅ **DO**: Use `extends`, `implements`, `Omit`, `Pick`, `Partial` to reuse types
+- ✅ **DO**: Create separate files for each logical domain (one schema per file)
+- ✅ **DO**: Extract common schemas into reusable base schemas
+- ❌ **DON'T**: Copy-paste similar schemas
+- ❌ **DON'T**: Put too many schemas in one file (max 2-3 related schemas)
+- ❌ **DON'T**: Recreate types that already exist
+
+**File Organization:**
+
+```
+packages/schema/src/trading/
+├── index.ts                    # Re-exports + common enums only
+├── enums.ts                    # All trading enums
+├── base.ts                     # Base/common types
+├── signal.schema.ts            # Trading signal schemas
+├── order.schema.ts             # Order-related schemas
+├── position.schema.ts          # Position schemas
+├── strategy.schema.ts          # Strategy schemas
+├── performance.schema.ts       # Performance metrics
+├── feature.schema.ts           # Feature snapshot
+└── rl-agent.schema.ts          # RL agent state
+```
+
+**Type Reuse Example:**
+
+```typescript
+// ✅ Correct - Reuse with extends/Omit
+import { baseOrderSchema } from './base';
+
+export const orderLegSchema = baseOrderSchema.extend({
+  instrumentKey: z.string(),
+  status: OrderStatusEnum,
+});
+
+export const multiLegOrderSchema = z.object({
+  legs: z.array(orderLegSchema),
+  strategy: z.string(),
+});
+
+// ✅ Correct - Type composition
+export type OrderCreateInput = Omit<Order, '_id' | 'createdAt' | 'updatedAt'>;
+export type OrderUpdateInput = Partial<OrderCreateInput>;
+
+// ❌ Wrong - Duplicating schema
+export const orderLegSchema = z.object({
+  instrumentKey: z.string(), // Already defined elsewhere!
+  transactionType: z.enum(['BUY', 'SELL']), // Duplicate!
+  // ...
+});
+```
+
 ```typescript
 // ✅ Correct - Import from schema
 import {
