@@ -12,28 +12,28 @@ class StateSnapshot {
   @Prop({ type: Object })
   weights?: any;
 
-  @Prop({ type: Map, of: Object })
-  qTable?: Map<string, any>;
+  @Prop({ type: Object })
+  qTable?: Record<string, unknown>;
 
   @Prop({ type: [Object] })
-  experienceBuffer?: any[];
+  experienceBuffer?: unknown[];
 
-  @Prop()
-  episodeCount?: number;
+  @Prop({ required: true })
+  episodeCount: number;
 
-  @Prop()
-  epsilon?: number;
+  @Prop({ required: true })
+  epsilon: number;
 }
 
 class Performance {
-  @Prop()
-  avgReward?: number;
+  @Prop({ required: true })
+  avgReward: number;
 
-  @Prop()
-  successRate?: number;
+  @Prop({ required: true })
+  successRate: number;
 
-  @Prop()
-  lastEpisodeReward?: number;
+  @Prop({ required: true })
+  lastEpisodeReward: number;
 }
 
 @Schema({ timestamps: true, collection: "rl_agent_states" })
@@ -41,7 +41,7 @@ export class RLAgentState
   implements Omit<IRLAgentState, "_id" | "createdAt" | "updatedAt">
 {
   @Prop({ required: true, enum: ["DELTA_HEDGING", "OPTIMAL_EXECUTION"] })
-  agentType: string;
+  agentType: "DELTA_HEDGING" | "OPTIMAL_EXECUTION";
 
   @Prop({ required: true, index: true })
   userId: string;
@@ -49,11 +49,11 @@ export class RLAgentState
   @Prop({ required: true })
   modelVersion: string;
 
-  @Prop({ type: StateSnapshot })
-  stateSnapshot?: StateSnapshot;
+  @Prop({ type: StateSnapshot, required: true })
+  stateSnapshot: StateSnapshot;
 
-  @Prop({ type: Performance })
-  performance?: Performance;
+  @Prop({ type: Performance, required: true })
+  performance: Performance;
 }
 
 export const RLAgentStateSchema = SchemaFactory.createForClass(RLAgentState);

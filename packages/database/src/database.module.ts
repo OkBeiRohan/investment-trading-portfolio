@@ -81,12 +81,14 @@ export class TradingDatabaseModule {
         MongooseModule.forRootAsync({
           connectionName: "trading",
           imports: [ConfigModule],
-          useFactory: (configService: ConfigService) => ({
-            uri:
-              configService.get<string>("DATABASE_TRADING_URI") ||
+          useFactory: (configService: ConfigService) => {
+            const baseUri =
               configService.get<string>("MONGODB_URI") ||
-              "mongodb://localhost:27017/trading",
-          }),
+              "mongodb://localhost:27017";
+            return {
+              uri: `${baseUri}/trading`,
+            };
+          },
           inject: [ConfigService],
         }),
         MongooseModule.forFeature(
@@ -132,12 +134,14 @@ export class UserDatabaseModule {
         MongooseModule.forRootAsync({
           connectionName: "users",
           imports: [ConfigModule],
-          useFactory: (configService: ConfigService) => ({
-            uri:
-              configService.get<string>("DATABASE_USER_URI") ||
+          useFactory: (configService: ConfigService) => {
+            const baseUri =
               configService.get<string>("MONGODB_URI") ||
-              "mongodb://localhost:27017/users",
-          }),
+              "mongodb://localhost:27017";
+            return {
+              uri: `${baseUri}/users`,
+            };
+          },
           inject: [ConfigService],
         }),
         // Add user schemas here when needed
@@ -160,12 +164,14 @@ export class AnalyticsDatabaseModule {
         MongooseModule.forRootAsync({
           connectionName: "analytics",
           imports: [ConfigModule],
-          useFactory: (configService: ConfigService) => ({
-            uri:
-              configService.get<string>("DATABASE_ANALYTICS_URI") ||
+          useFactory: (configService: ConfigService) => {
+            const baseUri =
               configService.get<string>("MONGODB_URI") ||
-              "mongodb://localhost:27017/analytics",
-          }),
+              "mongodb://localhost:27017";
+            return {
+              uri: `${baseUri}/analytics`,
+            };
+          },
           inject: [ConfigService],
         }),
         MongooseModule.forFeature(

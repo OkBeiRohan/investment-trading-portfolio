@@ -9,60 +9,60 @@ import { PerformanceMetrics as IPerformanceMetrics } from "@repo/schema";
 export type PerformanceMetricsDocument = HydratedDocument<PerformanceMetrics>;
 
 class Metrics {
-  @Prop()
-  sharpeRatio?: number;
+  @Prop({ required: true })
+  sharpeRatio: number;
 
-  @Prop()
-  sortinoRatio?: number;
+  @Prop({ required: true })
+  sortinoRatio: number;
 
-  @Prop()
-  maxDrawdown?: number;
+  @Prop({ required: true })
+  maxDrawdown: number;
 
-  @Prop()
-  calmarRatio?: number;
+  @Prop({ required: true })
+  calmarRatio: number;
 
-  @Prop()
-  totalReturn?: number;
+  @Prop({ required: true })
+  totalReturn: number;
 
-  @Prop()
-  volatility?: number;
+  @Prop({ required: true })
+  volatility: number;
 
-  @Prop()
-  winRate?: number;
+  @Prop({ required: true })
+  winRate: number;
 
-  @Prop()
-  profitFactor?: number;
+  @Prop({ required: true })
+  profitFactor: number;
 }
 
 class Trades {
-  @Prop()
-  total?: number;
+  @Prop({ required: true })
+  total: number;
 
-  @Prop()
-  wins?: number;
+  @Prop({ required: true })
+  wins: number;
 
-  @Prop()
-  losses?: number;
+  @Prop({ required: true })
+  losses: number;
 
-  @Prop()
-  avgWin?: number;
+  @Prop({ required: true })
+  avgWin: number;
 
-  @Prop()
-  avgLoss?: number;
+  @Prop({ required: true })
+  avgLoss: number;
 }
 
 class Costs {
-  @Prop()
-  totalBrokerage?: number;
+  @Prop({ required: true })
+  totalBrokerage: number;
 
-  @Prop()
-  totalSTT?: number;
+  @Prop({ required: true })
+  totalSTT: number;
 
-  @Prop()
-  totalSlippage?: number;
+  @Prop({ required: true })
+  totalSlippage: number;
 
-  @Prop()
-  costsAsPercentOfPnL?: number;
+  @Prop({ required: true })
+  costsAsPercentOfPnL: number;
 }
 
 @Schema({ timestamps: true, collection: "performance_metrics" })
@@ -73,7 +73,7 @@ export class PerformanceMetrics
   userId: string;
 
   @Prop({ required: true, enum: ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"] })
-  period: string;
+  period: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
   @Prop({ required: true })
   startDate: Date;
@@ -81,14 +81,14 @@ export class PerformanceMetrics
   @Prop({ required: true })
   endDate: Date;
 
-  @Prop({ type: Metrics })
-  metrics?: Metrics;
+  @Prop({ type: Metrics, required: true })
+  metrics: Metrics;
 
-  @Prop({ type: Trades })
-  trades?: Trades;
+  @Prop({ type: Trades, required: true })
+  trades: Trades;
 
-  @Prop({ type: Costs })
-  costs?: Costs;
+  @Prop({ type: Costs, required: true })
+  costs: Costs;
 
   @Prop()
   provider?: string;

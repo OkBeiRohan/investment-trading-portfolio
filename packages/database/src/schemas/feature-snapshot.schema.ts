@@ -9,14 +9,14 @@ import { FeatureSnapshot as IFeatureSnapshot } from "@repo/schema";
 export type FeatureSnapshotDocument = HydratedDocument<FeatureSnapshot>;
 
 class MACD {
-  @Prop()
-  value?: number;
+  @Prop({ required: true })
+  value: number;
 
-  @Prop()
-  signal?: number;
+  @Prop({ required: true })
+  signal: number;
 
-  @Prop()
-  histogram?: number;
+  @Prop({ required: true })
+  histogram: number;
 }
 
 class Features {
@@ -62,13 +62,13 @@ class Features {
 
 class Metadata {
   @Prop({ required: true, enum: ["good", "filled", "anomalous"] })
-  dataQuality: string;
+  dataQuality: "good" | "filled" | "anomalous";
 
-  @Prop({ type: [String] })
-  missingFields?: string[];
+  @Prop({ required: true, type: [String] })
+  missingFields: string[];
 
-  @Prop()
-  version?: string;
+  @Prop({ required: true })
+  version: string;
 }
 
 @Schema({ timestamps: false, collection: "feature_snapshots" })
@@ -79,11 +79,11 @@ export class FeatureSnapshot implements IFeatureSnapshot {
   @Prop({ required: true })
   instrument: string;
 
-  @Prop({ type: Features })
-  features?: Features;
+  @Prop({ type: Features, required: true })
+  features: Features;
 
-  @Prop({ type: Metadata })
-  metadata?: Metadata;
+  @Prop({ type: Metadata, required: true })
+  metadata: Metadata;
 }
 
 export const FeatureSnapshotSchema =

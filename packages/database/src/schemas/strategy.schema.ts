@@ -9,23 +9,40 @@ import { Strategy as IStrategy } from "@repo/schema";
 export type StrategyDocument = HydratedDocument<Strategy>;
 
 class StrategyLeg {
-  @Prop()
+  @Prop({ required: true })
   instrumentKey: string;
 
-  @Prop()
-  instrumentType: string;
+  @Prop({
+    enum: [
+      "EQUITY",
+      "FUTURES",
+      "OPTIONS",
+      "CURRENCY",
+      "COMMODITY",
+      "INDEX",
+      "CRYPTO",
+    ],
+  })
+  instrumentType?:
+    | "EQUITY"
+    | "FUTURES"
+    | "OPTIONS"
+    | "CURRENCY"
+    | "COMMODITY"
+    | "INDEX"
+    | "CRYPTO";
 
-  @Prop({ enum: ["BUY", "SELL"] })
-  transactionType: string;
+  @Prop({ required: true, enum: ["BUY", "SELL"] })
+  transactionType: "BUY" | "SELL";
 
-  @Prop()
+  @Prop({ required: true })
   quantity: number;
 
-  @Prop()
-  price?: number;
+  @Prop({ required: true })
+  price: number;
 
-  @Prop()
-  orderType?: string;
+  @Prop({ enum: ["MARKET", "LIMIT", "STOP_LOSS", "STOP_LOSS_MARKET"] })
+  orderType: "MARKET" | "LIMIT" | "STOP_LOSS" | "STOP_LOSS_MARKET";
 
   @Prop()
   triggerPrice?: number;
@@ -35,22 +52,22 @@ class StrategyLeg {
 }
 
 class RiskProfile {
-  @Prop()
-  maxProfit?: number;
+  @Prop({ required: true })
+  maxProfit: number;
 
-  @Prop()
-  maxLoss?: number;
+  @Prop({ required: true })
+  maxLoss: number;
 
-  @Prop({ type: [Number] })
-  breakeven?: number[];
+  @Prop({ required: true, type: [Number] })
+  breakeven: number[];
 
   @Prop()
   probabilityOfProfit?: number;
 }
 
 class EntryConditions {
-  @Prop()
-  minConfidence?: number;
+  @Prop({ required: true })
+  minConfidence: number;
 
   @Prop()
   maxVIX?: number;
@@ -59,7 +76,7 @@ class EntryConditions {
   minVIX?: number;
 
   @Prop({ enum: ["VOL_UP", "VOL_DOWN", "NEUTRAL"] })
-  prediction?: string;
+  prediction?: "VOL_UP" | "VOL_DOWN" | "NEUTRAL";
 }
 
 class ExitConditions {
@@ -97,16 +114,28 @@ export class Strategy
       "DIAGONAL_SPREAD",
     ],
   })
-  type: string;
+  type:
+    | "LONG_STRADDLE"
+    | "SHORT_STRADDLE"
+    | "LONG_STRANGLE"
+    | "SHORT_STRANGLE"
+    | "IRON_CONDOR"
+    | "IRON_BUTTERFLY"
+    | "BULL_CALL_SPREAD"
+    | "BEAR_PUT_SPREAD"
+    | "BULL_PUT_SPREAD"
+    | "BEAR_CALL_SPREAD"
+    | "CALENDAR_SPREAD"
+    | "DIAGONAL_SPREAD";
 
   @Prop()
   description?: string;
 
-  @Prop({ type: [StrategyLeg] })
+  @Prop({ type: [StrategyLeg], required: true })
   legs: StrategyLeg[];
 
-  @Prop({ type: RiskProfile })
-  riskProfile?: RiskProfile;
+  @Prop({ type: RiskProfile, required: true })
+  riskProfile: RiskProfile;
 
   @Prop({ type: EntryConditions })
   entryConditions?: EntryConditions;
