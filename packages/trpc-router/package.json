@@ -1,0 +1,11 @@
+{
+  "name": "@repo/trpc-router",
+  "version": "0.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@trpc/server": "^11.7.1",
+    "zod": "^4.1.12",
+    "@repo/schema": "workspace:*"
+  }
+}
