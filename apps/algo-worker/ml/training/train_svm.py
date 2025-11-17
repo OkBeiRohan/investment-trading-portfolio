@@ -272,10 +272,17 @@ def main():
     print("\nLoading training data...")
     data = load_training_data("data/exports/features_labeled.csv")
 
-    # Split data
-    X_train, X_val, X_test, y_train, y_val, y_test = split_time_series(
-        data.drop(columns=["target", "timestamp"], errors="ignore"), data["target"]
-    )
+    # Split data (split full dataset first, then separate X and y)
+    train_df, val_df, test_df = split_time_series(data)
+    
+    # Separate features and target
+    X_train = train_df.drop(columns=["target", "timestamp"], errors="ignore")
+    X_val = val_df.drop(columns=["target", "timestamp"], errors="ignore")
+    X_test = test_df.drop(columns=["target", "timestamp"], errors="ignore")
+    
+    y_train = train_df["target"]
+    y_val = val_df["target"]
+    y_test = test_df["target"]
 
     feature_names = X_train.columns.tolist()
 
