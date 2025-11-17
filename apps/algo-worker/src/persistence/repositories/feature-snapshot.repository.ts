@@ -9,7 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { FeatureSnapshot, FeatureSnapshotDocument } from '@repo/database';
 import {
-  type FeatureSnapshotCreate,
+  type FeatureSnapshot as IFeatureSnapshot,
   featureSnapshotSchema,
 } from '@repo/schema';
 
@@ -169,8 +169,8 @@ export class FeatureSnapshotRepository {
                 ? '$first'
                 : '$last';
 
-      const result = await this.featureSnapshotModel
-        .aggregate<any>([
+      const result: any = await this.featureSnapshotModel
+        .aggregate([
           {
             $match: {
               instrument,
@@ -192,7 +192,7 @@ export class FeatureSnapshotRepository {
               termStructure: { [mongoAgg]: '$features.termStructure' },
             },
           },
-        ])
+        ] as any[])
         .exec();
 
       return result.length > 0 ? result[0] : null;
