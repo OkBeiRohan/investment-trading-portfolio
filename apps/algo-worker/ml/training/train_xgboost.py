@@ -33,8 +33,13 @@ from utils.evaluation import calculate_metrics, plot_feature_importance
 class XGBoostTrainer:
     """XGBoost model trainer for volatility prediction"""
 
-    def __init__(self, config_path: str = "config/xgboost_config.yaml"):
+    def __init__(self, config_path: str = None):
         """Initialize trainer with configuration"""
+        if config_path is None:
+            # Use absolute path from script location
+            script_dir = Path(__file__).parent.parent
+            config_path = script_dir / "config" / "xgboost_config.yaml"
+
         with open(config_path, "r") as f:
             self.config = yaml.safe_load(f)
 
@@ -129,8 +134,12 @@ class XGBoostTrainer:
             "best_iteration": self.model.best_iteration,
         }
 
-    def save_model(self, output_dir: str = "../../models"):
+    def save_model(self, output_dir: str = None):
         """Save trained model and metadata"""
+        if output_dir is None:
+            script_dir = Path(__file__).parent.parent.parent
+            output_dir = script_dir / "models"
+        
         os.makedirs(output_dir, exist_ok=True)
 
         # Save XGBoost native format
@@ -224,7 +233,9 @@ def main():
 
     # Load data
     print("\n1. Loading training data...")
-    df = load_training_data("../../data/exports/features_labeled.csv")
+    script_dir = Path(__file__).parent.parent.parent  # Go to algo-worker root
+    data_path = script_dir / "data" / "exports" / "features_labeled.csv"
+    df = load_training_data(str(data_path))
 
     # Prepare data
     print("\n2. Preparing features...")
