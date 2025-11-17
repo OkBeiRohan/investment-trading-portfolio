@@ -4,22 +4,23 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Collection, ObjectId } from '@repo/database';
-import { db } from '@repo/database';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
+import { ObjectId } from 'mongodb';
 import {
   type Position,
-  type PositionCreateInput,
-  type PositionUpdateInput,
-  positionSchema,
+  type PositionCreate,
+  type PositionUpdate,
+  type PositionStatus,
 } from '@repo/schema';
 
 @Injectable()
 export class PositionRepository {
   private readonly logger = new Logger(PositionRepository.name);
-  private readonly collection: Collection<Position>;
+  private readonly collection: any;
 
-  constructor() {
-    this.collection = db.collection<Position>('positions');
+  constructor(@InjectConnection() private connection: Connection) {
+    this.collection = this.connection.collection('positions');
   }
 
   /**

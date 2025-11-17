@@ -16,7 +16,7 @@ import {
 @Injectable()
 export class PerformanceMetricsRepository {
   private readonly logger = new Logger(PerformanceMetricsRepository.name);
-  private readonly collection: Collection<PerformanceMetrics>;
+  private readonly collection: any;
 
   constructor() {
     this.collection = db.collection<PerformanceMetrics>('performanceMetrics');

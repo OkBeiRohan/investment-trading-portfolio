@@ -5,8 +5,9 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Collection, ObjectId } from '@repo/database';
-import { db } from '@repo/database';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
+import { ObjectId } from 'mongodb';
 import {
   type RLAgentState,
   type RLAgentStateCreateInput,
@@ -20,8 +21,8 @@ export class RLAgentStateRepository {
   private readonly logger = new Logger(RLAgentStateRepository.name);
   private readonly collection: any;
 
-  constructor() {
-    this.collection = db.collection<RLAgentState>('rlAgentStates');
+  constructor(@InjectConnection() private connection: Connection) {
+    this.collection = this.connection.collection('rlAgentStates');
   }
 
   /**
@@ -305,7 +306,7 @@ export class RLAgentStateRepository {
         return 0;
       }
 
-      const keepIds = toKeep.map((state) => state._id);
+      const keepIds = toKeep.map((state: RLAgentState) => state._id);
 
       // Delete old states
       const result = await this.collection.deleteMany({
