@@ -10,7 +10,7 @@ export type TradingSignalDocument = HydratedDocument<TradingSignal>;
 
 @Schema({ timestamps: true, collection: "trading_signals" })
 export class TradingSignal
-  implements Omit<ITradingSignal, "_id" | "createdAt">
+  implements Omit<ITradingSignal, "_id" | "createdAt" | "updatedAt">
 {
   @Prop({ required: true, index: true })
   userId: string;
