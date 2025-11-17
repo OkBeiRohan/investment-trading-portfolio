@@ -1,0 +1,6 @@
+# ONNX export dependencies (install after base)
+onnx
+onnxruntime
+onnxmltools
+skl2onnx
+# Note: tf2onnx has protobuf conflicts with TF 2.20, skip for now
