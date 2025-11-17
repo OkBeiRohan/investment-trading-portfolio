@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+// Import database module
+import { TradingDatabaseModule } from '@repo/database';
+
 // Import all 4 engines
 import { DataEngineModule } from './engines/data/data-engine.module';
 import { SignalEngineModule } from './engines/signal/signal-engine.module';
@@ -23,6 +26,9 @@ import tradingConfig from './config/trading.config';
       load: [tradingConfig],
       envFilePath: ['.env.local', '.env'],
     }),
+
+    // Database connection (MongoDB)
+    TradingDatabaseModule,
 
     // 4-Engine Architecture
     DataEngineModule,
