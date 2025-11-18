@@ -18,7 +18,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "axios": "^1.13.2"
+    "axios": "^1.13.2",
+    "upstox-js-sdk": "2.21.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

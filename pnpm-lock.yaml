@@ -389,6 +389,9 @@ importers:
       axios:
         specifier: ^1.13.2
         version: 1.13.2
+      upstox-js-sdk:
+        specifier: 2.21.0
+        version: 2.21.0(@babel/core@7.28.5)
     devDependencies:
       '@types/node':
         specifier: ^24.10.1
