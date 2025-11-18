@@ -12,12 +12,33 @@ class UpstoxAPI {
     });
   }
 
+  get upstoxClient(): UpstoxClient {
+    return this.client;
+  }
+
   setAccessToken(token: string) {
     this.client.setAccessToken(token);
   }
 
   async logout() {
     return this.client.logout();
+  }
+
+  // Example usage methods demonstrating API access
+  async getProfile() {
+    return this.client.getProfile();
+  }
+
+  async getPositions() {
+    return this.client.getPositions();
+  }
+
+  async getHoldings() {
+    return this.client.getHoldings();
+  }
+
+  async placeOrder(orderRequest: any, options?: { slice?: boolean }) {
+    return this.client.placeOrder(orderRequest, options);
   }
 }
 
