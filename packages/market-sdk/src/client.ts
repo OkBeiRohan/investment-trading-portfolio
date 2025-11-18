@@ -180,7 +180,5 @@ export class UpstoxSDK {
   }
 }
 
-// Re-export everything for convenience
-export * from "./types";
 export * from "./api";
 export * from "./websocket";

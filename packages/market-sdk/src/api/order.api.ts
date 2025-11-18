@@ -3,7 +3,7 @@
  * Handles order placement, modification, cancellation, and retrieval
  */
 
-import UpstoxClient from "upstox-js-sdk";
+import { UpstoxClient } from "upstox-js-sdk";
 import type {
   PlaceOrderRequest,
   PlaceOrderResponse,
