@@ -1,4 +1,4 @@
-import { UpstoxClient } from '../../upstox';
+import { PlaceOrderV3Request, UpstoxClient } from '../../upstox';
 
 class UpstoxAPI {
   private client: UpstoxClient;
@@ -24,7 +24,6 @@ class UpstoxAPI {
     return this.client.logout();
   }
 
-  // Example usage methods demonstrating API access
   async getProfile() {
     return this.client.getProfile();
   }
@@ -37,8 +36,13 @@ class UpstoxAPI {
     return this.client.getHoldings();
   }
 
-  async placeOrder(orderRequest: any, options?: { slice?: boolean }) {
-    return this.client.placeOrder(orderRequest, options);
+  async placeOrder(
+    orderRequest: any,
+    options?: { slice?: boolean },
+    algoName?: string,
+  ) {
+    // Delegates to typed-client convenience method
+    return this.client.placeOrder(orderRequest, options, algoName);
   }
 }
 

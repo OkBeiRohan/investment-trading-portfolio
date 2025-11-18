@@ -97,7 +97,7 @@ export class UpstoxClient {
     request: any,
     options?: { slice?: boolean },
     algoName?: string,
-  ): Promise<any> {
+  ): Promise<UpstoxJS.PlaceOrderV3Response> {
     return this.orderApi.placeOrder(request, options, undefined, algoName);
   }
 
