@@ -1,16 +1,18 @@
 {
   "name": "@repo/upstox-sdk",
-  "version": "1.0.0",
-  "description": "OpenAPI client for ",
-  "author": "OpenAPI-Generator Contributors",
+  "version": "2.0.0",
+  "description": "Type-safe Upstox SDK wrapper with WebSocket support",
+  "author": "investment-trading-portfolio",
   "keywords": [
-    "axios",
+    "upstox",
+    "trading",
+    "stock-market",
+    "websocket",
     "typescript",
-    "openapi-client",
-    "openapi-generator",
-    ""
+    "nse",
+    "bse"
   ],
-  "license": "Unlicense",
+  "license": "MIT",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "scripts": {

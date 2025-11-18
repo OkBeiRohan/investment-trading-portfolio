@@ -1,26 +1,23 @@
-/* tslint:disable */
-/* eslint-disable */
 /**
  * @repo/upstox-sdk
  *
- * Merged Upstox SDK with type safety:
- * - Original OpenAPI-generated types and APIs (from ./api and ./models)
- * - upstox-js-sdk wrapper with type-safe client (UpstoxClient)
- * - Type-safe WebSocket streamers (TypedMarketDataStreamer, TypedPortfolioDataStreamer)
+ * Type-safe Upstox SDK wrapper using upstox-js-sdk
+ *
+ * This package provides:
+ * - UpstoxClient: Convenient wrapper around upstox-js-sdk with full TypeScript support
+ * - TypedMarketDataStreamer: Type-safe WebSocket market data streaming
+ * - TypedPortfolioDataStreamer: Type-safe WebSocket portfolio updates
+ * - All upstox-js-sdk types and classes
  */
 
-// ==================== Original OpenAPI exports (Backward Compatible) ====================
-export * from "./api";
-export * from "./configuration";
-export * from "./models";
-
-// ==================== Type-Safe Client Wrapper ====================
+// ==================== Main Client Wrapper ====================
 export { UpstoxClient, type UpstoxClientConfig } from "./typed-client";
 
 // ==================== Type-Safe WebSocket Streamers ====================
 export {
   TypedMarketDataStreamer,
   TypedPortfolioDataStreamer,
+  // Helper functions
   extractLTP,
   extractGreeks,
   extractLatestOHLC,
@@ -28,6 +25,7 @@ export {
   isOrderComplete,
   isOrderPending,
   isOrderTerminal,
+  // Types
   type MarketDataMode,
   type MarketDataLTPC,
   type MarketDataOHLC,
@@ -46,13 +44,44 @@ export {
   type TypedPortfolioDataStreamerEvents,
 } from "./typed-streamers";
 
-// ==================== upstox-js-sdk types (selective exports to avoid conflicts) ====================
-// Only export classes and enums that don't conflict with ./models
+// ==================== Re-export upstox-js-sdk types ====================
 export type {
+  // Core classes
   ApiClient,
   MarketDataStreamerV3,
   PortfolioDataStreamer,
+  // Request types
+  PlaceOrderV3Request,
+  ModifyOrderRequest,
+  ConvertPositionRequest,
+  GttPlaceOrderRequest,
+  GttModifyOrderRequest,
+  GttCancelOrderRequest,
+  MarginRequest,
+  // Response types
+  PlaceOrderV3Response,
+  ModifyOrderV3Response,
+  CancelOrderV3Response,
+  GetOrderBookResponse,
+  GetPositionResponse,
+  GetHoldingsResponse,
+  GetProfileResponse,
+  GetUserFundMarginResponse,
+  GetFullMarketQuoteResponse,
+  GetMarketQuoteOHLCResponseV3,
+  GetMarketQuoteLastTradedPriceResponseV3,
+  GetMarketQuoteOptionGreekResponseV3,
+  GetHistoricalCandleResponse,
+  GetOptionChainResponse,
+  GetGttOrderResponse,
+  GttTriggerOrderResponse,
+  GetBrokerageResponse,
+  PostMarginResponse,
+  GetMarketStatusResponse,
+  GetHolidayResponse,
+  GetExchangeTimingResponse,
+  GetTradeResponse,
+  WebsocketAuthRedirectResponse,
+  LogoutResponse,
+  TokenResponse,
 } from "upstox-js-sdk";
-
-// Note: Response/Request types (PlaceOrderV3Response, etc.) are already exported from ./models
-// We don't re-export them from upstox-js-sdk to avoid duplicate identifier errors

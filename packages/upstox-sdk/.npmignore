@@ -1,1 +1,17 @@
-# empty npmignore to ensure all required files (e.g., in the dist folder) are published by npm
+# Source files (compile to dist/)
+*.ts
+!*.d.ts
+
+# Config files
+tsconfig.json
+
+# Documentation source
+UPSTOX_SDK_README.md
+
+# Types source (keep in dist/)
+types/
+
+# Development
+node_modules/
+.vscode/
+*.log

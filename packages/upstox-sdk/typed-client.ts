@@ -1,6 +1,6 @@
 /**
  * Type-Safe Upstox Client
- * Merges upstox-js-sdk with existing OpenAPI-generated types
+ * Wrapper around upstox-js-sdk with convenient methods
  */
 
 import * as UpstoxJS from "upstox-js-sdk";
@@ -16,21 +16,14 @@ import type {
   GetMarketQuoteOptionGreekResponseV3,
   GetHistoricalCandleResponse,
   GetOptionChainResponse,
-  PlaceOrderV3Response,
-  ModifyOrderV3Response,
-  CancelOrderV3Response,
   GetGttOrderResponse,
-  GttTriggerOrderResponse,
   GetBrokerageResponse,
-  PostMarginResponse,
   GetMarketStatusResponse,
   GetHolidayResponse,
   GetExchangeTimingResponse,
   GetTradeResponse,
-  WebsocketAuthRedirectResponse,
   LogoutResponse,
-  TokenResponse,
-} from "./models";
+} from "upstox-js-sdk";
 
 export interface UpstoxClientConfig {
   apiKey?: string;

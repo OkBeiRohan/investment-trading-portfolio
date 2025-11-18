@@ -1,45 +1,73 @@
-## @1.0.0
+# @repo/upstox-sdk
 
-This generator creates TypeScript/JavaScript client that utilizes [axios](https://github.com/axios/axios). The generated Node module can be used in the following environments:
+Type-safe Upstox SDK wrapper with WebSocket support for algorithmic trading.
 
-Environment
-* Node.js
-* Webpack
-* Browserify
+## Features
 
-Language level
-* ES5 - you must have a Promises/A+ library installed
-* ES6
+✅ **Full TypeScript Support** - Complete type definitions for upstox-js-sdk  
+✅ **Convenient Wrapper** - Easy-to-use `UpstoxClient` class  
+✅ **WebSocket Streaming** - Type-safe market data and portfolio streams  
+✅ **Helper Functions** - Extract LTP, Greeks, OHLC, and more  
+✅ **pnpm Compatible** - Works with pnpm's symlink structure  
 
-Module system
-* CommonJS
-* ES6 module system
+## Installation
 
-It can be used in both TypeScript and JavaScript. In TypeScript, the definition should be automatically resolved via `package.json`. ([Reference](http://www.typescriptlang.org/docs/handbook/typings-for-npm-packages.html))
-
-### Building
-
-To build and compile the typescript sources to javascript use:
-```
-npm install
-npm run build
+```bash
+pnpm add @repo/upstox-sdk
 ```
 
-### Publishing
+## Quick Start
 
-First build the package then run ```npm publish```
+```typescript
+import { UpstoxClient } from '@repo/upstox-sdk';
 
-### Consuming
+// Initialize client
+const client = new UpstoxClient({
+  apiKey: 'your-api-key',
+  apiSecret: 'your-api-secret',
+  accessToken: 'your-access-token'
+});
 
-navigate to the folder of your consuming project and run one of the following commands.
+// Place order
+const order = await client.placeOrder({
+  instrument_key: 'NSE_EQ|INE528G01035',
+  quantity: 1,
+  transaction_type: 'BUY',
+  order_type: 'MARKET',
+  product: 'D',
+  validity: 'DAY'
+});
 
-_published:_
+// Get positions
+const positions = await client.getPositions();
 
+// Stream market data
+import { TypedMarketDataStreamer, extractLTP } from '@repo/upstox-sdk';
+
+const stream = new TypedMarketDataStreamer(
+  ['NSE_INDEX|Nifty 50'],
+  'ltpc'
+);
+
+stream.on('message', (data) => {
+  const ltp = extractLTP(data, 'NSE_INDEX|Nifty 50');
+  console.log('LTP:', ltp);
+});
+
+await stream.connect();
 ```
-npm install @1.0.0 --save
-```
 
-_unPublished (not recommended):_
+## Documentation
 
-```
-npm install PATH_TO_GENERATED_PACKAGE --save
+See [UPSTOX_SDK_README.md](./UPSTOX_SDK_README.md) for complete API documentation and examples.
+
+## Structure
+
+- `index.ts` - Main exports
+- `typed-client.ts` - UpstoxClient wrapper class
+- `typed-streamers.ts` - Type-safe WebSocket streamers
+- `types/upstox-js-sdk/` - TypeScript declarations for upstox-js-sdk
+
+## License
+
+MIT
