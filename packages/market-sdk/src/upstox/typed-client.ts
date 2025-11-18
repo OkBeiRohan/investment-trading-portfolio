@@ -3,7 +3,8 @@
  * Wrapper around upstox-js-sdk with convenient methods
  */
 
-import * as UpstoxJS from "upstox-js-sdk";
+import 'dotenv/config';
+import * as UpstoxJS from 'upstox-js-sdk';
 import type {
   GetOrderBookResponse,
   GetPositionResponse,
@@ -23,7 +24,7 @@ import type {
   GetExchangeTimingResponse,
   GetTradeResponse,
   LogoutResponse,
-} from "upstox-js-sdk";
+} from 'upstox-js-sdk';
 
 export interface UpstoxClientConfig {
   apiKey?: string;
@@ -50,10 +51,12 @@ export class UpstoxClient {
   private _tradeApi?: UpstoxJS.TradeProfitAndLossApi;
 
   constructor(config?: UpstoxClientConfig) {
-    this.client = new UpstoxJS.ApiClient(config?.sandbox || false);
+    const sandbox = config?.sandbox ?? process.env.UPSTOX_SANDBOX === 'true';
+    this.client = new UpstoxJS.ApiClient(sandbox || false);
 
-    if (config?.accessToken) {
-      this.client.authentications.OAUTH2.accessToken = config.accessToken;
+    const accessToken = config?.accessToken ?? process.env.UPSTOX_ACCESS_TOKEN;
+    if (accessToken) {
+      this.client.authentications.OAUTH2.accessToken = accessToken;
     }
   }
 
@@ -62,6 +65,14 @@ export class UpstoxClient {
    */
   setAccessToken(token: string): void {
     this.client.authentications.OAUTH2.accessToken = token;
+  }
+
+  /**
+   * Convenience accessor mirroring underlying ApiClient authentications
+   * Allows legacy style: client.authentications.OAUTH2.accessToken = 'token'
+   */
+  get authentications() {
+    return this.client.authentications;
   }
 
   /**
@@ -85,7 +96,7 @@ export class UpstoxClient {
   async placeOrder(
     request: any,
     options?: { slice?: boolean },
-    algoName?: string
+    algoName?: string,
   ): Promise<any> {
     return this.orderApi.placeOrder(request, options, undefined, algoName);
   }
@@ -191,7 +202,7 @@ export class UpstoxClient {
    * Convert position product type
    */
   async convertPosition(
-    request: UpstoxJS.ConvertPositionRequest
+    request: UpstoxJS.ConvertPositionRequest,
   ): Promise<any> {
     return this.portfolioApi.convertPositions(request);
   }
@@ -237,10 +248,10 @@ export class UpstoxClient {
    * Get last traded price (LTP) for instruments
    */
   async getLTP(
-    instrumentKeys: string | string[]
+    instrumentKeys: string | string[],
   ): Promise<GetMarketQuoteLastTradedPriceResponseV3> {
     const symbols = Array.isArray(instrumentKeys)
-      ? instrumentKeys.join(",")
+      ? instrumentKeys.join(',')
       : instrumentKeys;
     return this.marketQuoteApi.getLtp(symbols);
   }
@@ -250,10 +261,10 @@ export class UpstoxClient {
    */
   async getOHLC(
     instrumentKeys: string | string[],
-    interval?: string
+    interval?: string,
   ): Promise<GetMarketQuoteOHLCResponseV3> {
     const symbols = Array.isArray(instrumentKeys)
-      ? instrumentKeys.join(",")
+      ? instrumentKeys.join(',')
       : instrumentKeys;
     return this.marketQuoteApi.getMarketQuoteOHLC(symbols, interval);
   }
@@ -262,10 +273,10 @@ export class UpstoxClient {
    * Get option Greeks (Delta, Gamma, Vega, Theta, IV)
    */
   async getOptionGreeks(
-    instrumentKeys: string | string[]
+    instrumentKeys: string | string[],
   ): Promise<GetMarketQuoteOptionGreekResponseV3> {
     const symbols = Array.isArray(instrumentKeys)
-      ? instrumentKeys.join(",")
+      ? instrumentKeys.join(',')
       : instrumentKeys;
     return this.marketQuoteApi.getMarketQuoteOptionGreek(symbols);
   }
@@ -274,10 +285,10 @@ export class UpstoxClient {
    * Get full market quote with depth
    */
   async getFullMarketQuote(
-    instrumentKeys: string | string[]
+    instrumentKeys: string | string[],
   ): Promise<GetFullMarketQuoteResponse> {
     const symbols = Array.isArray(instrumentKeys)
-      ? instrumentKeys.join(",")
+      ? instrumentKeys.join(',')
       : instrumentKeys;
     const marketQuoteV2 = new UpstoxJS.MarketQuoteApi(this.client);
     return marketQuoteV2.getFullMarketQuote(symbols);
@@ -296,10 +307,10 @@ export class UpstoxClient {
    */
   async getHistoricalCandles(
     instrumentKey: string,
-    unit: "minute" | "hour" | "day" | "week" | "month",
+    unit: 'minute' | 'hour' | 'day' | 'week' | 'month',
     interval: string,
     toDate: string,
-    fromDate?: string
+    fromDate?: string,
   ): Promise<GetHistoricalCandleResponse> {
     if (fromDate) {
       return this.historyApi.getHistoricalCandleData1(
@@ -307,14 +318,14 @@ export class UpstoxClient {
         unit,
         interval,
         toDate,
-        fromDate
+        fromDate,
       );
     }
     return this.historyApi.getHistoricalCandleData(
       instrumentKey,
       unit,
       interval,
-      toDate
+      toDate,
     );
   }
 
@@ -323,8 +334,8 @@ export class UpstoxClient {
    */
   async getIntradayCandles(
     instrumentKey: string,
-    unit: "minute",
-    interval: string
+    unit: 'minute',
+    interval: string,
   ): Promise<GetHistoricalCandleResponse> {
     return this.historyApi.getIntraDayCandleData(instrumentKey, unit, interval);
   }
@@ -342,7 +353,7 @@ export class UpstoxClient {
    */
   async getOptionChain(
     instrumentKey: string,
-    expiryDate: string
+    expiryDate: string,
   ): Promise<GetOptionChainResponse> {
     return this.optionsApi.getPutCallOptionChain(instrumentKey, expiryDate);
   }
@@ -352,7 +363,7 @@ export class UpstoxClient {
    */
   async getOptionContracts(
     instrumentKey: string,
-    expiryDate: string
+    expiryDate: string,
   ): Promise<any> {
     return this.optionsApi.getOptionContracts(instrumentKey, expiryDate);
   }
@@ -372,15 +383,15 @@ export class UpstoxClient {
     instrumentToken: string,
     quantity: number,
     product: string,
-    transactionType: "BUY" | "SELL",
-    price: number
+    transactionType: 'BUY' | 'SELL',
+    price: number,
   ): Promise<GetBrokerageResponse> {
     return this.chargeApi.getBrokerage(
       instrumentToken,
       quantity,
       product,
       transactionType,
-      price
+      price,
     );
   }
 
@@ -395,7 +406,7 @@ export class UpstoxClient {
   get marketHolidaysApi(): UpstoxJS.MarketHolidaysAndTimingsApi {
     if (!this._marketHolidaysApi) {
       this._marketHolidaysApi = new UpstoxJS.MarketHolidaysAndTimingsApi(
-        this.client
+        this.client,
       );
     }
     return this._marketHolidaysApi;
@@ -405,7 +416,7 @@ export class UpstoxClient {
    * Get market status for an exchange
    */
   async getMarketStatus(
-    exchange: "NSE" | "BSE" | "NFO" | "BFO" | "MCX"
+    exchange: 'NSE' | 'BSE' | 'NFO' | 'BFO' | 'MCX',
   ): Promise<GetMarketStatusResponse> {
     return this.marketHolidaysApi.getMarketStatus(exchange);
   }
@@ -458,7 +469,7 @@ export class UpstoxClient {
    */
   createMarketDataStreamer(
     instrumentKeys?: string[],
-    mode?: "ltpc" | "full" | "full_d30" | "option_greeks"
+    mode?: 'ltpc' | 'full' | 'full_d30' | 'option_greeks',
   ): UpstoxJS.MarketDataStreamerV3 {
     return new UpstoxJS.MarketDataStreamerV3(instrumentKeys, mode);
   }
@@ -470,13 +481,13 @@ export class UpstoxClient {
     orderUpdate = true,
     positionUpdate = false,
     holdingUpdate = false,
-    gttUpdate = false
+    gttUpdate = false,
   ): UpstoxJS.PortfolioDataStreamer {
     return new UpstoxJS.PortfolioDataStreamer(
       orderUpdate,
       positionUpdate,
       holdingUpdate,
-      gttUpdate
+      gttUpdate,
     );
   }
 
@@ -497,7 +508,7 @@ export class UpstoxClient {
     clientId: string,
     clientSecret: string,
     redirectUri: string,
-    grantType: string
+    grantType: string,
   ): Promise<any> {
     return this.loginApi.token(
       apiVersion,
@@ -505,7 +516,7 @@ export class UpstoxClient {
       clientId,
       clientSecret,
       redirectUri,
-      grantType
+      grantType,
     );
   }
 
@@ -529,7 +540,7 @@ export class UpstoxClient {
    */
   async getProfitAndLossCharges(
     segment: string,
-    financialYear: string
+    financialYear: string,
   ): Promise<any> {
     return this.tradeApi.getProfitAndLossCharges(segment, financialYear);
   }
@@ -539,7 +550,7 @@ export class UpstoxClient {
    */
   async getTradeWiseProfitAndLoss(
     segment: string,
-    financialYear: string
+    financialYear: string,
   ): Promise<any> {
     return this.tradeApi.getTradeWiseProfitAndLossData(segment, financialYear);
   }

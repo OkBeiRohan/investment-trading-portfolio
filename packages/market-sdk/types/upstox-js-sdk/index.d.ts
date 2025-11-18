@@ -1,11 +1,16 @@
 /**
  * Type declarations for upstox-js-sdk
- * Based on upstox-js-sdk@2.21.0 and existing type models
+ * Based on upstox-js-sdk@2.21.0
+ *
+ * This is a CommonJS module that exports everything as a single namespace object.
+ * Usage: import * as UpstoxClient from 'upstox-js-sdk';
+ * Or: const UpstoxClient = require('upstox-js-sdk');
  */
+
+/// <reference types="node" />
 
 import { EventEmitter } from 'events';
 
-// Ambient module declaration for untyped library
 declare module 'upstox-js-sdk' {
   import { EventEmitter } from 'events';
 
