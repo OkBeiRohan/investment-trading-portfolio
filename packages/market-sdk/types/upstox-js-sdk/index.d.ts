@@ -3,9 +3,12 @@
  * Based on upstox-js-sdk@2.21.0 and existing type models
  */
 
-import { EventEmitter } from "events";
+import { EventEmitter } from 'events';
 
-declare module "upstox-js-sdk" {
+// Ambient module declaration for untyped library
+declare module 'upstox-js-sdk' {
+  import { EventEmitter } from 'events';
+
   // ==================== API Client ====================
   export class ApiClient {
     constructor(sandbox?: boolean);
@@ -22,58 +25,58 @@ declare module "upstox-js-sdk" {
   // ==================== Enums ====================
   export namespace PlaceOrderV3Request {
     export enum ProductEnum {
-      D = "D",
-      I = "I",
-      M = "M",
-      B = "B",
+      D = 'D',
+      I = 'I',
+      M = 'M',
+      B = 'B',
     }
 
     export enum ValidityEnum {
-      DAY = "DAY",
-      IOC = "IOC",
+      DAY = 'DAY',
+      IOC = 'IOC',
     }
 
     export enum OrderTypeEnum {
-      MARKET = "MARKET",
-      LIMIT = "LIMIT",
-      SL = "SL",
-      SL_M = "SL-M",
+      MARKET = 'MARKET',
+      LIMIT = 'LIMIT',
+      SL = 'SL',
+      SL_M = 'SL-M',
     }
 
     export enum TransactionTypeEnum {
-      BUY = "BUY",
-      SELL = "SELL",
+      BUY = 'BUY',
+      SELL = 'SELL',
     }
   }
 
   export namespace ModifyOrderRequest {
     export enum ValidityEnum {
-      DAY = "DAY",
-      IOC = "IOC",
+      DAY = 'DAY',
+      IOC = 'IOC',
     }
 
     export enum OrderTypeEnum {
-      MARKET = "MARKET",
-      LIMIT = "LIMIT",
-      SL = "SL",
-      SL_M = "SL-M",
+      MARKET = 'MARKET',
+      LIMIT = 'LIMIT',
+      SL = 'SL',
+      SL_M = 'SL-M',
     }
   }
 
   export namespace ConvertPositionRequest {
     export enum TransactionTypeEnum {
-      BUY = "BUY",
-      SELL = "SELL",
+      BUY = 'BUY',
+      SELL = 'SELL',
     }
 
     export enum ProductEnum {
-      D = "D",
-      I = "I",
+      D = 'D',
+      I = 'I',
     }
 
     export enum PreviousProductEnum {
-      D = "D",
-      I = "I",
+      D = 'D',
+      I = 'I',
     }
   }
 
@@ -89,7 +92,7 @@ declare module "upstox-js-sdk" {
       transaction_type: PlaceOrderV3Request.TransactionTypeEnum,
       disclosed_quantity: number,
       trigger_price: number,
-      is_amo: boolean
+      is_amo: boolean,
     );
     quantity: number;
     product: PlaceOrderV3Request.ProductEnum;
@@ -111,7 +114,7 @@ declare module "upstox-js-sdk" {
       order_id?: string,
       order_type?: ModifyOrderRequest.OrderTypeEnum,
       disclosed_quantity?: number,
-      trigger_price?: number
+      trigger_price?: number,
     );
     quantity?: number;
     validity?: ModifyOrderRequest.ValidityEnum;
@@ -128,7 +131,7 @@ declare module "upstox-js-sdk" {
       new_product: ConvertPositionRequest.ProductEnum,
       old_product: ConvertPositionRequest.PreviousProductEnum,
       transaction_type: ConvertPositionRequest.TransactionTypeEnum,
-      quantity: number
+      quantity: number,
     );
     instrument_token: string;
     new_product: ConvertPositionRequest.ProductEnum;
@@ -171,7 +174,7 @@ declare module "upstox-js-sdk" {
   }
 
   export interface PlaceOrderV3Response {
-    status: "success" | "error" | "partial_success";
+    status: 'success' | 'error' | 'partial_success';
     data?: MultiOrderV3Data;
     metadata?: OrderMetadata;
     errors?: any;
@@ -182,7 +185,7 @@ declare module "upstox-js-sdk" {
   }
 
   export interface ModifyOrderV3Response {
-    status: "success" | "error";
+    status: 'success' | 'error';
     data?: ModifyOrderData;
     metadata?: OrderMetadata;
     errors?: any;
@@ -193,7 +196,7 @@ declare module "upstox-js-sdk" {
   }
 
   export interface CancelOrderV3Response {
-    status: "success" | "error";
+    status: 'success' | 'error';
     data?: CancelOrderData;
     metadata?: OrderMetadata;
     errors?: any;
@@ -490,7 +493,7 @@ declare module "upstox-js-sdk" {
   }
 
   export interface GttTriggerOrderResponse {
-    status: "success" | "error";
+    status: 'success' | 'error';
     data?: GttOrderData;
     metadata?: OrderMetadata;
     errors?: any;
@@ -526,7 +529,7 @@ declare module "upstox-js-sdk" {
   }
 
   export interface PostMarginResponse {
-    status: "success" | "error";
+    status: 'success' | 'error';
     data?: MarginData;
     metadata?: OrderMetadata;
     errors?: any;
@@ -567,7 +570,7 @@ declare module "upstox-js-sdk" {
   }
 
   export interface WebsocketAuthRedirectResponse {
-    status: "success" | "error";
+    status: 'success' | 'error';
     data?: WebsocketAuthRedirectResponseData;
     errors?: any;
   }
@@ -611,11 +614,15 @@ declare module "upstox-js-sdk" {
       product: string,
       transaction_type: string,
       price: number,
-      callback?: (error: any, data: GetBrokerageResponse, response: any) => void
+      callback?: (
+        error: any,
+        data: GetBrokerageResponse,
+        response: any,
+      ) => void,
     ): Promise<GetBrokerageResponse>;
     postMargin(
       body: MarginRequest,
-      callback?: (error: any, data: PostMarginResponse, response: any) => void
+      callback?: (error: any, data: PostMarginResponse, response: any) => void,
     ): Promise<PostMarginResponse>;
   }
 
@@ -624,23 +631,23 @@ declare module "upstox-js-sdk" {
     getExpiredFutureContracts(
       instrument_key: string,
       expiry_date: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getExpiredHistoricalCandleData(
       expired_instrument_key: string,
       interval: string,
       to_date: string,
       from_date: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getExpiredOptionContracts(
       instrument_key: string,
       expiry_date: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getExpiries(
       instrument_key: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
   }
 
@@ -653,8 +660,8 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetHistoricalCandleResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetHistoricalCandleResponse>;
     getHistoricalCandleData3(
       instrumentKey: string,
@@ -664,8 +671,8 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetHistoricalCandleResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetHistoricalCandleResponse>;
     getIntraDayCandleData1(
       instrumentKey: string,
@@ -673,8 +680,8 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetHistoricalCandleResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetHistoricalCandleResponse>;
   }
 
@@ -688,8 +695,8 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetHistoricalCandleResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetHistoricalCandleResponse>;
     getHistoricalCandleData1(
       instrumentKey: string,
@@ -700,8 +707,8 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetHistoricalCandleResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetHistoricalCandleResponse>;
     getIntraDayCandleData(
       instrumentKey: string,
@@ -710,22 +717,22 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetHistoricalCandleResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetHistoricalCandleResponse>;
   }
 
   export class LoginApi {
     constructor(apiClient?: ApiClient);
     authorize(
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     initTokenRequestForIndieUser(
       client_id: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     logout(
-      callback?: (error: any, data: LogoutResponse, response: any) => void
+      callback?: (error: any, data: LogoutResponse, response: any) => void,
     ): Promise<LogoutResponse>;
     token(
       api_version?: string,
@@ -734,7 +741,7 @@ declare module "upstox-js-sdk" {
       client_secret?: string,
       redirect_uri?: string,
       grant_type?: string,
-      callback?: (error: any, data: TokenResponse, response: any) => void
+      callback?: (error: any, data: TokenResponse, response: any) => void,
     ): Promise<TokenResponse>;
   }
 
@@ -745,23 +752,23 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetExchangeTimingResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetExchangeTimingResponse>;
     getHoliday(
       date: string,
-      callback?: (error: any, data: GetHolidayResponse, response: any) => void
+      callback?: (error: any, data: GetHolidayResponse, response: any) => void,
     ): Promise<GetHolidayResponse>;
     getHolidays(
-      callback?: (error: any, data: GetHolidayResponse, response: any) => void
+      callback?: (error: any, data: GetHolidayResponse, response: any) => void,
     ): Promise<GetHolidayResponse>;
     getMarketStatus(
       exchange: string,
       callback?: (
         error: any,
         data: GetMarketStatusResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetMarketStatusResponse>;
   }
 
@@ -772,16 +779,16 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetFullMarketQuoteResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetFullMarketQuoteResponse>;
     getMarketQuoteOHLC(
       symbol: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     ltp(
       symbol: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
   }
 
@@ -792,8 +799,8 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetMarketQuoteLastTradedPriceResponseV3,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetMarketQuoteLastTradedPriceResponseV3>;
     getMarketQuoteOHLC(
       symbol: string,
@@ -801,16 +808,16 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetMarketQuoteOHLCResponseV3,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetMarketQuoteOHLCResponseV3>;
     getMarketQuoteOptionGreek(
       symbol: string,
       callback?: (
         error: any,
         data: GetMarketQuoteOptionGreekResponseV3,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetMarketQuoteOptionGreekResponseV3>;
   }
 
@@ -819,7 +826,7 @@ declare module "upstox-js-sdk" {
     getOptionContracts(
       instrument_key: string,
       expiry_date: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getPutCallOptionChain(
       instrument_key: string,
@@ -827,51 +834,55 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: GetOptionChainResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetOptionChainResponse>;
   }
 
   export class OrderApi {
     constructor(apiClient?: ApiClient);
     cancelMultiOrder(
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     cancelOrder(
       order_id: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     exitPositions(
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getOrderBook(
-      callback?: (error: any, data: GetOrderBookResponse, response: any) => void
+      callback?: (
+        error: any,
+        data: GetOrderBookResponse,
+        response: any,
+      ) => void,
     ): Promise<GetOrderBookResponse>;
     getOrderDetails(
       order_id?: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getOrderStatus(
       order_id?: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getTradeHistory(
-      callback?: (error: any, data: GetTradeResponse, response: any) => void
+      callback?: (error: any, data: GetTradeResponse, response: any) => void,
     ): Promise<GetTradeResponse>;
     getTradesByOrder(
       order_id: string,
-      callback?: (error: any, data: GetTradeResponse, response: any) => void
+      callback?: (error: any, data: GetTradeResponse, response: any) => void,
     ): Promise<GetTradeResponse>;
     modifyOrder(
       body: ModifyOrderRequest,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     placeMultiOrder(
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     placeOrder1(
       body: any,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
   }
 
@@ -879,40 +890,40 @@ declare module "upstox-js-sdk" {
     constructor(apiClient?: ApiClient);
     cancelGTTOrder(
       body: GttCancelOrderRequest,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     cancelOrder(
       order_id: string,
       callback?: (
         error: any,
         data: CancelOrderV3Response,
-        response: any
+        response: any,
       ) => void,
-      algoName?: string
+      algoName?: string,
     ): Promise<CancelOrderV3Response>;
     getGttOrderDetails(
-      callback?: (error: any, data: GetGttOrderResponse, response: any) => void
+      callback?: (error: any, data: GetGttOrderResponse, response: any) => void,
     ): Promise<GetGttOrderResponse>;
     modifyGTTOrder(
       body: GttModifyOrderRequest,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     modifyOrder(
       body: ModifyOrderRequest,
       callback?: (
         error: any,
         data: ModifyOrderV3Response,
-        response: any
+        response: any,
       ) => void,
-      algoName?: string
+      algoName?: string,
     ): Promise<ModifyOrderV3Response>;
     placeGTTOrder(
       body: GttPlaceOrderRequest,
       callback?: (
         error: any,
         data: GttTriggerOrderResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GttTriggerOrderResponse>;
     placeOrder(
       body: PlaceOrderV3Request,
@@ -920,9 +931,9 @@ declare module "upstox-js-sdk" {
       callback?: (
         error: any,
         data: PlaceOrderV3Response,
-        response: any
+        response: any,
       ) => void,
-      algoName?: string
+      algoName?: string,
     ): Promise<PlaceOrderV3Response>;
   }
 
@@ -930,23 +941,23 @@ declare module "upstox-js-sdk" {
     constructor(apiClient?: ApiClient);
     convertPositions(
       body: ConvertPositionRequest,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getHoldings(
-      callback?: (error: any, data: GetHoldingsResponse, response: any) => void
+      callback?: (error: any, data: GetHoldingsResponse, response: any) => void,
     ): Promise<GetHoldingsResponse>;
     getMtfPositions(
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getPositions(
-      callback?: (error: any, data: GetPositionResponse, response: any) => void
+      callback?: (error: any, data: GetPositionResponse, response: any) => void,
     ): Promise<GetPositionResponse>;
   }
 
   export class PostTradeApi {
     constructor(apiClient?: ApiClient);
     getTradesByDateRange(
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
   }
 
@@ -955,55 +966,55 @@ declare module "upstox-js-sdk" {
     getProfitAndLossCharges(
       segment: string,
       financial_year: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getTradeWiseProfitAndLossData(
       segment: string,
       financial_year: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getTradeWiseProfitAndLossMetaData(
       segment: string,
       financial_year: string,
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
   }
 
   export class UserApi {
     constructor(apiClient?: ApiClient);
     getProfile(
-      callback?: (error: any, data: GetProfileResponse, response: any) => void
+      callback?: (error: any, data: GetProfileResponse, response: any) => void,
     ): Promise<GetProfileResponse>;
     getUserFundMargin(
       callback?: (
         error: any,
         data: GetUserFundMarginResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<GetUserFundMarginResponse>;
   }
 
   export class WebsocketApi {
     constructor(apiClient?: ApiClient);
     getMarketDataFeed(
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getMarketDataFeedAuthorize(
       callback?: (
         error: any,
         data: WebsocketAuthRedirectResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<WebsocketAuthRedirectResponse>;
     getPortfolioStreamFeed(
-      callback?: (error: any, data: any, response: any) => void
+      callback?: (error: any, data: any, response: any) => void,
     ): Promise<any>;
     getPortfolioStreamFeedAuthorize(
       callback?: (
         error: any,
         data: WebsocketAuthRedirectResponse,
-        response: any
-      ) => void
+        response: any,
+      ) => void,
     ): Promise<WebsocketAuthRedirectResponse>;
   }
 
@@ -1015,21 +1026,21 @@ declare module "upstox-js-sdk" {
   class Streamer extends EventEmitter {
     protected streamer: any;
     Event: {
-      OPEN: "open";
-      CLOSE: "close";
-      MESSAGE: "message";
-      ERROR: "error";
-      RECONNECTING: "reconnecting";
-      AUTO_RECONNECT_STOPPED: "autoReconnectStopped";
+      OPEN: 'open';
+      CLOSE: 'close';
+      MESSAGE: 'message';
+      ERROR: 'error';
+      RECONNECTING: 'reconnecting';
+      AUTO_RECONNECT_STOPPED: 'autoReconnectStopped';
     };
     autoReconnect(
       enable: boolean,
       interval?: number,
-      retryCount?: number
+      retryCount?: number,
     ): void;
   }
 
-  export type MarketDataMode = "ltpc" | "full" | "full_d30" | "option_greeks";
+  export type MarketDataMode = 'ltpc' | 'full' | 'full_d30' | 'option_greeks';
 
   export interface MarketDataMessage {
     feeds: Record<
@@ -1087,10 +1098,10 @@ declare module "upstox-js-sdk" {
 
   export class MarketDataStreamerV3 extends Streamer {
     Mode: {
-      LTPC: "ltpc";
-      FULL: "full";
-      OPTION: "option_greeks";
-      D30: "full_d30";
+      LTPC: 'ltpc';
+      FULL: 'full';
+      OPTION: 'option_greeks';
+      D30: 'full_d30';
     };
 
     constructor(instrumentKeys?: string[], mode?: MarketDataMode);
@@ -1100,14 +1111,14 @@ declare module "upstox-js-sdk" {
     unsubscribe(instrumentKeys: string[]): void;
     changeMode(instrumentKeys: string[], mode: MarketDataMode): void;
 
-    on(event: "open", listener: () => void): this;
-    on(event: "close", listener: () => void): this;
-    on(event: "message", listener: (data: Buffer) => void): this;
-    on(event: "error", listener: (error: Error) => void): this;
-    on(event: "reconnecting", listener: (attempt: number) => void): this;
+    on(event: 'open', listener: () => void): this;
+    on(event: 'close', listener: () => void): this;
+    on(event: 'message', listener: (data: Buffer) => void): this;
+    on(event: 'error', listener: (error: Error) => void): this;
+    on(event: 'reconnecting', listener: (attempt: number) => void): this;
     on(
-      event: "autoReconnectStopped",
-      listener: (message: string) => void
+      event: 'autoReconnectStopped',
+      listener: (message: string) => void,
     ): this;
   }
 
@@ -1119,7 +1130,7 @@ declare module "upstox-js-sdk" {
   }
 
   export interface PortfolioMessage {
-    type: "order" | "position" | "holding" | "gtt";
+    type: 'order' | 'position' | 'holding' | 'gtt';
     data: any;
   }
 
@@ -1128,24 +1139,24 @@ declare module "upstox-js-sdk" {
       orderUpdate?: boolean,
       positionUpdate?: boolean,
       holdingUpdate?: boolean,
-      gttUpdate?: boolean
+      gttUpdate?: boolean,
     );
     connect(): Promise<void>;
     disconnect(): void;
     autoReconnect(
       enable: boolean,
       interval?: number,
-      retryCount?: number
+      retryCount?: number,
     ): void;
 
-    on(event: "open", listener: () => void): this;
-    on(event: "close", listener: () => void): this;
-    on(event: "message", listener: (data: Buffer) => void): this;
-    on(event: "error", listener: (error: Error) => void): this;
-    on(event: "reconnecting", listener: (attempt: number) => void): this;
+    on(event: 'open', listener: () => void): this;
+    on(event: 'close', listener: () => void): this;
+    on(event: 'message', listener: (data: Buffer) => void): this;
+    on(event: 'error', listener: (error: Error) => void): this;
+    on(event: 'reconnecting', listener: (attempt: number) => void): this;
     on(
-      event: "autoReconnectStopped",
-      listener: (message: string) => void
+      event: 'autoReconnectStopped',
+      listener: (message: string) => void,
     ): this;
   }
 }

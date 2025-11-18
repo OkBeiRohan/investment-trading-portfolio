@@ -23,9 +23,9 @@
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true,
     "lib": ["es6", "dom"],
-    "typeRoots": ["./types", "./node_modules/@types"],
+    "baseUrl": ".",
     "paths": {
-      "upstox-js-sdk": ["./types/upstox-js-sdk"]
+      "upstox-js-sdk": ["types/upstox-js-sdk"]
     },
     "types": ["node"]
   },
