@@ -1,28 +1,53 @@
 /**
  * SignalEngineService
  * Runs ML inference and generates trading signals
- * Implements ensemble stacking logic
+ * Uses Python-based inference for joblib models (XGBoost, SVM)
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { ModelLoaderService } from './model-loader.service';
-import * as ort from 'onnxruntime-node';
-import type {
-  TradingSignal,
-  TradingSignalCreateInput,
-  Features,
-  ModelContributions,
-} from '@repo/schema';
+import { PythonInferenceService } from './python-inference.service';
+import { SignalRepository } from '../../persistence/repositories/signal.repository';
+import type { TradingSignalCreateInput, Prediction } from '@repo/schema';
+
+interface Features {
+  realizedVol5d: number;
+  realizedVol10d: number;
+  realizedVol20d: number;
+  rsi14: number;
+  macdValue: number;
+  macdSignal: number;
+  macdHistogram: number;
+  sma20: number;
+  sma50: number;
+  ema12: number;
+  ema26: number;
+  indiaVix: number;
+  indiaVixMA5: number;
+  pcrVolume: number;
+  pcrOI: number;
+  maxPain: number;
+  atmIV: number;
+  volSkew: number;
+  termStructure: number;
+  callIVSpread: number;
+  putIVSpread: number;
+  hour: number;
+  dayOfWeek: number;
+  isMarketOpen: number;
+}
 
 @Injectable()
 export class SignalEngineService {
   private readonly logger = new Logger(SignalEngineService.name);
 
-  constructor(private readonly modelLoader: ModelLoaderService) {}
+  constructor(
+    private readonly pythonInference: PythonInferenceService,
+    private readonly signalRepository: SignalRepository,
+  ) {}
 
   /**
    * Generate trading signal from features
-   * Runs ensemble prediction with all L0 models + L1 stacker
+   * Runs ensemble prediction with XGBoost and SVM
    */
   async generateSignal(
     features: Features,
@@ -30,143 +55,78 @@ export class SignalEngineService {
   ): Promise<TradingSignalCreateInput> {
     const startTime = Date.now();
 
-    // Step 1: Get L0 model predictions
-    const l0Predictions = await this.getL0Predictions(features);
+    // Run both models in parallel
+    const [xgboostResult, svmResult] = await Promise.all([
+      this.pythonInference.runInference('xgboost', features),
+      this.pythonInference.runInference('svm', features),
+    ]);
 
-    // Step 2: Run L1 stacking model
-    const finalPrediction = await this.runStackingModel(l0Predictions);
+    // Simple averaging for now (can be replaced with trained meta-model)
+    const avgProbability =
+      (xgboostResult.probability + svmResult.probability) / 2;
+    const prediction = this.determinePrediction(avgProbability);
 
-    // Step 3: Determine prediction label
-    const prediction = this.determinePrediction(finalPrediction.probability);
+    const modelContributions = {
+      xgboost: xgboostResult.probability,
+      cnnLstm: 0.5, // Not trained yet
+      ginn: 0.5, // Not trained yet
+      svm: svmResult.probability,
+    };
+
+    // Calculate confidence (distance from neutral 0.5)
+    const confidence = Math.abs(avgProbability - 0.5) * 2; // Scale to 0-1
 
     const latencyMs = Date.now() - startTime;
 
-    return {
+    const signal: TradingSignalCreateInput = {
       userId,
       timestamp: new Date(),
       prediction,
-      confidence: Math.abs(finalPrediction.probability - 0.5) * 2, // Scale to 0-1
-      probability: finalPrediction.probability,
-      modelContributions: l0Predictions,
+      confidence,
+      probability: avgProbability,
+      modelContributions,
       features: this.serializeFeatures(features),
       metadata: {
-        modelVersions: this.getModelVersions(),
+        modelVersions: {
+          xgboost: '1.0.0',
+          svm: '1.0.0',
+          cnnLstm: 'not_trained',
+          ginn: 'not_trained',
+        },
         latencyMs,
       },
     };
+
+    return signal;
   }
 
   /**
-   * Get predictions from all L0 models
+   * Generate and persist signal to MongoDB
    */
-  private async getL0Predictions(
+  async generateAndPersistSignal(
     features: Features,
-  ): Promise<ModelContributions> {
-    const inputTensor = this.featuresToTensor(features);
+    userId: string,
+  ): Promise<string> {
+    const signal = await this.generateSignal(features, userId);
 
-    // Run all L0 models in parallel
-    const [xgboost, cnnLstm, ginn, svm] = await Promise.all([
-      this.runModel('xgboost', inputTensor),
-      this.runModel('cnn_lstm', inputTensor),
-      this.runModel('ginn', inputTensor),
-      this.runModel('svm', inputTensor),
-    ]);
+    // Save to MongoDB
+    const signalId = await this.signalRepository.create(signal);
 
-    return {
-      xgboost,
-      cnnLstm,
-      ginn,
-      svm,
-    };
-  }
-
-  /**
-   * Run L1 stacking model
-   */
-  private async runStackingModel(
-    l0Predictions: ModelContributions,
-  ): Promise<{ probability: number }> {
-    // Create input tensor from L0 predictions
-    const stackingInput = new ort.Tensor(
-      'float32',
-      [
-        l0Predictions.xgboost,
-        l0Predictions.cnnLstm,
-        l0Predictions.ginn,
-        l0Predictions.svm,
-      ],
-      [1, 4],
+    this.logger.log(
+      `Signal generated and persisted: ${signalId} - ${signal.prediction} (confidence: ${signal.confidence.toFixed(2)})`,
     );
 
-    const result = await this.modelLoader.runInference(
-      'stacking',
-      stackingInput,
-    );
-
-    // Extract probability from result tensor
-    const probability = result.data[0] as number;
-
-    return { probability };
-  }
-
-  /**
-   * Run a single model and extract probability
-   */
-  private async runModel(
-    modelName: string,
-    inputTensor: ort.Tensor,
-  ): Promise<number> {
-    try {
-      const result = await this.modelLoader.runInference(
-        modelName,
-        inputTensor,
-      );
-      // Assuming output is probability (0-1)
-      return result.data[0] as number;
-    } catch (error) {
-      this.logger.warn(`Model ${modelName} inference failed, using 0.5`);
-      return 0.5; // Neutral prediction on error
-    }
-  }
-
-  /**
-   * Convert features to ONNX tensor
-   */
-  private featuresToTensor(features: Features): ort.Tensor {
-    // Extract feature values in order
-    const values = [
-      features.realizedVol5d ?? 0,
-      features.realizedVol10d ?? 0,
-      features.realizedVol20d ?? 0,
-      features.rsi14 ?? 0,
-      features.macd?.value ?? 0,
-      features.macd?.signal ?? 0,
-      features.macd?.histogram ?? 0,
-      features.indiaVix ?? 0,
-      features.indiaVixMA5 ?? 0,
-      features.pcrVolume ?? 0,
-      features.pcrOI ?? 0,
-      features.maxPain ?? 0,
-      features.atmIV ?? 0,
-      features.volSkew ?? 0,
-      features.termStructure ?? 0,
-    ];
-
-    // Create tensor [batch_size=1, num_features]
-    return new ort.Tensor('float32', new Float32Array(values), [
-      1,
-      values.length,
-    ]);
+    return signalId;
   }
 
   /**
    * Determine prediction label from probability
    */
-  private determinePrediction(
-    probability: number,
-  ): 'VOL_UP' | 'VOL_DOWN' | 'NEUTRAL' {
-    if (probability > 0.55) return 'VOL_UP';
-    if (probability < 0.45) return 'VOL_DOWN';
+  private determinePrediction(probability: number): Prediction {
+    const threshold = 0.55;
+
+    if (probability > threshold) return 'VOL_UP';
+    if (probability < 1 - threshold) return 'VOL_DOWN';
     return 'NEUTRAL';
   }
 
@@ -174,21 +134,6 @@ export class SignalEngineService {
    * Serialize features to plain object
    */
   private serializeFeatures(features: Features): Record<string, unknown> {
-    return JSON.parse(JSON.stringify(features));
-  }
-
-  /**
-   * Get model versions for metadata
-   */
-  private getModelVersions(): Record<string, string> {
-    const models = ['xgboost', 'cnn_lstm', 'ginn', 'svm', 'stacking'];
-    const versions: Record<string, string> = {};
-
-    for (const modelName of models) {
-      const info = this.modelLoader.getModelInfo(modelName);
-      versions[modelName] = info?.version ?? 'unknown';
-    }
-
-    return versions;
+    return { ...features };
   }
 }

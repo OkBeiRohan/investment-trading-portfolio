@@ -9,12 +9,13 @@
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { PersistenceModule } from '../../persistence/persistence.module';
 import { StrategySelectionService } from './strategy-selection.service';
 import { RiskManagementService } from './risk-management.service';
 import { PositionSizingService } from './position-sizing.service';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, PersistenceModule],
   providers: [
     StrategySelectionService,
     RiskManagementService,
