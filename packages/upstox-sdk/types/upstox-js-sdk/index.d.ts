@@ -6,8 +6,6 @@
 import { EventEmitter } from "events";
 
 declare module "upstox-js-sdk" {
-  import { EventEmitter } from "events";
-
   // ==================== API Client ====================
   export class ApiClient {
     constructor(sandbox?: boolean);
@@ -1010,7 +1008,7 @@ declare module "upstox-js-sdk" {
   }
 
   // ==================== WebSocket Streamers ====================
-  
+
   /**
    * Base Streamer class that all streamers extend
    */
@@ -1024,7 +1022,11 @@ declare module "upstox-js-sdk" {
       RECONNECTING: "reconnecting";
       AUTO_RECONNECT_STOPPED: "autoReconnectStopped";
     };
-    autoReconnect(enable: boolean, interval?: number, retryCount?: number): void;
+    autoReconnect(
+      enable: boolean,
+      interval?: number,
+      retryCount?: number
+    ): void;
   }
 
   export type MarketDataMode = "ltpc" | "full" | "full_d30" | "option_greeks";
@@ -1090,7 +1092,7 @@ declare module "upstox-js-sdk" {
       OPTION: "option_greeks";
       D30: "full_d30";
     };
-    
+
     constructor(instrumentKeys?: string[], mode?: MarketDataMode);
     connect(): Promise<void>;
     disconnect(): void;
