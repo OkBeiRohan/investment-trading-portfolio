@@ -1,4 +1,4 @@
-import { UpstoxClient } from "@repo/upstox-sdk";
+import { UpstoxClient } from "../../upstox";
 
 class UpstoxAPI {
   private client: UpstoxClient;

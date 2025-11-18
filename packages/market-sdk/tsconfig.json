@@ -22,10 +22,16 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true,
+    "lib": ["es6", "dom"],
+    "typeRoots": [
+      "./src/upstox/types",
+      "node_modules/@types"
+    ],
     "paths": {
-      "upstox-js-sdk": ["../upstox-sdk/types/upstox-js-sdk"]
+      "upstox-js-sdk": ["./src/upstox/types/upstox-js-sdk"]
     },
     "types": ["node"]
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

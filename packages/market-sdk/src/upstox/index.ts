@@ -1,9 +1,9 @@
 /**
- * @repo/upstox-sdk
+ * Upstox SDK Integration for @repo/market-sdk
  *
  * Type-safe Upstox SDK wrapper using upstox-js-sdk
  *
- * This package provides:
+ * This module provides:
  * - UpstoxClient: Convenient wrapper around upstox-js-sdk with full TypeScript support
  * - TypedMarketDataStreamer: Type-safe WebSocket market data streaming
  * - TypedPortfolioDataStreamer: Type-safe WebSocket portfolio updates
