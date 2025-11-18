@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TestController } from './test.controller';
 
 // Import database module
 import { TradingDatabaseModule } from '@repo/database';
@@ -37,7 +36,7 @@ import tradingConfig from './config/trading.config';
     PolicyEngineModule,
     ExecutionEngineModule,
   ],
-  controllers: [AppController, TestController],
+  controllers: [AppController],
   providers: [AppService, TradingOrchestrator],
 })
 export class AppModule {}
