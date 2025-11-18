@@ -1,14 +1,19 @@
 {
+  "version": "0.0.1",
   "name": "investment-trading-portfolio",
   "private": true,
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "prettier": "^3.6.2",
     "turbo": "^2.6.1",
     "typescript": "5.9.3"
@@ -16,6 +21,5 @@
   "packageManager": "pnpm@10.22.0",
   "engines": {
     "node": ">=18"
-  },
-  "version": "0.0.1"
+  }
 }
