@@ -1,43 +1,45 @@
-import { DynamicModule, Module, Global, Provider } from '@nestjs/common';
-import { UpstoxAuthService } from './services/authentication.service';
-import { UpstoxStreamManager } from './services/stream-manager.service';
-import { TokenStore } from './services/token-store.service';
-import { UPSTOX_OPTIONS } from './constants';
-import { UpstoxModuleOptions } from './interfaces/upstox-config.interface';
+import { Module, Global } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { MongooseModule } from "@nestjs/mongoose";
+import { DatabaseModule, UpstoxToken, UpstoxTokenSchema } from "@repo/database";
 
-@Global()
-@Module({})
-export class UpstoxModule {
-  static forRootAsync(options: {
-    imports?: any[];
-    useFactory: (
-      ...args: any[]
-    ) => Promise<UpstoxModuleOptions> | UpstoxModuleOptions;
-    inject?: any[];
-    // Allow the user to inject their own DB implementation
-    tokenStoreClass: new (...args: any[]) => TokenStore;
-  }): DynamicModule {
-    const optionsProvider: Provider = {
-      provide: UPSTOX_OPTIONS,
-      useFactory: options.useFactory,
-      inject: options.inject || [],
-    };
+// Services & Utilities
+import { AuthService } from "./auth/auth.service";
+import { EncryptionUtil } from "./auth/encryption.utils";
+import { MultiplexerService } from "./market-data/multiplexer.service";
+import { SocketPool } from "./market-data/socket/socket-pool";
+import { OrdersService } from "./orders/orders.service";
 
-    const tokenStoreProvider: Provider = {
-      provide: TokenStore,
-      useClass: options.tokenStoreClass,
-    };
+// Allocator Algorithms
+import { BinPacker } from "./market-data/allocator/bin-packer";
+import { SubscriptionPriorityQueue } from "./market-data/allocator/priority-queue";
 
-    return {
-      module: UpstoxModule,
-      imports: options.imports || [],
-      providers: [
-        optionsProvider,
-        tokenStoreProvider,
-        UpstoxAuthService,
-        UpstoxStreamManager,
-      ],
-      exports: [UpstoxAuthService, UpstoxStreamManager],
-    };
-  }
-}
+@Global() // Makes services available to all Apps (Algo Engine, Dashboard) without re-importing
+@Module({
+  imports: [
+    ConfigModule,
+    DatabaseModule,
+    MongooseModule.forFeature([
+      { name: UpstoxToken.name, schema: UpstoxTokenSchema },
+    ]),
+  ],
+  providers: [
+    AuthService,
+    EncryptionUtil,
+    MultiplexerService,
+    SocketPool,
+    OrdersService,
+    BinPacker,
+    SubscriptionPriorityQueue,
+  ],
+  exports: [
+    AuthService,
+    EncryptionUtil,
+    MultiplexerService,
+    SocketPool,
+    OrdersService,
+    BinPacker,
+    SubscriptionPriorityQueue,
+  ],
+})
+export class UpstoxModule {}

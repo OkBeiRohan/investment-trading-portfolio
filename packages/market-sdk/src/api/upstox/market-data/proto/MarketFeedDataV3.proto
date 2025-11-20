@@ -1,68 +1,34 @@
 syntax = "proto3";
-package com.upstox.marketdatafeeder.rpc.proto;
+package com.upstox.marketdatafeederv3udapi.rpc.proto;
 
 message LTPC {
   double ltp = 1;
   int64 ltt = 2;
   int64 ltq = 3;
-  double cp = 4; //close price
+  double cp = 4;
 }
 
 message MarketLevel {
   repeated Quote bidAskQuote = 1;
-  int64 lut = 2;
 }
 
 message MarketOHLC {
   repeated OHLC ohlc = 1;
 }
 
-
 message Quote {
-  int32 bq = 1; //bid quantity
-  double bp = 2; //bid price
-  int32 bno = 3; //bid number of orders
-  int32 aq = 4; // ask quantity
-  double ap = 5; // ask price
-  int32 ano = 6; // ask number of orders
-  int64 bidQ = 7; //bid quantity
-  int64 askQ = 8; // ask quantity
+  int64 bidQ = 1;
+  double bidP = 2;
+  int64 askQ = 3;
+  double askP = 4;
 }
 
 message OptionGreeks {
-  double op = 1; // option price
-  double up = 2; //underlying price
-  double iv = 3; // implied volatility
-  double delta = 4;
-  double theta = 5;
-  double gamma = 6;
-  double vega = 7;
-  double rho = 8;
-}
-
-message ExtendedFeedDetails {
-  double atp = 1; //avg traded price
-  double cp = 2; //close price
-  int64 vtt = 3; //volume traded today
-  double oi = 4; //open interest
-  double changeOi = 5; //change oi
-  double lastClose = 6;
-  double tbq = 7; //total buy quantity
-  double tsq = 8; //total sell quantity
-  double close = 9;
-  double lc = 10; //lower circuit
-  double uc = 11; //upper circuit
-  double yh = 12; //yearly high
-  double yl = 13; //yearly low
-  double fp = 14; //fill price
-  int32 fv = 15; //fill volume
-  int64 mbpBuy = 16; //mbp buy
-  int64 mbpSell = 17; //mbp sell
-  int64 tv = 18; //traded volume
-  double dhoi = 19; //day high open interest
-  double dloi = 20; //day low open interest
-  double sp = 21; //spot price
-  double poi = 22; //previous open interest
+  double delta = 1;
+  double theta = 2;
+  double gamma = 3;
+  double vega = 4;
+  double rho = 5;
 }
 
 message OHLC {
@@ -71,14 +37,14 @@ message OHLC {
   double high = 3;
   double low = 4;
   double close = 5;
-  int32 volume = 6;
+  int64 vol = 6;
   int64 ts = 7;
-  int64 vol = 9;
 }
 
 enum Type{
   initial_feed = 0;
   live_feed = 1;
+  market_info = 2;
 }
 
 message MarketFullFeed{
@@ -86,15 +52,17 @@ message MarketFullFeed{
   MarketLevel marketLevel = 2;
   OptionGreeks optionGreeks = 3;
   MarketOHLC marketOHLC = 4;
-  ExtendedFeedDetails eFeedDetails = 5;
+  double atp = 5; //avg traded price
+  int64 vtt = 6; //volume traded today
+  double oi = 7; //open interest
+  double iv = 8; //implied volatility 
+  double tbq =9; //total buy quantity
+  double tsq = 10; //total sell quantity
 }
 
 message IndexFullFeed{
   LTPC ltpc = 1;
   MarketOHLC marketOHLC = 2;
-  double lastClose = 3;
-  double yh = 4; //yearly high
-  double yl = 5; //yearly low
 }
 
 
@@ -105,23 +73,48 @@ message FullFeed {
   }
 }
 
-message OptionChain{
+message FirstLevelWithGreeks{
   LTPC ltpc = 1;
-  Quote bidAskQuote = 2;
+  Quote firstDepth = 2;
   OptionGreeks optionGreeks = 3;
-  ExtendedFeedDetails eFeedDetails = 4;
+  int64 vtt = 4; //volume traded today
+  double oi = 5; //open interest
+  double iv = 6; //implied volatility 
 }
 
 message Feed {
   oneof FeedUnion {
     LTPC ltpc = 1;
-    FullFeed ff = 2;
-    OptionChain oc = 3;
+    FullFeed fullFeed = 2;
+    FirstLevelWithGreeks firstLevelWithGreeks = 3;
   }
+  RequestMode requestMode = 4;
+}
+
+enum RequestMode {
+  ltpc = 0;
+  full_d5 = 1;
+  option_greeks = 2;
+  full_d30 = 3;
+}
+
+enum MarketStatus {
+  PRE_OPEN_START = 0;
+  PRE_OPEN_END = 1;
+  NORMAL_OPEN = 2;
+  NORMAL_CLOSE = 3;
+  CLOSING_START = 4;
+  CLOSING_END = 5;
+}
+
+
+message MarketInfo {
+  map<string, MarketStatus> segmentStatus = 1;
 }
 
 message FeedResponse{
   Type type = 1;
   map<string, Feed> feeds = 2;
   int64 currentTs = 3;
+  MarketInfo marketInfo = 4;
 }

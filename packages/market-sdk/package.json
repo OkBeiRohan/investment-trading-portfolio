@@ -8,12 +8,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsc",
+    "proto:update": "bash scripts/fetch-proto.sh",
+    "build": "npm run proto:update && tsc",
     "start": "node ./dist/src/index.js",
     "dev": "tsc --watch",
     "lint": "eslint .",
-    "check-types": "tsc --noEmit",
-    "proto:gen": "pbjs -t static-module -w commonjs -o src/proto/generated.js src/proto/MarketDataFeed.proto && pbts -o src/proto/generated.d.ts src/proto/generated.js"
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",
