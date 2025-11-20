@@ -25,22 +25,58 @@ if [ ! -d "$OUTPUT_DIR" ]; then
 fi
 
 # 2. Download the file
+# Proxy detection (check common env var names, prefer direct connection if none set)
+# Support explicit override via FETCH_PROTO_PROXY for CI / Windows->WSL scenarios
+CURL_PROXY=""
+echo "[debug] env HTTPS_PROXY=$HTTPS_PROXY https_proxy=$https_proxy HTTP_PROXY=$HTTP_PROXY http_proxy=$http_proxy FETCH_PROTO_PROXY=$FETCH_PROTO_PROXY"
+
+# Priority: FETCH_PROTO_PROXY > HTTPS_PROXY > https_proxy > HTTP_PROXY > http_proxy
+if [ -n "$FETCH_PROTO_PROXY" ]; then
+  SELECTED_PROXY="$FETCH_PROTO_PROXY"
+elif [ -n "$HTTPS_PROXY" ]; then
+  SELECTED_PROXY="$HTTPS_PROXY"
+elif [ -n "$https_proxy" ]; then
+  SELECTED_PROXY="$https_proxy"
+elif [ -n "$HTTP_PROXY" ]; then
+  SELECTED_PROXY="$HTTP_PROXY"
+elif [ -n "$http_proxy" ]; then
+  SELECTED_PROXY="$http_proxy"
+else
+  SELECTED_PROXY=""
+fi
+
+if [ -n "$SELECTED_PROXY" ]; then
+  echo "Using proxy: $SELECTED_PROXY"
+  CURL_PROXY="--proxy $SELECTED_PROXY"
+else
+  echo "No proxy detected; attempting direct connection"
+fi
+
 echo "Downloading from: $PROTO_URL"
-curl -s -L -o "$OUTPUT_FILE" "$PROTO_URL"
+echo "curl -v $CURL_PROXY -L -o $OUTPUT_FILE $PROTO_URL" # Debug: show command
+echo "Current working directory: $(pwd)"
+echo "Output file will be: $OUTPUT_FILE"
+curl -v $CURL_PROXY -L -o "$OUTPUT_FILE" "$PROTO_URL"
 curl_exit_code=$?
 
 # 3. Verify Download
 if [ $curl_exit_code -eq 0 ]; then
-    # Check if file actually contains Protobuf content (simple validation)
-    if grep -q "package com.upstox" "$OUTPUT_FILE"; then
-        echo -e "${GREEN}✅ Success: Proto file updated at $OUTPUT_FILE${NC}"
-        echo "Package Verified: $(grep "package com.upstox" "$OUTPUT_FILE")"
+    if [ -s "$OUTPUT_FILE" ]; then
+        # Check if file actually contains Protobuf content (simple validation)
+        if grep -q "package com.upstox" "$OUTPUT_FILE"; then
+            echo -e "${GREEN}✅ Success: Proto file updated at $OUTPUT_FILE${NC}"
+            echo "Package Verified: $(grep "package com.upstox" "$OUTPUT_FILE")"
+        else
+            echo -e "${RED}❌ Error: Downloaded file appears invalid (Not a proto file).${NC}"
+            head -20 "$OUTPUT_FILE" # Show first lines for debugging
+            exit 1
+        fi
     else
-        echo -e "${RED}❌ Error: Downloaded file appears invalid (Not a proto file).${NC}"
+        echo -e "${RED}❌ Error: Downloaded file is empty.${NC}"
         exit 1
     fi
 else
-    echo -e "${RED}❌ Error: Failed to download proto file.${NC}"
+    echo -e "${RED}❌ Error: Failed to download proto file. curl exit code: $curl_exit_code${NC}"
     exit 1
 fi
 
