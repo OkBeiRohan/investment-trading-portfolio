@@ -15,3 +15,4 @@ export type { DatabaseModuleOptions } from "./database.module";
 
 // Export all schemas and document types
 export * from "./schemas";
+export * from "./redis";
