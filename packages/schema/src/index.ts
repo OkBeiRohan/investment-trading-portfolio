@@ -14,3 +14,6 @@ export * from "./trading";
 
 // API-related schemas
 export * from "./api";
+
+// Upstox-related schemas
+export * from "./upstox";

@@ -2,4 +2,4 @@
  * Export all API modules
  */
 
-export * from "./upstox";
+export * from "./upstox/upstox.module";

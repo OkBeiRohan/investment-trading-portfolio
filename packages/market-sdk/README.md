@@ -18,15 +18,73 @@ Comprehensive TypeScript wrapper for the Upstox API, optimized for algorithmic t
 This package is part of the monorepo and already installed. To use it in your app:
 
 ```typescript
-import { UpstoxSDK, TransactionType, OrderType } from "@repo/market-sdk";
+import { UpstoxSDK, TransactionType, OrderType } from '@repo/market-sdk';
 ```
 
 ## Quick Start
 
+root
+├── apps
+│ ├── algo-engine # Primary consumer of market data
+│ ├── dashboard # UI consumer via GraphQL/WebSockets
+│ └── market-feeder # Dedicated microservice for data ingestion
+├── packages
+│ ├── types # Pure TypeScript definitions (Shared Contract)
+│ │ ├── src
+│ │ │ ├── upstox
+│ │ │ │ ├── enums.ts
+│ │ │ │ ├── interfaces.ts
+│ │ │ │ ├── events.ts
+│ │ │ │ └── protobuf.types.ts
+│ │ │ └── index.ts
+│ │ └── package.json
+│ ├── database # Persistence Layer (MongoDB + Redis)
+│ │ ├── src
+│ │ │ ├── schemas
+│ │ │ │ ├── token.schema.ts
+│ │ │ │ └── order-log.schema.ts
+│ │ │ ├── redis
+│ │ │ │ ├── redis.service.ts
+│ │ │ │ └── keys.factory.ts
+│ │ │ └── index.ts
+│ │ └── package.json
+│ ├── upstox # The Core Integration Package
+│ │ ├── src
+│ │ │ ├── auth
+│ │ │ │ ├── auth.service.ts
+│ │ │ │ ├── strategies
+│ │ │ │ │ ├── auth.strategy.ts
+│ │ │ │ │ ├── sandbox.strategy.ts
+│ │ │ │ │ └── live.strategy.ts
+│ │ │ │ └── encryption.util.ts
+│ │ │ ├── market-data
+│ │ │ │ ├── multiplexer.service.ts
+│ │ │ │ ├── allocator
+│ │ │ │ │ ├── bin-packer.ts
+│ │ │ │ │ └── priority-queue.ts
+│ │ │ │ ├── socket
+│ │ │ │ │ ├── socket-pool.ts
+│ │ │ │ │ ├── connection.ts
+│ │ │ │ │ └── proto-decoder.ts
+│ │ │ │ ├── proto
+│ │ │ │ │ └── MarketDataFeedV3.proto
+│ │ │ │ └── constants.ts
+│ │ │ ├── orders
+│ │ │ │ └── orders.service.ts
+│ │ │ ├── upstox.module.ts
+│ │ │ └── index.ts
+│ │ ├── package.json
+│ │ ├── tsconfig.json
+│ │ └── scripts
+│ │ └── fetch-proto.sh
+│ └── eslint-config
+├── turbo.json
+└── package.json
+
 ### 1. Initialize SDK
 
 ```typescript
-import { UpstoxSDK } from "@repo/market-sdk";
+import { UpstoxSDK } from '@repo/market-sdk';
 
 const upstox = new UpstoxSDK({
   apiKey: process.env.UPSTOX_API_KEY!,
@@ -40,11 +98,11 @@ const upstox = new UpstoxSDK({
 ```typescript
 // Step 1: Get authorization URL
 const authUrl = upstox.getAuthorizationUrl();
-console.log("Visit:", authUrl);
+console.log('Visit:', authUrl);
 
 // Step 2: After user authorizes, exchange code for token
 const { accessToken } = await upstox.getAccessToken(authorizationCode);
-console.log("Access Token:", accessToken);
+console.log('Access Token:', accessToken);
 
 // The token is automatically set in the SDK
 ```
@@ -57,11 +115,11 @@ import {
   OrderType,
   ProductType,
   Validity,
-} from "@repo/market-sdk";
+} from '@repo/market-sdk';
 
 // Market Order
 const order = await upstox.order.placeOrder({
-  instrumentKey: "NSE_EQ|INE669E01016", // TCS
+  instrumentKey: 'NSE_EQ|INE669E01016', // TCS
   quantity: 1,
   price: 0,
   transactionType: TransactionType.BUY,
@@ -70,11 +128,11 @@ const order = await upstox.order.placeOrder({
   validity: Validity.DAY,
 });
 
-console.log("Order ID:", order.orderId);
+console.log('Order ID:', order.orderId);
 
 // Limit Order
 const limitOrder = await upstox.order.placeOrder({
-  instrumentKey: "NSE_EQ|INE669E01016",
+  instrumentKey: 'NSE_EQ|INE669E01016',
   quantity: 10,
   price: 3500.5,
   transactionType: TransactionType.BUY,
@@ -92,7 +150,7 @@ const straddle = await upstox.order.placeMultiLegOrder({
   legs: [
     {
       // Buy ATM Call
-      instrumentKey: "NSE_FO|NIFTY24DEC19000CE",
+      instrumentKey: 'NSE_FO|NIFTY24DEC19000CE',
       quantity: 50,
       price: 0,
       transactionType: TransactionType.BUY,
@@ -102,7 +160,7 @@ const straddle = await upstox.order.placeMultiLegOrder({
     },
     {
       // Buy ATM Put
-      instrumentKey: "NSE_FO|NIFTY24DEC19000PE",
+      instrumentKey: 'NSE_FO|NIFTY24DEC19000PE',
       quantity: 50,
       price: 0,
       transactionType: TransactionType.BUY,
@@ -119,34 +177,34 @@ const straddle = await upstox.order.placeMultiLegOrder({
 ```typescript
 // Get Last Traded Price
 const ltpMap = await upstox.marketData.getLTP([
-  "NSE_INDEX|Nifty 50",
-  "NSE_INDEX|Nifty Bank",
+  'NSE_INDEX|Nifty 50',
+  'NSE_INDEX|Nifty Bank',
 ]);
 
-console.log("Nifty 50 LTP:", ltpMap.get("NSE_INDEX|Nifty 50"));
+console.log('Nifty 50 LTP:', ltpMap.get('NSE_INDEX|Nifty 50'));
 
 // Get Full Market Quote with Depth
 const quotes = await upstox.marketData.getFullMarketQuote([
-  "NSE_EQ|INE669E01016",
+  'NSE_EQ|INE669E01016',
 ]);
 
 const quote = quotes[0];
-console.log("Bid:", quote.bidPrice, "Ask:", quote.askPrice);
-console.log("Market Depth:", quote.depth);
+console.log('Bid:', quote.bidPrice, 'Ask:', quote.askPrice);
+console.log('Market Depth:', quote.depth);
 ```
 
 ### 6. Get Option Greeks
 
 ```typescript
 const greeksMap = await upstox.marketData.getOptionGreeks([
-  "NSE_FO|NIFTY24DEC19000CE",
-  "NSE_FO|NIFTY24DEC19000PE",
+  'NSE_FO|NIFTY24DEC19000CE',
+  'NSE_FO|NIFTY24DEC19000PE',
 ]);
 
-const callGreeks = greeksMap.get("NSE_FO|NIFTY24DEC19000CE");
-console.log("Call Delta:", callGreeks?.delta);
-console.log("Call Vega:", callGreeks?.vega);
-console.log("Call IV:", callGreeks?.iv);
+const callGreeks = greeksMap.get('NSE_FO|NIFTY24DEC19000CE');
+console.log('Call Delta:', callGreeks?.delta);
+console.log('Call Vega:', callGreeks?.vega);
+console.log('Call IV:', callGreeks?.iv);
 ```
 
 ### 7. Get Option Chain & PCR
@@ -154,33 +212,33 @@ console.log("Call IV:", callGreeks?.iv);
 ```typescript
 // Get full option chain
 const optionChain = await upstox.marketData.getOptionChain(
-  "NSE_INDEX|Nifty 50",
-  "2024-12-26"
+  'NSE_INDEX|Nifty 50',
+  '2024-12-26',
 );
 
-console.log("Available strikes:", optionChain.length);
+console.log('Available strikes:', optionChain.length);
 
 // Calculate Put-Call Ratio
 const pcr = await upstox.marketData.getPutCallRatio(
-  "NSE_INDEX|Nifty 50",
-  "2024-12-26"
+  'NSE_INDEX|Nifty 50',
+  '2024-12-26',
 );
 
-console.log("PCR (Volume):", pcr.pcrVolume);
-console.log("PCR (OI):", pcr.pcrOI);
+console.log('PCR (Volume):', pcr.pcrVolume);
+console.log('PCR (OI):', pcr.pcrOI);
 ```
 
 ### 8. Get Historical Data
 
 ```typescript
-import { CandleInterval } from "@repo/market-sdk";
+import { CandleInterval } from '@repo/market-sdk';
 
 // Intraday candles
 const candles = await upstox.marketData.getIntradayCandles(
-  "NSE_INDEX|Nifty 50",
+  'NSE_INDEX|Nifty 50',
   CandleInterval.FIVE_MINUTE,
-  new Date("2024-11-17"),
-  new Date("2024-11-17")
+  new Date('2024-11-17'),
+  new Date('2024-11-17'),
 );
 
 candles.forEach((candle) => {
@@ -189,23 +247,23 @@ candles.forEach((candle) => {
     candle.open,
     candle.high,
     candle.low,
-    candle.close
+    candle.close,
   );
 });
 
 // Historical daily candles
 const dailyCandles = await upstox.marketData.getHistoricalData(
-  "NSE_INDEX|Nifty 50",
+  'NSE_INDEX|Nifty 50',
   CandleInterval.ONE_DAY,
-  new Date("2024-01-01"),
-  new Date("2024-11-17")
+  new Date('2024-01-01'),
+  new Date('2024-11-17'),
 );
 ```
 
 ### 9. WebSocket Streaming - Market Data
 
 ```typescript
-import { MarketDataMode } from "@repo/market-sdk";
+import { MarketDataMode } from '@repo/market-sdk';
 
 const stream = upstox.createMarketDataStream({
   reconnect: true,
@@ -215,33 +273,33 @@ const stream = upstox.createMarketDataStream({
 
 // Register event handlers
 stream.onConnect(() => {
-  console.log("Market data stream connected");
+  console.log('Market data stream connected');
 });
 
 stream.onData((data) => {
-  console.log("Instrument:", data.instrumentKey);
-  console.log("LTP:", data.lastPrice);
-  console.log("Greeks:", data.greeks);
+  console.log('Instrument:', data.instrumentKey);
+  console.log('LTP:', data.lastPrice);
+  console.log('Greeks:', data.greeks);
 });
 
 stream.onError((error) => {
-  console.error("Stream error:", error);
+  console.error('Stream error:', error);
 });
 
 // Connect and subscribe
 await stream.connect(
-  ["NSE_INDEX|Nifty 50", "NSE_FO|NIFTY24DEC19000CE"],
-  MarketDataMode.OPTION_GREEKS
+  ['NSE_INDEX|Nifty 50', 'NSE_FO|NIFTY24DEC19000CE'],
+  MarketDataMode.OPTION_GREEKS,
 );
 
 // Subscribe to more instruments
-stream.subscribe(["NSE_FO|NIFTY24DEC19000PE"], MarketDataMode.OPTION_GREEKS);
+stream.subscribe(['NSE_FO|NIFTY24DEC19000PE'], MarketDataMode.OPTION_GREEKS);
 
 // Change mode for existing subscriptions
-stream.changeMode(["NSE_INDEX|Nifty 50"], MarketDataMode.FULL);
+stream.changeMode(['NSE_INDEX|Nifty 50'], MarketDataMode.FULL);
 
 // Unsubscribe
-stream.unsubscribe(["NSE_INDEX|Nifty 50"]);
+stream.unsubscribe(['NSE_INDEX|Nifty 50']);
 
 // Disconnect when done
 stream.disconnect();
@@ -253,10 +311,10 @@ stream.disconnect();
 const portfolioStream = upstox.createPortfolioStream();
 
 portfolioStream.onData((update) => {
-  if (update.type === "order") {
-    console.log("Order update:", update.data);
-  } else if (update.type === "position") {
-    console.log("Position update:", update.data);
+  if (update.type === 'order') {
+    console.log('Order update:', update.data);
+  } else if (update.type === 'position') {
+    console.log('Position update:', update.data);
   }
 });
 
@@ -277,12 +335,12 @@ const holdings = await upstox.portfolio.getHoldings();
 
 // Get funds
 const funds = await upstox.portfolio.getFunds();
-console.log("Available Margin:", funds.availableMargin);
+console.log('Available Margin:', funds.availableMargin);
 
 // Get complete portfolio summary
 const summary = await upstox.portfolio.getPortfolioSummary();
-console.log("Total PnL:", summary.totalPnl);
-console.log("Day PnL:", summary.dayPnl);
+console.log('Total PnL:', summary.totalPnl);
+console.log('Day PnL:', summary.dayPnl);
 ```
 
 ### 12. Order Management
@@ -292,14 +350,14 @@ console.log("Day PnL:", summary.dayPnl);
 const orders = await upstox.order.getOrderBook();
 
 // Get specific order details
-const orderDetails = await upstox.order.getOrderDetails("240123000001");
+const orderDetails = await upstox.order.getOrderDetails('240123000001');
 
 // Get trade book
 const trades = await upstox.order.getTradeBook();
 
 // Modify order
 await upstox.order.modifyOrder({
-  orderId: "240123000001",
+  orderId: '240123000001',
   quantity: 20,
   price: 3550.0,
   orderType: OrderType.LIMIT,
@@ -307,7 +365,7 @@ await upstox.order.modifyOrder({
 
 // Cancel order
 await upstox.order.cancelOrder({
-  orderId: "240123000001",
+  orderId: '240123000001',
 });
 ```
 
@@ -350,7 +408,7 @@ UPSTOX_ACCESS_TOKEN=your_access_token # Optional if using saved token
 ## Usage in algo-worker
 
 ```typescript
-import { UpstoxSDK, MarketDataMode } from "@repo/market-sdk";
+import { UpstoxSDK, MarketDataMode } from '@repo/market-sdk';
 
 @Injectable()
 export class MarketConnectorService {
@@ -375,8 +433,8 @@ export class MarketConnectorService {
     });
 
     await this.stream.connect(
-      ["NSE_INDEX|Nifty 50"],
-      MarketDataMode.OPTION_GREEKS
+      ['NSE_INDEX|Nifty 50'],
+      MarketDataMode.OPTION_GREEKS,
     );
   }
 

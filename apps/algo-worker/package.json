@@ -30,7 +30,7 @@
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
     "@repo/schema": "workspace:*",
-    "bullmq": "^5.63.2",
+    "bullmq": "^5.64.0",
     "ioredis": "^5.8.2",
     "mongoose": "^8.20.0",
     "onnxruntime-node": "^1.23.2",
@@ -40,7 +40,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.39.1",
-    "@nestjs/cli": "^11.0.10",
+    "@nestjs/cli": "^11.0.12",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.9",
     "@types/express": "^5.0.5",

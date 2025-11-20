@@ -7,5 +7,6 @@ onlyBuiltDependencies:
   - msgpackr-extract
   - onnxruntime-node
   - protobufjs
+  - protolint
   - sharp
   - unrs-resolver
