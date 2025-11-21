@@ -1,4 +1,5 @@
 # Algo Worker - Production Algorithmic Trading System
+
 ## Complete Architecture Redesign (2025)
 
 ---
@@ -17,7 +18,7 @@ investment-trading-portfolio/
 │
 ├── packages/
 │   ├── schema/                   # 📋 Zod Schemas (Single Source of Truth)
-│   ├── database/                 # 💾 Multi-DB Package (MongoDB + TimescaleDB + Redis)
+│   ├── database/                 # 💾 Multi-DB Package (MongoDB + QuestDB + Redis)
 │   ├── market-sdk/               # 📈 Market Data SDK (Upstox + Yahoo + Binance)
 │   ├── trpc-router/              # 🔗 Shared tRPC Routes
 │   ├── ai-models/                # 🤖 NEW: ONNX Model Registry
@@ -151,6 +152,7 @@ training-pipeline/
 ```
 
 **Key Libraries**:
+
 - **Kedro**: Pipeline orchestration
 - **MLflow**: Experiment tracking, model registry
 - **Optuna**: Hyperparameter optimization
@@ -166,10 +168,10 @@ import onnxruntime as ort
 
 def export_to_onnx(model, export_path):
     """Export PyTorch model to ONNX with optimization"""
-    
+
     # Create dummy input
     dummy_input = torch.randn(1, 60, 13)  # (batch, seq_len, features)
-    
+
     # Export with Dynamo (PyTorch 2.5+)
     torch.onnx.export(
         model,
@@ -187,11 +189,11 @@ def export_to_onnx(model, export_path):
         optimize=True,                  # Enable ONNX optimizations
         verify=True                     # Validate with ONNX Runtime
     )
-    
+
     # Verify GPU support
     providers = ort.get_available_providers()
     assert 'CUDAExecutionProvider' in providers, "GPU not available"
-    
+
     print(f"✅ Model exported to {export_path}")
     print(f"📊 Available providers: {providers}")
 ```
@@ -208,20 +210,22 @@ def export_to_onnx(model, export_path):
 ├───────────────────────────────────────────────────────────┤
 │                                                           │
 │  ┌─────────────────────────────────────────────┐         │
-│  │  TimescaleDB (PostgreSQL Extension)         │         │
-│  │  ────────────────────────────────────       │         │
-│  │  Purpose: Time-Series Market Data           │         │
+│  │  QuestDB (Time-Series Database)             │         │
+│  │  ─────────────────────────────────          │         │
+│  │  Purpose: High-Performance Time-Series Data │         │
 │  │  - Tick data (price, volume, Greeks)        │         │
 │  │  - OHLCV candles (1m, 5m, 15m, 1h, 1d)     │         │
 │  │  - Order book snapshots                     │         │
 │  │  - Feature snapshots (for model training)   │         │
 │  │                                              │         │
 │  │  Benefits:                                   │         │
-│  │  ✓ SQL compatibility (complex joins)        │         │
-│  │  ✓ Excellent for aggregations (candles)     │         │
-│  │  ✓ Hypertables for auto-partitioning        │         │
-│  │  ✓ Continuous aggregates (materialized)     │         │
-│  │  ✓ PostgreSQL ecosystem (PostGIS, pg_cron)  │         │
+│  │  ✓ 10-20x faster ingestion vs TimescaleDB   │         │
+│  │  ✓ PostgreSQL-compatible SQL                │         │
+│  │  ✓ Built-in HTTP API (no driver needed)     │         │
+│  │  ✓ Lightweight (no PostgreSQL dependency)   │         │
+│  │  ✓ Optimized for append-only workloads      │         │
+│  │  ✓ Auto-partitioning by time                │         │
+│  │  ✓ Easy Windows development setup           │         │
 │  └─────────────────────────────────────────────┘         │
 │                                                           │
 │  ┌─────────────────────────────────────────────┐         │
@@ -281,17 +285,12 @@ export class DatabaseModule {
           useFactory: (config: ConfigService) => ({
             type: 'postgres',
             url: config.get('TIMESCALE_URL'),
-            entities: [
-              TickData,
-              Candle,
-              OrderBookSnapshot,
-              FeatureSnapshot
-            ],
+            entities: [TickData, Candle, OrderBookSnapshot, FeatureSnapshot],
             synchronize: false, // Use migrations
           }),
           inject: [ConfigService],
         }),
-        
+
         // MongoDB (Mongoose)
         MongooseModule.forRootAsync({
           connectionName: 'trading',
@@ -300,7 +299,7 @@ export class DatabaseModule {
           }),
           inject: [ConfigService],
         }),
-        
+
         // Redis
         RedisModule.forRoot(),
       ],
@@ -419,17 +418,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '@repo/database';
 
 enum Priority {
-  CRITICAL = 1,  // Indices (Nifty 50, Bank Nifty)
-  HIGH = 2,      // ATM options
-  MEDIUM = 3,    // Near OTM (±5 strikes)
-  LOW = 4,       // Deep OTM (>±5 strikes)
+  CRITICAL = 1, // Indices (Nifty 50, Bank Nifty)
+  HIGH = 2, // ATM options
+  MEDIUM = 3, // Near OTM (±5 strikes)
+  LOW = 4, // Deep OTM (>±5 strikes)
 }
 
 interface SocketState {
   id: string;
   url: string;
-  load: number;           // Current subscriptions
-  capacity: number;       // Max based on mode (3000-5000)
+  load: number; // Current subscriptions
+  capacity: number; // Max based on mode (3000-5000)
   keys: Set<string>;
   connection: WebSocket;
 }
@@ -451,12 +450,15 @@ export class MultiplexerService {
   async subscribe(
     instrumentKey: string,
     priority: Priority,
-    mode: 'ltpc' | 'full' | 'option_greeks' = 'option_greeks'
+    mode: 'ltpc' | 'full' | 'option_greeks' = 'option_greeks',
   ): Promise<void> {
     // Check if already subscribed
-    const existingSocket = await this.redis.getSocketForInstrument(instrumentKey);
+    const existingSocket =
+      await this.redis.getSocketForInstrument(instrumentKey);
     if (existingSocket) {
-      this.logger.debug(`${instrumentKey} already subscribed on ${existingSocket}`);
+      this.logger.debug(
+        `${instrumentKey} already subscribed on ${existingSocket}`,
+      );
       return;
     }
 
@@ -468,7 +470,9 @@ export class MultiplexerService {
       if (socket.load < socket.capacity) {
         await this.addToSocket(socketId, instrumentKey, mode);
         await this.redis.setSocketForInstrument(instrumentKey, socketId);
-        this.logger.log(`✅ ${instrumentKey} → ${socketId} (${socket.load}/${socket.capacity})`);
+        this.logger.log(
+          `✅ ${instrumentKey} → ${socketId} (${socket.load}/${socket.capacity})`,
+        );
         return;
       }
     }
@@ -487,9 +491,13 @@ export class MultiplexerService {
     if (evictionCandidate && evictionCandidate.priority > priority) {
       await this.evict(evictionCandidate.instrumentKey);
       await this.subscribe(instrumentKey, priority, mode);
-      this.logger.warn(`⚠️ Evicted ${evictionCandidate.instrumentKey} for ${instrumentKey}`);
+      this.logger.warn(
+        `⚠️ Evicted ${evictionCandidate.instrumentKey} for ${instrumentKey}`,
+      );
     } else {
-      this.logger.error(`❌ Cannot subscribe ${instrumentKey}: capacity reached`);
+      this.logger.error(
+        `❌ Cannot subscribe ${instrumentKey}: capacity reached`,
+      );
       throw new Error('Subscription capacity exceeded');
     }
   }
@@ -503,14 +511,17 @@ export class MultiplexerService {
     return capacities[mode] || 3000;
   }
 
-  private async createSocket(mode: string, capacity: number): Promise<SocketState> {
+  private async createSocket(
+    mode: string,
+    capacity: number,
+  ): Promise<SocketState> {
     // Get one-time authorized URL from Upstox
     const token = await this.upstoxAuth.getAccessToken();
     const response = await fetch(
       'https://api.upstox.com/v3/feed/market-data-feed/authorize',
       {
         headers: { Authorization: `Bearer ${token}` },
-      }
+      },
     );
     const { data } = await response.json();
     const url = data.authorizedRedirectUri;
@@ -550,8 +561,8 @@ export class MultiplexerService {
     await this.redis.publish('market:feed', JSON.stringify(decoded));
 
     // Save to TimescaleDB (async, non-blocking)
-    this.saveToTimescale(decoded).catch(err =>
-      this.logger.error('TimescaleDB save failed', err)
+    this.saveToTimescale(decoded).catch((err) =>
+      this.logger.error('TimescaleDB save failed', err),
     );
   }
 }
@@ -606,13 +617,11 @@ export class TechnicalIndicatorsService {
   /**
    * Calculate all technical indicators for training
    */
-  async calculateFeatures(
-    candles: Candle[]
-  ): Promise<FeatureSnapshot> {
-    const close = candles.map(c => c.close);
-    const high = candles.map(c => c.high);
-    const low = candles.map(c => c.low);
-    const volume = candles.map(c => c.volume);
+  async calculateFeatures(candles: Candle[]): Promise<FeatureSnapshot> {
+    const close = candles.map((c) => c.close);
+    const high = candles.map((c) => c.high);
+    const low = candles.map((c) => c.low);
+    const volume = candles.map((c) => c.volume);
 
     return {
       // Realized Volatility (multiple windows)
@@ -622,7 +631,7 @@ export class TechnicalIndicatorsService {
 
       // Momentum
       rsi14: talib.RSI(close, { optInTimePeriod: 14 }),
-      
+
       // MACD
       macd: talib.MACD(close, {
         optInFastPeriod: 12,
@@ -664,11 +673,12 @@ export class TechnicalIndicatorsService {
     for (let i = 1; i < prices.length; i++) {
       returns.push(Math.log(prices[i] / prices[i - 1]));
     }
-    
+
     const recent = returns.slice(-window);
     const mean = recent.reduce((a, b) => a + b, 0) / recent.length;
-    const variance = recent.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / recent.length;
-    
+    const variance =
+      recent.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / recent.length;
+
     return Math.sqrt(variance * 252); // Annualized
   }
 }
@@ -691,16 +701,20 @@ export class SignalEngineService {
   async onModuleInit() {
     // Load ONNX models with GPU
     const provider = 'CUDAExecutionProvider';
-    
-    this.sessions.set('timesnet', await ort.InferenceSession.create(
-      'models/timesnet.onnx',
-      { executionProviders: [provider, 'CPUExecutionProvider'] }
-    ));
 
-    this.sessions.set('xgboost', await ort.InferenceSession.create(
-      'models/xgboost.onnx',
-      { executionProviders: [provider, 'CPUExecutionProvider'] }
-    ));
+    this.sessions.set(
+      'timesnet',
+      await ort.InferenceSession.create('models/timesnet.onnx', {
+        executionProviders: [provider, 'CPUExecutionProvider'],
+      }),
+    );
+
+    this.sessions.set(
+      'xgboost',
+      await ort.InferenceSession.create('models/xgboost.onnx', {
+        executionProviders: [provider, 'CPUExecutionProvider'],
+      }),
+    );
 
     // ... load other models
   }
@@ -760,7 +774,7 @@ export class SignalEngineService {
 
   private async runModel(
     modelName: string,
-    input: Float32Array
+    input: Float32Array,
   ): Promise<number> {
     const session = this.sessions.get(modelName);
     const tensor = new ort.Tensor('float32', input, [1, input.length]);
@@ -785,21 +799,21 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - timescale_data:/var/lib/postgresql/data
 
   mongodb:
     image: mongo:7
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongo_data:/data/db
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
 
@@ -807,7 +821,7 @@ services:
   prometheus:
     image: prom/prometheus
     ports:
-      - "9090:9090"
+      - '9090:9090'
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -815,7 +829,7 @@ services:
   grafana:
     image: grafana/grafana
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
     volumes:
@@ -847,7 +861,7 @@ services:
       MONGODB_URI: mongodb://mongodb:27017
       REDIS_URL: redis://redis:6379
     volumes:
-      - ./models:/app/models  # ONNX models
+      - ./models:/app/models # ONNX models
     depends_on:
       - mongodb
       - redis
@@ -890,14 +904,14 @@ npm run start:prod
 
 ## 📈 **PERFORMANCE TARGETS**
 
-| Metric | Target | Current (Est.) |
-|--------|--------|---------------|
-| Signal Latency (GPU) | < 50ms | 30-40ms |
-| Pipeline E2E | < 2s | 1.5s |
-| Sharpe Ratio | > 1.5 | TBD (backtest) |
-| Max Drawdown | < 20% | TBD |
-| Data Ingestion | 10K ticks/sec | 5K ticks/sec |
-| Model Update Freq | Weekly | N/A |
+| Metric               | Target        | Current (Est.) |
+| -------------------- | ------------- | -------------- |
+| Signal Latency (GPU) | < 50ms        | 30-40ms        |
+| Pipeline E2E         | < 2s          | 1.5s           |
+| Sharpe Ratio         | > 1.5         | TBD (backtest) |
+| Max Drawdown         | < 20%         | TBD            |
+| Data Ingestion       | 10K ticks/sec | 5K ticks/sec   |
+| Model Update Freq    | Weekly        | N/A            |
 
 ---
 
@@ -919,14 +933,15 @@ npm run start:prod
 ## 🔗 **REFERENCES**
 
 **Research Papers**:
+
 - Self-Rewarding Deep RL (SRDRL) - Mathematics 2024
 - LLM + RL for Trading - ICLR 2025 submission
 - Transformer Time-Series - Multiple 2024 papers
 - TD3/SAC for Portfolio Management - MDPI 2025
 
 **Technologies**:
+
 - TimescaleDB vs InfluxDB comparison
 - ONNX Runtime GPU optimization
 - WebSocket multiplexing patterns
 - NestJS microservices architecture
-

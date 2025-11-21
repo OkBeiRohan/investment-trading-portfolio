@@ -196,15 +196,194 @@ NEUTRAL:
 
 ---
 
-## MongoDB Collections
+## Database Architecture
+
+### QuestDB vs TimescaleDB Decision
+
+**Decision**: Use **QuestDB** for time-series data instead of TimescaleDB.
+
+**Rationale**:
+
+1. **Performance**: QuestDB offers 10-20x faster ingestion rates for time-series data
+2. **Simplicity**: Standalone binary, no PostgreSQL dependency
+3. **SQL Compatibility**: PostgreSQL-compatible SQL dialect
+4. **Built-in HTTP API**: REST API for queries without additional drivers
+5. **Time-Series Native**: Optimized for append-only time-series data patterns
+6. **Resource Efficient**: Lower memory footprint than TimescaleDB+PostgreSQL
+7. **Development Experience**: Easier local setup on Windows
+
+**Use Cases**:
+
+- **QuestDB**: Tick data, candles, features, market data (high-frequency writes)
+- **MongoDB**: Signals, orders, positions, performance metrics (complex queries, relationships)
+- **Redis**: Real-time pub/sub, caching, session management
+
+### QuestDB Schema
+
+```sql
+-- Tick data (high-frequency price updates)
+CREATE TABLE ticks (
+    timestamp TIMESTAMP,
+    symbol SYMBOL,
+    price DOUBLE,
+    volume LONG,
+    bid DOUBLE,
+    ask DOUBLE
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+
+-- OHLCV candles (1min, 5min, 15min, 1hour, 1day)
+CREATE TABLE candles (
+    timestamp TIMESTAMP,
+    symbol SYMBOL,
+    timeframe SYMBOL,
+    open DOUBLE,
+    high DOUBLE,
+    low DOUBLE,
+    close DOUBLE,
+    volume LONG
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+
+-- Option Greeks and implied volatility
+CREATE TABLE option_greeks (
+    timestamp TIMESTAMP,
+    symbol SYMBOL,
+    strike DOUBLE,
+    expiry DATE,
+    option_type SYMBOL,  -- 'CALL' or 'PUT'
+    delta DOUBLE,
+    gamma DOUBLE,
+    vega DOUBLE,
+    theta DOUBLE,
+    iv DOUBLE  -- Implied volatility
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+
+-- Engineered features (from data-processor)
+CREATE TABLE features (
+    timestamp TIMESTAMP,
+    symbol SYMBOL,
+    -- Underlying features
+    realized_vol_5d DOUBLE,
+    realized_vol_10d DOUBLE,
+    realized_vol_20d DOUBLE,
+    rsi_14 DOUBLE,
+    macd_value DOUBLE,
+    macd_signal DOUBLE,
+    macd_histogram DOUBLE,
+    sma_20 DOUBLE,
+    sma_50 DOUBLE,
+    ema_12 DOUBLE,
+    ema_26 DOUBLE,
+    -- Sentiment features
+    india_vix DOUBLE,
+    india_vix_ma5 DOUBLE,
+    pcr_volume DOUBLE,
+    pcr_oi DOUBLE,
+    max_pain DOUBLE,
+    -- Option features
+    atm_iv DOUBLE,
+    vol_skew DOUBLE,
+    term_structure DOUBLE
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+```
+
+### MongoDB Collections
 
 All trading activity is persisted to MongoDB for dashboard integration:
 
-- `features`: Time-series feature snapshots
+- `features`: Feature snapshots with metadata (backup/audit trail)
 - `tradingSignals`: ML predictions and confidence scores
 - `orders`: Order history with fills and execution metrics
 - `positions`: Open/closed positions with P&L and Greeks
 - `performanceMetrics`: Daily/weekly/monthly performance stats
+- `rlAgentStates`: RL agent checkpoints and training history
+
+---
+
+## Type Safety Workflow
+
+**Principle**: Single source of truth for all type definitions.
+
+### 1. Define Schema in @repo/schema (Zod)
+
+```typescript
+// packages/schema/src/trading/signal.schema.ts
+import { z } from 'zod';
+
+export const tradingSignalSchema = z.object({
+  userId: z.string(),
+  timestamp: z.date(),
+  prediction: z.enum(['VOL_UP', 'VOL_DOWN', 'NEUTRAL']),
+  confidence: z.number().min(0).max(1),
+  probability: z.number().min(0).max(1),
+  modelContributions: z.object({
+    xgboost: z.number(),
+    cnnLstm: z.number(),
+    ginn: z.number(),
+    svm: z.number(),
+  }),
+  createdAt: z.date(),
+});
+
+export type TradingSignal = z.infer<typeof tradingSignalSchema>;
+```
+
+### 2. Use in @repo/database (Mongoose)
+
+```typescript
+// packages/database/src/schemas/trading-signal.schema.ts
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { type TradingSignal } from '@repo/schema';
+
+@Schema({ timestamps: true })
+export class TradingSignalDocument implements TradingSignal {
+  @Prop({ required: true })
+  userId: string;
+
+  @Prop({ required: true })
+  timestamp: Date;
+
+  @Prop({ required: true, enum: ['VOL_UP', 'VOL_DOWN', 'NEUTRAL'] })
+  prediction: 'VOL_UP' | 'VOL_DOWN' | 'NEUTRAL';
+
+  // ... rest of fields
+}
+
+export const TradingSignalSchema = SchemaFactory.createForClass(
+  TradingSignalDocument,
+);
+```
+
+### 3. Use in Services (Type-Safe)
+
+```typescript
+// apps/algo-worker/src/engines/signal/signal-engine.service.ts
+import { Injectable } from '@nestjs/common';
+import { TradingSignalRepository } from '@repo/database';
+import { type TradingSignal, tradingSignalSchema } from '@repo/schema';
+
+@Injectable()
+export class SignalEngineService {
+  constructor(private readonly signalRepo: TradingSignalRepository) {}
+
+  async saveSignal(
+    signal: Omit<TradingSignal, '_id' | 'createdAt'>,
+  ): Promise<TradingSignal> {
+    // Runtime validation with Zod
+    const validated = tradingSignalSchema.parse(signal);
+
+    // Type-safe database operation
+    return this.signalRepo.create(validated);
+  }
+}
+```
+
+**Benefits**:
+
+- ✅ Compile-time type checking (TypeScript)
+- ✅ Runtime validation (Zod)
+- ✅ Single source of truth (no type drift)
+- ✅ Auto-completion and IntelliSense
+- ✅ Refactoring safety
 
 ---
 
@@ -214,8 +393,8 @@ All trading activity is persisted to MongoDB for dashboard integration:
 
 All services use shared packages:
 
-- `@repo/schema`: Zod schemas and TypeScript types
-- `@repo/database`: MongoDB client and collections
+- `@repo/schema`: Zod schemas and TypeScript types (single source of truth)
+- `@repo/database`: Multi-database package (MongoDB, QuestDB, Redis)
 - `@repo/market-sdk`: Upstox API wrapper
 
 ### TODO: Implementation Steps
@@ -272,6 +451,249 @@ apps/algo-worker/src/engines/
     ├── order-placement.service.ts          # Order execution
     ├── execution-monitor.service.ts        # Fill monitoring
     └── position-manager.service.ts         # Position tracking
+```
+
+---
+
+## Dual-Environment Setup
+
+### Development Environment (Windows 11)
+
+**Purpose**: Local development, testing, and model experimentation
+
+**Stack**:
+
+- Windows 11 Pro
+- Node.js 20.x (LTS)
+- Python 3.10+ (Anaconda/Poetry)
+- Docker Desktop (for MongoDB, QuestDB, Redis)
+- VS Code with Copilot
+
+**Services**:
+
+```bash
+# Start infrastructure with Docker Compose
+cd infrastructure/docker
+docker-compose up -d mongodb questdb redis
+
+# Start apps locally
+cd apps/algo-worker
+pnpm dev  # Port 3001
+
+cd apps/market-feeder
+pnpm dev  # Port 3002
+
+cd apps/data-processor
+pnpm dev  # Port 3003
+```
+
+**Benefits**:
+
+- Fast iteration cycle
+- Full IDE support
+- Easy debugging with breakpoints
+- GPU access for model training (if CUDA-enabled GPU available)
+
+### Production Environment (ArchLinux Server)
+
+**Purpose**: Live trading, 24/7 uptime, production workloads
+
+**Stack**:
+
+- ArchLinux (lightweight, rolling release)
+- Docker + Docker Compose
+- PM2 for process management
+- Nginx as reverse proxy
+- Systemd for service management
+
+**Deployment**:
+
+```bash
+# Build all apps
+pnpm build
+
+# Deploy with Docker Compose
+cd infrastructure/docker
+docker-compose -f docker-compose.prod.yml up -d
+
+# Or use PM2 for Node.js apps
+pm2 start ecosystem.config.js --env production
+```
+
+**Production Configuration**:
+
+- Environment variables in `.env.production`
+- SSL/TLS certificates (Let's Encrypt)
+- Firewall rules (ufw)
+- Log rotation (PM2 + logrotate)
+- Automated backups (cron jobs)
+
+**Monitoring**:
+
+- PM2 Dashboard: Process health, CPU, memory
+- QuestDB Console: `http://server:9000`
+- MongoDB Compass: Remote connection
+- Application logs: `/var/log/trading/`
+
+### Development → Production Workflow
+
+1. **Develop on Windows**: Code, test, train models
+2. **Commit to Git**: Push to repository
+3. **CI/CD Pipeline**: GitHub Actions builds and tests
+4. **Deploy to ArchLinux**: Manual or automated deployment
+5. **Monitor**: PM2 dashboard, logs, alerts
+
+---
+
+## Backup Strategy
+
+### MongoDB Backup
+
+**Strategy**: Automated daily backups with 30-day retention
+
+```bash
+#!/bin/bash
+# Backup script: /opt/trading/scripts/backup-mongodb.sh
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/backup/mongodb"
+RETENTION_DAYS=30
+
+# Create backup
+mongodump \
+  --uri="mongodb://localhost:27017/trading" \
+  --out="$BACKUP_DIR/mongo_$DATE" \
+  --gzip
+
+# Compress backup
+tar -czf "$BACKUP_DIR/mongo_$DATE.tar.gz" "$BACKUP_DIR/mongo_$DATE"
+rm -rf "$BACKUP_DIR/mongo_$DATE"
+
+# Remove old backups
+find "$BACKUP_DIR" -name "mongo_*.tar.gz" -mtime +$RETENTION_DAYS -delete
+
+echo "MongoDB backup completed: mongo_$DATE.tar.gz"
+```
+
+**Cron Schedule**:
+
+```cron
+# /etc/cron.d/trading-backups
+0 2 * * * /opt/trading/scripts/backup-mongodb.sh >> /var/log/trading/backup.log 2>&1
+```
+
+### QuestDB Backup
+
+**Strategy**: Snapshot-based backups with configurable retention
+
+```bash
+#!/bin/bash
+# Backup script: /opt/trading/scripts/backup-questdb.sh
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/backup/questdb"
+QUESTDB_ROOT="/var/lib/questdb/db"
+RETENTION_DAYS=7  # Shorter retention for large time-series data
+
+# Stop writes (graceful)
+curl -X POST "http://localhost:9000/admin/snapshot" || true
+
+# Copy database files
+rsync -av --delete "$QUESTDB_ROOT/" "$BACKUP_DIR/questdb_$DATE/"
+
+# Compress backup
+tar -czf "$BACKUP_DIR/questdb_$DATE.tar.gz" "$BACKUP_DIR/questdb_$DATE"
+rm -rf "$BACKUP_DIR/questdb_$DATE"
+
+# Remove old backups
+find "$BACKUP_DIR" -name "questdb_*.tar.gz" -mtime +$RETENTION_DAYS -delete
+
+echo "QuestDB backup completed: questdb_$DATE.tar.gz"
+```
+
+**Cron Schedule**:
+
+```cron
+# Weekly backups (QuestDB is append-only, less critical)
+0 3 * * 0 /opt/trading/scripts/backup-questdb.sh >> /var/log/trading/backup.log 2>&1
+```
+
+### Redis Backup
+
+**Strategy**: RDB snapshots with AOF persistence
+
+**Configuration** (`redis.conf`):
+
+```conf
+# RDB snapshots
+save 900 1      # After 900 sec (15 min) if at least 1 key changed
+save 300 10     # After 300 sec (5 min) if at least 10 keys changed
+save 60 10000   # After 60 sec if at least 10000 keys changed
+
+# AOF persistence
+appendonly yes
+appendfsync everysec
+
+# Backup directory
+dir /var/lib/redis
+dbfilename dump.rdb
+```
+
+**Backup Script**:
+
+```bash
+#!/bin/bash
+# Copy RDB snapshot
+cp /var/lib/redis/dump.rdb /backup/redis/dump_$(date +%Y%m%d).rdb
+
+# Retention: 7 days
+find /backup/redis -name "dump_*.rdb" -mtime +7 -delete
+```
+
+### Disaster Recovery
+
+**MongoDB Restore**:
+
+```bash
+mongorestore --uri="mongodb://localhost:27017/trading" --gzip /backup/mongodb/mongo_20250121.tar.gz
+```
+
+**QuestDB Restore**:
+
+```bash
+# Stop QuestDB
+systemctl stop questdb
+
+# Restore data
+tar -xzf /backup/questdb/questdb_20250121.tar.gz -C /var/lib/questdb/db/
+
+# Start QuestDB
+systemctl start questdb
+```
+
+**Redis Restore**:
+
+```bash
+# Stop Redis
+systemctl stop redis
+
+# Restore RDB
+cp /backup/redis/dump_20250121.rdb /var/lib/redis/dump.rdb
+
+# Start Redis
+systemctl start redis
+```
+
+### Cloud Backup (Optional)
+
+For production, consider syncing backups to cloud storage:
+
+```bash
+# Upload to AWS S3
+aws s3 sync /backup/ s3://trading-backups/ --storage-class GLACIER
+
+# Or Google Cloud Storage
+gsutil -m rsync -r /backup/ gs://trading-backups/
 ```
 
 ---
