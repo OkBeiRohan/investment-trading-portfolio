@@ -3,14 +3,22 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-// Import database module
-import { TradingDatabaseModule } from '@repo/database';
+// Import database modules
+import {
+  TradingDatabaseModule,
+  QuestDBModule,
+  RedisModule,
+} from '@repo/database';
 
 // Import all 4 engines
 import { DataEngineModule } from './engines/data/data-engine.module';
 import { SignalEngineModule } from './engines/signal/signal-engine.module';
 import { PolicyEngineModule } from './engines/policy/policy-engine.module';
 import { ExecutionEngineModule } from './engines/execution/execution-engine.module';
+
+// Import health and models modules
+import { HealthModule } from './health/health.module';
+import { ModelsModule } from './models/model.module';
 
 // Import orchestrator
 import { TradingOrchestrator } from './trading-orchestrator.service';
@@ -27,14 +35,20 @@ import tradingConfig from './config/trading.config';
       envFilePath: ['.env.local', '.env'],
     }),
 
-    // Database connection (MongoDB)
+    // Database connections
     TradingDatabaseModule,
+    QuestDBModule,
+    RedisModule,
 
     // 4-Engine Architecture
     DataEngineModule,
     SignalEngineModule,
     PolicyEngineModule,
     ExecutionEngineModule,
+
+    // Health monitoring & Model management
+    HealthModule,
+    ModelsModule,
   ],
   controllers: [AppController],
   providers: [AppService, TradingOrchestrator],

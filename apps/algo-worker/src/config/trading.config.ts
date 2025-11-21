@@ -12,6 +12,24 @@ export default registerAs('trading', () => ({
     database: process.env.MONGODB_DATABASE || 'trading',
   },
 
+  // QuestDB Configuration (Time-Series Database)
+  questdb: {
+    host: process.env.QUESTDB_HOST || 'localhost',
+    port: parseInt(process.env.QUESTDB_PORT || '8812', 10),
+    database: process.env.QUESTDB_DATABASE || 'qdb',
+    user: process.env.QUESTDB_USER || 'admin',
+    password: process.env.QUESTDB_PASSWORD || 'quest',
+    poolSize: parseInt(process.env.QUESTDB_POOL_SIZE || '20', 10),
+  },
+
+  // Redis Configuration (Cache & Pub/Sub)
+  redis: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    password: process.env.REDIS_PASSWORD || '',
+    db: parseInt(process.env.REDIS_DB || '0', 10),
+  },
+
   // Upstox API Configuration
   upstox: {
     apiKey: process.env.UPSTOX_API_KEY || '',

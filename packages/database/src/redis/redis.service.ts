@@ -118,4 +118,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       }
     });
   }
+
+  /**
+   * Health check - ping Redis
+   */
+  async healthCheck(): Promise<boolean> {
+    try {
+      const result = await this.publisher.ping();
+      return result === "PONG";
+    } catch (error) {
+      this.logger.error("Redis health check failed", error);
+      return false;
+    }
+  }
 }
