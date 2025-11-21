@@ -10,7 +10,7 @@
 
 # Configuration
 PROTO_URL="https://assets.upstox.com/feed/market-data-feed/v3/MarketDataFeed.proto"
-OUTPUT_DIR="src/api/upstox/market-data/proto"
+OUTPUT_DIR="src/providers/upstox/websocket/proto"
 OUTPUT_FILE="$OUTPUT_DIR/MarketDataFeedV3.proto"
 
 # Colors for output

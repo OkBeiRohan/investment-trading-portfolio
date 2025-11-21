@@ -38,6 +38,67 @@ export class AppModule {}
 
 ## Quick Start
 
+### Usage Examples
+
+```typescript
+// apps/algo-worker/src/app.module.ts
+import { Module } from "@nestjs/common";
+import { UpstoxModule } from "@repo/market-sdk";
+-@Module({
+  imports: [
+    UpstoxModule, // Register Upstox provider
+  ],
+})
+export class AppModule {};
+
+// apps/algo-worker/src/engines/data/market-connector.service.ts
+import { Injectable } from "@nestjs/common";
+import {
+  UpstoxProvider,
+  MultiplexerService,
+  PriorityLevel,
+} from "@repo/market-sdk";
+
+@Injectable()
+export class MarketConnectorService {
+  constructor(
+    private upstox: UpstoxProvider,
+    private multiplexer: MultiplexerService
+  ) {}
+
+  async subscribeToMarketData(userId: string) {
+    // Get Nifty 50 option chain
+    const chain = await this.upstox.getOptionChain(
+      "NSE_INDEX|Nifty 50",
+      "2024-12-26"
+    );
+
+    // Subscribe with priorities
+    const instruments = chain.map((opt) => opt.instrumentKey);
+    await this.multiplexer.subscribe(userId, instruments, PriorityLevel.HIGH);
+
+    // Listen to market data
+    this.multiplexer.on("data", (data) => {
+      console.log("Received market data:", data);
+    });
+  }
+
+  async placeOrder(userId: string) {
+    const order = await this.upstox.placeOrder(userId, {
+      instrumentKey: "NSE_EQ|INE669E01016",
+      quantity: 10,
+      price: 0,
+      transactionType: "BUY",
+      orderType: "MARKET",
+      product: "DELIVERY",
+      validity: "DAY",
+    });
+
+    console.log("Order placed:", order.orderId);
+  }
+}
+```
+
 ### 1. User Authentication
 
 **Sandbox Mode (Manual Token Entry):**
