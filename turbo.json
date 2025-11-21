@@ -2,18 +2,66 @@
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
   "tasks": {
+    "generate-schemas": {
+      "dependsOn": [],
+      "inputs": ["src/**/*.schema.ts"],
+      "outputs": ["generated/**", "types/**"]
+    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "^generate-schemas"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**",
+        "*.onnx",
+        "*.joblib"
+      ]
+    },
+    "build:dev": {
+      "dependsOn": ["^build", "^generate-schemas"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**"],
+      "cache": true
+    },
+    "build:prod": {
+      "dependsOn": ["^build", "^generate-schemas"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**"],
+      "cache": true
     },
     "lint": {
       "dependsOn": ["^lint"]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["^check-types", "^generate-schemas"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts"],
+      "outputs": ["coverage/**"]
+    },
+    "test:unit": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.spec.ts"],
+      "outputs": ["coverage/**"]
+    },
+    "test:integration": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "cache": false
     },
     "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "start:native": {
+      "cache": false
+    },
+    "dev:native": {
       "cache": false,
       "persistent": true
     }
