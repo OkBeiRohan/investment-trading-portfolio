@@ -28,11 +28,103 @@ investment-trading-portfolio/
 ```typescript
 // ✅ Correct - Use shared packages
 import { userSchema, type User } from '@repo/schema';
-import { db, collections } from '@repo/database';
+import {
+  QuestDBService,
+  RedisService,
+  TradingSignalRepository,
+} from '@repo/database';
 import { UpstoxClient } from '@repo/market-sdk';
 
 // ❌ Wrong - Don't create local copies
 import { UpstoxClient } from './utils/upstox'; // NEVER do this
+```
+
+### CRITICAL: Database Package Rule
+
+**ALL database connections, schemas, and repositories MUST be in `@repo/database` package.**
+
+**What this means:**
+
+- ✅ **DO**: Import and use services from `@repo/database`
+- ✅ **DO**: Use exported repositories for database operations
+- ✅ **DO**: Import database modules (TradingDatabaseModule, QuestDBModule, RedisModule)
+- ❌ **DON'T**: Install `@nestjs/mongoose` in this app
+- ❌ **DON'T**: Create database connections here
+- ❌ **DON'T**: Define Mongoose schemas in this app
+- ❌ **DON'T**: Use `@InjectModel()` decorator here
+- ❌ **DON'T**: Create repository classes in this app
+
+**Correct Pattern:**
+
+```typescript
+// ✅ CORRECT - app.module.ts
+import {
+  TradingDatabaseModule,
+  QuestDBModule,
+  RedisModule,
+} from '@repo/database';
+
+@Module({
+  imports: [
+    TradingDatabaseModule, // MongoDB with all schemas
+    QuestDBModule, // QuestDB connection
+    RedisModule, // Redis connection
+  ],
+})
+export class AppModule {}
+
+// ✅ CORRECT - signal.service.ts
+import { Injectable } from '@nestjs/common';
+import { TradingSignalRepository, QuestDBService } from '@repo/database';
+import { type TradingSignal } from '@repo/schema';
+
+@Injectable()
+export class SignalService {
+  constructor(
+    private readonly signalRepo: TradingSignalRepository, // ✅ From @repo/database
+    private readonly questdb: QuestDBService, // ✅ From @repo/database
+  ) {}
+
+  async saveSignal(signal: Omit<TradingSignal, '_id'>): Promise<TradingSignal> {
+    return this.signalRepo.create(signal); // ✅ Use repository method
+  }
+
+  async saveFeaturesToQuestDB(features: any): Promise<void> {
+    await this.questdb.insertFeatures([features]); // ✅ Use service method
+  }
+}
+```
+
+**Wrong Pattern - NEVER DO THIS:**
+
+```typescript
+// ❌ WRONG - Don't install mongoose in algo-worker
+import { InjectModel } from '@nestjs/mongoose'; // ❌ NEVER import this here
+import { Model } from 'mongoose'; // ❌ NEVER import this here
+
+@Injectable()
+export class SignalService {
+  constructor(
+    @InjectModel('Signal') private signalModel: Model<any>, // ❌ NEVER do this
+  ) {}
+}
+```
+
+**Database Operations - Always Use @repo/database:**
+
+```typescript
+// ✅ MongoDB operations
+import { TradingSignalRepository, OrderRepository } from '@repo/database';
+
+// ✅ QuestDB operations
+import { QuestDBService } from '@repo/database';
+await questdb.insertTicks([...]);
+await questdb.insertCandles([...]);
+
+// ✅ Redis operations
+import { RedisService } from '@repo/database';
+await redis.set('key', 'value');
+await redis.publishMarketData(data);
 ```
 
 ### CRITICAL: Schema Package is Single Source of Truth
@@ -1332,5 +1424,48 @@ export class SignalRepository {
 6. ✅ Are types strictly defined?
 7. ✅ Is this testable?
 8. ✅ Have I logged enough for post-analysis?
+9. ✅ Am I using @repo/database for all database operations?
+10. ✅ Have I updated documentation?
+
+## Documentation & Progress Tracking
+
+**After implementing any feature, ALWAYS update:**
+
+1. **README.md** - Add usage examples, API docs if feature is public
+2. **docs/ARCHITECTURE.md** - Update if architecture changed
+3. **docs/PROGRESS.md** - Mark feature as complete, update status
+4. **Code comments** - Document complex algorithms with paper citations
+
+**Documentation Structure:**
+
+```
+apps/algo-worker/
+├── README.md                    # Quick start, overview
+├── docs/
+│   ├── ARCHITECTURE.md          # 4-engine system design
+│   ├── PROGRESS.md              # Feature completion status
+│   ├── ML_ARCHITECTURE.md       # ML pipeline details
+│   ├── API.md                   # Endpoint documentation
+│   └── EXAMPLES.md              # Code examples
+└── .github/
+    └── copilot-instructions.md  # This file
+```
+
+**Progress Tracking Format:**
+
+```markdown
+## Completed Features
+
+- ✅ DataEngine - Market data ingestion (2024-11-21)
+- ✅ SignalEngine - ONNX model inference (2024-11-21)
+
+## In Progress
+
+- 🔄 PolicyEngine - Delta hedging RL
+
+## Planned
+
+- 📋 ExecutionEngine - Optimal execution RL
+```
 
 **Remember**: This is production trading code. Every line can cost or earn real money. Precision and robustness matter more than speed of implementation.

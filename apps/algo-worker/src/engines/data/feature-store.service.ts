@@ -1,23 +1,64 @@
 /**
  * FeatureStoreService
- * Manages MongoDB time-series collection for features
+ * Manages QuestDB time-series storage for features
  * Stores computed features for ML training and analysis
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import type { FeatureSnapshot } from '@repo/schema';
+import { QuestDBService, type FeatureData } from '@repo/database';
+import { type FeatureSnapshot } from '@repo/schema';
 
 @Injectable()
 export class FeatureStoreService {
   private readonly logger = new Logger(FeatureStoreService.name);
 
+  constructor(private readonly questdb: QuestDBService) {}
+
   /**
-   * Store feature snapshot in MongoDB time-series collection
+   * Store feature snapshot in QuestDB time-series database
    */
   async saveFeatures(snapshot: FeatureSnapshot): Promise<void> {
-    this.logger.debug(`Saving features for ${snapshot.instrument}`);
-    // TODO: Implement using @repo/database
-    // await collections.features.insertOne(snapshot);
+    try {
+      const featureData: FeatureData = {
+        timestamp: snapshot.timestamp,
+        symbol: snapshot.instrument || 'NIFTY50',
+        features: this.flattenFeatures(snapshot.features),
+        metadata: snapshot.metadata,
+      };
+
+      await this.questdb.insertFeatures([featureData]);
+
+      this.logger.debug(
+        `Saved features for ${featureData.symbol} at ${featureData.timestamp}`,
+      );
+    } catch (error) {
+      this.logger.error('Failed to save features to QuestDB', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Batch save multiple feature snapshots
+   * More efficient for high-frequency data
+   */
+  async saveFeaturesBatch(snapshots: FeatureSnapshot[]): Promise<void> {
+    try {
+      const featureDataArray = snapshots.map((snapshot) => ({
+        timestamp: snapshot.timestamp,
+        symbol: snapshot.instrument || 'NIFTY50',
+        features: this.flattenFeatures(snapshot.features),
+        metadata: snapshot.metadata,
+      }));
+
+      await this.questdb.insertFeatures(featureDataArray);
+
+      this.logger.debug(
+        `Batch saved ${featureDataArray.length} feature snapshots`,
+      );
+    } catch (error) {
+      this.logger.error('Failed to batch save features to QuestDB', error);
+      throw error;
+    }
   }
 
   /**
@@ -25,16 +66,28 @@ export class FeatureStoreService {
    */
   async getRecentFeatures(
     instrument: string,
-    limit: number = 100,
+    limit = 100,
   ): Promise<FeatureSnapshot[]> {
     this.logger.debug(`Fetching ${limit} recent features for ${instrument}`);
-    // TODO: Implement using @repo/database
-    // return await collections.features
-    //   .find({ instrument })
-    //   .sort({ timestamp: -1 })
-    //   .limit(limit)
-    //   .toArray();
-    return [];
+
+    try {
+      const query = `
+        SELECT timestamp, symbol, features, metadata
+        FROM features
+        WHERE symbol = '${instrument}'
+        ORDER BY timestamp DESC
+        LIMIT ${limit}
+      `;
+
+      const results = await this.questdb.query(query);
+      return results.map((row) => this.rowToSnapshot(row));
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch recent features for ${instrument}`,
+        error,
+      );
+      return [];
+    }
   }
 
   /**
@@ -48,15 +101,26 @@ export class FeatureStoreService {
     this.logger.debug(
       `Fetching features for ${instrument} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
     );
-    // TODO: Implement using @repo/database
-    // return await collections.features
-    //   .find({
-    //     instrument,
-    //     timestamp: { $gte: startDate, $lte: endDate },
-    //   })
-    //   .sort({ timestamp: 1 })
-    //   .toArray();
-    return [];
+
+    try {
+      const query = `
+        SELECT timestamp, symbol, features, metadata
+        FROM features
+        WHERE symbol = '${instrument}'
+          AND timestamp >= '${startDate.toISOString()}'
+          AND timestamp <= '${endDate.toISOString()}'
+        ORDER BY timestamp ASC
+      `;
+
+      const results = await this.questdb.query(query);
+      return results.map((row) => this.rowToSnapshot(row));
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch features in range for ${instrument}`,
+        error,
+      );
+      return [];
+    }
   }
 
   /**
@@ -64,52 +128,96 @@ export class FeatureStoreService {
    */
   async getFeatureStats(
     instrument: string,
-    days: number = 30,
+    days = 30,
   ): Promise<{
     totalSnapshots: number;
-    goodQuality: number;
-    filledQuality: number;
-    anomalousQuality: number;
+    avgFeatureCount: number;
+    firstSnapshot: Date | null;
+    lastSnapshot: Date | null;
   }> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // TODO: Implement aggregation using @repo/database
-    // const stats = await collections.features.aggregate([
-    //   {
-    //     $match: {
-    //       instrument,
-    //       timestamp: { $gte: startDate },
-    //     },
-    //   },
-    //   {
-    //     $group: {
-    //       _id: null,
-    //       total: { $sum: 1 },
-    //       good: {
-    //         $sum: {
-    //           $cond: [{ $eq: ['$metadata.dataQuality', 'good'] }, 1, 0],
-    //         },
-    //       },
-    //       filled: {
-    //         $sum: {
-    //           $cond: [{ $eq: ['$metadata.dataQuality', 'filled'] }, 1, 0],
-    //         },
-    //       },
-    //       anomalous: {
-    //         $sum: {
-    //           $cond: [{ $eq: ['$metadata.dataQuality', 'anomalous'] }, 1, 0],
-    //         },
-    //       },
-    //     },
-    //   },
-    // ]);
+    try {
+      const query = `
+        SELECT 
+          COUNT(*) as total,
+          MIN(timestamp) as first_snapshot,
+          MAX(timestamp) as last_snapshot
+        FROM features
+        WHERE symbol = '${instrument}'
+          AND timestamp >= '${startDate.toISOString()}'
+      `;
 
+      const results = await this.questdb.query(query);
+
+      if (results.length === 0) {
+        return {
+          totalSnapshots: 0,
+          avgFeatureCount: 0,
+          firstSnapshot: null,
+          lastSnapshot: null,
+        };
+      }
+
+      return {
+        totalSnapshots: results[0].total || 0,
+        avgFeatureCount: 0,
+        firstSnapshot: results[0].first_snapshot
+          ? new Date(results[0].first_snapshot)
+          : null,
+        lastSnapshot: results[0].last_snapshot
+          ? new Date(results[0].last_snapshot)
+          : null,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get feature stats for ${instrument}`, error);
+      return {
+        totalSnapshots: 0,
+        avgFeatureCount: 0,
+        firstSnapshot: null,
+        lastSnapshot: null,
+      };
+    }
+  }
+
+  /**
+   * Flatten nested features object to flat structure for QuestDB
+   */
+  private flattenFeatures(features: any): Record<string, number> {
+    const flattened: Record<string, number> = {};
+
+    const flatten = (obj: any, prefix = ''): void => {
+      for (const key in obj) {
+        if (
+          typeof obj[key] === 'object' &&
+          obj[key] !== null &&
+          !Array.isArray(obj[key])
+        ) {
+          flatten(obj[key], prefix + key + '_');
+        } else if (typeof obj[key] === 'number') {
+          flattened[prefix + key] = obj[key];
+        }
+      }
+    };
+
+    flatten(features);
+    return flattened;
+  }
+
+  /**
+   * Convert QuestDB row to FeatureSnapshot
+   */
+  private rowToSnapshot(row: any): FeatureSnapshot {
     return {
-      totalSnapshots: 0,
-      goodQuality: 0,
-      filledQuality: 0,
-      anomalousQuality: 0,
+      timestamp: new Date(row.timestamp),
+      instrument: row.symbol,
+      features: row.features,
+      metadata: row.metadata || {
+        dataQuality: 'good',
+        missingFields: [],
+        version: '1.0.0',
+      },
     };
   }
 }

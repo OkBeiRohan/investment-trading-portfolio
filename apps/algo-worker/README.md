@@ -29,19 +29,27 @@ Algo Worker is the core trading engine of the investment-trading-portfolio monor
 
 ## 📚 Documentation
 
-**Start here** → [`QUICK_START.md`](./QUICK_START.md) - Get up and running in 5 minutes
+**Start here** → [`docs/QUICK_START.md`](./docs/QUICK_START.md) - Get up and running in 5 minutes
 
 ### Core Documentation
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System design and 4-engine architecture
-- **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - What's been built, what's next
-- **[PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)** - Complete file tree and code stats
-- **[QUICK_START.md](./QUICK_START.md)** - Developer guide and common tasks
+- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - 4-engine system design and architecture
+- **[docs/PROGRESS.md](./docs/PROGRESS.md)** - Implementation status and roadmap
+- **[docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)** - Complete file tree and code stats
+- **[docs/QUICK_START.md](./docs/QUICK_START.md)** - Developer guide and common tasks
+
+### ML Documentation
+
+- **[docs/ML_UNIFIED_ARCHITECTURE.md](./docs/ML_UNIFIED_ARCHITECTURE.md)** - ML pipeline and ensemble design
+- **[docs/ML_SETUP_GUIDE.md](./docs/ML_SETUP_GUIDE.md)** - Python environment and training setup
+- **[docs/ML_QUICKSTART.md](./docs/ML_QUICKSTART.md)** - Quick model training guide
+- **[docs/ML_DECISION.md](./docs/ML_DECISION.md)** - ML architecture decisions
 
 ### Additional Resources
 
 - **[.github/copilot-instructions.md](./.github/copilot-instructions.md)** - Design principles and coding standards
 - **[.env.example](./.env.example)** - Environment variable reference
+- **[docs/VERIFICATION.md](./docs/VERIFICATION.md)** - Testing and verification procedures
 
 ---
 
