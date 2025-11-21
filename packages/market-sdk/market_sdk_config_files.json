@@ -1,0 +1,400 @@
+// ============================================================================
+// packages/market-sdk/package.json
+// ============================================================================
+{
+  "name": "@repo/market-sdk",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./upstox": "./src/providers/upstox/index.ts",
+    "./yahoo": "./src/providers/yahoo/index.ts",
+    "./binance": "./src/providers/binance/index.ts"
+  },
+  "scripts": {
+    "proto:update": "bash scripts/fetch-proto.sh",
+    "build": "npm run proto:update && tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/mongoose": "^11.0.3",
+    "@repo/database": "workspace:*",
+    "@repo/schema": "workspace:*",
+    "axios": "^1.7.7",
+    "long": "^5.3.2",
+    "protobufjs": "^7.5.4",
+    "ws": "^8.18.3",
+    "yahoo-finance2": "^3.10.2",
+    "@binance/connector": "^3.6.1"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "typescript": "5.9.3"
+  }
+}
+
+// ============================================================================
+// packages/market-sdk/.env.sample
+// ============================================================================
+// Copy to .env and fill in your credentials
+
+# ============================================
+# PLATFORM-LEVEL UPSTOX APP CREDENTIALS
+# (Get from: https://upstox.com/developer/apps)
+# ============================================
+UPSTOX_API_KEY=your_api_key_here
+UPSTOX_API_SECRET=your_api_secret_here
+UPSTOX_REDIRECT_URI=http://localhost:3000/api/upstox/callback
+
+# Environment: SANDBOX or LIVE
+UPSTOX_ENV=SANDBOX
+
+# ============================================
+# ENCRYPTION KEY (CRITICAL - 32 CHARACTERS)
+# Generate: openssl rand -base64 32 | cut -c1-32
+# ============================================
+ENCRYPTION_KEY=your_32_character_encryption_key
+
+# ============================================
+# DATABASE CONNECTIONS
+# ============================================
+MONGODB_URI=mongodb://localhost:27017/trading
+REDIS_URL=redis://localhost:6379
+
+# ============================================
+# OPTIONAL: YAHOO FINANCE & BINANCE
+# ============================================
+# Yahoo Finance doesn't require auth
+# Binance API (if using Binance provider)
+BINANCE_API_KEY=your_binance_api_key
+BINANCE_API_SECRET=your_binance_api_secret
+
+// ============================================================================
+// packages/market-sdk/tsconfig.json
+// ============================================================================
+{
+  "extends": "@repo/typescript-config/nestjs.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2023",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@repo/database": ["../database/src"],
+      "@repo/schema": ["../schema/src"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
+}
+
+// ============================================================================
+// packages/market-sdk/jest.config.js
+// ============================================================================
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src'],
+  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  transform: {
+    '^.+\\.ts$': 'ts-jest',
+  },
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/*.spec.ts',
+    '!src/**/*.interface.ts',
+    '!src/**/index.ts',
+  ],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  },
+  moduleNameMapper: {
+    '^@repo/database$': '<rootDir>/../database/src',
+    '^@repo/schema$': '<rootDir>/../schema/src',
+  },
+};
+
+// ============================================================================
+// packages/market-sdk/.eslintrc.js
+// ============================================================================
+module.exports = {
+  extends: ['@repo/eslint-config/nestjs.js'],
+  parserOptions: {
+    project: './tsconfig.json',
+    tsconfigRootDir: __dirname,
+  },
+  rules: {
+    '@typescript-eslint/interface-name-prefix': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
+  },
+};
+
+// ============================================================================
+// packages/market-sdk/README.md
+// ============================================================================
+# @repo/market-sdk
+
+Multi-provider market data and trading SDK for Indian & international markets.
+
+## Features
+
+✅ **Multi-User Authentication:** Sandbox & Live OAuth2 flows
+✅ **Provider-Agnostic:** Upstox, Yahoo Finance, Binance support
+✅ **WebSocket Multiplexer:** Intelligent subscription management with priority-based eviction
+✅ **Type-Safe:** Full TypeScript support with @repo/schema integration
+✅ **Encrypted Storage:** AES-256-GCM encryption for access tokens
+✅ **NestJS Native:** Built as NestJS Global Module
+
+## Supported Providers
+
+| Provider | Market Data | Orders | Portfolio | WebSocket |
+|----------|-------------|--------|-----------|-----------|
+| Upstox   | ✅          | ✅     | ✅        | ✅        |
+| Yahoo    | ✅          | ❌     | ❌        | ❌        |
+| Binance  | ✅          | ✅     | ✅        | ✅        |
+
+## Installation
+
+This package is part of the monorepo. Import in your NestJS app:
+
+```typescript
+// app.module.ts
+import { Module } from '@nestjs/common';
+import { UpstoxModule } from '@repo/market-sdk';
+
+@Module({
+  imports: [
+    UpstoxModule, // Registers Upstox provider globally
+  ],
+})
+export class AppModule {}
+```
+
+## Quick Start
+
+### 1. User Authentication
+
+**Sandbox Mode (Manual Token Entry):**
+```typescript
+import { AuthManagerService } from '@repo/market-sdk';
+
+// User pastes token from Upstox Dashboard
+await authManager.saveSandboxToken(userId, 'eyJhbG...');
+```
+
+**Live Mode (OAuth2):**
+```typescript
+// Step 1: Generate authorization URL
+const authUrl = authManager.generateAuthorizationUrl(
+  process.env.UPSTOX_API_KEY,
+  process.env.UPSTOX_REDIRECT_URI
+);
+// Redirect user to authUrl
+
+// Step 2: Handle callback
+GET /api/upstox/callback?code=ABC123
+
+await authManager.handleLiveCallback(userId, authCode, {
+  apiKey: process.env.UPSTOX_API_KEY,
+  apiSecret: process.env.UPSTOX_API_SECRET,
+  redirectUri: process.env.UPSTOX_REDIRECT_URI,
+});
+```
+
+### 2. Market Data
+
+```typescript
+import { UpstoxProvider } from '@repo/market-sdk';
+
+@Injectable()
+export class MarketService {
+  constructor(private upstox: UpstoxProvider) {}
+
+  async getMarketData() {
+    // Get LTP
+    const ltpMap = await this.upstox.getLTP(['NSE_INDEX|Nifty 50']);
+    
+    // Get option chain
+    const chain = await this.upstox.getOptionChain('NSE_INDEX|Nifty 50', '2024-12-26');
+    
+    // Get historical data
+    const candles = await this.upstox.getHistoricalData({
+      instrumentKey: 'NSE_INDEX|Nifty 50',
+      interval: '5m',
+      startDate: new Date('2024-11-01'),
+      endDate: new Date('2024-11-21'),
+    });
+  }
+}
+```
+
+### 3. Place Orders
+
+```typescript
+import { UpstoxProvider, PriorityLevel } from '@repo/market-sdk';
+
+async placeOrder(userId: string) {
+  const order = await this.upstox.placeOrder(userId, {
+    instrumentKey: 'NSE_EQ|INE669E01016', // TCS
+    quantity: 10,
+    price: 0,
+    transactionType: 'BUY',
+    orderType: 'MARKET',
+    product: 'DELIVERY',
+    validity: 'DAY',
+  });
+  
+  console.log('Order ID:', order.orderId);
+}
+```
+
+### 4. WebSocket Subscriptions (with Multiplexer)
+
+```typescript
+import { MultiplexerService, PriorityLevel } from '@repo/market-sdk';
+
+@Injectable()
+export class MarketStreamService {
+  constructor(private multiplexer: MultiplexerService) {}
+
+  async subscribeToOptions(userId: string) {
+    // Subscribe to entire option chain with priorities
+    const instruments = [
+      'NSE_INDEX|Nifty 50',           // CRITICAL
+      'NSE_FO|NIFTY24DEC19000CE',     // HIGH (ATM)
+      'NSE_FO|NIFTY24DEC19000PE',     // HIGH (ATM)
+      'NSE_FO|NIFTY24DEC19050CE',     // MEDIUM (OTM)
+      // ... more instruments
+    ];
+    
+    await this.multiplexer.subscribe(userId, instruments, PriorityLevel.HIGH);
+    
+    // Listen to market data
+    this.multiplexer.on('data', (data) => {
+      console.log('Real-time data:', data);
+    });
+  }
+}
+```
+
+## Multi-Provider Support
+
+```typescript
+import { ProviderFactory } from '@repo/market-sdk';
+
+// Use Yahoo for historical data
+const yahoo = ProviderFactory.create('yahoo');
+const historicalData = await yahoo.getHistoricalData({
+  instrumentKey: '^NSEI',
+  interval: '1d',
+  startDate: new Date('2020-01-01'),
+  endDate: new Date('2024-11-21'),
+});
+
+// Use Upstox for live trading
+const upstox = ProviderFactory.create('upstox');
+await upstox.placeOrder(userId, { /* order params */ });
+
+// Use Binance for crypto
+const binance = ProviderFactory.create('binance');
+await binance.placeOrder(userId, { /* crypto order */ });
+```
+
+## WebSocket Multiplexer Details
+
+**Problem:** Upstox limits WebSocket connections (2-5 sockets, 3000-5000 instruments per socket)
+
+**Solution:** Intelligent multiplexer with bin packing & priority-based eviction
+
+**Priority Levels:**
+- `CRITICAL (1)`: Indices, Futures
+- `HIGH (2)`: ATM options
+- `MEDIUM (3)`: Near OTM (±5 strikes)
+- `LOW (4)`: Deep OTM
+
+**Algorithm:**
+1. First-Fit allocation to existing sockets
+2. Create new socket if under limit
+3. Evict LOW priority if full
+4. Store state in Redis for crash recovery
+
+## Environment Variables
+
+```bash
+# Platform-level Upstox App Credentials
+UPSTOX_API_KEY=your_api_key
+UPSTOX_API_SECRET=your_secret
+UPSTOX_REDIRECT_URI=http://localhost:3000/callback
+
+# Encryption Key (32 characters)
+ENCRYPTION_KEY=your_32_char_key
+
+# Databases
+MONGODB_URI=mongodb://localhost:27017/trading
+REDIS_URL=redis://localhost:6379
+```
+
+## Testing
+
+```bash
+npm run test          # Run all tests
+npm run test:watch    # Watch mode
+npm run test:cov      # Coverage report
+```
+
+## Architecture
+
+```
+market-sdk/
+├── core/           # Provider interfaces & factory
+├── auth/           # Multi-user authentication
+├── multiplexer/    # WebSocket management
+├── providers/
+│   ├── upstox/     # Upstox implementation
+│   ├── yahoo/      # Yahoo Finance
+│   └── binance/    # Binance
+└── interfaces/     # Shared provider contracts
+```
+
+## License
+
+Part of the investment-trading-portfolio monorepo. MIT License.
