@@ -8,6 +8,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "generate-json-schema": "tsx scripts/generate-json-schema.ts",
+    "generate-schemas": "pnpm generate-json-schema",
+    "build": "pnpm generate-schemas && tsc --noEmit",
     "lint": "eslint .",
     "check-types": "tsc --noEmit"
   },
@@ -16,6 +19,8 @@
   },
   "devDependencies": {
     "typescript": "^5.9.3",
-    "eslint": "^9.39.1"
+    "eslint": "^9.39.1",
+    "tsx": "^4.7.0",
+    "zod-to-json-schema": "^3.24.1"
   }
 }
