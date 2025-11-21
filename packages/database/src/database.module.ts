@@ -112,6 +112,10 @@ export class TradingDatabaseModule {
               name: schemas.FeatureSnapshot.name,
               schema: schemas.FeatureSnapshotSchema,
             },
+            {
+              name: schemas.ModelMetadata.name,
+              schema: schemas.ModelMetadataSchema,
+            },
           ],
           "trading"
         ),

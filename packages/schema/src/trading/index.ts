@@ -15,6 +15,7 @@ export * from "./base";
 
 // Domain schemas (alphabetical order)
 export * from "./feature.schema";
+export * from "./model-metadata.schema";
 export * from "./order.schema";
 export * from "./performance.schema";
 export * from "./position.schema";
