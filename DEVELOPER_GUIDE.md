@@ -8,11 +8,11 @@
    - [Windows Development Setup](#windows-development-setup)
    - [ArchLinux Production Setup](#archlinux-production-setup)
 2. [Development Workflow](#development-workflow)
-3. [Type Generation & Schema Management](#type-generation--schema-management)
+3. [Type Generation &amp; Schema Management](#type-generation--schema-management)
 4. [Database Management](#database-management)
 5. [Testing Strategy](#testing-strategy)
 6. [Debugging Guide](#debugging-guide)
-7. [Common Issues & Solutions](#common-issues--solutions)
+7. [Common Issues &amp; Solutions](#common-issues--solutions)
 8. [Deployment](#deployment)
 
 ---
@@ -36,7 +36,7 @@
 
 ```powershell
 # Clone repository
-git clone https://github.com/your-org/investment-trading-portfolio.git
+git clone https://github.com/OkBeiRohan/investment-trading-portfolio.git
 cd investment-trading-portfolio
 
 # Install dependencies
@@ -81,6 +81,7 @@ pnpm dev
    - Thunder Client (API testing)
 
 3. **PowerShell Execution Policy:**
+
    ```powershell
    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
    ```
