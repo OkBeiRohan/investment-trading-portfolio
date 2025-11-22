@@ -30,9 +30,9 @@
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
     "@repo/schema": "workspace:*",
-    "bullmq": "^5.64.0",
+    "bullmq": "^5.64.1",
     "ioredis": "^5.8.2",
-    "mongoose": "^8.20.0",
+    "mongoose": "^9.0.0",
     "onnxruntime-node": "^1.23.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"

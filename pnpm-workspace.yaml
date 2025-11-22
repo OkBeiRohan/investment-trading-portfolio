@@ -4,6 +4,7 @@ packages:
 
 onlyBuiltDependencies:
   - '@nestjs/core'
+  - esbuild
   - msgpackr-extract
   - onnxruntime-node
   - protobufjs
