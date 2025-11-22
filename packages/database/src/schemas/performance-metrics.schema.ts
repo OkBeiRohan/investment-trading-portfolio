@@ -92,6 +92,21 @@ export class PerformanceMetrics
 
   @Prop()
   provider?: string;
+
+  @Prop()
+  accuracy: number;
+
+  @Prop()
+  auc: number;
+
+  @Prop()
+  precision: number;
+
+  @Prop()
+  recall: number;
+
+  @Prop()
+  f1Score: number;
 }
 
 export const PerformanceMetricsSchema =
