@@ -52,6 +52,47 @@ else
   echo "No proxy detected; attempting direct connection"
 fi
 
+# If nothing found in the *nix env, try to read Windows env vars (useful when running from PowerShell)
+if [ -z "$SELECTED_PROXY" ]; then
+  # Try cmd.exe expansion (Git Bash / MSYS / WSL may have cmd.exe)
+  if command -v cmd.exe >/dev/null 2>&1; then
+    win_fetch=$(cmd.exe /C "echo %FETCH_PROTO_PROXY%" 2>/dev/null | tr -d '\r')
+    win_https=$(cmd.exe /C "echo %HTTPS_PROXY%" 2>/dev/null | tr -d '\r')
+    win_http=$(cmd.exe /C "echo %HTTP_PROXY%" 2>/dev/null | tr -d '\r')
+    if [ -n "$win_fetch" ] && [ "$win_fetch" != "%FETCH_PROTO_PROXY%" ]; then
+      SELECTED_PROXY="$win_fetch"
+      echo "Detected Windows FETCH_PROTO_PROXY via cmd.exe: $SELECTED_PROXY"
+    elif [ -n "$win_https" ] && [ "$win_https" != "%HTTPS_PROXY%" ]; then
+      SELECTED_PROXY="$win_https"
+      echo "Detected Windows HTTPS_PROXY via cmd.exe: $SELECTED_PROXY"
+    elif [ -n "$win_http" ] && [ "$win_http" != "%HTTP_PROXY%" ]; then
+      SELECTED_PROXY="$win_http"
+      echo "Detected Windows HTTP_PROXY via cmd.exe: $SELECTED_PROXY"
+    fi
+  fi
+
+  # Try powershell.exe (another approach on Windows)
+  if [ -z "$SELECTED_PROXY" ] && command -v powershell.exe >/dev/null 2>&1; then
+    ps_fetch=$(powershell.exe -NoProfile -Command "Write-Output $env:FETCH_PROTO_PROXY" 2>/dev/null | tr -d '\r')
+    ps_https=$(powershell.exe -NoProfile -Command "Write-Output $env:HTTPS_PROXY" 2>/dev/null | tr -d '\r')
+    ps_http=$(powershell.exe -NoProfile -Command "Write-Output $env:HTTP_PROXY" 2>/dev/null | tr -d '\r')
+    if [ -n "$ps_fetch" ]; then
+      SELECTED_PROXY="$ps_fetch"
+      echo "Detected Windows FETCH_PROTO_PROXY via powershell.exe: $SELECTED_PROXY"
+    elif [ -n "$ps_https" ]; then
+      SELECTED_PROXY="$ps_https"
+      echo "Detected Windows HTTPS_PROXY via powershell.exe: $SELECTED_PROXY"
+    elif [ -n "$ps_http" ]; then
+      SELECTED_PROXY="$ps_http"
+      echo "Detected Windows HTTP_PROXY via powershell.exe: $SELECTED_PROXY"
+    fi
+  fi
+
+  if [ -n "$SELECTED_PROXY" ]; then
+    CURL_PROXY="--proxy $SELECTED_PROXY"
+  fi
+fi
+
 echo "Downloading from: $PROTO_URL"
 echo "curl -v $CURL_PROXY -L -o $OUTPUT_FILE $PROTO_URL" # Debug: show command
 echo "Current working directory: $(pwd)"
