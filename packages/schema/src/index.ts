@@ -9,6 +9,9 @@ export * from "./user";
 // Authentication-related schemas
 export * from "./authentication";
 
+// Organization-related schemas
+export * from "./organization";
+
 // Common/shared schemas
 export * from "./common";
 

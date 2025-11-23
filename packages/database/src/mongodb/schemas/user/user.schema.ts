@@ -1,15 +1,14 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { IUser, UserRole, userRoleEnum } from "@repo/schema";
 import { Document } from "mongoose";
-import * as crypto from "crypto";
-import {
-  AuthProvider,
-  AuthProviderSchema,
-} from "../authentication/auth-provider.schema";
 
-@Schema({ timestamps: true })
+@Schema({
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class User extends Document implements IUser {
-  @Prop({ required: true, unique: true, default: () => crypto.randomUUID() })
+  @Prop({ required: true, unique: true, index: true })
   id: string;
 
   @Prop({ required: true, unique: true, index: true, lowercase: true })
@@ -19,10 +18,7 @@ export class User extends Document implements IUser {
   emailVerified: boolean;
 
   @Prop({ required: true })
-  firstName: string;
-
-  @Prop({ required: true })
-  lastName: string;
+  name: string;
 
   @Prop({ required: false })
   phoneNumber?: string | null;
@@ -31,7 +27,7 @@ export class User extends Document implements IUser {
   phoneVerified: boolean;
 
   @Prop({ required: false })
-  avatarUrl?: string | null;
+  image?: string | null;
 
   @Prop({ required: false })
   dateOfBirth?: Date | null;
@@ -52,13 +48,10 @@ export class User extends Document implements IUser {
   isBlocked: boolean;
 
   @Prop({ required: true, default: ["Investor"], enum: userRoleEnum.options })
-  roles: UserRole[];
+  role: UserRole[];
 
   @Prop({ required: true, default: false })
   twoFactorEnabled: boolean;
-
-  @Prop({ required: false })
-  twoFactorSecret?: string | null;
 
   @Prop({ required: false })
   lastLoginAt?: Date | null;
@@ -66,13 +59,12 @@ export class User extends Document implements IUser {
   @Prop({ required: false })
   passwordChangedAt?: Date | null;
 
-  @Prop({ required: true, default: [], type: [AuthProviderSchema] })
-  accounts: AuthProvider[];
-
   createdAt: Date;
   updatedAt: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.index({ email: 1 });
+UserSchema.index({ email: 1 }, { unique: true });
+UserSchema.index({ phoneNumber: 1 });
+UserSchema.index({ createdAt: -1 });

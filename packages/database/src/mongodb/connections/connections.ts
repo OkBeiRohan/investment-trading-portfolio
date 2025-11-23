@@ -1,5 +1,6 @@
 const DatabaseConnections = {
-  User: "User",
+  User: "Account",
+  Organization: "Organization",
 };
 
 export default DatabaseConnections;

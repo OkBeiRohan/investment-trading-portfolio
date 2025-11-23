@@ -1,50 +1,67 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Session } from "../../schemas/authentication";
-import { Model } from "mongoose";
+import { Model, QueryFilter } from "mongoose";
 
 @Injectable()
 export class SessionRepository {
   constructor(
-    @InjectModel(Session.name) private sessionModel: Model<Session>
+    @InjectModel(Session.name) private readonly sessionModel: Model<Session>
   ) {}
 
-  async create(sessionData: Partial<Session>): Promise<Session> {
-    const newSession = new this.sessionModel(sessionData);
-    return newSession.save();
+  async create(data: Partial<Session>): Promise<Session> {
+    const session = new this.sessionModel(data);
+    return session.save();
   }
 
-  async findByToken(token: string): Promise<Session | null> {
+  async findById(id: string): Promise<Session | null> {
+    return this.sessionModel.findById(id).populate("userId").exec();
+  }
+
+  async findOne(filter: QueryFilter<Session>): Promise<Session | null> {
+    return this.sessionModel.findOne(filter).populate("userId").exec();
+  }
+
+  async findMany(
+    filter: QueryFilter<Session>,
+    options?: { limit?: number; skip?: number; sort?: any }
+  ): Promise<Session[]> {
+    const query = this.sessionModel.find(filter).populate("userId");
+
+    if (options?.limit) query.limit(options.limit);
+    if (options?.skip) query.skip(options.skip);
+    if (options?.sort) query.sort(options.sort);
+
+    return query.exec();
+  }
+
+  async update(id: string, data: Partial<Session>): Promise<Session | null> {
     return this.sessionModel
-      .findOne({ token, expiresAt: { $gt: new Date() } })
+      .findByIdAndUpdate(id, data, { new: true })
       .populate("userId")
       .exec();
   }
 
-  async deleteByToken(token: string): Promise<void> {
-    await this.sessionModel
-      .deleteOne({
-        token,
-      })
-      .exec();
+  async delete(id: string): Promise<boolean> {
+    const result = await this.sessionModel.findByIdAndDelete(id).exec();
+    return !!result;
   }
 
-  async deleteExpired(): Promise<void> {
-    await this.sessionModel
+  async deleteMany(filter: QueryFilter<Session>): Promise<number> {
+    const result = await this.sessionModel.deleteMany(filter).exec();
+    return result.deletedCount;
+  }
+
+  async count(filter: QueryFilter<Session>): Promise<number> {
+    return this.sessionModel.countDocuments(filter).exec();
+  }
+
+  async cleanupExpired(): Promise<number> {
+    const result = await this.sessionModel
       .deleteMany({
         expiresAt: { $lt: new Date() },
       })
       .exec();
-  }
-
-  async findByUserId(userId: string): Promise<Session[]> {
-    return this.sessionModel
-      .find({ userId, expiresAt: { $gt: new Date() } })
-      .populate("userId")
-      .exec();
-  }
-
-  async deleteByUserId(userId: string): Promise<void> {
-    await this.sessionModel.deleteMany({ userId }).exec();
+    return result.deletedCount;
   }
 }

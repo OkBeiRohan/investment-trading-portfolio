@@ -1,11 +1,31 @@
-import { Module, Global } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
-import { RedisService } from "./redis.service";
+import { Module, Global, DynamicModule } from "@nestjs/common";
+import { Redis } from "ioredis";
+
+export const REDIS_CLIENT = "REDIS_CLIENT";
+
+export interface RedisModuleOptions {
+  url: string;
+}
 
 @Global()
-@Module({
-  imports: [ConfigModule],
-  providers: [RedisService],
-  exports: [RedisService],
-})
-export class RedisModule {}
+@Module({})
+export class RedisModule {
+  static forRoot(options: RedisModuleOptions): DynamicModule {
+    const redisProvider = {
+      provide: REDIS_CLIENT,
+      useFactory: () => {
+        return new Redis(options.url, {
+          maxRetriesPerRequest: 3,
+          enableReadyCheck: true,
+          lazyConnect: false,
+        });
+      },
+    };
+
+    return {
+      module: RedisModule,
+      providers: [redisProvider],
+      exports: [redisProvider],
+    };
+  }
+}

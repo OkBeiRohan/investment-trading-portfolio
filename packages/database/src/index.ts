@@ -25,3 +25,8 @@ export type {
   CandleData,
   FeatureData,
 } from "./questdb/questdb.service";
+
+// MongoDB
+export * from "./mongodb/repositories";
+
+export { MongoDBModule } from "./mongodb/mongodb.module";

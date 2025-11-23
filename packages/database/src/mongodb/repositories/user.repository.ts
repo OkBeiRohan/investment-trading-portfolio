@@ -1,56 +1,63 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
+import { Model, QueryFilter } from "mongoose";
 import { User } from "../schemas/user/user.schema";
-import { Model } from "mongoose";
-import { AuthProvider } from "../schemas/authentication";
 
 @Injectable()
 export class UserRepository {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<User>
+  ) {}
+
+  async create(data: Partial<User>): Promise<User> {
+    const user = new this.userModel(data);
+    return user.save();
+  }
 
   async findById(id: string): Promise<User | null> {
     return this.userModel.findById(id).exec();
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.userModel.findOne({ email: email.toLowerCase() }).exec();
+  async findOne(filter: QueryFilter<User>): Promise<User | null> {
+    return this.userModel.findOne(filter).exec();
   }
 
-  async create(userData: Partial<User>): Promise<User> {
-    const newUser = new this.userModel(userData);
-    return newUser.save();
+  async findMany(
+    filter: QueryFilter<User>,
+    options?: { limit?: number; skip?: number; sort?: any }
+  ): Promise<User[]> {
+    const query = this.userModel.find(filter);
+
+    if (options?.limit) query.limit(options.limit);
+    if (options?.skip) query.skip(options.skip);
+    if (options?.sort) query.sort(options.sort);
+
+    return query.exec();
   }
 
-  async update(id: string, updateData: Partial<User>): Promise<User | null> {
-    return this.userModel
-      .findByIdAndUpdate(id, updateData, {
-        new: true,
-      })
-      .exec();
+  async update(id: string, data: Partial<User>): Promise<User | null> {
+    return this.userModel.findByIdAndUpdate(id, data, { new: true }).exec();
   }
 
-  async findByProviderId(
-    provider: string,
-    accountId: string
-  ): Promise<User | null> {
-    return this.userModel
-      .findOne({
-        "accounts.provider": provider,
-        "accounts.accountId": accountId,
-      })
-      .exec();
+  async updateMany(
+    filter: QueryFilter<User>,
+    data: Partial<User>
+  ): Promise<number> {
+    const result = await this.userModel.updateMany(filter, data).exec();
+    return result.modifiedCount;
   }
 
-  async linkAccount(
-    userId: string,
-    account: AuthProvider
-  ): Promise<User | null> {
-    return this.userModel
-      .findByIdAndUpdate(
-        userId,
-        { $push: { accounts: account } },
-        { new: true }
-      )
-      .exec();
+  async delete(id: string): Promise<boolean> {
+    const result = await this.userModel.findByIdAndDelete(id).exec();
+    return !!result;
+  }
+
+  async deleteMany(filter: QueryFilter<User>): Promise<number> {
+    const result = await this.userModel.deleteMany(filter).exec();
+    return result.deletedCount;
+  }
+
+  async count(filter: QueryFilter<User>): Promise<number> {
+    return this.userModel.countDocuments(filter).exec();
   }
 }
