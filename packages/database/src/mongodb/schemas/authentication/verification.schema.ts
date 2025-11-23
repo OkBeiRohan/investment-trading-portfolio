@@ -4,13 +4,13 @@ import { IVerification } from "@repo/schema";
 
 @Schema({ timestamps: true })
 export class Verification extends Document implements IVerification {
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   identifier: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   token: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   expiresAt: Date;
 
   createdAt: Date;

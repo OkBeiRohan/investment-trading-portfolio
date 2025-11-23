@@ -9,37 +9,21 @@ export class UserRepository {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
   async findById(id: string): Promise<User | null> {
-    return this.userModel.findOne({ id, deletedAt: null }).exec();
+    return this.userModel.findById(id).exec();
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userModel
-      .findOne({ email: email.toLowerCase(), deletedAt: null })
-      .exec();
+    return this.userModel.findOne({ email: email.toLowerCase() }).exec();
   }
 
   async create(userData: Partial<User>): Promise<User> {
-    // Check for deleted user with same email
-    const email = userData.email?.toLowerCase();
-    if (email) {
-      const deletedUser = await this.userModel
-        .findOne({ email, deletedAt: { $ne: null } })
-        .exec();
-      if (deletedUser) {
-        // Revive user: clear deletedAt, update fields
-        Object.assign(deletedUser, userData, { deletedAt: null });
-        await deletedUser.save();
-        return deletedUser;
-      }
-    }
-    // No deleted user, create new
     const newUser = new this.userModel(userData);
     return newUser.save();
   }
 
   async update(id: string, updateData: Partial<User>): Promise<User | null> {
     return this.userModel
-      .findOneAndUpdate({ id, deletedAt: null }, updateData, {
+      .findByIdAndUpdate(id, updateData, {
         new: true,
       })
       .exec();
@@ -53,7 +37,6 @@ export class UserRepository {
       .findOne({
         "accounts.provider": provider,
         "accounts.accountId": accountId,
-        deletedAt: null,
       })
       .exec();
   }
@@ -63,8 +46,8 @@ export class UserRepository {
     account: AuthProvider
   ): Promise<User | null> {
     return this.userModel
-      .findOneAndUpdate(
-        { id: userId, deletedAt: null },
+      .findByIdAndUpdate(
+        userId,
         { $push: { accounts: account } },
         { new: true }
       )

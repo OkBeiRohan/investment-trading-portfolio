@@ -4,10 +4,10 @@ import { IAuthProvider } from "@repo/schema";
 
 @Schema({ timestamps: true })
 export class AuthProvider extends Document implements IAuthProvider {
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   provider: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   providerId: string;
 
   @Prop({ required: true })

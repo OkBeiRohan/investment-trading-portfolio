@@ -5,13 +5,13 @@ import { User } from "../user/user.schema";
 
 @Schema({ timestamps: true })
 export class Session extends Document implements ISession {
-  @Prop({ required: true, type: Types.ObjectId, ref: User.name })
+  @Prop({ required: true, type: Types.ObjectId, ref: User.name, index: true })
   userId: Types.ObjectId;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   token: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   expiresAt: Date;
 
   @Prop({ required: false })

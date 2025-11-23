@@ -12,7 +12,7 @@ export class User extends Document implements IUser {
   @Prop({ required: true, unique: true, default: () => crypto.randomUUID() })
   id: string;
 
-  @Prop({ required: true, unique: true, lowercase: true })
+  @Prop({ required: true, unique: true, index: true, lowercase: true })
   email: string;
 
   @Prop({ default: false })
@@ -68,9 +68,6 @@ export class User extends Document implements IUser {
 
   @Prop({ required: true, default: [], type: [AuthProviderSchema] })
   accounts: AuthProvider[];
-
-  @Prop({ required: false })
-  deletedAt?: Date | null; // Soft delete
 
   createdAt: Date;
   updatedAt: Date;

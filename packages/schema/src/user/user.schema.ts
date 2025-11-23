@@ -39,7 +39,6 @@ export const userSchema = z.object({
   accounts: z.array(authProviderSchema).default([]),
   createdAt: z.date(),
   updatedAt: z.date(),
-  deletedAt: z.date().optional().nullable(), // Soft delete
 });
 
 export type IUser = z.infer<typeof userSchema>;
