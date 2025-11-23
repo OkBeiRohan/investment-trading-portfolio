@@ -18,12 +18,14 @@
     "@nestjs/config": "^4.0.2",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
-    "better-auth": "^1.4.1"
+    "better-auth": "^1.4.1",
+    "react": "^19.2.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^24.10.1",
+    "@types/react": "^19.2.6",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "typescript": "5.9.3"

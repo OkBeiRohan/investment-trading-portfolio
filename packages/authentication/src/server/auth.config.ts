@@ -1,5 +1,4 @@
 import { betterAuth, GenericEndpointContext, User } from "better-auth";
-import { mongoAdapter, Repositories } from "../adapters/mongodb.adapter";
 import { DBAdapter } from "@better-auth/core/db/adapter";
 import {
   organization,

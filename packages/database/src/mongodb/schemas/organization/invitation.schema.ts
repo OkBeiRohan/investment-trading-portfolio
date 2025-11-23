@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 import {
   IInvitation,
   invitationStatusEnum,
@@ -7,15 +7,21 @@ import {
   type OrganizationRole,
   type InvitationStatus,
 } from "@repo/schema";
+import { Organization } from "./organization.schema";
+import { User } from "../user/user.schema";
 
 @Schema({
   timestamps: true,
 })
 export class Invitation extends Document implements IInvitation {
-  @Prop({ required: true, index: true, unique: true })
   id: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: Organization.name,
+    required: true,
+    index: true,
+  })
   organizationId: string;
 
   @Prop({ required: true, index: true })
@@ -38,7 +44,11 @@ export class Invitation extends Document implements IInvitation {
   @Prop({ required: true, index: true })
   expiresAt: Date;
 
-  @Prop({ required: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: User.name,
+    required: true,
+  })
   inviterId: string;
 
   createdAt: Date;

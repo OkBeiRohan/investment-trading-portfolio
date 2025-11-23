@@ -59,23 +59,11 @@ export class MongoDBModule {
             { name: Verification.name, schema: VerificationSchema },
             { name: TwoFactor.name, schema: TwoFactorSchema },
             { name: Passkey.name, schema: PasskeySchema },
-          ],
-          DatabaseConnections.User
-        ),
-        MongooseModule.forRoot(options.mongoUri, {
-          dbName: DatabaseConnections.Organization,
-          retryWrites: true,
-          retryAttempts: 5,
-          retryDelay: 3000,
-          writeConcern: { w: "majority" },
-        }),
-        MongooseModule.forFeature(
-          [
             { name: Organization.name, schema: OrganizationSchema },
             { name: Member.name, schema: MemberSchema },
             { name: Invitation.name, schema: InvitationSchema },
           ],
-          DatabaseConnections.Organization
+          DatabaseConnections.User
         ),
       ],
       providers: [

@@ -27,7 +27,7 @@
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
     "@repo/schema": "workspace:*",
-    "@trpc/server": "^11.7.1",
+    "@trpc/server": "^11.7.2",
     "nestjs-trpc": "^1.6.1",
     "nestjs-zod": "^5.0.1",
     "reflect-metadata": "^0.2.2",

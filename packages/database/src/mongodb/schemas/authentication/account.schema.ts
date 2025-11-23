@@ -1,13 +1,18 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 import { IAccount } from "@repo/schema";
+import { User } from "../user/user.schema";
 
 @Schema({ timestamps: true })
 export class Account extends Document implements IAccount {
-  @Prop({ required: true, index: true, unique: true })
   id: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId: string;
 
   @Prop({ required: true })

@@ -1,13 +1,19 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { ISession } from "@repo/schema";
+import { User } from "../user/user.schema";
+import { Organization } from "../organization";
 
 @Schema({ timestamps: true })
 export class Session extends Document implements ISession {
-  @Prop({ required: true, index: true })
   id: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId: string;
 
   @Prop({ required: true, index: true })
@@ -22,10 +28,18 @@ export class Session extends Document implements ISession {
   @Prop({ required: false })
   userAgent?: string | null;
 
-  @Prop({ required: false })
+  @Prop({
+    type: Types.ObjectId,
+    ref: Organization.name,
+    required: false,
+  })
   activeOrganizationId?: string;
 
-  @Prop({ required: false })
+  @Prop({
+    type: Types.ObjectId,
+    ref: User.name,
+    required: false,
+  })
   impersonatedBy?: string;
 
   @Prop({ required: false })

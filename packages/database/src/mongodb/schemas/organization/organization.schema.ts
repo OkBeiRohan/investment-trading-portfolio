@@ -4,7 +4,6 @@ import { Document } from "mongoose";
 
 @Schema({ timestamps: true })
 export class Organization extends Document implements IOrganization {
-  @Prop({ required: true, index: true, unique: true })
   id: string;
 
   @Prop({ required: true })

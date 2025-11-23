@@ -1,25 +1,33 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 import {
   IMember,
   organisationRoleEnum,
   type OrganizationRole,
 } from "@repo/schema";
+import { Organization } from "./organization.schema";
+import { User } from "../user/user.schema";
 
 @Schema({
   timestamps: true,
 })
 export class Member extends Document implements IMember {
-  @Prop({ required: true, index: true, unique: true })
   id: string;
 
   @Prop({
+    type: Types.ObjectId,
+    ref: Organization.name,
     required: true,
     index: true,
   })
   organizationId: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId: string;
 
   @Prop({
