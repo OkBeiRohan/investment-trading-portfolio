@@ -1,0 +1,51 @@
+
+Site: Investment Trading Portfolio (monorepo)
+
+Purpose:
+This web application is a dashboard for monitoring algorithmic trading strategies, positions, orders, and performance metrics. It surfaces real-time signals, historical backtest results, P&L, and strategy configuration options.
+
+Top-level routes and pages:
+- / (dashboard): Overview with key metrics, live P&L, and recent trading signals.
+- /portfolio: Current positions, greeks, unrealized/realized P&L, and position management actions.
+- /trades: Historical orders and fills with filters for date, strategy, and status.
+- /strategies: Strategy definitions, configuration UI, and enable/disable controls.
+- /settings: User settings, API keys, and environment configuration.
+
+APIs consumed (internal tRPC server endpoints):
+- POST /api/trpc/auth.login: User authentication (Credentials provider via NextAuth in dev).
+- tRPC: portfolio.getPositions, trading.getSignals, strategies.list, orders.placeOrder, orders.cancelOrder.
+
+Backend & Data sources:
+- Signals, orders, positions, features, and performance metrics are persisted in MongoDB (via shared package `@repo/database`).
+- Real-time market data is sourced from `@repo/market-sdk` (Upstox wrapper) and optionally other providers.
+- Feature engineering and model inference live in `algo-worker` and are persisted to the database for the web app to display.
+
+Auth & Sessions:
+- Uses NextAuth (credentials provider in dev). Sessions are JWT-based in this workspace.
+- Protected routes require authentication and use tRPC for server-side queries.
+
+Common vocabulary:
+- Signal: A model output indicating expected volatility direction: `VOL_UP`, `VOL_DOWN`, `NEUTRAL`.
+- Strategy: Named trading strategy (e.g., `LONG_STRADDLE`, `IRON_CONDOR`).
+- Position: Open trade with legs, delta, vega, and greeks.
+- Order: Execution record from `@repo/market-sdk` (Upstox). Status: `PENDING`, `FILLED`, `CANCELLED`, `REJECTED`.
+- Feature snapshot: Time-series features used by models (stored in `features` time-series collection).
+
+Usage notes for LLMs generating content or code for this site:
+- Prefer using shared packages (`@repo/schema`, `@repo/database`, `@repo/market-sdk`) rather than adding local duplicates.
+- All database access should go through `@repo/database` (repositories and modules exported there).
+- Keep types synchronized with `@repo/schema` and validate runtime inputs with Zod schemas.
+- Avoid proposing changes to database connection handling in the `web` app; changes belong in `packages/database`.
+
+Developer shortcuts:
+- Local dev server: `pnpm --filter web dev` (or `pnpm turbo run dev --filter=web` in the monorepo).
+- Run proto fetch (market-sdk): `pnpm --filter @repo/market-sdk proto:update` (script calls `packages/market-sdk/scripts/fetch-proto.sh`).
+
+Contact points (code locations):
+- Frontend pages: `apps/web/src/app` (App Router). 
+- tRPC client: `apps/web/src/lib/trpc.ts`.
+- Public assets served from `apps/web/public` (this file lives here).
+
+If generating code that integrates with this web app, ensure:
+- Use strict TypeScript and existing ESLint/Prettier conventions.
+- Add tests for new behavior and update `apps/web/README.md` or package docs when adding new public APIs or pages.
