@@ -6,6 +6,9 @@
 // User-related schemas
 export * from "./user";
 
+// Authentication-related schemas
+export * from "./authentication";
+
 // Common/shared schemas
 export * from "./common";
 

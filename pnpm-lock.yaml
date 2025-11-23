@@ -315,6 +315,8 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/authentication: {}
+
   packages/database:
     dependencies:
       '@nestjs/common':
@@ -363,6 +365,10 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+
+  packages/encryption: {}
+
+  packages/environment: {}
 
   packages/eslint-config:
     devDependencies:
@@ -484,6 +490,9 @@ importers:
 
   packages/schema:
     dependencies:
+      mongoose:
+        specifier: ^9.0.0
+        version: 9.0.0
       zod:
         specifier: ^4.1.12
         version: 4.1.12
