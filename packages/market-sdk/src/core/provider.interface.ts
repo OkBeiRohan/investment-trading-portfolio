@@ -3,7 +3,7 @@ import {
   MarketQuote,
   OptionGreeks,
   Order,
-  OrderParams,
+  // OrderParams,
   Position,
   Holding,
 } from "@repo/schema";
@@ -34,7 +34,7 @@ export interface IMarketDataProvider extends IProvider {
 }
 
 export interface IOrderProvider extends IProvider {
-  placeOrder(userId: string, params: OrderParams): Promise<Order>;
+  // placeOrder(userId: string, params: OrderParams): Promise<Order>;
   placeMultiLegOrder(
     userId: string,
     params: MultiLegOrderParams
@@ -42,7 +42,7 @@ export interface IOrderProvider extends IProvider {
   modifyOrder(
     userId: string,
     orderId: string,
-    modifications: Partial<OrderParams>
+    // modifications: Partial<OrderParams>
   ): Promise<Order>;
   cancelOrder(userId: string, orderId: string): Promise<{ success: boolean }>;
   getOrderBook(userId: string): Promise<Order[]>;
@@ -81,7 +81,7 @@ export interface OptionChainData {
 }
 
 export interface MultiLegOrderParams {
-  legs: OrderParams[];
+  // legs: OrderParams[];
   strategy?: "STRADDLE" | "STRANGLE" | "IRON_CONDOR" | "BUTTERFLY";
 }
 

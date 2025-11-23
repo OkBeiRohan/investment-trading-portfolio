@@ -1,27 +1,27 @@
-import { Order, OrderParams } from "@repo/schema";
+import { Order } from "@repo/schema";
 
 export interface IOrderProvider {
   /**
    * Place a single order
    */
-  placeOrder(userId: string, params: OrderParams): Promise<Order>;
+  // placeOrder(userId: string, params: OrderParams): Promise<Order>;
 
-  /**
-   * Place multi-leg order (straddle, iron condor, etc.)
-   */
-  placeMultiLegOrder(
-    userId: string,
-    params: MultiLegOrderParams
-  ): Promise<Order>;
+  // /**
+  //  * Place multi-leg order (straddle, iron condor, etc.)
+  //  */
+  // placeMultiLegOrder(
+  //   userId: string,
+  //   params: MultiLegOrderParams
+  // ): Promise<Order>;
 
-  /**
-   * Modify existing order
-   */
-  modifyOrder(
-    userId: string,
-    orderId: string,
-    modifications: Partial<OrderParams>
-  ): Promise<Order>;
+  // /**
+  //  * Modify existing order
+  //  */
+  // modifyOrder(
+  //   userId: string,
+  //   orderId: string,
+  //   modifications: Partial<OrderParams>
+  // ): Promise<Order>;
 
   /**
    * Cancel order

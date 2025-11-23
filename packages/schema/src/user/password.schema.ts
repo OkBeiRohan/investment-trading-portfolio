@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { passwordSchema } from "./auth.schema";
+import { passwordSchema } from "../authentication";
 
 /**
  * Forgot Password Schema

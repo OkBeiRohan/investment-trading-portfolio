@@ -55,23 +55,23 @@ export type CostAnalysis = z.infer<typeof costAnalysisSchema>;
 // Performance Metrics Document
 // ============================================
 
-export const performanceMetricsSchema = mongoDocumentSchema
-  .merge(userScopedSchema)
-  .extend({
-    period: PeriodEnum,
-    startDate: z.date(),
-    endDate: z.date(),
-    metrics: metricsSchema,
-    trades: tradeStatsSchema,
-    costs: costAnalysisSchema,
-    provider: z.string().optional(),
-    createdAt: z.date(),
-  });
+// export const performanceMetricsSchema = mongoDocumentSchema
+//   .merge(userScopedSchema)
+//   .extend({
+//     period: PeriodEnum,
+//     startDate: z.date(),
+//     endDate: z.date(),
+//     metrics: metricsSchema,
+//     trades: tradeStatsSchema,
+//     costs: costAnalysisSchema,
+//     provider: z.string().optional(),
+//     createdAt: z.date(),
+//   });
 
-export type PerformanceMetrics = z.infer<typeof performanceMetricsSchema>;
+// export type PerformanceMetrics = z.infer<typeof performanceMetricsSchema>;
 
-// ============================================
-// Type Utilities
-// ============================================
+// // ============================================
+// // Type Utilities
+// // ============================================
 
-export type PerformanceMetricsCreateInput = Omit<PerformanceMetrics, "_id">;
+// export type PerformanceMetricsCreateInput = Omit<PerformanceMetrics, "_id">;

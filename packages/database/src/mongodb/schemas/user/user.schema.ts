@@ -7,9 +7,10 @@ import { Document } from "mongoose";
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
 })
-export class User extends Document implements IUser {
-  id: string;
-
+export class User
+  extends Document
+  implements Omit<IUser, "id" | "createdAt" | "updatedAt">
+{
   @Prop({ required: true, unique: true, index: true, lowercase: true })
   email: string;
 
@@ -57,9 +58,6 @@ export class User extends Document implements IUser {
 
   @Prop({ required: false })
   passwordChangedAt?: Date | null;
-
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

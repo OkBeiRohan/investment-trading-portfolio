@@ -24,10 +24,10 @@ export interface IMarketDataProvider {
   /**
    * Get option chain for an underlying
    */
-  getOptionChain(
-    underlying: string,
-    expiry: string
-  ): Promise<OptionChainData[]>;
+  // getOptionChain(
+  //   underlying: string,
+  //   expiry: string
+  // ): Promise<OptionChainData[]>;
 }
 
 export interface HistoricalDataParams {

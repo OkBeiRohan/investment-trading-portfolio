@@ -14,19 +14,19 @@ export class ProviderFactory {
     }
 
     let provider: any;
-    switch (type) {
-      case "upstox":
-        provider = new UpstoxProvider(/* inject dependencies */);
-        break;
-      case "yahoo":
-        provider = new YahooProvider(/* inject dependencies */);
-        break;
-      case "binance":
-        provider = new BinanceProvider(/* inject dependencies */);
-        break;
-      default:
-        throw new Error(`Unknown provider: ${type}`);
-    }
+    // switch (type) {
+    //   case "upstox":
+    //     provider = new UpstoxProvider(/* inject dependencies */);
+    //     break;
+    //   case "yahoo":
+    //     provider = new YahooProvider(/* inject dependencies */);
+    //     break;
+    //   case "binance":
+    //     provider = new BinanceProvider(/* inject dependencies */);
+    //     break;
+    //   default:
+    //     throw new Error(`Unknown provider: ${type}`);
+    // }
 
     this.instances.set(type, provider);
     return provider;

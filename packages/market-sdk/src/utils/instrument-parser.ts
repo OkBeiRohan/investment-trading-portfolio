@@ -1,9 +1,9 @@
 import { ValidationError } from "../core/error";
 
 export interface ParsedInstrument {
-  exchange: string;
-  segment: string;
-  symbol: string;
+  exchange?: string;
+  segment?: string;
+  symbol?: string;
   instrumentType?: "EQ" | "FUT" | "OPT" | "INDEX";
   expiry?: string;
   strike?: number;
@@ -55,7 +55,7 @@ export function parseInstrumentKey(instrumentKey: string): ParsedInstrument {
       result.instrumentType = "OPT";
       result.symbol = optionMatch[1];
       result.expiry = optionMatch[2];
-      result.strike = parseInt(optionMatch[3]);
+      result.strike = parseInt(optionMatch[3] || "0", 10);
       result.optionType = optionMatch[4] as "CE" | "PE";
     } else if (futureMatch) {
       result.instrumentType = "FUT";
@@ -128,7 +128,7 @@ export function isIndex(instrumentKey: string): boolean {
 /**
  * Get exchange from instrument key
  */
-export function getExchange(instrumentKey: string): string {
+export function getExchange(instrumentKey: string): string | undefined {
   const parsed = parseInstrumentKey(instrumentKey);
   return parsed.exchange;
 }
@@ -136,7 +136,7 @@ export function getExchange(instrumentKey: string): string {
 /**
  * Get symbol from instrument key
  */
-export function getSymbol(instrumentKey: string): string {
+export function getSymbol(instrumentKey: string): string | undefined {
   const parsed = parseInstrumentKey(instrumentKey);
   return parsed.symbol;
 }

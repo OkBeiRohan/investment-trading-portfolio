@@ -1,11 +1,11 @@
 // Interfaces
 export * from "./interfaces/market-data.interface";
 export * from "./interfaces/orders.interface";
-export * from "./interfaces/portfolio.interface";
+// export * from "./interfaces/portfolio.interface";
 
 // Core
 export * from "./core/provider.factory";
-export * from "./core/errors";
+export * from "./core/error";
 
 // Auth
 export * from "./auth/auth-manager.service";
