@@ -1,6 +1,14 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, GenericEndpointContext, User } from "better-auth";
 import { mongoAdapter, Repositories } from "../adapters/mongodb.adapter";
 import { DBAdapter } from "@better-auth/core/db/adapter";
+import {
+  organization,
+  phoneNumber,
+  twoFactor,
+  UserWithTwoFactor,
+} from "better-auth/plugins";
+import { userRoleEnum } from "@repo/schema";
+import { passkey } from "@better-auth/passkey";
 
 export interface BetterAuthServerConfig {
   adapter: (options?: any) => DBAdapter;
@@ -10,15 +18,18 @@ export interface BetterAuthServerConfig {
   trustedOrigins?: string[];
   emailProvider?: {
     sendVerificationEmail: (data: {
-      email: string;
+      user: User;
       url: string;
       token: string;
     }) => Promise<void>;
     sendResetPasswordEmail?: (data: {
-      email: string;
+      user: User;
       url: string;
       token: string;
     }) => Promise<void>;
+  };
+  phoneNumberProvider?: {
+    sendOTP: (data: { phoneNumber: string; code: string }) => Promise<void>;
   };
   organizationConfig?: {
     sendInvitationEmail: (data: {
@@ -31,8 +42,11 @@ export interface BetterAuthServerConfig {
   };
   twoFactorConfig?: {
     sendOTP?: (
-      data: { user: any; otp: string },
-      request?: Request
+      data: {
+        user: UserWithTwoFactor;
+        otp: string;
+      },
+      context?: GenericEndpointContext
     ) => Promise<void>;
   };
   socialProviders?: {
@@ -72,13 +86,11 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
       enabled: true,
       requireEmailVerification: false,
       sendResetPassword: config.emailProvider?.sendResetPasswordEmail,
-      async sendVerificationEmail({ user, url, token }) {
+    },
+    emailVerification: {
+      async sendVerificationEmail(data) {
         if (config.emailProvider?.sendVerificationEmail) {
-          await config.emailProvider.sendVerificationEmail({
-            email: user.email,
-            url,
-            token,
-          });
+          await config.emailProvider.sendVerificationEmail(data);
         }
       },
     },
@@ -97,17 +109,34 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
     user: {
       additionalFields: {
         // Add custom fields as needed
-        banned: {
-          type: "boolean",
-          defaultValue: false,
-          input: false,
-        },
-        banReason: {
+        dateOfBirth: {
           type: "string",
+          required: false,
+        },
+        isActive: {
+          type: "boolean",
+          defaultValue: true,
           required: false,
           input: false,
         },
-        banExpires: {
+        isBlocked: {
+          type: "boolean",
+          defaultValue: false,
+          required: false,
+          input: false,
+        },
+        role: {
+          type: "string[]",
+          required: false,
+          defaultValue: [userRoleEnum.enum.Investor],
+          input: false,
+        },
+        lastLoginAt: {
+          type: "date",
+          required: false,
+          input: false,
+        },
+        passwordChangedAt: {
           type: "date",
           required: false,
           input: false,
@@ -115,13 +144,9 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
       },
       changeEmail: {
         enabled: true,
-        sendChangeEmailVerification: async ({ newEmail, url, token }) => {
+        sendChangeEmailVerification: async (data) => {
           if (config.emailProvider?.sendVerificationEmail) {
-            await config.emailProvider.sendVerificationEmail({
-              email: newEmail,
-              url,
-              token,
-            });
+            await config.emailProvider.sendVerificationEmail(data);
           }
         },
       },
@@ -141,21 +166,21 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
         ? {
             clientId: config.socialProviders.google.clientId,
             clientSecret: config.socialProviders.google.clientSecret,
-            scopes: ["openid", "email", "profile"],
+            scope: ["openid", "email", "profile"],
           }
         : undefined,
       github: config.socialProviders?.github
         ? {
             clientId: config.socialProviders.github.clientId,
             clientSecret: config.socialProviders.github.clientSecret,
-            scopes: ["user:email"],
+            scope: ["user:email"],
           }
         : undefined,
       discord: config.socialProviders?.discord
         ? {
             clientId: config.socialProviders.discord.clientId,
             clientSecret: config.socialProviders.discord.clientSecret,
-            scopes: ["identify", "email"],
+            scope: ["identify", "email"],
           }
         : undefined,
     },
@@ -184,6 +209,15 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
 
     // Plugins
     plugins: [
+      // Phone number verification plugin
+      phoneNumber({
+        async sendOTP(data) {
+          if (config.phoneNumberProvider?.sendOTP) {
+            await config.phoneNumberProvider.sendOTP(data);
+          }
+        },
+      }),
+
       // Organization plugin for multi-tenancy
       organization({
         async sendInvitationEmail(data) {
@@ -207,13 +241,11 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
         issuer: config.appName,
         otpOptions: config.twoFactorConfig?.sendOTP
           ? {
-              async sendOTP(data, request) {
+              async sendOTP(data, context) {
                 if (config.twoFactorConfig?.sendOTP) {
-                  await config.twoFactorConfig.sendOTP(data, request);
+                  await config.twoFactorConfig.sendOTP(data, context);
                 }
               },
-              // OTP will expire in 5 minutes
-              expiresIn: 60 * 5,
             }
           : undefined,
       }),
@@ -229,9 +261,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
           residentKey: "preferred",
           userVerification: "preferred",
         },
-        timeout: 60000, // 60 seconds
       }),
     ],
   });
 }
-export type Auth = ReturnType<typeof createAuth>;
