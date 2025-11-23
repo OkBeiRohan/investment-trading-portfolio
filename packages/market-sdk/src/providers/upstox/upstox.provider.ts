@@ -2,12 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { AuthManagerService } from "../../auth/auth-manager.service";
 import { OrdersApi } from "./api/orders.api";
 import { Candle, MarketQuote, OptionGreeks, UpstoxEnv } from "@repo/schema";
-import {
-  HistoricalDataParams,
-  IMarketDataProvider,
-} from "src/interfaces/market-data.interface";
-import { IOrderProvider } from "src/interfaces/orders.interface";
-import { IPortfolioProvider } from "src/core/provider.interface";
+// import {
+//   HistoricalDataParams,
+//   IMarketDataProvider,
+// } from "src/interfaces/market-data.interface";
+// import { IOrderProvider } from "src/interfaces/orders.interface";
+// import { IPortfolioProvider } from "src/core/provider.interface";
 
 @Injectable()
 // implements IMarketDataProvider, IOrderProvider, IPortfolioProvider
