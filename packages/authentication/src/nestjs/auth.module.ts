@@ -4,8 +4,17 @@ import { AuthGuard } from "./guards/auth.guard";
 import { OrganizationGuard } from "./guards/organization.guard";
 import { RolesGuard } from "./guards/roles.guard";
 import type { BetterAuthServerConfig } from "../server/auth.config";
+import { BetterAuthAdapterFactory } from "../adapters";
 
 export const BETTER_AUTH_OPTIONS = "BETTER_AUTH_OPTIONS";
+
+export interface AuthModuleAsyncOptions {
+  imports?: any[];
+  useFactory: (
+    ...args: any[]
+  ) => Promise<BetterAuthServerConfig> | BetterAuthServerConfig;
+  inject?: any[];
+}
 
 @Global()
 @Module({})
@@ -18,12 +27,45 @@ export class AuthModule {
           provide: BETTER_AUTH_OPTIONS,
           useValue: config,
         },
+        // AuthService,
+        // AuthGuard,
+        BetterAuthAdapterFactory,
+        // OrganizationGuard,
+        // RolesGuard,
+      ],
+      exports: [
+        // AuthService,
+        // AuthGuard,
+        BetterAuthAdapterFactory,
+        // OrganizationGuard,
+        // RolesGuard,
+      ],
+    };
+  }
+
+  static forRootAsync(options: AuthModuleAsyncOptions): DynamicModule {
+    return {
+      module: AuthModule,
+      imports: options.imports || [],
+      providers: [
+        {
+          provide: BETTER_AUTH_OPTIONS,
+          useFactory: options.useFactory,
+          inject: options.inject || [],
+        },
         AuthService,
         AuthGuard,
+        BetterAuthAdapterFactory,
         OrganizationGuard,
         RolesGuard,
       ],
-      exports: [AuthService, AuthGuard, OrganizationGuard, RolesGuard],
+      exports: [
+        AuthService,
+        AuthGuard,
+        BetterAuthAdapterFactory,
+        OrganizationGuard,
+        RolesGuard,
+      ],
     };
   }
 }

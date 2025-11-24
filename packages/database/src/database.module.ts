@@ -195,3 +195,8 @@
 //     };
 //   }
 // }
+
+export interface DatabaseModuleOptions {
+  mongoUri: string;
+  redisUrl?: string;
+}

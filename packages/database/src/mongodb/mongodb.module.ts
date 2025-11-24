@@ -31,11 +31,7 @@ import {
   Organization,
   OrganizationSchema,
 } from "./schemas/organization";
-
-export interface DatabaseModuleOptions {
-  mongoUri: string;
-  redisUrl?: string;
-}
+import { DatabaseModuleOptions } from "../database.module";
 
 @Global()
 @Module({})
