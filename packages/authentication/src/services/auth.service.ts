@@ -19,10 +19,6 @@ export class AuthService implements OnModuleInit {
       adapter: this.adapterFactory.createAdapter(
         process.env.NODE_ENV === "development"
       ),
-      baseURL: AUTH_CONFIG.baseURL,
-      secret: AUTH_CONFIG.authSecret,
-      appName: AUTH_CONFIG.appName,
-      trustedOrigins: AUTH_CONFIG.trustedOrigins,
       emailProvider: {
         sendVerificationEmail: (data) =>
           this.emailService.sendVerificationEmail(data),
@@ -36,8 +32,7 @@ export class AuthService implements OnModuleInit {
       twoFactorConfig: {
         sendOTP: (data) => this.emailService.sendOTP(data),
       },
-      socialProviders: AUTH_CONFIG.socialProviders,
-      rateLimit: AUTH_CONFIG.rateLimit,
+      ...AUTH_CONFIG,
     });
   }
 

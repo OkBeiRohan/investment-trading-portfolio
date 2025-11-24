@@ -3,9 +3,7 @@ import { BetterAuthOptions } from "better-auth";
 export const AUTH_CONFIG = {
   appName: process.env.APP_NAME || "My App",
   baseURL: process.env.APP_URL || "http://localhost:3001",
-  mongoUri: process.env.MONGODB_URI || "mongodb://localhost:27017",
-  redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
-  authSecret: process.env.AUTH_SECRET || "dev-secret",
+  secret: process.env.AUTH_SECRET || "dev-secret",
   trustedOrigins: process.env.TRUSTED_ORIGINS?.split(",") || [
     "http://localhost:3000",
   ],
@@ -37,5 +35,12 @@ export const AUTH_CONFIG = {
           clientSecret: process.env.GITHUB_CLIENT_SECRET!,
         }
       : undefined,
+  },
+
+  advanced: {
+    database: {
+      useNumberId: false,
+      generateId: false,
+    },
   },
 } as const satisfies BetterAuthOptions;
