@@ -23,6 +23,7 @@ export const mongoAdapter = (
       supportsUUIDs: false,
       supportsNumericIds: false,
       supportsJSON: true,
+      disableIdGeneration: true,
     },
     adapter: ({ options, schema, debugLog }) => {
       const modelMap: Record<string, any> = {

@@ -11,11 +11,10 @@ import {
   twoFactor,
   UserWithTwoFactor,
 } from "better-auth/plugins";
-import { userRoleEnum } from "@repo/schema";
 import { passkey } from "@better-auth/passkey";
 
 export interface BetterAuthServerConfig {
-  adapter: (options?: any) => DBAdapter;
+  adapter: (options: BetterAuthOptions) => DBAdapter;
   options: BetterAuthOptions;
   emailProvider?: {
     sendVerificationEmail: (data: {
@@ -53,9 +52,8 @@ export interface BetterAuthServerConfig {
 }
 
 export function createBetterAuthInstance(config: BetterAuthServerConfig) {
-  console.log(config.options.advanced);
   return betterAuth({
-    database: config.adapter(),
+    database: config.adapter,
     ...config.options,
 
     // Email and password authentication
