@@ -19,6 +19,7 @@ export class AuthService implements OnModuleInit {
       adapter: this.adapterFactory.createAdapter(
         process.env.NODE_ENV === "development"
       ),
+      options: AUTH_CONFIG,
       emailProvider: {
         sendVerificationEmail: (data) =>
           this.emailService.sendVerificationEmail(data),
@@ -32,7 +33,6 @@ export class AuthService implements OnModuleInit {
       twoFactorConfig: {
         sendOTP: (data) => this.emailService.sendOTP(data),
       },
-      ...AUTH_CONFIG,
     });
   }
 

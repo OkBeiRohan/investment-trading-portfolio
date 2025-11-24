@@ -1,4 +1,9 @@
-import { betterAuth, GenericEndpointContext, User } from "better-auth";
+import {
+  betterAuth,
+  BetterAuthOptions,
+  GenericEndpointContext,
+  User,
+} from "better-auth";
 import { DBAdapter } from "@better-auth/core/db/adapter";
 import {
   organization,
@@ -8,14 +13,10 @@ import {
 } from "better-auth/plugins";
 import { userRoleEnum } from "@repo/schema";
 import { passkey } from "@better-auth/passkey";
-import { MongoAdapterConfig } from "../adapters/mongodb.adapter";
 
 export interface BetterAuthServerConfig {
   adapter: (options?: any) => DBAdapter;
-  baseURL: string;
-  secret: string;
-  appName: string;
-  trustedOrigins?: string[];
+  options: BetterAuthOptions;
   emailProvider?: {
     sendVerificationEmail: (data: {
       user: User;
@@ -49,37 +50,12 @@ export interface BetterAuthServerConfig {
       context?: GenericEndpointContext
     ) => Promise<void>;
   };
-  socialProviders?: {
-    google?: {
-      clientId: string;
-      clientSecret: string;
-    };
-    github?: {
-      clientId: string;
-      clientSecret: string;
-    };
-    discord?: {
-      clientId: string;
-      clientSecret: string;
-    };
-  };
-  rateLimit?: {
-    enabled: boolean;
-    window: number;
-    max: number;
-  };
 }
 
 export function createBetterAuthInstance(config: BetterAuthServerConfig) {
   return betterAuth({
     database: config.adapter(),
-
-    baseURL: config.baseURL,
-    secret: config.secret,
-    appName: config.appName,
-
-    // Trusted origins for CORS
-    trustedOrigins: config.trustedOrigins || [],
+    ...config.options,
 
     // Email and password authentication
     emailAndPassword: {
@@ -95,53 +71,9 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
       },
     },
 
-    // Session configuration
-    session: {
-      expiresIn: 60 * 60 * 24 * 7, // 7 days
-      updateAge: 60 * 60 * 24, // Update session every 24 hours
-      cookieCache: {
-        enabled: true,
-        maxAge: 60 * 5, // 5 minutes
-      },
-    },
-
     // User configuration
     user: {
-      additionalFields: {
-        // Add custom fields as needed
-        dateOfBirth: {
-          type: "string",
-          required: false,
-        },
-        isActive: {
-          type: "boolean",
-          defaultValue: true,
-          required: false,
-          input: false,
-        },
-        isBlocked: {
-          type: "boolean",
-          defaultValue: false,
-          required: false,
-          input: false,
-        },
-        role: {
-          type: "string[]",
-          required: false,
-          defaultValue: [userRoleEnum.enum.Investor],
-          input: false,
-        },
-        lastLoginAt: {
-          type: "date",
-          required: false,
-          input: false,
-        },
-        passwordChangedAt: {
-          type: "date",
-          required: false,
-          input: false,
-        },
-      },
+      ...config.options.user,
       changeEmail: {
         enabled: true,
         sendChangeEmailVerification: async (data) => {
@@ -149,61 +81,6 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
             await config.emailProvider.sendVerificationEmail(data);
           }
         },
-      },
-    },
-
-    // Account configuration
-    account: {
-      accountLinking: {
-        enabled: true,
-        trustedProviders: ["google", "github"],
-      },
-    },
-
-    // Social providers
-    socialProviders: {
-      google: config.socialProviders?.google
-        ? {
-            clientId: config.socialProviders.google.clientId,
-            clientSecret: config.socialProviders.google.clientSecret,
-            scope: ["openid", "email", "profile"],
-          }
-        : undefined,
-      github: config.socialProviders?.github
-        ? {
-            clientId: config.socialProviders.github.clientId,
-            clientSecret: config.socialProviders.github.clientSecret,
-            scope: ["user:email"],
-          }
-        : undefined,
-      discord: config.socialProviders?.discord
-        ? {
-            clientId: config.socialProviders.discord.clientId,
-            clientSecret: config.socialProviders.discord.clientSecret,
-            scope: ["identify", "email"],
-          }
-        : undefined,
-    },
-
-    // Rate limiting
-    rateLimit: config.rateLimit?.enabled
-      ? {
-          window: config.rateLimit.window,
-          max: config.rateLimit.max,
-          storage: "memory", // Can be customized to use Redis
-        }
-      : undefined,
-
-    // Advanced security
-    advanced: {
-      useSecureCookies: process.env.NODE_ENV === "production",
-      cookiePrefix: "better-auth",
-      crossSubDomainCookies: {
-        enabled: true,
-      },
-      generateId: () => {
-        // Use MongoDB ObjectId-like generation
-        return require("mongodb").ObjectId().toString();
       },
     },
 
@@ -226,7 +103,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
               email: data.email,
               organizationName: data.organization.name,
               inviterName: data.inviter.user.name,
-              invitationLink: `${config.baseURL}/accept-invitation/${data.id}`,
+              invitationLink: `${config.options.baseURL}/accept-invitation/${data.id}`,
               role: data.role,
             });
           }
@@ -238,7 +115,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
 
       // Two-factor authentication plugin
       twoFactor({
-        issuer: config.appName,
+        issuer: config.options.appName,
         otpOptions: config.twoFactorConfig?.sendOTP
           ? {
               async sendOTP(data, context) {
@@ -252,9 +129,9 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
 
       // Passkey plugin for WebAuthn/FIDO2
       passkey({
-        rpID: new URL(config.baseURL).hostname,
-        rpName: config.appName,
-        origin: config.baseURL,
+        rpID: new URL(config.options.baseURL || "").hostname,
+        rpName: config.options.appName,
+        origin: config.options.baseURL,
         authenticatorSelection: {
           authenticatorAttachment: undefined, // Allow both platform and cross-platform
           requireResidentKey: false,
