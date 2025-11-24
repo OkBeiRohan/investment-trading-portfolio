@@ -2,11 +2,13 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Session } from "../../schemas/authentication";
 import { Model, QueryFilter } from "mongoose";
+import DatabaseConnections from "../../connections/connections";
 
 @Injectable()
 export class SessionRepository {
   constructor(
-    @InjectModel(Session.name) private readonly sessionModel: Model<Session>
+    @InjectModel(Session.name, DatabaseConnections.User)
+    private readonly sessionModel: Model<Session>
   ) {}
 
   async create(data: Partial<Session>): Promise<Session> {

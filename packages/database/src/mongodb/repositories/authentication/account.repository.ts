@@ -2,11 +2,13 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, QueryFilter } from "mongoose";
 import { Account } from "../../schemas/authentication";
+import DatabaseConnections from "../../connections/connections";
 
 @Injectable()
 export class AccountRepository {
   constructor(
-    @InjectModel(Account.name) private readonly accountModel: Model<Account>
+    @InjectModel(Account.name, DatabaseConnections.User)
+    private readonly accountModel: Model<Account>
   ) {}
 
   async create(data: Partial<Account>): Promise<Account> {

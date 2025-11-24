@@ -2,11 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, QueryFilter } from "mongoose";
 import { Verification } from "../../schemas/authentication";
+import DatabaseConnections from "../../connections/connections";
 
 @Injectable()
 export class VerificationRepository {
   constructor(
-    @InjectModel(Verification.name)
+    @InjectModel(Verification.name, DatabaseConnections.User)
     private readonly verificationModel: Model<Verification>
   ) {}
 

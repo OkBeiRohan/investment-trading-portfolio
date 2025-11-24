@@ -23,10 +23,10 @@ export class Session extends Document implements ISession {
   expiresAt: Date;
 
   @Prop({ required: false })
-  ipAddress?: string | null;
+  ipAddress?: string;
 
   @Prop({ required: false })
-  userAgent?: string | null;
+  userAgent?: string;
 
   @Prop({
     type: Types.ObjectId,

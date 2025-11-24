@@ -21,19 +21,19 @@ export class User
   name: string;
 
   @Prop({ required: false })
-  phoneNumber?: string | null;
+  phoneNumber?: string;
 
   @Prop({ default: false })
   phoneVerified: boolean;
 
   @Prop({ required: false })
-  image?: string | null;
+  image?: string;
 
   @Prop({ required: false })
-  dateOfBirth?: Date | null;
+  dateOfBirth?: Date;
 
   @Prop({ required: false })
-  country?: string | null;
+  country?: string;
 
   @Prop({ required: true, default: "UTC" })
   timezone: string;
@@ -47,17 +47,21 @@ export class User
   @Prop({ required: true, default: false })
   isBlocked: boolean;
 
-  @Prop({ required: true, default: ["Investor"], enum: userRoleEnum.options })
+  @Prop({
+    required: true,
+    default: ["Investor"],
+    // enum: ["Investor", "Admin", "Trader"],
+  })
   role: UserRole[];
 
   @Prop({ required: true, default: false })
   twoFactorEnabled: boolean;
 
   @Prop({ required: false })
-  lastLoginAt?: Date | null;
+  lastLoginAt?: Date;
 
   @Prop({ required: false })
-  passwordChangedAt?: Date | null;
+  passwordChangedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

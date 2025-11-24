@@ -45,6 +45,7 @@ export class MongoDBModule {
       module: MongoDBModule,
       imports: [
         MongooseModule.forRoot(options.mongoUri, {
+          connectionName: DatabaseConnections.User,
           dbName: DatabaseConnections.User,
           retryWrites: true,
           retryAttempts: 5,

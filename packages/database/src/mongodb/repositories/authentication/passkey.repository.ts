@@ -2,11 +2,13 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Passkey } from "../../schemas/authentication";
+import DatabaseConnections from "../../connections/connections";
 
 @Injectable()
 export class PasskeyRepository {
   constructor(
-    @InjectModel(Passkey.name) private readonly passkeyModel: Model<Passkey>
+    @InjectModel(Passkey.name, DatabaseConnections.User)
+    private readonly passkeyModel: Model<Passkey>
   ) {}
 
   async create(data: Partial<Passkey>): Promise<Passkey> {

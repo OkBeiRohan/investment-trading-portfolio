@@ -2,11 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { TwoFactor } from "../../schemas/authentication";
+import DatabaseConnections from "../../connections/connections";
 
 @Injectable()
 export class TwoFactorRepository {
   constructor(
-    @InjectModel(TwoFactor.name)
+    @InjectModel(TwoFactor.name, DatabaseConnections.User)
     private readonly twoFactorModel: Model<TwoFactor>
   ) {}
 

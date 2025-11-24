@@ -2,14 +2,16 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, QueryFilter } from "mongoose";
 import { Invitation, Member, Organization } from "../schemas/organization";
+import DatabaseConnections from "../connections/connections";
 
 @Injectable()
 export class OrganizationRepository {
   constructor(
-    @InjectModel(Organization.name)
+    @InjectModel(Organization.name, DatabaseConnections.User)
     private readonly orgModel: Model<Organization>,
-    @InjectModel(Member.name) private readonly memberModel: Model<Member>,
-    @InjectModel(Invitation.name)
+    @InjectModel(Member.name, DatabaseConnections.User)
+    private readonly memberModel: Model<Member>,
+    @InjectModel(Invitation.name, DatabaseConnections.User)
     private readonly invitationModel: Model<Invitation>
   ) {}
 
