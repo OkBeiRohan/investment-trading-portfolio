@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@trpc/server": "^11.7.2",
-    "zod": "^4.1.12",
+    "zod": "^4.1.13",
     "@repo/schema": "workspace:*"
   },
   "devDependencies": {

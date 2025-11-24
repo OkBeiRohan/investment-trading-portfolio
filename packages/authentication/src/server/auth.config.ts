@@ -8,6 +8,7 @@ import {
 } from "better-auth/plugins";
 import { userRoleEnum } from "@repo/schema";
 import { passkey } from "@better-auth/passkey";
+import { MongoAdapterConfig } from "../adapters/mongodb.adapter";
 
 export interface BetterAuthServerConfig {
   adapter: (options?: any) => DBAdapter;
@@ -71,7 +72,7 @@ export interface BetterAuthServerConfig {
 
 export function createBetterAuthInstance(config: BetterAuthServerConfig) {
   return betterAuth({
-    database: config.adapter,
+    database: config.adapter(),
 
     baseURL: config.baseURL,
     secret: config.secret,
