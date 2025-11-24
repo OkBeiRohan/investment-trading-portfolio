@@ -11,6 +11,7 @@ export class Account extends Document implements IAccount {
     type: Types.ObjectId,
     ref: User.name,
     required: true,
+    index: true,
   })
   userId: string;
 
@@ -48,4 +49,3 @@ export class Account extends Document implements IAccount {
 export const AccountSchema = SchemaFactory.createForClass(Account);
 
 AccountSchema.index({ providerId: 1, accountId: 1 }, { unique: true });
-AccountSchema.index({ userId: 1 });

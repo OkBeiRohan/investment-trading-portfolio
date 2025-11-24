@@ -11,7 +11,7 @@ export class User
   extends Document
   implements Omit<IUser, "id" | "createdAt" | "updatedAt">
 {
-  @Prop({ required: true, unique: true,  lowercase: true })
+  @Prop({ required: true, unique: true, lowercase: true, index: true })
   email: string;
 
   @Prop({ default: false })
@@ -66,6 +66,5 @@ export class User
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ phoneNumber: 1 });
 UserSchema.index({ createdAt: -1 });

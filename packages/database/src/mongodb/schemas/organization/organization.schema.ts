@@ -9,7 +9,7 @@ export class Organization extends Document implements IOrganization {
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true, unique: true, index: true })
   slug: string;
 
   @Prop({ required: false })
@@ -23,4 +23,3 @@ export class Organization extends Document implements IOrganization {
 }
 
 export const OrganizationSchema = SchemaFactory.createForClass(Organization);
-OrganizationSchema.index({ slug: 1 }, { unique: true });

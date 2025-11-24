@@ -53,6 +53,7 @@ export interface BetterAuthServerConfig {
 }
 
 export function createBetterAuthInstance(config: BetterAuthServerConfig) {
+  console.log(config.options.advanced);
   return betterAuth({
     database: config.adapter(),
     ...config.options,
