@@ -3,39 +3,24 @@ import {
   type Where,
   type DBAdapterDebugLogOption,
 } from "better-auth/adapters";
-import {
-  UserRepository,
-  SessionRepository,
-  AccountRepository,
-  VerificationRepository,
-  OrganizationRepository,
-  TwoFactorRepository,
-  PasskeyRepository,
-} from "@repo/database";
+import { AuthRepositories } from "@repo/database";
 import { CustomAdapter } from "@better-auth/core/db/adapter";
 
 export interface MongoAdapterConfig {
   debugLogs?: DBAdapterDebugLogOption;
 }
 
-export interface Repositories {
-  users: UserRepository;
-  sessions: SessionRepository;
-  accounts: AccountRepository;
-  verifications: VerificationRepository;
-  organizations: OrganizationRepository;
-  twoFactors: TwoFactorRepository;
-  passkeys: PasskeyRepository;
-}
-
 export const mongoAdapter = (
-  repositories: Repositories,
+  repositories: AuthRepositories,
   config: MongoAdapterConfig = {}
 ) => {
   return createAdapterFactory({
     config: {
       adapterId: "mongodb-mongoose",
       adapterName: "MongoDB Mongoose Adapter",
+      supportsBooleans: true,
+      supportsDates: true,
+      supportsUUIDs: false,
       supportsNumericIds: false,
       supportsJSON: true,
     },

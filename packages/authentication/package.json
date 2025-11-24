@@ -9,10 +9,6 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js"
     },
-    "./nestjs": {
-      "import": "./dist/nestjs/index.js",
-      "require": "./dist/nestjs/index.js"
-    },
     "./*": {
       "import": "./dist/*.js",
       "require": "./dist/*.js"
@@ -31,6 +27,7 @@
     "@nestjs/core": "^11.1.9",
     "@nestjs/common": "^11.1.9",
     "@nestjs/config": "^4.0.2",
+    "@nestjs/mongoose": "^11.0.3",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "better-auth": "^1.4.1",

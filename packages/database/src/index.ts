@@ -28,5 +28,8 @@ export type {
 
 // MongoDB
 export * from "./mongodb/repositories";
+export * from "./mongodb/schemas";
+export * from "./mongodb/adapter/adapter.factory";
+export * from "./mongodb/adapter/auth-repositories.interface";
 
 export { MongoDBModule } from "./mongodb/mongodb.module";

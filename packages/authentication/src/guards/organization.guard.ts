@@ -4,7 +4,7 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from "@nestjs/common";
-import { AuthService } from "../auth.service";
+import { AuthService } from "../services/auth.service";
 
 @Injectable()
 export class OrganizationGuard implements CanActivate {

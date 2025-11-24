@@ -31,56 +31,56 @@ import {
   Organization,
   OrganizationSchema,
 } from "./schemas/organization";
-import { DatabaseModuleOptions } from "../database.module";
+import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 
 @Global()
-@Module({})
-export class MongoDBModule {
-  static forRoot(options: DatabaseModuleOptions): DynamicModule {
-    return {
-      module: MongoDBModule,
-      imports: [
-        MongooseModule.forRoot(options.mongoUri, {
-          connectionName: DatabaseConnections.User,
-          dbName: DatabaseConnections.User,
-          retryWrites: true,
-          retryAttempts: 5,
-          retryDelay: 3000,
-          writeConcern: { w: "majority" },
-        }),
-        MongooseModule.forFeature(
-          [
-            { name: User.name, schema: UserSchema },
-            { name: Account.name, schema: AccountSchema },
-            { name: Session.name, schema: SessionSchema },
-            { name: Verification.name, schema: VerificationSchema },
-            { name: TwoFactor.name, schema: TwoFactorSchema },
-            { name: Passkey.name, schema: PasskeySchema },
-            { name: Organization.name, schema: OrganizationSchema },
-            { name: Member.name, schema: MemberSchema },
-            { name: Invitation.name, schema: InvitationSchema },
-          ],
-          DatabaseConnections.User
-        ),
+@Module({
+  imports: [
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || "mongodb://localhost:27017",
+      {
+        connectionName: DatabaseConnections.User,
+        dbName: DatabaseConnections.User,
+        retryWrites: true,
+        retryAttempts: 5,
+        retryDelay: 3000,
+        writeConcern: { w: "majority" },
+      }
+    ),
+    MongooseModule.forFeature(
+      [
+        { name: User.name, schema: UserSchema },
+        { name: Account.name, schema: AccountSchema },
+        { name: Session.name, schema: SessionSchema },
+        { name: Verification.name, schema: VerificationSchema },
+        { name: TwoFactor.name, schema: TwoFactorSchema },
+        { name: Passkey.name, schema: PasskeySchema },
+        { name: Organization.name, schema: OrganizationSchema },
+        { name: Member.name, schema: MemberSchema },
+        { name: Invitation.name, schema: InvitationSchema },
       ],
-      providers: [
-        UserRepository,
-        SessionRepository,
-        AccountRepository,
-        VerificationRepository,
-        OrganizationRepository,
-        TwoFactorRepository,
-        PasskeyRepository,
-      ],
-      exports: [
-        UserRepository,
-        SessionRepository,
-        AccountRepository,
-        VerificationRepository,
-        OrganizationRepository,
-        TwoFactorRepository,
-        PasskeyRepository,
-      ],
-    };
-  }
-}
+      DatabaseConnections.User
+    ),
+  ],
+  providers: [
+    UserRepository,
+    SessionRepository,
+    AccountRepository,
+    VerificationRepository,
+    OrganizationRepository,
+    TwoFactorRepository,
+    PasskeyRepository,
+    AuthRepositoryFactory,
+  ],
+  exports: [
+    UserRepository,
+    SessionRepository,
+    AccountRepository,
+    VerificationRepository,
+    OrganizationRepository,
+    TwoFactorRepository,
+    PasskeyRepository,
+    AuthRepositoryFactory,
+  ],
+})
+export class MongoDBModule {}
