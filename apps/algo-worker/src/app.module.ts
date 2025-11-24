@@ -4,11 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 // Import database modules
-import {
-  TradingDatabaseModule,
-  QuestDBModule,
-  RedisModule,
-} from '@repo/database';
+import { MongoDBModule, QuestDBModule, RedisModule } from '@repo/database';
 
 // Import all 4 engines
 import { DataEngineModule } from './engines/data/data-engine.module';
@@ -36,7 +32,7 @@ import tradingConfig from './config/trading.config';
     }),
 
     // Database connections
-    TradingDatabaseModule,
+    MongoDBModule,
     QuestDBModule,
     RedisModule,
 

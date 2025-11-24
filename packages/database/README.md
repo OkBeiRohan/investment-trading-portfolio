@@ -1,26 +1,57 @@
 # @repo/database
 
-MongoDB database package with NestJS/Mongoose integration for the trading monorepo.
+Multi-database package providing MongoDB, QuestDB, and Redis integration for the investment trading portfolio monorepo.
 
-## Features
+## Overview
 
-- **NestJS Integration**: Ready-to-use DatabaseModule
-- **Mongoose Models**: Pre-defined schemas for all trading entities
-- **Type Safety**: Full TypeScript support with `@repo/schema` types
-- **Dual Mode**: Works with NestJS or standalone
+**Purpose**: Centralized database access layer supporting multiple database systems with a unified API.
+
+**Key Features**:
+
+- ✅ **MongoDB**: Application data, user accounts, trading signals, orders, positions
+- ✅ **QuestDB**: High-performance time-series data (ticks, candles, features)
+- ✅ **Redis**: Caching, pub/sub, session management, rate limiting
+- ✅ NestJS module integration
+- ✅ Repository pattern for MongoDB
+- ✅ Connection pooling and health checks
+- ✅ Type-safe with @repo/schema
+
+## Database Strategy
+
+### Why Three Databases?
+
+```
+┌──────────────────────────────────────────────┐
+│  MongoDB (Document Store)                    │
+│  - Complex queries and relationships         │
+│  - Flexible schema                           │
+│  - Users, organizations, auth data           │
+│  - Trading signals, orders, positions        │
+│  - Performance metrics                       │
+└──────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────┐
+│  QuestDB (Time-Series Database)              │
+│  - 10-20x faster than TimescaleDB            │
+│  - Tick data, OHLCV candles                  │
+│  - Market data, option Greeks                │
+│  - Engineered features                       │
+│  - Optimized for append-only workloads       │
+└──────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────┐
+│  Redis (In-Memory Cache)                     │
+│  - Sub-millisecond latency                   │
+│  - Pub/sub for real-time data               │
+│  - Session storage                           │
+│  - Rate limiting                             │
+│  - WebSocket connection state                │
+└──────────────────────────────────────────────┘
+```
 
 ## Installation
 
-This package is already part of the monorepo. Dependencies are managed by pnpm workspaces.
-
-```bash
-# Install dependencies from monorepo root
-pnpm install
-```
-
-## Usage with NestJS
-
-### 1. Import DatabaseModule in AppModule
+This package is part of the monorepo. Import modules in your NestJS apps:
 
 ```typescript
 // apps/algo-worker/src/app.module.ts
