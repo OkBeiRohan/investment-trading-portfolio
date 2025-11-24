@@ -12,14 +12,13 @@ export class Session extends Document implements ISession {
     type: Types.ObjectId,
     ref: User.name,
     required: true,
-    index: true,
   })
   userId: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   token: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   expiresAt: Date;
 
   @Prop({ required: false })

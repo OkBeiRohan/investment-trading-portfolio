@@ -11,7 +11,7 @@ export class User
   extends Document
   implements Omit<IUser, "id" | "createdAt" | "updatedAt">
 {
-  @Prop({ required: true, unique: true, index: true, lowercase: true })
+  @Prop({ required: true, unique: true,  lowercase: true })
   email: string;
 
   @Prop({ default: false })

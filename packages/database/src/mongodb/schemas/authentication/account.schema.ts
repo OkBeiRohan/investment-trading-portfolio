@@ -11,14 +11,13 @@ export class Account extends Document implements IAccount {
     type: Types.ObjectId,
     ref: User.name,
     required: true,
-    index: true,
   })
   userId: string;
 
   @Prop({ required: true })
   accountId: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   providerId: string;
 
   @Prop({ required: false })

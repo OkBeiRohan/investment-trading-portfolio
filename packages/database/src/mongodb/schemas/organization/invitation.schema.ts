@@ -20,11 +20,10 @@ export class Invitation extends Document implements IInvitation {
     type: Types.ObjectId,
     ref: Organization.name,
     required: true,
-    index: true,
   })
   organizationId: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   email: string;
 
   @Prop({
@@ -41,7 +40,7 @@ export class Invitation extends Document implements IInvitation {
   })
   status: InvitationStatus;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   expiresAt: Date;
 
   @Prop({

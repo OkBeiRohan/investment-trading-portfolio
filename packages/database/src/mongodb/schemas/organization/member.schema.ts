@@ -18,7 +18,6 @@ export class Member extends Document implements IMember {
     type: Types.ObjectId,
     ref: Organization.name,
     required: true,
-    index: true,
   })
   organizationId: string;
 
@@ -26,7 +25,6 @@ export class Member extends Document implements IMember {
     type: Types.ObjectId,
     ref: User.name,
     required: true,
-    index: true,
   })
   userId: string;
 

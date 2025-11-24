@@ -7,7 +7,7 @@ import { User } from "../user/user.schema";
 export class Passkey extends Document implements IPasskey {
   id: string;
 
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   userId: string;
 
   @Prop({})
@@ -16,7 +16,7 @@ export class Passkey extends Document implements IPasskey {
   @Prop({ required: true })
   publicKey: string;
 
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ required: true, unique: true })
   credentialID: string;
 
   @Prop({ required: true, default: 0 })

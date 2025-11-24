@@ -11,7 +11,6 @@ export class TwoFactor extends Document implements ITwoFactor {
     type: Types.ObjectId,
     ref: User.name,
     required: true,
-    index: true,
   })
   userId: string;
 

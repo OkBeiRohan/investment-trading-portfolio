@@ -9,7 +9,7 @@ export class Organization extends Document implements IOrganization {
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ required: true, unique: true })
   slug: string;
 
   @Prop({ required: false })
