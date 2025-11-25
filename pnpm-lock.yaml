@@ -265,6 +265,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.66.1(react@19.2.0))
+      '@repo/authentication':
+        specifier: workspace:*
+        version: link:../../packages/authentication
       '@repo/schema':
         specifier: workspace:*
         version: link:../../packages/schema
@@ -337,7 +340,7 @@ importers:
         version: 1.4.1(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.1.0)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0)
       '@better-auth/passkey':
         specifier: ^1.4.1
-        version: 1.4.1(@better-auth/core@1.4.1(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.1.0)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-auth@1.4.1(react@19.2.0))(better-call@1.1.0)(nanostores@1.1.0)
+        version: 1.4.1(@better-auth/core@1.4.1(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.1.0)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-auth@1.4.1(next@16.0.4(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(better-call@1.1.0)(nanostores@1.1.0)
       '@nestjs/common':
         specifier: ^11.1.9
         version: 11.1.9(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -355,7 +358,10 @@ importers:
         version: link:../schema
       better-auth:
         specifier: ^1.4.1
-        version: 1.4.1(react@19.2.0)
+        version: 1.4.1(next@16.0.4(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      next:
+        specifier: 16.0.4
+        version: 16.0.4(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -372,12 +378,6 @@ importers:
       '@types/react':
         specifier: ^19.2.7
         version: 19.2.7
-      ts-loader:
-        specifier: ^9.5.4
-        version: 9.5.4(typescript@5.9.3)(webpack@5.100.2)
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@types/node@24.10.1)(typescript@5.9.3)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -577,12 +577,18 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.10
         version: 5.90.10(react@19.2.0)
+      '@trpc/client':
+        specifier: ^11.7.2
+        version: 11.7.2(@trpc/server@11.7.2(typescript@5.9.3))(typescript@5.9.3)
       '@trpc/react-query':
         specifier: ^11.7.2
         version: 11.7.2(@tanstack/react-query@5.90.10(react@19.2.0))(@trpc/client@11.7.2(@trpc/server@11.7.2(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.7.2(typescript@5.9.3))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
       '@trpc/server':
         specifier: ^11.7.2
         version: 11.7.2(typescript@5.9.3)
+      superjson:
+        specifier: ^2.2.5
+        version: 2.2.5
       zod:
         specifier: ^4.1.13
         version: 4.1.13
@@ -596,12 +602,12 @@ importers:
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
-      ts-loader:
-        specifier: ^9.5.4
-        version: 9.5.4(typescript@5.9.3)(webpack@5.100.2)
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@types/node@24.10.1)(typescript@5.9.3)
+      '@types/react':
+        specifier: ^19.2.7
+        version: 19.2.7
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -5567,14 +5573,14 @@ snapshots:
       nanostores: 1.1.0
       zod: 4.1.13
 
-  '@better-auth/passkey@1.4.1(@better-auth/core@1.4.1(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.1.0)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-auth@1.4.1(react@19.2.0))(better-call@1.1.0)(nanostores@1.1.0)':
+  '@better-auth/passkey@1.4.1(@better-auth/core@1.4.1(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.1.0)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-auth@1.4.1(next@16.0.4(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(better-call@1.1.0)(nanostores@1.1.0)':
     dependencies:
       '@better-auth/core': 1.4.1(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.1.0)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0)
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.18
       '@simplewebauthn/browser': 13.2.2
       '@simplewebauthn/server': 13.2.2
-      better-auth: 1.4.1(react@19.2.0)
+      better-auth: 1.4.1(next@16.0.4(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       better-call: 1.1.0
       nanostores: 1.1.0
       zod: 4.1.13
@@ -7298,7 +7304,7 @@ snapshots:
 
   baseline-browser-mapping@2.8.28: {}
 
-  better-auth@1.4.1(react@19.2.0):
+  better-auth@1.4.1(next@16.0.4(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       '@better-auth/core': 1.4.1(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.1.0)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.1(@better-auth/core@1.4.1(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.1.0)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))
@@ -7314,7 +7320,9 @@ snapshots:
       nanostores: 1.1.0
       zod: 4.1.13
     optionalDependencies:
+      next: 16.0.4(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
 
   better-call@1.1.0:
     dependencies:

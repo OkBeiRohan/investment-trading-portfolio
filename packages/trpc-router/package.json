@@ -10,21 +10,26 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client/index.ts",
-    "./server": "./src/server/server.ts"
+    "./server": "./src/server/index.ts"
   },
   "dependencies": {
     "@repo/schema": "workspace:*",
     "@tanstack/react-query": "^5.90.10",
+    "@trpc/client": "^11.7.2",
     "@trpc/react-query": "^11.7.2",
     "@trpc/server": "^11.7.2",
+    "superjson": "^2.2.5",
     "zod": "^4.1.13"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^24.10.1",
-    "ts-loader": "^9.5.4",
-    "ts-node": "^10.9.2",
+    "@types/react": "^19.2.7",
+    "react": "^19.2.0",
     "typescript": "5.9.3"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
   }
 }
