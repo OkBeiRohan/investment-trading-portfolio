@@ -7,10 +7,17 @@
     "lint": "eslint .",
     "check-types": "tsc --noEmit"
   },
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./server": "./src/server/server.ts"
+  },
   "dependencies": {
+    "@repo/schema": "workspace:*",
+    "@tanstack/react-query": "^5.90.10",
+    "@trpc/react-query": "^11.7.2",
     "@trpc/server": "^11.7.2",
-    "zod": "^4.1.13",
-    "@repo/schema": "workspace:*"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

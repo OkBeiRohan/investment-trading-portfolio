@@ -7,7 +7,7 @@ import { AuthModule } from '@repo/authentication';
 @Module({
   imports: [
     TRPCModule.forRoot({
-      autoSchemaFile: '../../packages/trpc-router/src',
+      autoSchemaFile: '../../packages/trpc-router/src/server',
     }),
     AuthModule,
   ],
