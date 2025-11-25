@@ -21,11 +21,12 @@
   "dependencies": {
     "@better-auth/core": "^1.4.1",
     "@better-auth/passkey": "^1.4.1",
-    "@nestjs/core": "^11.1.9",
     "@nestjs/common": "^11.1.9",
     "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.9",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
+    "@thallesp/nestjs-better-auth": "^2.2.0",
     "better-auth": "^1.4.1",
     "next": "16.0.4",
     "react": "^19.2.0"

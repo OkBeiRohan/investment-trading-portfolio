@@ -28,6 +28,7 @@
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
     "@repo/schema": "workspace:*",
+    "@thallesp/nestjs-better-auth": "^2.2.0",
     "@trpc/server": "^11.7.2",
     "nestjs-trpc": "^1.6.1",
     "nestjs-zod": "^5.0.1",
@@ -36,9 +37,9 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@jest/globals": "^30.2.0",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.39.1",
+    "@jest/globals": "^30.2.0",
     "@nestjs/cli": "^11.0.12",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.9",

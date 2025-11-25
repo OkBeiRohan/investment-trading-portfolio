@@ -19,12 +19,6 @@ import { MongoDBModule } from "@repo/database";
     OrganizationGuard,
     RolesGuard,
   ],
-  exports: [
-    AuthService,
-    EmailService,
-    AuthGuard,
-    OrganizationGuard,
-    RolesGuard,
-  ],
+  exports: [AuthService],
 })
 export class AuthModule {}
