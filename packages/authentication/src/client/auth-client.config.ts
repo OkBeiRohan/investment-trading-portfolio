@@ -1,4 +1,4 @@
-import { createAuthClient } from "better-auth/client";
+import { createAuthClient } from "better-auth/react";
 import {
   deviceAuthorizationClient,
   emailOTPClient,
@@ -10,13 +10,9 @@ import {
   twoFactorClient,
 } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
+import { BetterAuthClientOptions } from "better-auth";
 
-export interface BetterAuthClientConfig {
-  baseURL?: string;
-  fetchOptions?: RequestInit;
-}
-
-export const createAuthClientInstance = (config: BetterAuthClientConfig) => {
+export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
   return createAuthClient({
     baseURL: config.baseURL,
     fetchOptions: {

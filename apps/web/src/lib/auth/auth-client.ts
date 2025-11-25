@@ -3,4 +3,6 @@ import {
   createAuthClientInstance,
 } from "@repo/authentication/client";
 
-export const authClient: AuthClient = createAuthClientInstance({});
+export const authClient: AuthClient = createAuthClientInstance({
+  basePath: "/api/auth",
+});
