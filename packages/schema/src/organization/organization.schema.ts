@@ -11,5 +11,5 @@ export const organizationSchema = z.object({
 });
 export type IOrganization = z.infer<typeof organizationSchema>;
 
-export const organisationRoleEnum = z.enum(["owner", "admin", "member", "viewer"]);
+export const organisationRoleEnum = z.enum(["owner", "admin", "member"]);
 export type OrganizationRole = z.infer<typeof organisationRoleEnum>;
