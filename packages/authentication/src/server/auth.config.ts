@@ -12,6 +12,7 @@ import {
   UserWithTwoFactor,
 } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
+import { organisationRoleEnum } from "@repo/schema";
 
 export interface BetterAuthServerConfig {
   adapter: (options: BetterAuthOptions) => DBAdapter;

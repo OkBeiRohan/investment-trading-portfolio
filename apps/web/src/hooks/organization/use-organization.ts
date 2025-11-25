@@ -77,7 +77,7 @@ export function useOrganization() {
 
   const removeMember = async (data: {
     organizationId: string;
-    memberId: string;
+    memberIdOrEmail: string;
   }) => {
     setLoading(true);
     try {
