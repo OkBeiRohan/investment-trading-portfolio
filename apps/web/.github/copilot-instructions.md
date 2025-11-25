@@ -361,7 +361,7 @@ describe('PositionCard', () => {
 
 ```bash
 # .env.local
-NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:3004
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=<your-secret>
 ```

@@ -4,7 +4,7 @@ REST API and authentication server for the investment trading portfolio system.
 
 ## Overview
 
-**Port**: 3001  
+**Port**: 3004
 **Purpose**: User management, authentication, portfolio data, and gateway to trading engines
 
 ## Quick Start

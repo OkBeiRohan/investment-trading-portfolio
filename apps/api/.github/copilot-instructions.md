@@ -7,7 +7,7 @@ You are working on the **API Server** - the main REST API and authentication ser
 ## Application Overview
 
 **Purpose**: Central API server for user-facing operations
-**Port**: 3001
+**Port**: 3004
 **Stack**: NestJS, MongoDB, tRPC, JWT Authentication
 
 **Responsibilities**:
@@ -308,7 +308,7 @@ describe('UserService', () => {
 
 ```bash
 # Server
-PORT=3001
+PORT=3004
 NODE_ENV=production
 
 # Database
@@ -349,13 +349,13 @@ ALGO_WORKER_URL=http://localhost:3000
 
 ## Common Anti-Patterns to Avoid
 
-❌ Creating database connections locally  
-❌ Defining types outside @repo/schema  
-❌ Storing passwords in plain text  
-❌ Missing input validation  
-❌ No rate limiting on public endpoints  
-❌ Exposing sensitive data in responses  
-❌ Missing authentication guards  
+❌ Creating database connections locally
+❌ Defining types outside @repo/schema
+❌ Storing passwords in plain text
+❌ Missing input validation
+❌ No rate limiting on public endpoints
+❌ Exposing sensitive data in responses
+❌ Missing authentication guards
 ❌ Using `any` types
 
 ## Documentation
