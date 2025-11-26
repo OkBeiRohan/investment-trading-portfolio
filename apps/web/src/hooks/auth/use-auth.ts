@@ -2,12 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
+import { AuthClient } from "@repo/authentication/client";
 
 /**
  * Main Authentication Hook
  * Uses Better Auth's built-in session management
  */
-export function useAuth() {
+export function useAuth(): {
+  client: AuthClient;
+  signOut: () => Promise<void>;
+} {
   const router = useRouter();
 
   const signOut = async () => {
@@ -17,9 +21,8 @@ export function useAuth() {
   };
 
   return {
-    // client: authClient,
+    client: authClient,
     signOut,
-    // Expose all Better Auth methods
   };
 }
 
