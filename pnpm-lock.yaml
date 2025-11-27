@@ -279,7 +279,7 @@ importers:
         version: link:../../packages/schema
       '@repo/trpc':
         specifier: workspace:*
-        version: link:../../packages/trpc-router
+        version: link:../../packages/trpc
       '@tanstack/react-query':
         specifier: ^5.90.10
         version: 5.90.10(react@19.2.0)
@@ -582,49 +582,6 @@ importers:
         version: 3.25.0(zod@4.1.13)
 
   packages/trpc:
-    dependencies:
-      '@repo/schema':
-        specifier: workspace:*
-        version: link:../schema
-      '@tanstack/react-query':
-        specifier: ^5.90.10
-        version: 5.90.10(react@19.2.0)
-      '@trpc/client':
-        specifier: ^11.7.2
-        version: 11.7.2(@trpc/server@11.7.2(typescript@5.9.3))(typescript@5.9.3)
-      '@trpc/react-query':
-        specifier: ^11.7.2
-        version: 11.7.2(@tanstack/react-query@5.90.10(react@19.2.0))(@trpc/client@11.7.2(@trpc/server@11.7.2(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.7.2(typescript@5.9.3))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
-      '@trpc/server':
-        specifier: ^11.7.2
-        version: 11.7.2(typescript@5.9.3)
-      superjson:
-        specifier: ^2.2.5
-        version: 2.2.5
-      zod:
-        specifier: ^4.1.13
-        version: 4.1.13
-    devDependencies:
-      '@repo/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@repo/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.1
-      '@types/react':
-        specifier: ^19.2.7
-        version: 19.2.7
-      react:
-        specifier: ^19.2.0
-        version: 19.2.0
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
-
-  packages/trpc-router:
     dependencies:
       '@repo/schema':
         specifier: workspace:*
