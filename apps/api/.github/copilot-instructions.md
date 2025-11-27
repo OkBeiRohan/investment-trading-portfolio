@@ -29,7 +29,7 @@ You are working on the **API Server** - the main REST API and authentication ser
 // ✅ CORRECT - Use shared packages
 import { type User, userSchema } from '@repo/schema';
 import { UserDatabaseModule } from '@repo/database';
-import { appRouter } from '@repo/trpc-router';
+import { appRouter } from '@repo/trpc';
 
 // ❌ WRONG - Local implementations
 import { User } from './types/user'; // NEVER
@@ -89,10 +89,10 @@ async getProfile(@Request() req) {
 
 ### 4. tRPC Integration
 
-**Use `@repo/trpc-router` for type-safe APIs:**
+**Use `@repo/trpc` for type-safe APIs:**
 
 ```typescript
-import { createNestJsContext, appRouter } from '@repo/trpc-router';
+import { createNestJsContext, appRouter } from '@repo/trpc';
 import * as trpcExpress from '@trpc/server/adapters/express';
 
 // Mount tRPC
@@ -339,7 +339,7 @@ ALGO_WORKER_URL=http://localhost:3000
 
 ## When Making Changes
 
-1. ✅ Use shared packages (@repo/schema, @repo/database, @repo/trpc-router)
+1. ✅ Use shared packages (@repo/schema, @repo/database, @repo/trpc)
 2. ✅ Validate all inputs with class-validator
 3. ✅ Implement proper error handling
 4. ✅ Add authentication guards to protected routes

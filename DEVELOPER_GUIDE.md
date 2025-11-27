@@ -214,8 +214,8 @@ pnpm build
 cd packages/schema/src/api
 nano your-endpoint.schema.ts
 
-# 2. Add tRPC router in @repo/trpc-router
-cd packages/trpc-router/src/routers
+# 2. Add tRPC router in @repo/trpc
+cd packages/trpc/src/routers
 nano your-router.ts
 
 # 3. Implement in algo-worker/api

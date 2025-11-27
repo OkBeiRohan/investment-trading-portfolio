@@ -8,7 +8,7 @@ This package serves as the **single source of truth** for all data structures, t
 
 - NestJS backend applications (`api`, `algo-worker`)
 - Next.js frontend (`web`)
-- Shared packages (`database`, `market-sdk`, `trpc-router`)
+- Shared packages (`database`, `market-sdk`, `trpc`)
 
 ## Architecture Principle
 
@@ -262,7 +262,7 @@ export type * from "@repo/schema";
 import { type Order, type Position } from "@repo/market-sdk";
 ```
 
-### @repo/trpc-router
+### @repo/trpc
 
 Uses schemas for input validation and type inference:
 

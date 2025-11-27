@@ -18,7 +18,7 @@ investment-trading-portfolio/
     ├── schema/          # Shared Zod schemas (@repo/schema)
     ├── database/        # MongoDB client & utilities (@repo/database)
     ├── market-sdk/      # Upstox SDK wrapper (@repo/market-sdk)
-    └── trpc-router/     # Shared tRPC router (@repo/trpc-router)
+    └── trpc/     # Shared tRPC router (@repo/trpc)
 ```
 
 ### Shared Package Usage
@@ -1305,7 +1305,7 @@ const signals = await collections.tradingSignals
   .toArray();
 
 // 3. web dashboard: Real-time updates via tRPC subscriptions
-// (handled in @repo/trpc-router)
+// (handled in @repo/trpc)
 ```
 
 ### Shared Schema Definitions

@@ -40,7 +40,7 @@ pnpm start
 - **Framework**: Next.js 15 (App Router)
 - **Styling**: TailwindCSS
 - **Authentication**: NextAuth.js
-- **API Layer**: tRPC client (via @repo/trpc-router)
+- **API Layer**: tRPC client (via @repo/trpc)
 - **State Management**: React Query (via tRPC)
 - **Charts**: Recharts / Chart.js
 - **TypeScript**: Strict mode
@@ -50,7 +50,7 @@ pnpm start
 Uses shared packages:
 
 - `@repo/schema` - Type definitions
-- `@repo/trpc-router` - Type-safe API client
+- `@repo/trpc` - Type-safe API client
 - `@repo/eslint-config` - Linting rules
 - `@repo/typescript-config` - TypeScript config
 

@@ -179,7 +179,7 @@ AppModule
 - **@repo/schema**: Zod schemas (9 trading schemas)
 - **@repo/database**: MongoDB client
 - **@repo/market-sdk**: Upstox wrapper
-- **@repo/trpc-router**: API layer
+- **@repo/trpc**: API layer
 
 ---
 

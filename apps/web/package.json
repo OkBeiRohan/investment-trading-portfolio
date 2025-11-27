@@ -13,7 +13,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@repo/schema": "workspace:*",
     "@repo/authentication": "workspace:*",
-    "@repo/trpc-router": "workspace:*",
+    "@repo/trpc": "workspace:*",
     "@tanstack/react-query": "^5.90.10",
     "@trpc/client": "^11.7.2",
     "@trpc/react-query": "^11.7.2",

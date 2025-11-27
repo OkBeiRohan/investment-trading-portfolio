@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { httpBatchLink } from "@trpc/client";
 // import superjson from "superjson";
-import { trpc } from "@repo/trpc-router";
+import { trpc } from "@repo/trpc";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(

@@ -2,7 +2,7 @@
 
 ## Role & Context
 
-You are working on **@repo/trpc-router** - the shared tRPC router package that provides type-safe API routes for the entire monorepo.
+You are working on **@repo/trpc** - the shared tRPC router package that provides type-safe API routes for the entire monorepo.
 
 ## Package Overview
 

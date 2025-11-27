@@ -12,7 +12,11 @@ import { DevtoolsModule } from '@nestjs/devtools-integration';
       http: process.env.NODE_ENV !== 'production',
     }),
     TRPCModule.forRoot({
-      autoSchemaFile: '../../packages/trpc-router/src/server',
+      autoSchemaFile:
+        process.env.DEVTOOLS === 'true'
+          ? undefined
+          : '../../packages/trpc/src/server',
+      basePath: '/api/trpc',
     }),
     BetterAuthModule.forRootAsync({
       imports: [AuthModule],

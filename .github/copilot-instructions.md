@@ -17,7 +17,7 @@ investment-trading-portfolio/
     ├── schema/             # Shared Zod schemas & types
     ├── database/           # Database clients (MongoDB, QuestDB, Redis)
     ├── market-sdk/         # Market data SDK (Upstox, Yahoo, Binance)
-    ├── trpc-router/        # Shared tRPC router
+    ├── trpc/        # Shared tRPC router
     ├── eslint-config/      # Shared ESLint config
     ├── typescript-config/  # Shared TypeScript config
     └── jest-config/        # Shared Jest config

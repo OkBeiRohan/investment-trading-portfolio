@@ -15,6 +15,7 @@
     "outDir": "./dist",
     "incremental": true,
     "skipLibCheck": true,
+    "jsx": "react-jsx",
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,

@@ -20,7 +20,7 @@ investment-trading-portfolio/
 │   ├── schema/                   # 📋 Zod Schemas (Single Source of Truth)
 │   ├── database/                 # 💾 Multi-DB Package (MongoDB + QuestDB + Redis)
 │   ├── market-sdk/               # 📈 Market Data SDK (Upstox + Yahoo + Binance)
-│   ├── trpc-router/              # 🔗 Shared tRPC Routes
+│   ├── trpc/              # 🔗 Shared tRPC Routes
 │   ├── ai-models/                # 🤖 NEW: ONNX Model Registry
 │   └── common-utils/             # 🛠️ Shared Utilities
 │

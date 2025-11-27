@@ -1,4 +1,4 @@
-# @repo/trpc-router
+# @repo/trpc
 
 Shared tRPC router for type-safe API communication between frontend and backend.
 
@@ -24,7 +24,7 @@ This package is part of the monorepo. Import in your apps:
 ```typescript
 // apps/api/src/app.module.ts
 import { Module } from "@nestjs/common";
-import { TrpcModule } from "@repo/trpc-router";
+import { TrpcModule } from "@repo/trpc";
 
 @Module({
   imports: [TrpcModule],
@@ -37,7 +37,7 @@ export class AppModule {}
 ```typescript
 // apps/web/src/utils/trpc.ts
 import { createTRPCNext } from "@trpc/next";
-import type { AppRouter } from "@repo/trpc-router";
+import type { AppRouter } from "@repo/trpc";
 
 export const trpc = createTRPCNext<AppRouter>({
   config() {
@@ -67,7 +67,7 @@ src/
 ### Portfolio Router
 
 ```typescript
-// packages/trpc-router/src/routers/portfolio.router.ts
+// packages/trpc/src/routers/portfolio.router.ts
 import { z } from "zod";
 import { publicProcedure, router } from "../trpc";
 import { portfolioSummarySchema } from "@repo/schema";
@@ -91,7 +91,7 @@ export const portfolioRouter = router({
 ### Trading Router (with Subscriptions)
 
 ```typescript
-// packages/trpc-router/src/routers/trading.router.ts
+// packages/trpc/src/routers/trading.router.ts
 import { observable } from "@trpc/server/observable";
 import { tradingSignalSchema } from "@repo/schema";
 
@@ -174,7 +174,7 @@ export function SignalFeed() {
 ## Context Setup
 
 ```typescript
-// packages/trpc-router/src/context.ts
+// packages/trpc/src/context.ts
 import { db } from "@repo/database";
 import type { inferAsyncReturnType } from "@trpc/server";
 
@@ -191,7 +191,7 @@ export type Context = inferAsyncReturnType<typeof createContext>;
 ## Authentication Middleware
 
 ```typescript
-// packages/trpc-router/src/middleware.ts
+// packages/trpc/src/middleware.ts
 import { TRPCError } from "@trpc/server";
 
 export const isAuthed = middleware(({ ctx, next }) => {

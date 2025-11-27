@@ -169,9 +169,9 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 
 ---
 
-### ⏳ @repo/trpc-router
+### ⏳ @repo/trpc
 
-**Location**: `/packages/trpc-router/`
+**Location**: `/packages/trpc/`
 
 **Status**: Placeholder ⏳
 

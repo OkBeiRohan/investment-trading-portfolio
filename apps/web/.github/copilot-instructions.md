@@ -41,7 +41,7 @@ interface TradingSignal { ... } // NEVER
 ```typescript
 // lib/trpc.ts
 import { createTRPCNext } from "@trpc/next";
-import { type AppRouter } from "@repo/trpc-router";
+import { type AppRouter } from "@repo/trpc";
 
 export const trpc = createTRPCNext<AppRouter>({
   config({ ctx }) {

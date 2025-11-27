@@ -65,7 +65,7 @@ Uses shared packages:
 
 - `@repo/schema` - Type definitions
 - `@repo/database` - Database access (MongoDB)
-- `@repo/trpc-router` - tRPC routes
+- `@repo/trpc` - tRPC routes
 
 ## Documentation
 

@@ -143,7 +143,7 @@ This document tracks the documentation status for all packages and apps in the m
 - WebSocket streaming
 - Rate limiting
 
-### 🔄 tRPC Router Package (@repo/trpc-router)
+### 🔄 tRPC Router Package (@repo/trpc)
 
 **Status**: NEEDS REVIEW
 
@@ -436,7 +436,7 @@ Must include:
 | @repo/database       | ✅ (559 lines) | ✅ (342 lines)       | ⚠️           | ⚠️       | 85%   |
 | @repo/schema         | ✅ (350 lines) | ✅ (394 lines)       | ⚠️           | ✅       | 90%   |
 | @repo/market-sdk     | ✅             | ⚠️                   | ⚠️           | ⚠️       | 40%   |
-| @repo/trpc-router    | 🔄             | ❌                   | ❌           | ❌       | 25%   |
+| @repo/trpc           | 🔄             | ❌                   | ❌           | ❌       | 25%   |
 | apps/algo-worker     | ✅             | ✅ (extensive)       | ✅           | ✅       | 100%  |
 | apps/api             | 🔄             | ⚠️                   | ❌           | ⚠️       | 40%   |
 | apps/web             | ✅             | ❌                   | ❌           | ⚠️       | 35%   |
