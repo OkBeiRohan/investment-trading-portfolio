@@ -1,11 +1,13 @@
 import { NestFactory, PartialGraphHost } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { writeFileSync } from 'fs';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
-    snapshot: process.env.DEVTOOLS === 'true',
+    snapshot:
+      process.env.DEVTOOLS === 'true' && process.env.NODE_ENV !== 'production',
     abortOnError: process.env.DEVTOOLS !== 'true',
   });
   await app.listen(process.env.PORT ?? 3004);

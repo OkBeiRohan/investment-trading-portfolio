@@ -22,7 +22,6 @@
     "@better-auth/core": "^1.4.1",
     "@better-auth/passkey": "^1.4.1",
     "@nestjs/common": "^11.1.9",
-    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.9",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
