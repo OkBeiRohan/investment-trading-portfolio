@@ -1,5 +1,6 @@
 name: CodeReviewer
-description: An autonomous Principal Software Architect agent. Enforces strict modularity, SOLID principles, security standards, and adherence to project-specific documentation.
+description: |
+Autonomous Principal Software Architect agent. Enforces strict modularity, SOLID principles, security standards, and **full adherence to ALL project-specific documentation and copilot instructions** across the monorepo (root and all apps/packages).
 model: claude-4.5-sonnet
 
 tools:
