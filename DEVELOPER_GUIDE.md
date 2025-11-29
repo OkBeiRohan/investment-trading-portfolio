@@ -1,6 +1,6 @@
 # Developer Guide - Investment Trading Portfolio
 
-**Last Updated:** November 21, 2025
+**Last Updated:** November 29, 2025
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@
 - **pnpm 9+** (install via `npm install -g pnpm`)
 - **Python 3.11+** (for ML training)
 - **MongoDB 8.0+** (local or Docker)
-- **QuestDB 8.0+** (local or Docker)
+- **QuestDB 8.0+** (local or Docker) - *Primary Time-Series Store*
 - **Redis 7.0+** (local or Docker)
 - **Git for Windows**
 - **VS Code** (recommended IDE)
@@ -148,11 +148,12 @@ NODE_ENV=production
 # MongoDB
 MONGODB_URI=mongodb://localhost:27017
 
-# QuestDB
+# QuestDB (Time-Series for ML Training)
 QUESTDB_HOST=localhost
-QUESTDB_PORT=8812
+QUESTDB_PORT=8812  # PG Wire Protocol
+QUESTDB_ILP_PORT=9009 # InfluxDB Line Protocol (Fast Ingestion)
 QUESTDB_USER=admin
-QUESTDB_PASSWORD=<strong-password>
+QUESTDB_PASSWORD=quest
 
 # Redis
 REDIS_HOST=localhost
@@ -325,31 +326,42 @@ export class MyFeatureRepository {
 
 ### QuestDB
 
-**Time-series data storage for high-frequency data.**
+**Primary store for High-Frequency Tick Data & Candles.**
+Used by `market-feeder` for ingestion and `training-pipeline` (Python) for ML training.
 
-#### Writing Data
+#### Writing Data (Node.js)
 
 ```typescript
 import { QuestDBService } from '@repo/database';
 
 async saveFeatures(data: FeatureData): Promise<void> {
+  // Uses ILP (InfluxDB Line Protocol) for maximum speed
   await this.questdb.insertFeatures([data]);
 }
 ```
 
-#### Querying Data
+#### Querying Data (Python / Pandas)
 
-```typescript
-const query = `
-  SELECT timestamp, symbol, features
-  FROM features
-  WHERE symbol = 'NIFTY50'
-    AND timestamp >= '2024-01-01T00:00:00Z'
-  ORDER BY timestamp DESC
-  LIMIT 1000
-`;
+```python
+import psycopg2
+import pandas as pd
 
-const results = await this.questdb.query(query);
+# Connect via Postgres Wire Protocol
+conn = psycopg2.connect(
+    host="localhost",
+    port="8812",
+    user="admin",
+    password="quest",
+    database="qdb"
+)
+
+# Read into DataFrame for Training
+df = pd.read_sql((
+    "SELECT timestamp, price, volume "
+    "FROM ticks "
+    "WHERE symbol = 'NIFTY50' "
+    "AND timestamp > dateadd('d', -30, now())"
+), conn)
 ```
 
 ### Redis

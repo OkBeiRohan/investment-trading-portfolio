@@ -2,14 +2,17 @@ version: "3.8"
 
 services:
   # Databases
-  timescaledb:
-    image: timescale/timescaledb-ha:pg16
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  questdb:
+    image: questdb/questdb:latest
     ports:
-      - "5432:5432"
+      - "9000:9000"   # REST API / Web Console
+      - "9009:9009"   # InfluxDB Line Protocol
+      - "8812:8812"   # PostgreSQL Wire Protocol
+    environment:
+      QDB_CAIRO_COMMIT_LAG: 1000
+      QDB_CAIRO_MAX_UNCOMMITTED_ROWS: 100000
     volumes:
-      - timescale_data:/var/lib/postgresql/data
+      - questdb_data:/root/.questdb
 
   mongodb:
     image: mongo:7
@@ -49,18 +52,20 @@ services:
     build: ./apps/market-feeder
     environment:
       REDIS_URL: redis://redis:6379
-      TIMESCALE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@timescaledb:5432/trading
+      QUESTDB_HOST: questdb
+      QUESTDB_PORT: 9009 # ILP Port for high-speed ingestion
     depends_on:
       - redis
-      - timescaledb
+      - questdb
 
   data-processor:
     build: ./apps/data-processor
     environment:
-      TIMESCALE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@timescaledb:5432/trading
+      QUESTDB_HOST: questdb
+      QUESTDB_PORT: 8812 # PG Wire for SQL queries
       MONGODB_URI: mongodb://mongodb:27017
     depends_on:
-      - timescaledb
+      - questdb
       - mongodb
 
   algo-worker:
@@ -73,3 +78,10 @@ services:
     depends_on:
       - mongodb
       - redis
+
+volumes:
+  questdb_data:
+  mongo_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

@@ -6,7 +6,13 @@
 
 Building a production-grade algorithmic trading system for NSE Index Options using a 4-engine modular architecture with ML-driven signals and RL-based risk management.
 
----
+The project is transitioning to a robust microservices architecture.
+
+**Current State**:
+
+- **Infrastructure**: ✅ QuestDB (Time-Series) + MongoDB (Metadata) + Redis (Pub/Sub).
+- **Inference**: 🚧 Migration from Python Spawning to **ONNX Runtime** in progress.
+- **Microservices**: ❌ `market-feeder` and `data-processor` need scaffolding.
 
 ## Package Status
 
