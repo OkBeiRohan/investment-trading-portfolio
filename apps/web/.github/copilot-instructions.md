@@ -8,7 +8,7 @@ You are working on the **Web Dashboard** - the Next.js frontend application for 
 
 **Purpose**: Trading dashboard and user interface
 **Port**: 3000
-**Stack**: Next.js 15 (App Router), React, TypeScript, TailwindCSS, tRPC, NextAuth
+**Stack**: Next.js 16 (App Router), React, TypeScript, TailwindCSS, tRPC, NextAuth
 
 **Key Features**:
 

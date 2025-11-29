@@ -17,24 +17,24 @@ A battle-tested algorithmic trading system specifically engineered for ultra-low
 ### Key Capabilities
 
 - **🧠 Neuro-Symbolic AI**:
-    - Temporal Fusion Transformers (TFT) for price forecasting
-    - FinBERT-India for sentiment analysis
-    - Deep Q-Network (DQN) for dynamic portfolio allocation
-    - Symbolic risk rules (hard limits override AI)
+  - Temporal Fusion Transformers (TFT) for price forecasting
+  - FinBERT-India for sentiment analysis
+  - Deep Q-Network (DQN) for dynamic portfolio allocation
+  - Symbolic risk rules (hard limits override AI)
 - **⚡ Ultra-Low Latency**:
-    - Event-driven core with deterministic sequencer (<10μs event processing)
-    - Kernel bypass (DPDK/Solarflare ef_vi) for network (-30% latency)
-    - SIMD-vectorized technical indicators
-    - CPU pinning + lock-free data structures
+  - Event-driven core with deterministic sequencer (<10μs event processing)
+  - Kernel bypass (DPDK/Solarflare ef_vi) for network (-30% latency)
+  - SIMD-vectorized technical indicators
+  - CPU pinning + lock-free data structures
 - **🛡️ Institutional Risk Management**:
-    - Real-time Greeks monitoring (Delta, Gamma, Vega, Theta)
-    - Kelly Criterion position sizing with dynamic leverage
-    - Automated circuit breakers (max loss, drawdown, latency degradation)
+  - Real-time Greeks monitoring (Delta, Gamma, Vega, Theta)
+  - Kelly Criterion position sizing with dynamic leverage
+  - Automated circuit breakers (max loss, drawdown, latency degradation)
 - **📊 Production-Grade Infrastructure**:
-    - QuestDB for time-series (ticks, candles, features)
-    - MongoDB for documents (signals, orders, positions)
-    - Redis Streams for event bus (microsecond-latency pub/sub)
-    - Prometheus + Grafana for observability
+  - QuestDB for time-series (ticks, candles, features)
+  - MongoDB for documents (signals, orders, positions)
+  - Redis Streams for event bus (microsecond-latency pub/sub)
+  - Prometheus + Grafana for observability
 
 ---
 
@@ -83,6 +83,7 @@ graph TD
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 20+
 - Python 3.10+ (for ML training)
 - Docker & Docker Compose
@@ -119,11 +120,13 @@ pnpm dev  # Starts on port 3001
 ## 📚 Documentation
 
 ### Core Guides
+
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: Event-driven 7-layer system design
 - **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)**: Production roadmap (SEBI compliance, latency optimization)
 - **[.github/copilot-instructions.md](.github/copilot-instructions.md)**: Coding standards
 
 ### Component Docs
+
 - **[Algo Worker](apps/algo-worker/README.md)**: Trading engine
 - **[Market SDK](packages/market-sdk/README.md)**: Upstox/Yahoo/Binance integration
 - **[Database](packages/database/README.md)**: QuestDB + MongoDB + Redis
@@ -140,6 +143,7 @@ This system is built on rigorous research from 2024-2025:
 4.  **SEBI 2024-2025 Compliance**: New regulations mandate unique Algo IDs, pre-trade risk checks, and broker-level monitoring for all algorithmic strategies[4].
 
 ### Key References
+
 - [1] "Deterministic Event-Driven Architecture for HFT" - Medium, 2024
 - [2] "QuestDB vs TimescaleDB Benchmark" - Database Performance Study, 2025
 - [3] "ONNX Runtime Execution Providers" - Microsoft AI Documentation
@@ -149,15 +153,15 @@ This system is built on rigorous research from 2024-2025:
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology | Why? |
-|-------|------------|------|
-| **Language** | TypeScript (Core), Python (ML) | Type safety + ML ecosystem |
-| **Backend** | NestJS | Modular, production-grade |
-| **Frontend** | Next.js 15 | App Router, Server Components |
-| **Databases** | QuestDB, MongoDB, Redis | Validated for trading (see research) |
-| **AI/ML** | ONNX Runtime, PyTorch, Transformers | Cross-platform inference |
-| **Event Bus** | Redis Streams | Sub-millisecond latency |
-| **Monitoring** | Prometheus, Grafana | Industry standard |
+| Layer          | Technology                          | Why?                                 |
+| -------------- | ----------------------------------- | ------------------------------------ |
+| **Language**   | TypeScript (Core), Python (ML)      | Type safety + ML ecosystem           |
+| **Backend**    | NestJS                              | Modular, production-grade            |
+| **Frontend**   | Next.js 16                          | App Router, Server Components        |
+| **Databases**  | QuestDB, MongoDB, Redis             | Validated for trading (see research) |
+| **AI/ML**      | ONNX Runtime, PyTorch, Transformers | Cross-platform inference             |
+| **Event Bus**  | Redis Streams                       | Sub-millisecond latency              |
+| **Monitoring** | Prometheus, Grafana                 | Industry standard                    |
 
 ---
 
@@ -188,6 +192,7 @@ Every aspect of Project Quantum adheres to latest SEBI algorithmic trading norms
 Please read **[Copilot Instructions](.github/copilot-instructions.md)** and consult with **[Agents](.github/agents/)** (Architect, Quant Researcher, Risk Manager, QA Engineer) before contributing.
 
 ### Development Principles
+
 1.  **Event-Driven First**: All inter-service communication via Redis Streams
 2.  **Latency Paranoia**: Profile EVERYTHING on the critical path
 3.  **No Duplication**: Use `@repo/*` shared packages religiously
@@ -197,13 +202,13 @@ Please read **[Copilot Instructions](.github/copilot-instructions.md)** and cons
 
 ## 📊 Performance Targets
 
-| Metric | Target | Status |
-|--------|--------|--------|
+| Metric                      | Target | Status         |
+| --------------------------- | ------ | -------------- |
 | Tick-to-Trade Latency (p95) | <100ms | ⏳ In Progress |
-| ML Inference (GPU) | <50ms | ⏳ In Progress |
-| System Uptime | >99.5% | ⏳ In Progress |
-| Sharpe Ratio (Live) | >1.5 | 🎯 Target |
-| Max Drawdown | <15% | 🎯 Target |
+| ML Inference (GPU)          | <50ms  | ⏳ In Progress |
+| System Uptime               | >99.5% | ⏳ In Progress |
+| Sharpe Ratio (Live)         | >1.5   | 🎯 Target      |
+| Max Drawdown                | <15%   | 🎯 Target      |
 
 ---
 

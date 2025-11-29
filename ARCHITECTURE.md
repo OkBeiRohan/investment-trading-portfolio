@@ -249,7 +249,7 @@ interface SEBICompliantOrder {
 | Layer          | Technology                                                    | Rationale                               |
 | -------------- | ------------------------------------------------------------- | --------------------------------------- |
 | **Languages**  | TypeScript (Core), Python (ML Training), Rust (Critical Path) | Rust for ultra-low latency components   |
-| **Frameworks** | NestJS, Next.js 15, PyTorch 2.5                               | Production battle-tested                |
+| **Frameworks** | NestJS, Next.js 16, PyTorch 2.5                               | Production battle-tested                |
 | **Databases**  | QuestDB, MongoDB, Redis                                       | Research-validated for trading          |
 | **AI/ML**      | ONNX Runtime + TensorRT EP, Hugging Face Transformers         | Hardware-agnostic with GPU acceleration |
 | **Event Bus**  | Redis Streams, Apache Kafka (future scaling)                  | Proven for HFT                          |

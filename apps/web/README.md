@@ -37,7 +37,7 @@ pnpm start
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Styling**: TailwindCSS
 - **Authentication**: NextAuth.js
 - **API Layer**: tRPC client (via @repo/trpc)
