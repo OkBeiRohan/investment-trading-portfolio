@@ -1,20 +1,6 @@
 # Project Quantum: Production Implementation Plan (2024-2025)
 
 ## Executive Summary
-Upgrade to a production-ready, event-driven algorithmic trading system for Indian index options, incorporating latest research on HFT architectures, SEBI 2024-2025 compliance, and battle-tested latency optimization techniques.
-
-> **Critical Decision**: We prioritize EVENT-DRIVEN architecture over pure microservices, validated by 2024 HFT research showing superior performance for sub-100ms latency requirements.
-
----
-
-## Phase 1: Foundation & Compliance (Weeks 1-3)
-
-### 1.1 Infrastructure Setup
-- [ ] **QuestDB Production Deployment**
-    - [ ] Deploy QuestDB cluster on ArchLinux server
-    - [ ] Create schemas: `ticks`, `candles`, `features`, `option_greeks`
-    - [ ] Configure retention policies (90 days for ticks, 1 year for candles)
-    - [ ] Set up backup cron jobs (daily snapshots)
 - [ ] **Redis Streams Event Bus**
     - [ ] Deploy Redis 7+ with persistence (AOF + RDB)
     - [ ] Create streams: `market-data`, `trading-signals`, `orders`
