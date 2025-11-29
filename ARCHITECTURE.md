@@ -56,6 +56,29 @@ Based on industry research, we use an **Event-Driven Architecture with Microserv
 └─────────────────────────────────────────────────────┘
 ```
 
+```mermaid
+graph LR
+  subgraph Storage
+    QDB[(QuestDB)]
+    MDB[(MongoDB)]
+    REDIS[(Redis)]
+  end
+
+  MarketData-->QDB
+  FeatureEngine-->QDB
+  SignalEngine-->MDB
+  ExecutionEngine-->MDB
+  ExecutionEngine-->REDIS
+  Orch(Orchestrator)-->REDIS
+
+  QDB---|Time-series|FeatureStore
+  MDB---|Documents|RepoLayer
+  REDIS---|Hot state & Pub/Sub|EventBus
+
+  classDef db fill:#f3f4f6,stroke:#111827,stroke-width:1px;
+  class QDB,MDB,REDIS db;
+```
+
 **Decision Rationale**: QuestDB's 2025 benchmark showed superior performance for financial tick data processing. Its ASOF joins and nanosecond timestamps are purpose-built for options trading[4].
 
 ### 3. ML Inference Stack (Latency-Optimized)
@@ -78,15 +101,18 @@ ONNX Runtime (Cross-Platform Base)
 ### Layer 1: Perception (Data Ingestion)
 
 **Components**:
+
 - `MarketFeeder`: Upstox WebSocket with intelligent multiplexer (priority-based bin packing)
 - `NewsIngestor`: RSS + Twitter Firehose API for FinBERT
 
 **Latency Optimizations**:
+
 - **Kernel Bypass (DPDK/Solarflare ef_vi)**: Direct NIC → Application data flow, bypassing kernel network stack (-30% latency)[6]
 - **Co-location**: NSE proximity hosting for tick data (<500μs network latency)
 - **Protobuf Decoding**: Zero-copy deserialization from Upstox WebSocket
 
 **SEBI 2024-2025 Compliance**:
+
 - Every API order tagged with unique `algoId`
 - Real-time monitoring for anomaly detection
 - Mandatory pre-trade risk checks
@@ -94,11 +120,13 @@ ONNX Runtime (Cross-Platform Base)
 ### Layer 2: Cortex (Feature Engineering)
 
 **Components**:
+
 - `FeatureEngine`: Vectorized technical indicators (SIMD-optimized)
 - `SentimentEngine`: FinBERT-India inference (ONNX Runtime)
 - `QuestDB Writer`: Batch inserts (10K features/sec)
 
 **Features**:
+
 - Technical: RSI, MACD, Realized Vol (5d/10d/20d), Bollinger Bands
 - Sentiment: FinBERT scores (Positive/Negative/Neutral)
 - Greeks: Delta, Gamma, Vega, Theta (from Upstox)
@@ -107,6 +135,7 @@ ONNX Runtime (Cross-Platform Base)
 ### Layer 3: Prediction (Alpha Generation)
 
 **Model Stack**:
+
 1. **Temporal Fusion Transformer (TFT)**: Multi-horizon forecasting (5min, 15min, 1h)
 2. **XGBoost Ensemble**: Directional signals (VOL_UP/VOL_DOWN)
 3. **FinBERT-India**: News-driven overnight gap predictions
@@ -116,10 +145,12 @@ ONNX Runtime (Cross-Platform Base)
 ### Layer 4: Cognition (Strategy & RL)
 
 **Components**:
+
 - `RL Agent`: Deep Q-Network (DQN) for dynamic allocation
 - `RiskManager`: Symbolic rules (MUST override AI if limits breached)
 
 **Strategies** (Based on 2024 Indian Market Research):
+
 - 9:20 Straddle (Bank Nifty/Nifty Options) - Time decay on non-trending days
 - Iron Condor (High IV environments)
 - Bollinger Band + RSI Mean Reversion
@@ -128,10 +159,12 @@ ONNX Runtime (Cross-Platform Base)
 ### Layer 5: Execution (Action)
 
 **Components**:
+
 - `SmartOrderRouter`: TWAP/VWAP execution algorithms
 - `ExecutionMonitor`: Fill tracking via Upstox Portfolio WebSocket
 
 **Optimizations**:
+
 - **Async Order Placement**: Non-blocking API calls
 - **Order Batching**: Multi-leg orders sent atomically
 - **Slippage Tracking**: Real-time vs. expected price monitoring
@@ -139,6 +172,7 @@ ONNX Runtime (Cross-Platform Base)
 ### Layer 6: Memory (Storage)
 
 **Components**:
+
 - `RedisCache`: Hot state (positions, orders)
 - `QuestDBWriter`: Time-series persistence
 - `MongoDBSync`: Async document writes
@@ -146,11 +180,13 @@ ONNX Runtime (Cross-Platform Base)
 ### Layer 7: Control (Ops & Monitoring)
 
 **Components**:
+
 - `PrometheusExporter`: Metrics (latency, order fill rate, P&L)
 - `MLflowTracker`: Model performance tracking
 - `GrafanaDashboard`: Real-time UI
 
 **Key Metrics**:
+
 - Tick-to-Trade Latency (p50, p95, p99)
 - Signal Confidence Distribution
 - Strategy Win Rate
@@ -162,28 +198,30 @@ ONNX Runtime (Cross-Platform Base)
 
 ### 1. Latency Optimization Techniques
 
-| Technique | Impact | Implementation |
-|-----------|--------|----------------|
-| Kernel Bypass (DPDK) | -30% network latency | Use Solarflare ef_vi for Upstox WebSocket |
-| CPU Pinning | -15% jitter | Pin critical threads to isolated cores (PREEMPT-RT Linux) |
-| Lock-Free Data Structures | -20% contention | Use Disruptor pattern for event queue |
-| FPGA Acceleration | -50% inference latency | Future: Market data decoding + feature calc on FPGA |
+| Technique                 | Impact                 | Implementation                                            |
+| ------------------------- | ---------------------- | --------------------------------------------------------- |
+| Kernel Bypass (DPDK)      | -30% network latency   | Use Solarflare ef_vi for Upstox WebSocket                 |
+| CPU Pinning               | -15% jitter            | Pin critical threads to isolated cores (PREEMPT-RT Linux) |
+| Lock-Free Data Structures | -20% contention        | Use Disruptor pattern for event queue                     |
+| FPGA Acceleration         | -50% inference latency | Future: Market data decoding + feature calc on FPGA       |
 
 ### 2. SEBI 2024-2025 Compliance
 
 **Requirements**:
+
 1. **Unique Algo ID**: Every order tagged with `algoId` (format: `PROJ_QUANTUM_v1.2.3_USER_{userId}`)
 2. **Exchange Approval**: Register strategy with NSE (if order frequency >10 orders/sec)
 3. **Broker Monitoring**: Real-time anomaly detection (Upstox API)
 4. **Audit Trail**: All orders logged to MongoDB with full context
 
 **Implementation**:
+
 ```typescript
 interface SEBICompliantOrder {
-  algoId: string;              // PROJ_QUANTUM_v1.2.3_USER_123
+  algoId: string; // PROJ_QUANTUM_v1.2.3_USER_123
   userId: string;
   timestamp: Date;
-  strategyType: string;        // IRON_CONDOR, LONG_STRADDLE
+  strategyType: string; // IRON_CONDOR, LONG_STRADDLE
   preghtChecksPassed: boolean;
   riskLimitsValidated: boolean;
 }
@@ -192,12 +230,14 @@ interface SEBICompliantOrder {
 ### 3. Disaster Recovery & Circuit Breakers
 
 **Automatic Shutdown Conditions**:
+
 - Daily loss > ₹50,000
 - Drawdown > 20%
 - Latency > 500ms (system degraded)
 - Data feed stale > 5 seconds
 
 **Recovery**:
+
 - Automatic position liquidation (Market Orders)
 - Slack/Email alerts
 - Manual override required to resume trading
@@ -206,26 +246,26 @@ interface SEBICompliantOrder {
 
 ## Tech Stack (2024-2025 Recommended)
 
-| Layer | Technology | Rationale |
-|-------|------------|-----------|
-| **Languages** | TypeScript (Core), Python (ML Training), Rust (Critical Path) | Rust for ultra-low latency components |
-| **Frameworks** | NestJS, Next.js 15, PyTorch 2.5 | Production battle-tested |
-| **Databases** | QuestDB, MongoDB, Redis | Research-validated for trading |
-| **AI/ML** | ONNX Runtime + TensorRT EP, Hugging Face Transformers | Hardware-agnostic with GPU acceleration |
-| **Event Bus** | Redis Streams, Apache Kafka (future scaling) | Proven for HFT |
-| **Monitoring** | Prometheus, Grafana, Loki | Industry standard |
-| **Deployment** | Docker + Kubernetes (optional), PM2 | Flexibility for ArchLinux server |
+| Layer          | Technology                                                    | Rationale                               |
+| -------------- | ------------------------------------------------------------- | --------------------------------------- |
+| **Languages**  | TypeScript (Core), Python (ML Training), Rust (Critical Path) | Rust for ultra-low latency components   |
+| **Frameworks** | NestJS, Next.js 15, PyTorch 2.5                               | Production battle-tested                |
+| **Databases**  | QuestDB, MongoDB, Redis                                       | Research-validated for trading          |
+| **AI/ML**      | ONNX Runtime + TensorRT EP, Hugging Face Transformers         | Hardware-agnostic with GPU acceleration |
+| **Event Bus**  | Redis Streams, Apache Kafka (future scaling)                  | Proven for HFT                          |
+| **Monitoring** | Prometheus, Grafana, Loki                                     | Industry standard                       |
+| **Deployment** | Docker + Kubernetes (optional), PM2                           | Flexibility for ArchLinux server        |
 
 ---
 
 ## References
 
-1. *Event-Driven Architecture for HFT* - Medium, 2024
-2. *Deterministic Event Sequencer* - Trading Systems Architecture
-3. *Latency Optimization for Options Trading* - Quantitative Finance Journal
-4. *QuestDB vs TimescaleDB Benchmark 2025* - Database Performance Study
-5. *ONNX Runtime Execution Providers* - Microsoft AI, 2024
-6. *Kernel Bypass Techniques* - High-Performance Networking
+1. _Event-Driven Architecture for HFT_ - Medium, 2024
+2. _Deterministic Event Sequencer_ - Trading Systems Architecture
+3. _Latency Optimization for Options Trading_ - Quantitative Finance Journal
+4. _QuestDB vs TimescaleDB Benchmark 2025_ - Database Performance Study
+5. _ONNX Runtime Execution Providers_ - Microsoft AI, 2024
+6. _Kernel Bypass Techniques_ - High-Performance Networking
 
 ---
 
