@@ -1,135 +1,144 @@
-# Turborepo starter
+# Investment Trading Portfolio - Project Quantum
 
-This Turborepo starter is maintained by the Turborepo core team.
+> **Institutional-grade algorithmic trading platform for the Indian Market (Nifty 50, Bank Nifty).**
+> Powered by "Quantum Core" - A 7-Layer Cognitive Architecture integrating Transformers, Reinforcement Learning, and Neuro-Symbolic AI.
 
-## Using this example
+---
 
-Run the following command:
+## 🚀 Overview
 
-```sh
-npx create-turbo@latest
+**Project Quantum** represents the next evolution in algorithmic trading systems. It moves beyond traditional ensemble methods to a **Hybrid Neuro-Symbolic** approach, combining the pattern-matching power of Deep Learning (Transformers, CNN-LSTM) with the strategic adaptability of Reinforcement Learning (RL) and the logical rigor of symbolic risk management.
+
+### Key Capabilities
+
+- **🧠 Cognitive AI Core**:
+    - **Temporal Fusion Transformers (TFT)** for multi-horizon price forecasting.
+    - **FinBERT-India** for real-time sentiment analysis of Indian financial news.
+    - **Deep Q-Network (DQN)** agents for dynamic portfolio allocation.
+- **⚡ Ultra-Low Latency Execution**:
+    - Event-driven architecture using **NestJS** and **Redis Streams**.
+    - Smart Order Routing (SOR) with TWAP/VWAP execution algorithms.
+- **🛡️ Institutional Risk Management**:
+    - Real-time Greeks monitoring (Delta, Gamma, Vega, Theta).
+    - Kelly Criterion position sizing with dynamic leverage control.
+    - "Circuit Breaker" modules for extreme volatility protection.
+- **📊 Comprehensive Dashboard**:
+    - Real-time visualization of AI confidence, sentiment analysis, and P&L.
+    - Full transparency into model decision-making (Explainable AI).
+
+---
+
+## 🏗️ The Quantum Architecture
+
+The system is built on a **7-Layer Cognitive Architecture**:
+
+```mermaid
+graph TD
+    subgraph "Layer 1: Perception"
+        MD[Market Data Feed] -->|Ticks/Quotes| MF[Market Feeder]
+        News[News/Twitter] -->|Text| MF
+    end
+
+    subgraph "Layer 2: Cortex"
+        MF -->|Stream| FE[Feature Engine]
+        FE -->|Tech Indicators| QDB[(QuestDB)]
+        FE -->|Sentiment| FB[FinBERT Model]
+    end
+
+    subgraph "Layer 3: Prediction"
+        QDB --> TFT[Temporal Fusion Transformer]
+        QDB --> ENS[Ensemble Models]
+        FB --> ENS
+    end
+
+    subgraph "Layer 4: Cognition"
+        TFT -->|Forecast| RL[RL Agent (DQN)]
+        ENS -->|Signal| RL
+        RL -->|Action| RM[Risk Manager]
+    end
+
+    subgraph "Layer 5: Execution"
+        RM -->|Validated Order| EXE[Execution Engine]
+        EXE -->|FIX/API| Broker[Upstox/Binance]
+    end
+
+    subgraph "Layer 6: Memory"
+        Redis[(Redis State)]
+        Mongo[(MongoDB Logs)]
+    end
+
+    subgraph "Layer 7: Control"
+        MLOps[MLflow Tracking]
+        Dash[Grafana/Web UI]
+    end
 ```
 
-## What's inside?
+### Tech Stack
 
-This Turborepo includes the following packages/apps:
+- **Languages**: TypeScript (Core), Python (ML Training)
+- **Frameworks**: NestJS (Backend), Next.js (Frontend), PyTorch (AI Models)
+- **Databases**:
+    - **QuestDB**: High-performance time-series storage.
+    - **MongoDB**: Document storage for orders, signals, and logs.
+    - **Redis**: In-memory state, caching, and pub/sub.
+- **AI/ML**: ONNX Runtime, Hugging Face Transformers, Stable Baselines3.
 
-### Apps and Packages
+---
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## 📚 Documentation
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+### Core Guides
+- **[Implementation Plan](implementation_plan.md)**: Roadmap for the Quantum upgrade.
+- **[Copilot Instructions](.github/copilot-instructions.md)**: Coding standards and AI guidelines.
 
-### Utilities
+### Component Docs
+- **[Algo Worker](apps/algo-worker/README.md)**: The trading engine core.
+- **[Market SDK](packages/market-sdk/README.md)**: Unified market data interface.
+- **[Database](packages/database/README.md)**: Data access layer.
 
-This Turborepo has some additional tools already setup for you:
+---
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## 🔬 Research & References
 
-### Build
+This project is grounded in cutting-edge research:
 
-To build all apps and packages, run the following command:
+1.  **Transformers in Finance**: *Lim et al. (2021)* - "Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting".
+2.  **Sentiment Analysis**: *Araci (2019)* - "FinBERT: Financial Sentiment Analysis with Pre-trained Language Models".
+3.  **Reinforcement Learning**: *Hambly et al. (2023)* - "Reinforcement Learning in Finance: A Survey".
+4.  **Hybrid Models**: *Zhang et al. (2023)* - "A Hybrid CNN-LSTM Model for Stock Price Prediction".
 
-```
-cd my-turborepo
+---
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
+## 🛠️ Getting Started
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
+### Prerequisites
+- Node.js 20+
+- Python 3.10+
+- Docker & Docker Compose
+- CUDA-enabled GPU (Recommended for training)
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+### Installation
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+```bash
+# 1. Clone the repository
+git clone <repo-url>
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+# 2. Install dependencies
+pnpm install
 
-### Develop
+# 3. Start infrastructure
+docker-compose up -d
 
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+# 4. Run development mode
+pnpm dev
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+---
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+## 🤝 Contributing
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
+Please read the **[Copilot Instructions](.github/copilot-instructions.md)** before contributing. We enforce strict TypeScript, comprehensive testing, and "Quantum" architectural standards.
 
-### Remote Caching
+---
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+**Built with ❤️ for the Indian Algo Trading Community**
