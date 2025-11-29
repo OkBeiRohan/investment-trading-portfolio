@@ -3,12 +3,10 @@ import { createBetterAuthInstance } from "../server/auth.config";
 import { BetterAuthAdapterFactory } from "../adapters/adapter.factory";
 import { EmailService } from "./email.service";
 import { AUTH_CONFIG } from "../config/auth.config";
-import { AuthService as BetterAuthService } from "@thallesp/nestjs-better-auth";
 @Injectable()
 export class AuthService {
   constructor(
     private readonly adapterFactory: BetterAuthAdapterFactory,
-    private readonly betterAuthService: BetterAuthService,
     private readonly emailService: EmailService
   ) {}
 
@@ -32,9 +30,5 @@ export class AuthService {
         sendOTP: (data) => this.emailService.sendOTP(data),
       },
     });
-  }
-
-  getBetterAuthService() {
-    return this.betterAuthService;
   }
 }

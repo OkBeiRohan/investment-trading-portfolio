@@ -12,4 +12,5 @@ export {
   BeforeHook,
   AfterHook,
   type AuthHookContext,
+  AuthService as BetterAuthService,
 } from "@thallesp/nestjs-better-auth";
