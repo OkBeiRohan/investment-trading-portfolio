@@ -28,7 +28,7 @@ Based on industry research, we use an **Event-Driven Architecture with Microserv
 │  QuestDB (Time-Series - PRIMARY)                    │
 │  ─────────────────────────────                      │
 │  • Tick Data (nanosecond timestamps)                │
-│  • OHLCV Candles (1m, 5m, 15m, 1h, 1d)             │
+│  • OHLCV Candles (1m, 5m, 15m, 1h, 1d)              │
 │  • Features (Technical Indicators)                  │
 │  • Option Greeks Snapshots                          │
 │                                                     │
@@ -37,7 +37,7 @@ Based on industry research, we use an **Event-Driven Architecture with Microserv
 └─────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────┐
-│  MongoDB (Document Store - SECONDARY)                │
+│  MongoDB (Document Store - SECONDARY)               │
 │  ──────────────────────────────────                 │
 │  • Trading Signals (ML predictions)                 │
 │  • Orders & Positions                               │
