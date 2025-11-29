@@ -1,341 +1,297 @@
-# GitHub Copilot Instructions - @repo/database
+# @repo/database - Coding Instructions
 
-## Package Role
+> Centralized database access layer for QuestDB, MongoDB, and Redis.
 
-You are working on the **centralized database package** for the trading monorepo. This package is the **ONLY** place where database connections, schemas, and repositories exist.
+---
 
-## Core Principle
+## Design Principles
 
-**ALL database-related code MUST live in this package. Apps and other packages consume this package but NEVER create their own database connections or schemas.**
+### 1. Single Source of Truth
 
-## Package Structure
-
-```
-packages/database/
-├── src/
-│   ├── database.module.ts          # Main module exports
-│   ├── index.ts                    # Public exports
-│   ├── schemas/                    # Mongoose schemas
-│   │   ├── index.ts
-│   │   ├── user.schema.ts
-│   │   ├── trading-signal.schema.ts
-│   │   ├── order.schema.ts
-│   │   ├── position.schema.ts
-│   │   └── strategy.schema.ts
-│   ├── repositories/               # Data access layer
-│   │   ├── index.ts
-│   │   ├── trading-signal.repository.ts
-│   │   ├── order.repository.ts
-│   │   └── position.repository.ts
-│   ├── questdb/                    # QuestDB time-series client
-│   │   ├── questdb.module.ts
-│   │   ├── questdb.service.ts
-│   │   └── index.ts
-│   └── redis/                      # Redis cache & pub/sub
-│       ├── redis.module.ts
-│       ├── redis.service.ts
-│       ├── keys.factory.ts
-│       └── index.ts
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── PROGRESS.md
-│   └── API.md
-├── README.md
-└── package.json
-```
-
-## What Belongs Here
-
-### ✅ DO Include
-
-1. **Database Connections**
-   - MongoDB connection configuration
-   - QuestDB PostgreSQL wire protocol client
-   - Redis connection pools
-
-2. **Mongoose Schemas**
-   - All MongoDB schema definitions
-   - Schema validation rules
-   - Indexes and compound indexes
-   - Virtual fields and methods
-
-3. **Repositories**
-   - Data access patterns
-   - Query builders
-   - Transaction handling
-   - Bulk operations
-
-4. **Database-Specific Services**
-   - QuestDBService for time-series operations
-   - RedisService for cache and pub/sub
-   - Migration utilities
-   - Health check methods
-
-5. **NestJS Modules**
-   - DatabaseModule (MongoDB)
-   - TradingDatabaseModule (trading-specific)
-   - UserDatabaseModule (user-specific)
-   - QuestDBModule
-   - RedisModule
-
-### ❌ DON'T Include
-
-1. **Business Logic** - That belongs in apps
-2. **API Controllers** - Apps handle HTTP/WebSocket
-3. **ML Models** - Those belong in apps/algo-worker
-4. **Feature Engineering** - That's app-specific logic
-
-## Database Layers
-
-### Layer 1: Connection Modules
+**RULE**: Apps MUST NEVER import `mongoose`, `@questdb/pg`, or `redis` directly. Always use `@repo/database`.
 
 ```typescript
-// database.module.ts
-import { Module, DynamicModule } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
-import { ConfigService } from "@nestjs/config";
+// ❌ BAD: Direct import
+import mongoose from 'mongoose';
 
-@Module({})
-export class DatabaseModule {
-  static forRoot(options?: DatabaseModuleOptions): DynamicModule {
-    return {
-      module: DatabaseModule,
-      imports: [
-        MongooseModule.forRootAsync({
-          useFactory: (configService: ConfigService) => ({
-            uri: options?.uri || configService.get("MONGODB_URI"),
-          }),
-          inject: [ConfigService],
-        }),
-      ],
-      exports: [MongooseModule],
-    };
+// ✅ GOOD: Use shared module
+import { TradingDatabaseModule, QuestDBService } from '@repo/database';
+```
+
+**Why**: Prevents code duplication, ensures consistent connection pooling, simplifies testing with mocks.
+
+### 2. Database Separation by Purpose
+
+| Database | Purpose | Data Types |
+|----------|---------|-----------|
+| **QuestDB** | Time-series | Ticks, candles, features, Greeks snapshots |
+| **MongoDB** | Documents | Signals, orders, positions, users, audit logs |
+| **Redis** | Hot state + Events | Active positions, circuit breaker state, event streams |
+
+**NEVER mix responsibilities**. If it's time-series → QuestDB. If it's a document → MongoDB. If it's ephemeral/hot → Redis.
+
+---
+
+## QuestDB Service
+
+### Connection
+
+Uses PostgreSQL wire protocol (port 8812):
+
+```typescript
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  host: process.env.QUESTDB_HOST || 'localhost',
+  port: parseInt(process.env.QUESTDB_PORT || '8812'),
+  user: 'admin',
+  database: 'qdb',
+  max: 20, // Connection pool size
+});
+```
+
+### Inserting Time-Series Data
+
+**ALWAYS use batch inserts** for performance:
+
+```typescript
+class QuestDBService {
+  async insertTicksBatch(ticks: Tick[]): Promise<void> {
+    const values = ticks.map(t => 
+      `('${t.timestamp.toISOString()}', '${t.instrumentKey}', ${t.price}, ${t.volume})`
+    ).join(',');
+    
+    const query = `
+      INSERT INTO ticks (timestamp, instrument_key, price, volume)
+      VALUES ${values}
+    `;
+    
+    await this.pool.query(query);
   }
 }
 ```
 
-### Layer 2: Schema Definitions
+**Performance**: 10K inserts/sec with batching vs. 100/sec with individual inserts.
+
+### Time-Series Queries
+
+**Use `SAMPLE BY` for downsampling**:
 
 ```typescript
-// schemas/trading-signal.schema.ts
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
-import { type TradingSignal as TradingSignalType } from "@repo/schema";
-
-@Schema({ timestamps: true, collection: "trading_signals" })
-export class TradingSignal extends Document implements TradingSignalType {
-  @Prop({ required: true })
-  userId: string;
-
-  @Prop({ required: true, index: true })
-  timestamp: Date;
-
-  @Prop({ required: true, enum: ["VOL_UP", "VOL_DOWN", "NEUTRAL"] })
-  prediction: "VOL_UP" | "VOL_DOWN" | "NEUTRAL";
-
-  @Prop({ required: true, min: 0, max: 1 })
-  confidence: number;
-
-  // ... more fields
+async getOHLCV(instrumentKey: string, interval: '1m' | '5m' | '1h'): Promise<Candle[]> {
+  const query = `
+    SELECT
+      timestamp,
+      first(price) as open,
+      max(price) as high,
+      min(price) as low,
+      last(price) as close,
+      sum(volume) as volume
+    FROM ticks
+    WHERE instrument_key = '${instrumentKey}'
+    SAMPLE BY ${interval}
+    ALIGN TO CALENDAR
+  `;
+  
+  const result = await this.pool.query(query);
+  return result.rows.map(row => ({
+    timestamp: new Date(row.timestamp),
+    open: parseFloat(row.open),
+    high: parseFloat(row.high),
+    low: parseFloat(row.low),
+    close: parseFloat(row.close),
+    volume: parseInt(row.volume),
+  }));
 }
-
-export const TradingSignalSchema = SchemaFactory.createForClass(TradingSignal);
-export type TradingSignalDocument = TradingSignal & Document;
 ```
 
-### Layer 3: Repositories
+---
+
+## MongoDB Service
+
+### Schema Definition (Mongoose)
+
+**ALWAYS use Zod schemas** from `@repo/schema` for validation:
 
 ```typescript
-// repositories/trading-signal.repository.ts
-import { Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-import { TradingSignalDocument } from "../schemas/trading-signal.schema";
-import { type TradingSignal, tradingSignalSchema } from "@repo/schema";
+import { TradingSignalSchema } from '@repo/schema';
+import { Schema, model } from 'mongoose';
 
+const tradingSignalMongooseSchema = new Schema({
+  userId: { type: String, required: true, index: true },
+  instrumentKey: { type: String, required: true },
+  prediction: { type: String, enum: ['VOL_UP', 'VOL_DOWN', 'NEUTRAL'], required: true },
+  confidence: { type: Number, required: true },
+  modelScores: { type: Map, of: Number },
+  timestamp: { type: Date, default: Date.now, index: true },
+});
+
+export const TradingSignalModel = model('TradingSignal', tradingSignalMongooseSchema);
+```
+
+### Repository Pattern
+
+```typescript
 @Injectable()
 export class TradingSignalRepository {
   constructor(
-    @InjectModel("TradingSignal")
-    private readonly model: Model<TradingSignalDocument>
+    @InjectModel('TradingSignal') private signalModel: Model<TradingSignal>
   ) {}
 
-  async create(data: Omit<TradingSignal, "_id">): Promise<TradingSignal> {
+  async create(signalDto: CreateTradingSignalDto): Promise<TradingSignal> {
     // Validate with Zod
-    const validated = tradingSignalSchema.parse(data);
-    const created = new this.model(validated);
-    return created.save();
+    const validated = TradingSignalSchema.parse(signalDto);
+    
+    const signal = new this.signalModel(validated);
+    return signal.save();
   }
 
-  async findRecent(userId: string, limit = 50): Promise<TradingSignal[]> {
-    return this.model
+  async findByUserId(userId: string, limit = 100): Promise<TradingSignal[]> {
+    return this.signalModel
       .find({ userId })
       .sort({ timestamp: -1 })
       .limit(limit)
-      .lean()
-      .exec();
-  }
-
-  async findByDateRange(
-    userId: string,
-    startDate: Date,
-    endDate: Date
-  ): Promise<TradingSignal[]> {
-    return this.model
-      .find({
-        userId,
-        timestamp: { $gte: startDate, $lte: endDate },
-      })
-      .sort({ timestamp: -1 })
-      .lean()
-      .exec();
+      .lean(); // Use lean() for read-only queries (faster)
   }
 }
 ```
 
-### Layer 4: Feature-Specific Modules
+---
+
+## Redis Service
+
+### Event Streams (Redis Streams)
+
+**Use for event-driven communication**:
 
 ```typescript
-// Separate modules for different domains
-@Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: "TradingSignal", schema: TradingSignalSchema },
-      { name: "Order", schema: OrderSchema },
-      { name: "Position", schema: PositionSchema },
-    ]),
-  ],
-  providers: [TradingSignalRepository, OrderRepository, PositionRepository],
-  exports: [TradingSignalRepository, OrderRepository, PositionRepository],
-})
-export class TradingDatabaseModule {}
-```
-
-## Health Checks
-
-**ALWAYS provide health check methods:**
-
-```typescript
-// questdb/questdb.service.ts
-async healthCheck(): Promise<boolean> {
-  try {
-    const client = await this.pool.connect();
-    await client.query('SELECT 1');
-    client.release();
-    return true;
-  } catch (error) {
-    this.logger.error('QuestDB health check failed', error);
-    return false;
+class RedisService {
+  async publishEvent(stream: string, event: Record<string, any>): Promise<string> {
+    const id = await this.client.xadd(
+      stream,
+      '*', // Auto-generate ID
+      ...Object.entries(event).flat()
+    );
+    return id;
   }
-}
 
-// redis/redis.service.ts
-async healthCheck(): Promise<boolean> {
-  try {
-    const result = await this.client.ping();
-    return result === 'PONG';
-  } catch (error) {
-    this.logger.error('Redis health check failed', error);
-    return false;
+  async consumeEvents(
+    stream: string,
+    consumerGroup: string,
+    consumerId: string,
+    count = 10
+  ): Promise<Array<StreamEvent>> {
+    const events = await this.client.xreadgroup(
+      'GROUP', consumerGroup, consumerId,
+      'COUNT', count,
+      'BLOCK', 1000, // 1s timeout
+      'STREAMS', stream, '>'
+    );
+    
+    return this.parseStreamEvents(events);
   }
 }
 ```
 
-## Type Safety
-
-**Use types from @repo/schema:**
+### Hot State (Hashes)
 
 ```typescript
-import { type TradingSignal, tradingSignalSchema } from '@repo/schema';
+async setActivePosition(instrumentKey: string, position: Position): Promise<void> {
+  await this.client.hset(
+    'positions:active',
+    instrumentKey,
+    JSON.stringify(position)
+  );
+}
 
-// ✅ Validate before saving
-const validated = tradingSignalSchema.parse(data);
-
-// ✅ Return typed results
-async findById(id: string): Promise<TradingSignal | null> {
-  return this.model.findById(id).lean().exec();
+async getActivePosition(instrumentKey: string): Promise<Position | null> {
+  const data = await this.client.hget('positions:active', instrumentKey);
+  return data ? JSON.parse(data) : null;
 }
 ```
 
-## Export Pattern
-
-**Always export through index.ts:**
+### Circuit Breaker State
 
 ```typescript
-// src/index.ts
-export * from "./database.module";
-export * from "./schemas";
-export * from "./repositories";
-export { QuestDBModule, QuestDBService } from "./questdb";
-export { RedisModule, RedisService } from "./redis";
-```
+async setCircuitBreakerOpen(reason: string, ttl = 300): Promise<void> {
+  await this.client.set('circuit-breaker:status', 'OPEN', 'EX', ttl);
+  await this.client.set('circuit-breaker:reason', reason, 'EX', ttl);
+}
 
-## Consumer Usage in Apps
-
-```typescript
-// apps/algo-worker/src/app.module.ts
-import {
-  TradingDatabaseModule,
-  QuestDBModule,
-  RedisModule,
-} from "@repo/database";
-
-@Module({
-  imports: [
-    TradingDatabaseModule, // MongoDB schemas + repositories
-    QuestDBModule, // QuestDB client
-    RedisModule, // Redis client
-  ],
-})
-export class AppModule {}
-
-// apps/algo-worker/src/services/signal.service.ts
-import { Injectable } from "@nestjs/common";
-import { TradingSignalRepository, QuestDBService } from "@repo/database";
-
-@Injectable()
-export class SignalService {
-  constructor(
-    private readonly signalRepo: TradingSignalRepository,
-    private readonly questdb: QuestDBService
-  ) {}
-
-  async save(signal: any) {
-    // Save to MongoDB
-    await this.signalRepo.create(signal);
-
-    // Save features to QuestDB
-    await this.questdb.insertFeatures([signal.features]);
-  }
+async isCircuitBreakerOpen(): Promise<boolean> {
+  const status = await this.client.get('circuit-breaker:status');
+  return status === 'OPEN';
 }
 ```
 
-## Common Mistakes to Avoid
+---
 
-❌ **DON'T** let apps create their own database connections  
-❌ **DON'T** define schemas in apps  
-❌ **DON'T** use `@InjectModel()` in apps  
-❌ **DON'T** install `mongoose` in apps  
-❌ **DON'T** bypass repositories with direct DB calls
+## Testing Guidelines
 
-✅ **DO** export all database functionality from this package  
-✅ **DO** provide repository methods for common operations  
-✅ **DO** use TypeScript strict mode  
-✅ **DO** validate with Zod schemas from @repo/schema  
-✅ **DO** provide health checks for all connections
+### Mock Repositories
 
-## Documentation Requirements
+```typescript
+const mockSignalRepository = {
+  create: jest.fn(),
+  findByUserId: jest.fn(),
+};
 
-**After implementing any feature:**
+it('should create signal', async () => {
+  mockSignalRepository.create.mockResolvedValue(mockSignal);
+  
+  const result = await service.createSignal(signalDto);
+  
+  expect(mockSignalRepository.create).toHaveBeenCalledWith(signalDto);
+  expect(result).toEqual(mockSignal);
+});
+```
 
-1. Update `README.md` with API examples
-2. Update `docs/ARCHITECTURE.md` with design decisions
-3. Update `docs/PROGRESS.md` with completion status
-4. Add JSDoc comments to all exported methods
+### Integration Tests (with TestContainers)
 
-**Progress Tracking:**
+```typescript
+import { MongoMemoryServer } from 'mongodb-memory-server';
 
-- Track completed repositories
-- Track completed schemas
-- Track health check implementations
-- Track optimization work (indexes, queries)
+describe('SignalRepository (Integration)', () => {
+  let mongoServer: MongoMemoryServer;
+
+  beforeAll(async () => {
+    mongoServer = await MongoMemoryServer.create();
+    const uri = mongoServer.getUri();
+    // Connect to in-memory MongoDB
+  });
+
+  afterAll(async () => {
+    await mongoServer.stop();
+  });
+
+  it('should persist signal to MongoDB', async () => {
+    const signal = await repository.create(signalDto);
+    const found = await repository.findById(signal.id);
+    expect(found).toEqual(signal);
+  });
+});
+```
+
+---
+
+## Performance Guidelines
+
+### QuestDB
+- **Batch Inserts**: 10K rows at a time
+- **Partitioning**: By day (automatic in QuestDB)
+- **Indexes**: Only on `timestamp` and `instrument_key`
+
+### MongoDB
+- **Indexes**: On frequently queried fields (`userId`, `timestamp`)
+- **Lean Queries**: Use `.lean()` for read-only data
+- **Aggregation Pipelines**: For complex analytics
+
+### Redis
+- **Pipelining**: Batch multiple commands
+- **Persistence**: AOF for durability, RDB for snapshots
+- **Memory**: Set `maxmemory` with LRU eviction policy
+
+---
+
+**Last Updated**: November 29, 2025
+**Status**: Production-Ready

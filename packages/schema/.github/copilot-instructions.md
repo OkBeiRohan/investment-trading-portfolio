@@ -1,393 +1,291 @@
-# GitHub Copilot Instructions - @repo/schema
+# @repo/schema - Coding Instructions
 
-## Package Role
+> Single source of truth for all TypeScript types and Zod schemas.
 
-You are working on the **shared schema package** for the trading monorepo. This package is the **single source of truth** for ALL types, interfaces, and validation schemas across the entire codebase.
+---
 
-## Core Principle
+## Design Principles
 
-**ALL types, interfaces, and Zod schemas MUST be defined in this package. Apps and other packages consume these types but NEVER create their own.**
+### 1. Validate ALL External Data
 
-## Package Structure
-
-```
-packages/schema/
-├── src/
-│   ├── index.ts                # Main exports
-│   ├── common/                 # Shared base types
-│   │   ├── index.ts
-│   │   ├── pagination.schema.ts
-│   │   ├── response.schema.ts
-│   │   └── errors.schema.ts
-│   ├── user/                   # User-related schemas
-│   │   ├── index.ts
-│   │   ├── user.schema.ts
-│   │   └── auth.schema.ts
-│   ├── trading/                # Trading domain
-│   │   ├── index.ts
-│   │   ├── enums.ts
-│   │   ├── base.ts
-│   │   ├── signal.schema.ts
-│   │   ├── order.schema.ts
-│   │   ├── position.schema.ts
-│   │   ├── strategy.schema.ts
-│   │   ├── performance.schema.ts
-│   │   ├── feature.schema.ts
-│   │   └── rl-agent.schema.ts
-│   └── market/                 # Market data schemas
-│       ├── index.ts
-│       ├── instrument.schema.ts
-│       ├── tick.schema.ts
-│       └── candle.schema.ts
-├── scripts/
-│   └── generate-json-schema.ts # Zod → JSON Schema converter
-├── docs/
-│   ├── ARCHITECTURE.md
-│   └── PROGRESS.md
-├── README.md
-└── package.json
-```
-
-## What Belongs Here
-
-### ✅ DO Include
-
-1. **Zod Schemas**
-   - Runtime validation schemas
-   - Input/output schemas for APIs
-   - Database document schemas
-
-2. **TypeScript Types**
-   - Inferred from Zod schemas
-   - Type utilities (Omit, Pick, Partial variations)
-   - Union and intersection types
-
-3. **Enums**
-   - All application enums
-   - Status codes
-   - Type discriminators
-
-4. **Base Schemas**
-   - Reusable schema fragments
-   - Common validation rules
-   - Composed schema builders
-
-### ❌ DON'T Include
-
-1. **Business Logic** - That belongs in apps
-2. **Database Connections** - That's @repo/database
-3. **API Handlers** - Apps handle HTTP
-4. **ML Models** - That's app-specific
-
-## Schema Design Principles
-
-### 1. DRY - Don't Repeat Yourself
-
-**NEVER duplicate schemas. Use TypeScript's type system:**
+**RULE**: ANY data from external sources (API responses, user input, DB queries) MUST be validated with Zod.
 
 ```typescript
-// ✅ CORRECT - Composition with extends
-import { z } from "zod";
+// ❌ BAD: Trusting external data
+const quote = await fetch('/api/quote').then(r => r.json());
+const price = quote.ltp; // What if quote.ltp is undefined?
 
-const baseOrderSchema = z.object({
-  quantity: z.number().positive(),
-  price: z.number().positive(),
-  transactionType: z.enum(["BUY", "SELL"]),
-});
+// ✅ GOOD: Validate with Zod
+import { MarketQuoteSchema } from '@repo/schema';
 
-export const orderLegSchema = baseOrderSchema.extend({
+const rawQuote = await fetch('/api/quote').then(r => r.json());
+const quote = MarketQuoteSchema.parse(rawQuote); // Throws if invalid
+const price = quote.ltp; // TypeScript knows ltp exists
+```
+
+**Why**: Prevents runtime errors, catches API contract violations early, provides type safety.
+
+### 2. Co-located Types and Schemas
+
+Every Zod schema MUST have a corresponding TypeScript type:
+
+```typescript
+import { z } from 'zod';
+
+// 1. Define Zod schema
+export const TradingSignalSchema = z.object({
+  userId: z.string().uuid(),
   instrumentKey: z.string(),
-  status: z.enum(["PENDING", "FILLED", "REJECTED"]),
-});
-
-export const multiLegOrderSchema = z.object({
-  legs: z.array(orderLegSchema),
-  strategy: z.string(),
-});
-
-// ✅ CORRECT - Type utilities
-export type OrderCreateInput = Omit<Order, "_id" | "createdAt" | "updatedAt">;
-export type OrderUpdateInput = Partial<OrderCreateInput>;
-
-// ❌ WRONG - Duplication
-export const orderLegSchema = z.object({
-  quantity: z.number().positive(), // Already in baseOrderSchema!
-  price: z.number().positive(), // Duplicate!
-  transactionType: z.enum(["BUY", "SELL"]), // Duplicate!
-  instrumentKey: z.string(),
-});
-```
-
-### 2. One Schema Per File (Logical Grouping)
-
-```typescript
-// ✅ CORRECT - signal.schema.ts
-export const tradingSignalSchema = z.object({
-  /* ... */
-});
-export const modelContributionsSchema = z.object({
-  /* ... */
-});
-export const signalMetadataSchema = z.object({
-  /* ... */
-});
-
-export type TradingSignal = z.infer<typeof tradingSignalSchema>;
-export type ModelContributions = z.infer<typeof modelContributionsSchema>;
-
-// ❌ WRONG - Everything in one file
-// trading.schema.ts with 20 different schemas
-```
-
-### 3. Extract Common Patterns
-
-```typescript
-// base.ts - Reusable base schemas
-export const timestampSchema = z.object({
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-export const userRefSchema = z.object({
-  userId: z.string(),
-});
-
-// Use in specific schemas
-export const orderSchema = z
-  .object({
-    orderId: z.string(),
-    // ... order fields
-  })
-  .merge(timestampSchema)
-  .merge(userRefSchema);
-```
-
-### 4. Export Both Schema and Type
-
-```typescript
-// ✅ ALWAYS export both
-export const userSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string().email(),
-});
-
-export type User = z.infer<typeof userSchema>;
-
-// Now consumers can use:
-// - userSchema for validation
-// - User type for type checking
-```
-
-## File Organization Rules
-
-### Enums File
-
-```typescript
-// trading/enums.ts - ALL enums for trading domain
-export const OrderTypeEnum = z.enum(["MARKET", "LIMIT", "STOP", "STOP_LIMIT"]);
-export const OrderStatusEnum = z.enum([
-  "PENDING",
-  "FILLED",
-  "REJECTED",
-  "CANCELLED",
-]);
-export const ExchangeEnum = z.enum(["NSE", "BSE", "MCX"]);
-export const PositionTypeEnum = z.enum(["LONG", "SHORT"]);
-
-export type OrderType = z.infer<typeof OrderTypeEnum>;
-export type OrderStatus = z.infer<typeof OrderStatusEnum>;
-// ...
-```
-
-### Index File Pattern
-
-```typescript
-// trading/index.ts - Re-export everything
-export * from "./enums";
-export * from "./base";
-export * from "./signal.schema";
-export * from "./order.schema";
-export * from "./position.schema";
-export * from "./strategy.schema";
-export * from "./performance.schema";
-export * from "./feature.schema";
-export * from "./rl-agent.schema";
-```
-
-## Type Generation Workflow
-
-### TypeScript → JSON Schema → Python
-
-```typescript
-// Step 1: Define Zod schema
-export const featureSnapshotSchema = z.object({
+  prediction: z.enum(['VOL_UP', 'VOL_DOWN', 'NEUTRAL']),
+  confidence: z.number().min(0).max(1),
+  modelScores: z.record(z.string(), z.number()),
   timestamp: z.date(),
-  symbol: z.string(),
-  features: z.object({
-    realizedVol5d: z.number(),
-    rsi14: z.number(),
-    macd: z.object({
-      value: z.number(),
-      signal: z.number(),
-      histogram: z.number(),
-    }),
+});
+
+// 2. Infer TypeScript type
+export type TradingSignal = z.infer<typeof TradingSignalSchema>;
+```
+
+**NEVER define types manually** when Zod can infer them.
+
+---
+
+## Schema Organization
+
+```
+packages/schema/src/
+├── trading/
+│   ├── signal.schema.ts       # TradingSignalSchema
+│   ├── order.schema.ts        # OrderSchema
+│   ├── position.schema.ts     # PositionSchema
+│   └── index.ts               # Re-exports
+├── market/
+│   ├── quote.schema.ts        # MarketQuoteSchema
+│   ├── tick.schema.ts         # TickDataSchema
+│   ├── candle.schema.ts       # CandleSchema
+│   └── index.ts
+├── user/
+│   ├── user.schema.ts         # UserSchema
+│   ├── auth.schema.ts         # LoginSchema, RegisterSchema
+│   └── index.ts
+└── index.ts                   # Main exports
+```
+
+**Naming Convention**: `{Entity}Schema` for schemas, `{Entity}` for TypeScript types.
+
+---
+
+## Common Patterns
+
+### 1. Nested Objects
+
+```typescript
+const PositionSchema = z.object({
+  instrumentKey: z.string(),
+  quantity: z.number().int(),
+  avgPrice: z.number(),
+  greeks: z.object({
+    delta: z.number(),
+    gamma: z.number(),
+    vega: z.number(),
+    theta: z.number(),
   }),
 });
-
-export type FeatureSnapshot = z.infer<typeof featureSnapshotSchema>;
-
-// Step 2: Generate JSON Schema (automated)
-// pnpm generate-json-schema
-
-// Step 3: Generate Python types (automated)
-// python scripts/generate_types.py
 ```
 
-## Validation Best Practices
-
-### Input Validation
+### 2. Enums
 
 ```typescript
-// ✅ Strict validation for inputs
-export const createOrderInputSchema = z
-  .object({
-    quantity: z.number().int().positive().max(10000),
-    price: z.number().positive().max(100000),
-    instrumentKey: z.string().regex(/^[A-Z]+_[A-Z]+\|.+$/),
-    transactionType: OrderTypeEnum,
-  })
-  .strict(); // Don't allow extra fields
+// ✅ GOOD: Use z.enum for strict values
+const OrderTypeSchema = z.enum(['MARKET', 'LIMIT', 'STOP_LOSS']);
 
-// ✅ Use for API input validation
-app.post("/orders", (req, res) => {
-  const validated = createOrderInputSchema.parse(req.body);
-  // ...
+// ❌ BAD: Using z.string() with no validation
+const OrderTypeSchema = z.string(); // Any string allowed!
+```
+
+### 3. Optional Fields
+
+```typescript
+const OrderSchema = z.object({
+  quantity: z.number(),
+  price: z.number().optional(), // For MARKET orders
+  stopPrice: z.number().optional(), // For STOP_LOSS orders
 });
 ```
 
-### Output Schemas
+### 4. Default Values
 
 ```typescript
-// ✅ Define expected outputs
-export const orderResponseSchema = orderSchema.extend({
-  status: OrderStatusEnum,
-  filledQuantity: z.number().nonnegative(),
-  averagePrice: z.number().positive().optional(),
+const ConfigSchema = z.object({
+  maxLeverage: z.number().default(1.5),
+  riskPerTrade: z.number().default(0.02),
+  enableGPU: z.boolean().default(false),
 });
-
-export type OrderResponse = z.infer<typeof orderResponseSchema>;
 ```
 
-## Consumer Usage
-
-### In Apps
+### 5. Refinements (Custom Validation)
 
 ```typescript
-// apps/algo-worker/src/services/signal.service.ts
-import { type TradingSignal, tradingSignalSchema } from '@repo/schema';
+const OrderSchema = z.object({
+  quantity: z.number().int().positive(),
+  price: z.number().positive(),
+}).refine(
+  (data) => data.quantity * data.price <= 1_000_000, // Max order value ₹10L
+  { message: 'Order value exceeds ₹10,00,000 limit' }
+);
+```
 
-async saveSignal(data: unknown): Promise<TradingSignal> {
-  // ✅ Validate at runtime
-  const validated = tradingSignalSchema.parse(data);
+---
 
-  // ✅ Type-safe from here
-  return this.repository.create(validated);
+## SEBI 2024-2025 Compliance Schemas
+
+### Algo ID Validation
+
+```typescript
+const AlgoIdSchema = z.string().regex(
+  /^PROJ_QUANTUM_v\d+\.\d+\.\d+_USER_[a-zA-Z0-9-]+$/,
+  'Invalid algoId format. Must be PROJ_QUANTUM_v{version}_USER_{userId}'
+);
+
+const OrderRequestSchema = z.object({
+  algoId: AlgoIdSchema,
+  strategyType: z.enum(['IRON_CONDOR', 'LONG_STRADDLE', 'BULL_PUT_SPREAD', 'BACKTEST']),
+  // ... other fields
+});
+```
+
+### Pre-Trade Risk Check Result
+
+```typescript
+const RiskCheckResultSchema = z.object({
+  passed: z.boolean(),
+  checks: z.object({
+    positionLimitOk: z.boolean(),
+    marginSufficientOk: z.boolean(),
+    leverageWithinBoundsOk: z.boolean(),
+    greeksExposureOk: z.boolean(),
+  }),
+  rejectionReason: z.string().optional(),
+  timestamp: z.date(),
+});
+```
+
+---
+
+## API Response Validation
+
+### Upstox API Response
+
+```typescript
+const UpstoxQuoteResponseSchema = z.object({
+  status: z.literal('success'),
+  data: z.record(
+    z.string(), // instrument_key
+    z.object({
+      ltp: z.number(),
+      ohlc: z.object({
+        open: z.number(),
+        high: z.number(),
+        low: z.number(),
+        close: z.number(),
+      }),
+      volume: z.number(),
+      // ... other fields
+    })
+  ),
+});
+
+// Usage
+const validated = UpstoxQuoteResponseSchema.parse(apiResponse);
+```
+
+---
+
+## Form Validation (tRPC + React Hook Form)
+
+### tRPC Input Schema
+
+```typescript
+export const placeOrderInput = z.object({
+  instrumentKey: z.string().min(1, 'Instrument key is required'),
+  quantity: z.number().int().positive('Quantity must be positive'),
+  orderType: z.enum(['MARKET', 'LIMIT']),
+  price: z.number().optional(),
+  transactionType: z.enum(['BUY', 'SELL']),
+}).refine(
+  (data) => data.orderType !== 'LIMIT' || data.price !== undefined,
+  { message: 'Price is required for LIMIT orders', path: ['price'] }
+);
+```
+
+---
+
+## Testing
+
+### Schema Validation Tests
+
+```typescript
+import { TradingSignalSchema } from '@repo/schema';
+
+describe('TradingSignalSchema', () => {
+  it('should validate correct signal', () => {
+    const validSignal = {
+      userId: '123e4567-e89b-12d3-a456-426614174000',
+      instrumentKey: 'NSE_INDEX|Nifty 50',
+      prediction: 'VOL_UP',
+      confidence: 0.78,
+      modelScores: { xgboost: 0.8, cnn_lstm: 0.75 },
+      timestamp: new Date(),
+    };
+    
+    expect(() => TradingSignalSchema.parse(validSignal)).not.toThrow();
+  });
+
+  it('should reject invalid confidence', () => {
+    const invalidSignal = {
+      userId: '123e4567-e89b-12d3-a456-426614174000',
+      instrumentKey: 'NSE_INDEX|Nifty 50',
+      prediction: 'VOL_UP',
+      confidence: 1.5, // Invalid: >1
+      modelScores: {},
+      timestamp: new Date(),
+    };
+    
+    expect(() => TradingSignalSchema.parse(invalidSignal)).toThrow();
+  });
+});
+```
+
+---
+
+## Performance Considerations
+
+### Use `.safeParse()` for Non-Critical Validation
+
+```typescript
+// ❌ BAD: Throws on invalid data (kills request)
+const quote = MarketQuoteSchema.parse(apiResponse);
+
+// ✅ GOOD: Returns success/error object
+const result = MarketQuoteSchema.safeParse(apiResponse);
+if (!result.success) {
+  logger.warn('Invalid quote', result.error);
+  return fallbackQuote;
 }
+const quote = result.data;
 ```
 
-### In Database Package
+### Transform Data During Validation
 
 ```typescript
-// packages/database/src/schemas/trading-signal.schema.ts
-import { type TradingSignal } from "@repo/schema";
-
-@Schema({ timestamps: true })
-export class TradingSignal implements TradingSignal {
-  // ✅ Mongoose schema implements Zod type
-  @Prop({ required: true })
-  userId: string;
-
-  @Prop({ required: true })
-  prediction: "VOL_UP" | "VOL_DOWN" | "NEUTRAL";
-
-  // ...
-}
-```
-
-## Common Mistakes to Avoid
-
-❌ **DON'T** create types in apps  
-❌ **DON'T** duplicate schema definitions  
-❌ **DON'T** put too many schemas in one file  
-❌ **DON'T** use `any` or `unknown` without validation  
-❌ **DON'T** skip runtime validation for external inputs
-
-✅ **DO** use composition (extends, merge, pick, omit)  
-✅ **DO** export both schema and type  
-✅ **DO** organize by domain (user, trading, market)  
-✅ **DO** validate all external inputs  
-✅ **DO** use strict() for input schemas
-
-## Documentation Requirements
-
-**After adding new schemas:**
-
-1. Update `README.md` with usage examples
-2. Update `docs/ARCHITECTURE.md` if adding new domain
-3. Update `docs/PROGRESS.md` with completion status
-4. Add JSDoc comments to exported schemas
-
-**Example JSDoc:**
-
-````typescript
-/**
- * Trading signal schema for ML model predictions
- *
- * @example
- * ```typescript
- * const signal: TradingSignal = {
- *   userId: 'user123',
- *   timestamp: new Date(),
- *   prediction: 'VOL_UP',
- *   confidence: 0.85,
- *   // ...
- * };
- * ```
- */
-export const tradingSignalSchema = z.object({
-  // ...
+const TickDataSchema = z.object({
+  timestamp: z.string().transform((str) => new Date(str)), // ISO string → Date
+  price: z.string().transform((str) => parseFloat(str)),   // String → Number
+  volume: z.number(),
 });
-````
-
-## Type Generation Scripts
-
-### generate-json-schema.ts
-
-```typescript
-// Must export all schemas for Python generation
-import { zodToJsonSchema } from "zod-to-json-schema";
-import { writeFileSync } from "fs";
-
-// Import and convert
-import { tradingSignalSchema, orderSchema } from "../src/trading";
-
-const schemas = {
-  TradingSignal: zodToJsonSchema(tradingSignalSchema),
-  Order: zodToJsonSchema(orderSchema),
-  // ...
-};
-
-writeFileSync("./generated/schemas.json", JSON.stringify(schemas, null, 2));
 ```
 
-**Run with:** `pnpm generate-json-schema`
+---
 
-## Progress Tracking
-
-Track schema implementation by domain:
-
-- **User Domain**: 100% (user, auth)
-- **Trading Domain**: 100% (signal, order, position, strategy, performance)
-- **Market Domain**: 80% (tick, candle, instrument)
-- **Common Domain**: 100% (pagination, response, errors)
+**Last Updated**: November 29, 2025
+**Status**: Production-Ready

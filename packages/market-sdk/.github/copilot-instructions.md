@@ -1,291 +1,320 @@
-# GitHub Copilot Instructions - @repo/market-sdk
+# @repo/market-sdk - Coding Instructions
 
-## Package Role
+> Multi-provider SDK for market data and trading (Upstox, Yahoo Finance, Binance).
 
-You are working on the **unified market data SDK** for the trading monorepo. This package provides a multi-provider abstraction layer for market data access (Upstox, Yahoo Finance, Binance).
+---
 
-## Core Principle
+## Design Principles
 
-**Provide a unified interface for multiple market data providers. Apps should be able to switch providers without changing code.**
+### 1. Provider Abstraction
 
-## Package Structure
-
-```
-packages/market-sdk/
-├── src/
-│   ├── index.ts
-│   ├── core/
-│   │   ├── provider.factory.ts      # Provider factory with singleton pattern
-│   │   ├── provider.interface.ts    # Common interfaces
-│   │   └── provider.registry.ts     # Provider registration
-│   ├── providers/
-│   │   ├── upstox/
-│   │   │   ├── upstox.provider.ts
-│   │   │   ├── upstox.module.ts
-│   │   │   └── api/
-│   │   ├── yahoo/
-│   │   │   └── yahoo.provider.ts
-│   │   └── binance/
-│   │       └── binance.provider.ts
-│   ├── interfaces/
-│   │   ├── market-data.interface.ts
-│   │   ├── order.interface.ts
-│   │   └── portfolio.interface.ts
-│   ├── auth/
-│   │   └── auth-manager.service.ts  # Multi-user authentication
-│   └── multiplexer/
-│       └── multiplexer.service.ts   # WebSocket connection pooling
-├── docs/
-│   ├── ARCHITECTURE.md
-│   └── PROGRESS.md
-├── README.md
-└── package.json
-```
-
-## Design Patterns
-
-### Provider Factory Pattern
+**RULE**: Apps should NEVER import `axios` or call broker APIs directly. Always use the SDK.
 
 ```typescript
-// core/provider.factory.ts
-import { Injectable } from "@nestjs/common";
+// ❌ BAD: Direct API call
+const response = await axios.get('https://api.upstox.com/v2/market-quote/quotes', {
+  headers: { Authorization: `Bearer ${token}` }
+});
 
-export type ProviderType = "upstox" | "yahoo" | "binance";
+// ✅ GOOD: Use SDK
+import { UpstoxProvider } from '@repo/market-sdk';
 
-@Injectable()
-export class ProviderFactory {
-  private static providers: Map<ProviderType, any> = new Map();
+const upstox = new UpstoxProvider(apiKey, accessToken);
+const quote = await upstox.getQuote('NSE_INDEX|Nifty 50');
+```
 
-  static register(type: ProviderType, provider: any) {
-    this.providers.set(type, provider);
+**Why**: Centralized error handling, rate limiting, retries, data normalization, SEBI compliance.
+
+### 2. Provider-Agnostic Data Format
+
+All providers MUST return data in a common format:
+
+```typescript
+interface MarketQuote {
+  instrumentKey: string;
+  ltp: number;           // Last Traded Price
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  bid: number;
+  ask: number;
+  bidSize: number;
+  askSize: number;
+  timestamp: Date;
+}
+```
+
+---
+
+## Upstox Provider
+
+### Authentication
+
+```typescript
+class UpstoxProvider {
+  private apiKey: string;
+  private accessToken: string;
+  private baseUrl = 'https://api.upstox.com';
+
+  constructor(apiKey: string, accessToken: string) {
+    this.apiKey = apiKey;
+    this.accessToken = accessToken;
   }
 
-  static create(type: ProviderType): IMarketDataProvider {
-    const ProviderClass = this.providers.get(type);
-    if (!ProviderClass) {
-      throw new Error(`Provider ${type} not registered`);
-    }
-    return new ProviderClass();
-  }
-
-  // Auto-detect provider from instrument key
-  static getProviderForInstrument(instrumentKey: string): ProviderType {
-    if (instrumentKey.startsWith("NSE_") || instrumentKey.startsWith("BSE_")) {
-      return "upstox";
-    }
-    if (instrumentKey.includes("BINANCE")) {
-      return "binance";
-    }
-    return "yahoo";
+  private getHeaders(): Record<string, string> {
+    return {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${this.accessToken}`,
+      'Api-Version': '2.0',
+    };
   }
 }
 ```
 
-### Interface Segregation
+### Rate Limiting (Upstox: 250 req/sec)
 
 ```typescript
-// interfaces/market-data.interface.ts
-export interface IMarketDataProvider {
-  getQuote(instrumentKey: string): Promise<Quote>;
-  getHistoricalData(params: HistoricalParams): Promise<Candle[]>;
-  getOptionChain(underlying: string): Promise<OptionChain>;
-  subscribeToLiveData(
-    instruments: string[],
-    callback: (data: Tick) => void
-  ): void;
-}
+import Bottleneck from 'bottleneck';
 
-// interfaces/order.interface.ts
-export interface IOrderProvider {
-  placeOrder(order: OrderRequest): Promise<OrderResponse>;
-  modifyOrder(orderId: string, updates: OrderUpdates): Promise<OrderResponse>;
-  cancelOrder(orderId: string): Promise<void>;
-  getOrderStatus(orderId: string): Promise<OrderStatus>;
-}
+private limiter = new Bottleneck({
+  maxConcurrent: 10,
+  minTime: 100, // 10 requests/sec per connection
+});
 
-// interfaces/portfolio.interface.ts
-export interface IPortfolioProvider {
-  getPositions(): Promise<Position[]>;
-  getHoldings(): Promise<Holding[]>;
-  getFunds(): Promise<Funds>;
-}
-```
-
-### Multi-User Authentication
-
-```typescript
-// auth/auth-manager.service.ts
-@Injectable()
-export class AuthManagerService {
-  private tokens: Map<string, AccessToken> = new Map();
-
-  async authenticate(userId: string, credentials: Credentials): Promise<void> {
-    const token = await this.fetchAccessToken(credentials);
-    this.tokens.set(userId, token);
-  }
-
-  getToken(userId: string): AccessToken | null {
-    return this.tokens.get(userId) || null;
-  }
-
-  async refreshToken(userId: string): Promise<void> {
-    // Refresh logic
-  }
-}
-```
-
-### WebSocket Multiplexer
-
-```typescript
-// multiplexer/multiplexer.service.ts
-@Injectable()
-export class MultiplexerService {
-  private connections: Map<string, WebSocket> = new Map();
-  private readonly MAX_KEYS_PER_SOCKET = 500;
-
-  async subscribe(instruments: string[]): Promise<void> {
-    // Load balancing logic
-    // Use Redis to track which socket has which instruments
-    const socketId = await this.findAvailableSocket();
-    const ws = this.getOrCreateSocket(socketId);
-
-    instruments.forEach((key) => {
-      ws.subscribe(key);
-      this.redisService.setSocketForInstrument(key, socketId);
+async getQuote(instrumentKey: string): Promise<MarketQuote> {
+  return this.limiter.schedule(async () => {
+    const response = await axios.get(`${this.baseUrl}/v2/market-quote/quotes`, {
+      params: { instrument_key: instrumentKey },
+      headers: this.getHeaders(),
     });
+    
+    return this.normalizeQuote(response.data.data[instrumentKey]);
+  });
+}
+```
+
+### WebSocket (Real-Time Data)
+
+```typescript
+class UpstoxWebSocketClient {
+  private ws: WebSocket;
+  private subscriptions = new Set<string>();
+
+  async connect(authorizedUrl: string): Promise<void> {
+    this.ws = new WebSocket(authorizedUrl);
+    this.ws.binaryType = 'arraybuffer'; // Upstox uses Protobuf
+    
+    this.ws.on('open', () => this.logger.log('WebSocket connected'));
+    this.ws.on('message', (data) => this.handleMessage(data));
+    this.ws.on('error', (err) => this.handleError(err));
   }
 
-  private async findAvailableSocket(): Promise<string> {
-    // Find socket with least load
-    const sockets = await this.redisService.getActiveSockets();
-    for (const socketId of sockets) {
-      const load = await this.redisService.getSocketLoad(socketId);
-      if (load < this.MAX_KEYS_PER_SOCKET) {
-        return socketId;
-      }
+  private handleMessage(data: ArrayBuffer): void {
+    // Decode Upstox Protobuf format
+    const decoded = UpstoxProto.FeedResponse.decode(new Uint8Array(data));
+    
+    for (const feed of decoded.feeds) {
+      const quote = this.normalizeProtobufQuote(feed);
+      this.emit('quote', quote);
     }
-    // Create new socket if all are full
-    return this.createNewSocket();
+  }
+
+  subscribe(instrumentKeys: string[]): void {
+    const payload = {
+      guid: 'subscription_guid',
+      method: 'sub',
+      data: {
+        mode: 'option_greeks', // 'ltpc' | 'full' | 'option_greeks'
+        instrumentKeys,
+      },
+    };
+    
+    this.ws.send(JSON.stringify(payload));
+    instrumentKeys.forEach(key => this.subscriptions.add(key));
   }
 }
 ```
 
-## Provider Implementation Example
+---
+
+## SEBI 2024-2025 Compliance
+
+### Algo ID Tagging
+
+Every order MUST include `algoId`:
 
 ```typescript
-// providers/upstox/upstox.provider.ts
-import { Injectable } from "@nestjs/common";
-import {
-  IMarketDataProvider,
-  IOrderProvider,
-  IPortfolioProvider,
-} from "../../interfaces";
+interface OrderRequest {
+  quantity: number;
+  price?: number;
+  product: 'I' | 'D'; // Intraday or Delivery
+  validity: 'DAY' | 'IOC';
+  disclosedQuantity?: number;
+  transactionType: 'BUY' | 'SELL';
+  orderType: 'MARKET' | 'LIMIT';
+  instrumentKey: string;
+  
+  // SEBI 2024-2025
+  algoId: string;  // Format: PROJ_QUANTUM_v{version}_USER_{userId}
+  strategyType: string; // e.g., 'IRON_CONDOR', 'LONG_STRADDLE'
+}
 
-@Injectable()
-export class UpstoxProvider
-  implements IMarketDataProvider, IOrderProvider, IPortfolioProvider
-{
-  constructor(
-    private readonly authManager: AuthManagerService,
-    private readonly marketDataApi: MarketDataApi,
-    private readonly ordersApi: OrdersApi,
-    private readonly portfolioApi: PortfolioApi
-  ) {}
-
-  async getQuote(instrumentKey: string): Promise<Quote> {
-    const response = await this.marketDataApi.getFullMarketQuote(instrumentKey);
-    return this.transformQuote(response);
+async placeOrder(order: OrderRequest): Promise<OrderResponse> {
+  // Validate algoId format
+  if (!order.algoId.startsWith('PROJ_QUANTUM_v')) {
+    throw new Error('Invalid algoId format for SEBI compliance');
   }
-
-  async placeOrder(order: OrderRequest): Promise<OrderResponse> {
-    const userId = order.userId;
-    const token = this.authManager.getToken(userId);
-
-    const response = await this.ordersApi.placeOrder(
-      order,
-      this.authManager.getApiVersion(),
-      token
-    );
-
-    return this.transformOrderResponse(response);
-  }
-
-  // Implement all interface methods...
+  
+  // Audit log BEFORE API call
+  await this.auditLogger.logOrderAttempt(order);
+  
+  const response = await axios.post(
+    `${this.baseUrl}/v2/order/place`,
+    order,
+    { headers: this.getHeaders() }
+  );
+  
+  // Audit log AFTER API call
+  await this.auditLogger.logOrderResponse(order, response.data);
+  
+  return response.data;
 }
 ```
 
-## NestJS Module Integration
+---
+
+## Yahoo Finance Provider (Historical Data)
 
 ```typescript
-// providers/upstox/upstox.module.ts
-import { Global, Module } from "@nestjs/common";
-import { UpstoxProvider } from "./upstox.provider";
-import { AuthManagerService } from "../../auth/auth-manager.service";
-import { MultiplexerService } from "../../multiplexer/multiplexer.service";
+class YahooFinanceProvider {
+  private baseUrl = 'https://query1.finance.yahoo.com';
 
-@Global()
-@Module({
-  providers: [UpstoxProvider, AuthManagerService, MultiplexerService],
-  exports: [UpstoxProvider, AuthManagerService, MultiplexerService],
-})
-export class UpstoxModule {}
-```
-
-## Consumer Usage
-
-```typescript
-// apps/algo-worker/src/services/market-data.service.ts
-import { Injectable } from "@nestjs/common";
-import { ProviderFactory } from "@repo/market-sdk";
-
-@Injectable()
-export class MarketDataService {
-  async fetchQuote(instrumentKey: string): Promise<Quote> {
-    // Auto-detect provider
-    const providerType =
-      ProviderFactory.getProviderForInstrument(instrumentKey);
-    const provider = ProviderFactory.create(providerType);
-
-    return provider.getQuote(instrumentKey);
-  }
-
-  async subscribeToLiveData(instruments: string[]): Promise<void> {
-    const provider = ProviderFactory.create("upstox");
-
-    provider.subscribeToLiveData(instruments, (tick) => {
-      // Handle tick data
-      this.handleTick(tick);
+  async getHistoricalData(
+    symbol: string,
+    startDate: Date,
+    endDate: Date,
+    interval: '1d' | '1wk' | '1mo'
+  ): Promise<Candle[]> {
+    const response = await axios.get(`${this.baseUrl}/v8/finance/chart/${symbol}`, {
+      params: {
+        period1: Math.floor(startDate.getTime() / 1000),
+        period2: Math.floor(endDate.getTime() / 1000),
+        interval,
+      },
     });
+    
+    return this.normalizeYahooCandles(response.data);
   }
 }
 ```
 
-## Documentation Requirements
+---
 
-**After implementing features:**
+## Binance Provider (Crypto - Future)
 
-1. Update `README.md` with provider examples
-2. Update `docs/ARCHITECTURE.md` with design decisions
-3. Update `docs/PROGRESS.md` with provider status
-4. Add JSDoc for all public methods
+```typescript
+class BinanceProvider {
+  async getKlines(
+    symbol: string,
+    interval: '1m' | '5m' | '15m' | '1h',
+    limit = 500
+  ): Promise<Candle[]> {
+    const response = await axios.get('https://api.binance.com/api/v3/klines', {
+      params: { symbol, interval, limit },
+    });
+    
+    return this.normalizeBinanceKlines(response.data);
+  }
+}
+```
 
-**Progress Tracking:**
+---
 
-Track by provider:
+## Error Handling
 
-- Upstox: 100% (market data, orders, portfolio, WebSocket)
-- Yahoo: 70% (market data only, no orders)
-- Binance: 50% (basic market data, work in progress)
+### Retry with Exponential Backoff
 
-## Common Mistakes to Avoid
+```typescript
+import { retry } from '@lifeomic/attempt';
 
-❌ **DON'T** create provider-specific code in apps  
-❌ **DON'T** hardcode provider names  
-❌ **DON'T** bypass the factory pattern  
-❌ **DON'T** create separate WebSocket for each instrument
+async getQuoteWithRetry(instrumentKey: string): Promise<MarketQuote> {
+  return retry(
+    async () => {
+      const quote = await this.getQuote(instrumentKey);
+      return quote;
+    },
+    {
+      maxAttempts: 3,
+      delay: 1000, // 1s initial delay
+      factor: 2,   // Exponential backoff
+      jitter: true,
+      handleError: (err, context) => {
+        if (err.response?.status === 429) {
+          // Rate limit - retry
+          this.logger.warn(`Rate limited, attempt ${context.attemptNum}`);
+          return;
+        }
+        throw err; // Don't retry on other errors
+      },
+    }
+  );
+}
+```
 
-✅ **DO** use provider factory for all access  
-✅ **DO** implement all interface methods  
-✅ **DO** use multiplexer for WebSocket efficiency  
-✅ **DO** handle authentication centrally  
-✅ **DO** provide unified error handling
+---
+
+## Testing Guidelines
+
+### Mock Providers
+
+```typescript
+const mockUpstoxProvider = {
+  getQuote: jest.fn(),
+  placeOrder: jest.fn(),
+};
+
+it('should fetch quote from Upstox', async () => {
+  mockUpstoxProvider.getQuote.mockResolvedValue(mockQuote);
+  
+  const quote = await service.getQuote('NSE_INDEX|Nifty 50');
+  
+  expect(mockUpstoxProvider.getQuote).toHaveBeenCalledWith('NSE_INDEX|Nifty 50');
+  expect(quote.ltp).toBe(23450.5);
+});
+```
+
+### Integration Tests (Sandbox)
+
+```typescript
+describe('UpstoxProvider (Sandbox)', () => {
+  const provider = new UpstoxProvider(
+    process.env.UPSTOX_SANDBOX_API_KEY,
+    process.env.UPSTOX_SANDBOX_ACCESS_TOKEN
+  );
+
+  it('should place test order', async () => {
+    const order: OrderRequest = {
+      quantity: 1,
+      product: 'I',
+      validity: 'DAY',
+      transactionType: 'BUY',
+      orderType: 'MARKET',
+      instrumentKey: 'NSE_INDEX|Nifty 50',
+      algoId: 'PROJ_QUANTUM_v1.0.0_USER_test',
+      strategyType: 'BACKTEST',
+    };
+    
+    const response = await provider.placeOrder(order);
+    
+    expect(response.status).toBe('success');
+    expect(response.orderId).toBeDefined();
+  });
+});
+```
+
+---
+
+**Last Updated**: November 29, 2025
+**Status**: Production-Ready (Upstox), Yahoo Finance Implemented
