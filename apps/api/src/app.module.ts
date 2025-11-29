@@ -2,8 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TRPCModule } from 'nestjs-trpc';
-import { AuthModule, AuthService } from '@repo/authentication';
-import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
+import { AuthModule } from '@repo/authentication';
 import { DevtoolsModule } from '@nestjs/devtools-integration';
 
 @Module({
@@ -18,13 +17,7 @@ import { DevtoolsModule } from '@nestjs/devtools-integration';
           : '../../packages/trpc/src/server',
       basePath: '/api/trpc',
     }),
-    BetterAuthModule.forRootAsync({
-      imports: [AuthModule],
-      useFactory: (authService: AuthService) => ({
-        auth: authService.getAuthInstance(),
-      }),
-      inject: [AuthService],
-    }),
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

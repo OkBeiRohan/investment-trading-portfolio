@@ -1,5 +1,5 @@
 import { Controller, Get, Res } from '@nestjs/common';
-import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
+import { AllowAnonymous } from '@repo/authentication';
 import type { Response } from 'express';
 import { AppService } from './app.service';
 import { version } from '../package.json';

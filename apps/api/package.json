@@ -30,7 +30,6 @@
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
     "@repo/schema": "workspace:*",
-    "@thallesp/nestjs-better-auth": "^2.2.0",
     "@trpc/server": "^11.7.2",
     "nestjs-trpc": "^1.6.1",
     "nestjs-zod": "^5.0.1",
