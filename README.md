@@ -60,7 +60,7 @@ graph TD
     end
 
     subgraph "Decision Layer"
-        TFT --> DQN[RL Agent (DQN)]
+        TFT --> DQN["RL Agent (DQN)"]
         XGB --> DQN
         DQN --> RISK[Risk Manager]
     end
