@@ -29,9 +29,14 @@ The Cortex layer transforms raw market data into engineered features suitable fo
 **Features Computed**:
 
 - **Technical Indicators**: RSI, MACD, Bollinger Bands, SMA, EMA, ATR, OBV, ADX
-- **Volatility**: Realized volatility (5d, 10d, 20d), Parkinson estimator
-- **Options**: ATM IV, IV skew, term structure, PCR (volume/OI), Max Pain
+- **Volatility**: Realized volatility (5d, 10d, 20d), Parkinson estimator, **Volatility-of-Volatility (VoV)** (variance of realized vol over 20d window)
+- **Options**: ATM IV, IV skew, term structure, PCR (volume/OI), Max Pain, **Greek Momentum** (rate of change of delta/gamma/vega), **Implied Correlation** (NIFTY vs BANKNIFTY IV spread)
 - **Microstructure**: Bid-ask spread, order book imbalance, trade intensity
+- **Advanced Features (Research-Validated)**:
+  - **IV Surface as 2D Image**: Strike × Expiry grid (converted to grayscale for Vision Transformer input)
+  - **Greek Momentum**: First derivative of Greeks over 30-minute windows
+  - **Volatility-of-Volatility**: Second-order volatility measure for regime detection
+  - **Implied Correlation**: Cross-asset IV relationships for portfolio hedging signals
 
 **Example**:
 

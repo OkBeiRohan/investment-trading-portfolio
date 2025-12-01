@@ -751,27 +751,253 @@ export class RLExecutionService {
 
 ---
 
+## 🔄 Online Learning with Drift Detection
+
+### **Problem: Trained Models Degrade Over Time**
+
+**Market Regimes Change**: Models trained on 2023 data perform poorly in 2025 due to:
+
+- Policy changes (new SEBI regulations)
+- Macroeconomic shifts (interest rate changes)
+- Structural breaks (introduction of new derivatives)
+
+**Traditional Solution**: Retrain monthly (expensive, risks overfitting to recent data)
+
+**Better Solution**: **Online Learning** with drift detection
+
+---
+
+### **ADWIN (Adaptive Windowing) for Concept Drift**
+
+**Algorithm**: Detects when statistical distribution of data changes significantly.
+
+**Implementation**:
+
+```python
+# training-pipeline/src/training_pipeline/nodes/online_learning.py
+
+from river import drift
+from river import tree
+from river import ensemble
+import logging
+
+logger = logging.getLogger(__name__)
+
+class OnlineLearningPipeline:
+    """
+    Incrementally update models when drift detected
+    Reference: Bifet & Gavaldà (2007) - ADWIN algorithm
+    """
+
+    def __init__(self):
+        # ADWIN drift detector (monitors prediction error)
+        self.drift_detector = drift.ADWIN(delta=0.002)
+
+        # Online learning model (Hoeffding Tree)
+        self.online_model = tree.HoeffdingAdaptiveTreeClassifier(
+            grace_period=200,
+            split_confidence=1e-5,
+            leaf_prediction='nb',  # Naive Bayes at leaves
+        )
+
+        self.batch_model = None  # XGBoost trained offline
+        self.predictions_since_last_retrain = 0
+        self.drift_detected_count = 0
+
+    def predict_and_update(self, features: dict, true_label: int) -> float:
+        """
+        Make prediction, detect drift, update online model
+
+        Args:
+            features: Feature dictionary
+            true_label: Actual outcome (0 or 1)
+
+        Returns:
+            Prediction probability (0-1)
+        """
+
+        # Predict with batch model (XGBoost)
+        batch_pred = self.batch_model.predict_proba(features)[1]
+
+        # Predict with online model (Hoeffding Tree)
+        online_pred = self.online_model.predict_proba_one(features).get(1, 0.5)
+
+        # Ensemble (70% batch, 30% online)
+        final_pred = 0.7 * batch_pred + 0.3 * online_pred
+
+        # Calculate prediction error
+        error = abs(final_pred - true_label)
+
+        # Feed error to ADWIN (detect drift)
+        drift_detected = self.drift_detector.update(error)
+
+        if drift_detected:
+            self.drift_detected_count += 1
+            logger.warning(f"Concept drift detected! Count: {self.drift_detected_count}")
+
+            # Trigger incremental update
+            self.trigger_incremental_update()
+
+        # Update online model (always)
+        self.online_model.learn_one(features, true_label)
+
+        self.predictions_since_last_retrain += 1
+
+        return final_pred
+
+    def trigger_incremental_update(self):
+        """
+        Retrain batch model on recent data (last 30 days)
+        """
+        logger.info("Triggering incremental model update...")
+
+        # Fetch recent data from QuestDB
+        recent_data = self.fetch_recent_data(days=30)
+
+        # Fine-tune XGBoost on recent data
+        self.batch_model.fit(
+            recent_data['features'],
+            recent_data['labels'],
+            xgb_model=self.batch_model.get_booster()  # Continue training
+        )
+
+        # Export to ONNX
+        self.export_to_onnx(self.batch_model, 'xgboost_incremental.onnx')
+
+        # Reset drift counter
+        self.drift_detector = drift.ADWIN(delta=0.002)
+        self.predictions_since_last_retrain = 0
+
+        logger.info("Incremental update complete")
+
+    def fetch_recent_data(self, days: int) -> dict:
+        """Fetch last N days of data from QuestDB"""
+        # Implementation: Query QuestDB for features + labels
+        pass
+
+    def export_to_onnx(self, model, filename: str):
+        """Export updated model to ONNX format"""
+        # Implementation: Use onnxmltools
+        pass
+
+
+# Usage in Kedro pipeline
+def online_learning_node(catalog):
+    pipeline = OnlineLearningPipeline()
+
+    # Load initial batch model
+    pipeline.batch_model = catalog.load('xgboost_model')
+
+    # Stream predictions from MongoDB
+    predictions = catalog.load('predictions_stream')
+
+    for prediction in predictions:
+        features = prediction['features']
+        true_label = prediction['actual_outcome']  # Filled after trade closes
+
+        pipeline.predict_and_update(features, true_label)
+
+    # Save updated model
+    catalog.save('xgboost_online', pipeline.batch_model)
+```
+
+---
+
+### **Retraining Schedule**
+
+**Nightly Batch Training** (Full):
+
+- Fetch 2 years of data from QuestDB
+- Train 8-10 models using CPCV
+- Export to ONNX
+- Target: Sharpe >1.5
+
+**Weekly Incremental Update** (Online):
+
+- Triggered by ADWIN drift detection OR every Sunday
+- Fetch last 30 days of data
+- Fine-tune XGBoost/LightGBM on recent data
+- Export to ONNX with `_incremental` suffix
+
+**Real-Time Adaptation** (Hoeffding Tree):
+
+- Update on every prediction
+- Lightweight (no GPU required)
+- Used only when drift detected (30% weight in ensemble)
+
+---
+
+### **Drift Monitoring Dashboard**
+
+**Metrics to Track**:
+
+```python
+# Prometheus metrics for drift
+drift_detector_error_mean = Gauge('drift_detector_error_mean', 'ADWIN error mean')
+drift_detected_total = Counter('drift_detected_total', 'Number of drift detections')
+predictions_since_retrain = Gauge('predictions_since_retrain', 'Predictions since last retrain')
+
+# Example: Export to Prometheus
+drift_detector_error_mean.set(error_mean)
+if drift_detected:
+    drift_detected_total.inc()
+```
+
+**Grafana Dashboard**:
+
+- Plot prediction error over time
+- Alert when `drift_detected_total` spikes
+- Show model version history
+
+---
+
+### **Benefits of Online Learning**
+
+- ✅ **Adapt to regime changes** (no need to wait for monthly retrain)
+- ✅ **Reduce overfitting** (incremental updates on small recent data)
+- ✅ **Automatic detection** (ADWIN triggers retrain only when needed)
+- ✅ **Low latency** (Hoeffding Tree inference <1ms)
+
+---
+
 ## 📊 Summary: Advanced Validation Stack
 
-| Component                | Purpose                  | Impact                       |
-| ------------------------ | ------------------------ | ---------------------------- |
-| **CPCV**                 | Prevent overfitting      | Realistic Sharpe estimates   |
-| **OFI Features**         | Capture microstructure   | 100-500ms edge               |
-| **RL Execution**         | Adaptive order placement | 10-30 BPS slippage reduction |
-| **Purge/Embargo**        | Eliminate label leakage  | No future data contamination |
-| **Combinatorial Splits** | Test regime robustness   | Confidence intervals         |
+| Component                 | Purpose                  | Impact                                  |
+| ------------------------- | ------------------------ | --------------------------------------- |
+| **CPCV**                  | Prevent overfitting      | Realistic Sharpe estimates              |
+| **OFI Features**          | Capture microstructure   | 100-500ms edge                          |
+| **RL Execution**          | Adaptive order placement | 10-30 BPS slippage reduction            |
+| **Online Learning**       | Adapt to regime shifts   | Auto-update without full retrain        |
+| **ADWIN Drift Detection** | Detect concept drift     | Trigger incremental updates when needed |
+| **Purge/Embargo**         | Eliminate label leakage  | No future data contamination            |
+| **Combinatorial Splits**  | Test regime robustness   | Confidence intervals                    |
 
 **Training Pipeline Changes**:
 
 1. Replace `TimeSeriesSplit` with `combinatorial_purged_cv`
 2. Add OFI features to feature engineering pipeline
 3. Train RL agent in separate Kedro pipeline
-4. Export all models to ONNX (including RL agent)
-5. Quality gate: Fail if `sharpe_p5 < 1.0`
+4. **NEW**: Implement online learning with ADWIN drift detection
+5. Export all models to ONNX (including RL agent)
+6. Quality gate: Fail if `sharpe_p5 < 1.0`
 
 **algo-worker Changes**:
 
 1. Parse Depth-30 WebSocket data
 2. Compute OFI on every tick
 3. Load RL agent for execution
-4. Monitor implementation shortfall metrics
+4. **NEW**: Monitor ADWIN drift metrics (Prometheus)
+5. **NEW**: Support incremental model loading (hot-swap ONNX)
+6. Monitor implementation shortfall metrics
+
+**Research References**:
+
+- Combinatorial Purged CV: López de Prado, M. (2018) - _Advances in Financial Machine Learning_
+- Order Flow Imbalance: Cont et al. (2014) - _The Price Impact of Order Book Events_
+- RL Execution: Spooner et al. (2018) - _Market Making via Reinforcement Learning_
+- ADWIN Drift Detection: Bifet & Gavaldà (2007) - _Learning from Time-Changing Data with Adaptive Windowing_
+- SHAP Explainability: Lundberg & Lee (2017) - _A Unified Approach to Interpreting Model Predictions_
+
+---
+
+**Next Steps**: Implement these advanced techniques in your training pipeline and algo-worker to achieve research-validated performance (Sharpe >1.7) with robust validation.

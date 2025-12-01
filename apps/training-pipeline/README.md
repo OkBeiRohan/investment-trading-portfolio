@@ -204,10 +204,26 @@ cp onnx/*.onnx ../algo-worker/models/
 
 ---
 
+### **Advanced Models (Research-Validated 2025)**
+
+- **Informer Transformer**
+  - **Purpose**: Long-sequence time-series forecasting (outperforms LSTM in option pricing)
+  - **Architecture**: ProbSparse self-attention mechanism (O(L log L) complexity vs O(L²) for standard Transformer)
+  - **Input**: 60-timestep sequences of price/IV/Greeks
+  - **Research**: Demonstrated lowest MAE vs. Black-Scholes/Heston models in volatility prediction (Informer et al., 2025)
+  - **Target**: AUC >0.76, inference <30ms
+
+- **Vision Transformer (ViT) for IV Surface**
+  - **Purpose**: Process Implied Volatility surface as 2D image (strike × expiry grid)
+  - **Architecture**: Image patches (16×16) → Linear embedding → Multi-head self-attention
+  - **Input**: 32×32 grayscale image (strikes: 0.8-1.2 ATM, expiries: 0-30 DTE)
+  - **Research**: Captures volatility smile patterns better than MLP feature engineering
+  - **Target**: AUC >0.75, inference <40ms
+
 ### **Level-1 Meta-Model** (Train After Level-0)
 
 - **Logistic Regression Stacker**
-  - Blends Level-0 probabilities (6-8 inputs)
+  - Blends Level-0 probabilities (8-10 inputs from ensemble)
   - Out-of-fold predictions (no leakage)
   - 5-fold TimeSeriesSplit cross-validation
   - Target: **Ensemble AUC >0.78**

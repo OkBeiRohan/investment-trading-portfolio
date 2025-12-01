@@ -167,6 +167,147 @@ const result = await this.circuitBreaker.execute('upstox_api', async () => {
 
 ---
 
+## Explainability & SEBI Compliance Monitoring
+
+### **SHAP (SHapley Additive exPlanations) for Model Transparency**
+
+**Purpose**: Explain model predictions for SEBI compliance and debugging model drift.
+
+**Research**: SHAP values provide unified measure of feature importance, required for regulatory transparency (SEBI 2025-2026 guidelines).
+
+**Implementation**:
+
+```typescript
+@Injectable()
+export class ExplainabilityService {
+  constructor(
+    private readonly onnxService: ONNXRuntimeService,
+    private readonly metricsService: MetricsService,
+  ) {}
+
+  /**
+   * Compute SHAP values for recent predictions (weekly batch)
+   * Reference: Lundberg & Lee (2017) - NIPS best paper
+   */
+  @Cron('0 2 * * 0') // Every Sunday 2 AM
+  async computeWeeklySHAP() {
+    const lastWeekPredictions = await this.fetchPredictions(7); // 7 days
+
+    for (const prediction of lastWeekPredictions) {
+      const shapValues = await this.computeSHAP(
+        prediction.features,
+        prediction.modelName,
+      );
+
+      // Store SHAP values in MongoDB (audit trail)
+      await this.mongo.collection('shap_values').insertOne({
+        timestamp: Date.now(),
+        predictionId: prediction.id,
+        modelName: prediction.modelName,
+        shapValues: shapValues,
+        topFeatures: this.getTopFeatures(shapValues, 10),
+      });
+
+      // Detect drift in feature importance
+      await this.detectSHAPDrift(prediction.modelName, shapValues);
+    }
+  }
+
+  private async computeSHAP(
+    features: Record<string, number>,
+    modelName: string,
+  ): Promise<Record<string, number>> {
+    // Use SHAP.js or Python subprocess
+    const shapExplainer = new TreeSHAPExplainer(modelName);
+
+    // Background dataset (100 random samples from training)
+    const background = await this.fetchBackgroundData(100);
+
+    // Compute SHAP values
+    const shapValues = await shapExplainer.explain(features, background);
+
+    return shapValues;
+  }
+
+  private async detectSHAPDrift(
+    modelName: string,
+    currentSHAP: Record<string, number>,
+  ): Promise<void> {
+    // Compare with historical average SHAP values
+    const historicalSHAP = await this.mongo
+      .collection('shap_values')
+      .aggregate([
+        {
+          $match: {
+            modelName,
+            timestamp: { $gte: Date.now() - 30 * 86400000 },
+          },
+        },
+        { $group: { _id: null, avgSHAP: { $avg: '$shapValues' } } },
+      ])
+      .toArray();
+
+    if (historicalSHAP.length === 0) return;
+
+    // Calculate drift (KL divergence or cosine similarity)
+    const drift = this.calculateDrift(currentSHAP, historicalSHAP[0].avgSHAP);
+
+    if (drift > 0.3) {
+      // >30% drift = alert
+      await this.alertingService.send({
+        severity: 'warning',
+        message: `Model ${modelName} feature importance drift: ${drift.toFixed(2)}`,
+      });
+
+      this.logger.warn(`SHAP drift detected for ${modelName}: ${drift}`);
+    }
+
+    // Export to Prometheus
+    this.metricsService.setGauge('shap_drift', drift, { model: modelName });
+  }
+
+  private getTopFeatures(
+    shapValues: Record<string, number>,
+    topN: number,
+  ): Array<{ feature: string; importance: number }> {
+    return Object.entries(shapValues)
+      .map(([feature, importance]) => ({
+        feature,
+        importance: Math.abs(importance),
+      }))
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, topN);
+  }
+}
+```
+
+**Benefits**:
+
+- ✅ **Regulatory Compliance**: Demonstrate model is not black box (SEBI requirement)
+- ✅ **Model Debugging**: Identify when model relies on spurious features
+- ✅ **Drift Detection**: Alert when feature importance changes (regime shift)
+- ✅ **User Transparency**: Show users which features drove trading decision
+
+**Example Output** (logged to MongoDB):
+
+```json
+{
+  "timestamp": 1733068800000,
+  "predictionId": "pred_20251201_123456",
+  "modelName": "xgboost_v1.2.3",
+  "topFeatures": [
+    { "feature": "realized_vol_5d", "importance": 0.23 },
+    { "feature": "atm_iv", "importance": 0.18 },
+    { "feature": "pcr_volume", "importance": 0.14 },
+    { "feature": "rsi_14", "importance": 0.11 },
+    { "feature": "macd", "importance": 0.09 }
+  ],
+  "shapDrift": 0.12
+}
+```
+
+---
+
 ### **4. AlertingService**
 
 **File**: `src/control/alerting.service.ts`

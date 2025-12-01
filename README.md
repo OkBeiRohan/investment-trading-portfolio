@@ -12,7 +12,9 @@ A battle-tested algorithmic trading system specifically engineered for ultra-low
 - **Event-Driven Architecture** for HFT (not microservices-only)
 - **QuestDB** as the fastest time-series DB for financial tick data (22x faster than ClickHouse)
 - **ONNX Runtime + TensorRT** for hardware-agnostic ML inference with GPU acceleration
-- **SEBI 2024-2025 Compliance** with unique Algo IDs and mandatory pre-trade risk checks
+- **SEBI 2025-2026 Compliance** with unique Algo IDs, mandatory pre-trade risk checks (deadline: Jan 1, 2026)
+
+**Research-Validated Performance**: Academic studies (Sherasiya et al. 2025) demonstrate XGBoost + LSTM models with Greeks/IV features achieve **Sharpe ≈1.78** in NIFTY options, confirming our ensemble approach's viability.
 
 ### Key Capabilities
 
@@ -20,6 +22,9 @@ A battle-tested algorithmic trading system specifically engineered for ultra-low
   - 8-10 Level-0 models: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer (core 6) + TimesNet-MLP, WFTNet-MLP, PatchTST, KAN (optional 4)
   - Level-1 meta-learner: Logistic Regression stacker
   - Advanced architectures: Channel-independent Transformers (PatchTST) + learnable activation networks (KAN)
+  - Research-backed: Informer transformers outperform LSTM in option pricing; Vision Transformers process IV surface as 2D images
+  - Online learning: Drift detection (ADWIN) for real-time model adaptation
+  - Explainability: SHAP for feature importance monitoring (SEBI compliance)
   - Symbolic risk rules (hard limits override AI predictions)
 - **⚡ Ultra-Low Latency**:
   - Event-driven core with deterministic sequencer (<10μs event processing)

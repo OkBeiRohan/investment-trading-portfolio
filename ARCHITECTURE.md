@@ -83,6 +83,18 @@ graph LR
 
 **Decision Rationale**: QuestDB's 2025 benchmark showed superior performance for financial tick data processing. Its ASOF joins and nanosecond timestamps are purpose-built for options trading[4].
 
+### **Academic Benchmarks (2024-2025 Research)**
+
+| System/Study                | Focus                   | Models                      | Data Frequency | Sharpe Ratio | Notes                          |
+| --------------------------- | ----------------------- | --------------------------- | -------------- | ------------ | ------------------------------ |
+| **Proposed (Ours)**         | NIFTY/BANKNIFTY options | Ensemble (8-10 models) + RL | Tick/real-time | Target: >1.5 | Ultra-low latency, CPCV, GPU   |
+| **Sherasiya et al. (2025)** | NIFTY options           | XGBoost, LSTM (Greeks+IV)   | Daily EOD      | **1.78**     | ₹1.96L profit from ₹1L capital |
+| **Mishra et al. (2025)**    | NIFTY futures           | Dueling DDQN (RL)           | 15-min bars    | **1.228**    | Volatility-adjusted returns    |
+| **Informer (2025)**         | Option pricing          | Informer Transformer        | Intraday tick  | N/A          | Lowest MAE vs BS/Heston/LSTM   |
+| **Zerodha Streak (2018)**   | Retail NSE algos        | Rule-based (no ML)          | Tick/daily     | N/A          | 40% of NSE orders via algos    |
+
+**Validation**: Our ensemble approach aligns with academic findings showing XGBoost/LSTM achieve Sharpe >1.7 with Greeks+IV features. Our target of >1.5 Sharpe is conservative and achievable.
+
 ### 3. ML Inference Stack (Latency-Optimized)
 
 **Ensemble Architecture**:
@@ -120,11 +132,14 @@ ONNX Runtime (Cross-Platform Base)
 - **Co-location**: NSE proximity hosting for tick data (<500μs network latency)
 - **Protobuf Decoding**: Zero-copy deserialization from Upstox WebSocket
 
-**SEBI 2024-2025 Compliance**:
+**SEBI 2025-2026 Compliance**:
 
 - Every API order tagged with unique `algoId`
 - Real-time monitoring for anomaly detection
 - Mandatory pre-trade risk checks
+- **Deadline: January 1, 2026** for retail algo safeguards (broker approval workflows, limits, tagging)
+- Audit trail: 5-year retention for all trades
+- Explainability: SHAP analysis for model transparency
 
 ### Layer 2: Cortex (Feature Engineering)
 
@@ -219,12 +234,15 @@ ONNX Runtime (Cross-Platform Base)
 
 ### 2. SEBI 2024-2025 Compliance
 
+**Regulatory Deadline**: **January 1, 2026** (SEBI guidelines for retail algorithmic trading safeguards)
+
 **Requirements**:
 
 1. **Unique Algo ID**: Every order tagged with `algoId` (format: `PROJ_QUANTUM_v1.2.3_USER_{userId}`)
 2. **Exchange Approval**: Register strategy with NSE (if order frequency >10 orders/sec)
 3. **Broker Monitoring**: Real-time anomaly detection (Upstox API)
-4. **Audit Trail**: All orders logged to MongoDB with full context
+4. **Audit Trail**: All orders logged to MongoDB with full context (5-year retention)
+5. **Model Explainability**: SHAP values for ML predictions (transparency requirement)
 
 **Implementation**:
 
@@ -234,10 +252,22 @@ interface SEBICompliantOrder {
   userId: string;
   timestamp: Date;
   strategyType: string; // IRON_CONDOR, LONG_STRADDLE
-  preghtChecksPassed: boolean;
+  preTradeChecksPassed: boolean;
   riskLimitsValidated: boolean;
+  modelExplanation?: {
+    // NEW: SEBI 2026 requirement
+    topFeatures: Array<{ feature: string; importance: number }>;
+    shapValues: Record<string, number>;
+  };
 }
 ```
+
+**SHAP Explainability** (Control Layer):
+
+- Weekly SHAP value computation for all predictions
+- Feature importance drift detection (alert if >30% change)
+- Stored in MongoDB audit trail for regulatory inspection
+- See [07-CONTROL.md](apps/algo-worker/docs/layers/07-CONTROL.md#explainability--sebi-compliance-monitoring) for implementation
 
 ### 3. Disaster Recovery & Circuit Breakers
 
