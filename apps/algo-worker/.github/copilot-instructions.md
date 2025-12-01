@@ -169,10 +169,183 @@ for (const tick of ticks) {
 
 ### ExecutionEngine
 
-- **Responsibility**: Order placement + tracking
-- **Input**: Validated orders from Redux Stream
-- **Output**: API calls to Upstox + position updates
-- **Services**: `ExecutionEngineService`, `OrderManagerService`
+- **Responsibility**: Order placement + position tracking + exit management
+- **Input**: Validated orders from Redis Stream
+- **Output**: API calls to Upstox + position updates + exit signals
+- **Services**: `ExecutionEngineService`, `OrderManagerService`, `PositionManagerService`, `ExitSignalGeneratorService`
+- **Critical**: Must track ALL open positions and monitor exit conditions continuously
+
+---
+
+## Position Management & Exit Strategy (CRITICAL)
+
+### **Position Tracking Requirements**
+
+Every open position MUST be tracked in real-time:
+
+```typescript
+interface Position {
+  positionId: string;
+  userId: string;
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  quantity: number;
+  entryPrice: number;
+  entryTime: number;
+  currentPrice: number;
+  unrealizedPnL: number;
+  realizedPnL: number;
+  stopLoss: number;
+  trailingStopLoss: number | null;
+  takeProfit: number | null;
+  status: 'OPEN' | 'CLOSING' | 'CLOSED';
+  greeks: {
+    delta: number;
+    gamma: number;
+    theta: number;
+    vega: number;
+  };
+}
+```
+
+### **Multi-Criteria Exit System**
+
+Positions must be monitored for exit using **multiple criteria** (in priority order):
+
+1. **Stop Loss Hit** (Priority: HIGH)
+
+   ```typescript
+   if (position.side === 'BUY' && currentPrice <= position.stopLoss) {
+     exitPosition(position, 'STOP_LOSS_HIT');
+   }
+   ```
+
+2. **Trailing Stop Hit** (Priority: HIGH)
+
+   ```typescript
+   // Update trailing stop on every tick
+   if (position.trailingStopLoss) {
+     const newStop =
+       currentPrice * (1 - config.risk.trailingStopLossPercent / 100);
+     position.trailingStopLoss = Math.max(position.trailingStopLoss, newStop);
+   }
+
+   if (currentPrice <= position.trailingStopLoss) {
+     exitPosition(position, 'TRAILING_STOP_HIT');
+   }
+   ```
+
+3. **Take Profit Hit** (Priority: MEDIUM)
+
+   ```typescript
+   if (position.takeProfit && currentPrice >= position.takeProfit) {
+     exitPosition(position, 'TAKE_PROFIT_HIT');
+   }
+   ```
+
+4. **Time-Based Exit** (Priority: MEDIUM)
+
+   ```typescript
+   // EOD exit for intraday positions
+   if (isEndOfDay() && position.type === 'INTRADAY') {
+     exitPosition(position, 'EOD_EXIT');
+   }
+   ```
+
+5. **ML-Based Exit Signal** (Priority: LOW)
+
+   ```typescript
+   // Use same ensemble to predict trend reversal
+   const exitSignal = await this.predictionService.predictExit(position);
+   if (exitSignal.shouldExit && exitSignal.confidence > 0.75) {
+     exitPosition(position, 'ML_REVERSAL_SIGNAL');
+   }
+   ```
+
+6. **Risk Limit Breach** (Priority: HIGH)
+
+   ```typescript
+   if (portfolio.dailyLoss < config.risk.maxDailyDrawdown) {
+     liquidateAllPositions('DAILY_LOSS_LIMIT');
+   }
+
+   if (portfolio.greeks.delta > config.risk.greeksLimits.maxDelta) {
+     exitPosition(position, 'DELTA_LIMIT_BREACH');
+   }
+   ```
+
+### **Trailing Stop Loss Implementation**
+
+```typescript
+@Cron('*/1 * * * * *') // Every second
+async updateTrailingStops() {
+  const positions = await this.positionManager.getOpenPositions();
+
+  for (const position of positions) {
+    const config = this.configService.getConfig(position.userId);
+
+    if (!config.risk.enableTrailingStop) continue;
+
+    const currentPrice = await this.getLatestPrice(position.symbol);
+    const trailingPercent = config.risk.trailingStopLossPercent;
+
+    if (position.side === 'BUY') {
+      // Trail upward for long positions
+      const newStop = currentPrice * (1 - trailingPercent / 100);
+
+      if (!position.trailingStopLoss || newStop > position.trailingStopLoss) {
+        position.trailingStopLoss = newStop;
+        await this.updatePosition(position);
+
+        this.logger.log(`Trailing stop updated for ${position.symbol}: ${newStop}`);
+      }
+
+      // Check if stop hit
+      if (currentPrice <= position.trailingStopLoss) {
+        await this.exitPosition(position, 'TRAILING_STOP_HIT');
+      }
+    } else {
+      // Trail downward for short positions
+      const newStop = currentPrice * (1 + trailingPercent / 100);
+
+      if (!position.trailingStopLoss || newStop < position.trailingStopLoss) {
+        position.trailingStopLoss = newStop;
+        await this.updatePosition(position);
+      }
+
+      if (currentPrice >= position.trailingStopLoss) {
+        await this.exitPosition(position, 'TRAILING_STOP_HIT');
+      }
+    }
+  }
+}
+```
+
+### **Position Storage**
+
+- **Hot (Redis)**: Active positions for instant access
+
+  ```typescript
+  await redis.hset('positions:open', positionId, JSON.stringify(position));
+  ```
+
+- **Cold (MongoDB)**: Historical positions for audit trail
+  ```typescript
+  await mongo.collection('positions').insertOne({
+    ...position,
+    closedAt: Date.now(),
+    closeReason: 'TRAILING_STOP_HIT',
+    finalPnL: position.realizedPnL,
+  });
+  ```
+
+### **Anti-Patterns**
+
+❌ Not tracking positions after entry (blind trading)
+❌ Using only fixed stop loss without trailing
+❌ Ignoring ML exit signals
+❌ Not having time-based exits for intraday
+❌ Not monitoring portfolio-level Greeks
 
 ---
 
@@ -374,7 +547,10 @@ interface UserTradingConfig {
 
   risk: {
     stopLossPercent: number; // ±10% of algo default
-    takeProfitPercent: number | null; // Optional
+    trailingStopLossPercent: number; // 5% default trailing distance
+    takeProfitPercent: number | null; // Optional take profit
+    enableTrailingStop: boolean; // Enable/disable trailing stops
+    exitStrategy: 'FIXED_STOP' | 'TRAILING_STOP' | 'ML_BASED' | 'HYBRID';
     maxDailyDrawdown: number; // ₹5,000
     maxLeverage: number; // 1.0 - 3.0
     positionSizingStrategy: 'FIXED' | 'KELLY' | 'RL_BASED';

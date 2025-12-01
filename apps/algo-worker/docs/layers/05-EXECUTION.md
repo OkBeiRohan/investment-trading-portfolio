@@ -55,6 +55,239 @@ The Execution layer receives order decisions from the Cognition layer and places
 
 ---
 
+### **5. PositionManagerService**
+
+**File**: `src/execution/position-manager.service.ts`
+
+**Responsibilities**:
+
+- Track all open positions in real-time
+- Monitor position PnL (realized + unrealized)
+- Calculate position Greeks (delta, gamma, theta, vega)
+- Emit `PositionOpenedEvent`, `PositionClosedEvent`, `PositionUpdatedEvent`
+- Maintain position ledger in Redis (hot) and MongoDB (cold)
+
+**Example**:
+
+```typescript
+@Injectable()
+export class PositionManagerService {
+  private openPositions: Map<string, Position> = new Map();
+
+  @OnEvent('OrderFilledEvent')
+  async handleOrderFill(event: OrderFilledEvent) {
+    const position = this.openPositions.get(event.symbol);
+
+    if (!position) {
+      // New position opened
+      const newPosition = {
+        positionId: uuid(),
+        userId: event.userId,
+        symbol: event.symbol,
+        side: event.side,
+        quantity: event.quantity,
+        entryPrice: event.fillPrice,
+        entryTime: event.timestamp,
+        currentPrice: event.fillPrice,
+        unrealizedPnL: 0,
+        realizedPnL: 0,
+        stopLoss: this.calculateInitialStopLoss(event),
+        trailingStopLoss: null,
+        status: 'OPEN',
+      };
+
+      this.openPositions.set(event.symbol, newPosition);
+      await this.redis.hset(
+        'positions:open',
+        event.symbol,
+        JSON.stringify(newPosition),
+      );
+      this.eventBus.publish(new PositionOpenedEvent(newPosition));
+    } else {
+      // Position size increased/decreased
+      this.updatePosition(position, event);
+    }
+  }
+
+  async updatePositionPrices() {
+    // Called every tick from market data
+    for (const [symbol, position] of this.openPositions) {
+      const currentPrice = await this.getLatestPrice(symbol);
+      const unrealizedPnL = this.calculateUnrealizedPnL(position, currentPrice);
+
+      position.currentPrice = currentPrice;
+      position.unrealizedPnL = unrealizedPnL;
+
+      // Update trailing stop loss
+      if (position.trailingStopLoss) {
+        position.trailingStopLoss = this.updateTrailingStop(
+          position,
+          currentPrice,
+        );
+      }
+
+      await this.redis.hset('positions:open', symbol, JSON.stringify(position));
+      this.eventBus.publish(new PositionUpdatedEvent(position));
+
+      // Check exit conditions
+      await this.checkExitConditions(position);
+    }
+  }
+
+  private calculateInitialStopLoss(event: OrderFilledEvent): number {
+    const config = this.userConfigService.getConfig(event.userId);
+    const baseStopLoss =
+      event.fillPrice * (1 - config.risk.stopLossPercent / 100);
+    return baseStopLoss;
+  }
+
+  private updateTrailingStop(position: Position, currentPrice: number): number {
+    const config = this.userConfigService.getConfig(position.userId);
+    const trailingPercent = config.risk.trailingStopLossPercent || 5; // 5% default
+
+    if (position.side === 'BUY') {
+      // For long positions, trail upward
+      const newStop = currentPrice * (1 - trailingPercent / 100);
+      return Math.max(position.trailingStopLoss || 0, newStop);
+    } else {
+      // For short positions, trail downward
+      const newStop = currentPrice * (1 + trailingPercent / 100);
+      return Math.min(position.trailingStopLoss || Infinity, newStop);
+    }
+  }
+}
+```
+
+---
+
+### **6. ExitSignalGeneratorService**
+
+**File**: `src/execution/exit-signal-generator.service.ts`
+
+**Responsibilities**:
+
+- Monitor open positions for exit conditions
+- Generate exit signals based on multiple criteria:
+  - **Stop Loss Hit**: Price breaches fixed or trailing stop
+  - **Take Profit Hit**: Target price reached
+  - **Time-Based Exit**: End of day (EOD) for intraday positions
+  - **ML-Based Exit**: Model predicts trend reversal
+  - **Risk Limit Breach**: Portfolio Greeks exceed limits
+  - **User Request**: Manual close via UI
+- Emit `ExitSignalEvent` to trigger position closure
+
+**Example**:
+
+```typescript
+@Injectable()
+export class ExitSignalGeneratorService {
+  @Cron('*/5 * * * * *') // Every 5 seconds
+  async checkExitConditions() {
+    const positions = await this.positionManager.getOpenPositions();
+
+    for (const position of positions) {
+      const exitReasons = [];
+
+      // 1. Stop loss check (highest priority)
+      if (this.isStopLossHit(position)) {
+        exitReasons.push('STOP_LOSS_HIT');
+      }
+
+      // 2. Trailing stop loss check
+      if (this.isTrailingStopHit(position)) {
+        exitReasons.push('TRAILING_STOP_HIT');
+      }
+
+      // 3. Take profit check
+      if (this.isTakeProfitHit(position)) {
+        exitReasons.push('TAKE_PROFIT_HIT');
+      }
+
+      // 4. Time-based exit (EOD for intraday)
+      if (this.isEndOfDay() && position.type === 'INTRADAY') {
+        exitReasons.push('EOD_EXIT');
+      }
+
+      // 5. ML-based exit signal
+      const mlExitSignal = await this.checkMLExitSignal(position);
+      if (mlExitSignal) {
+        exitReasons.push('ML_REVERSAL_SIGNAL');
+      }
+
+      // 6. Risk limit breach
+      if (this.isRiskLimitBreached(position)) {
+        exitReasons.push('RISK_LIMIT_BREACH');
+      }
+
+      if (exitReasons.length > 0) {
+        this.logger.log(
+          `Exit signal for ${position.symbol}: ${exitReasons.join(', ')}`,
+        );
+        this.eventBus.publish(new ExitSignalEvent(position, exitReasons));
+      }
+    }
+  }
+
+  private isStopLossHit(position: Position): boolean {
+    if (position.side === 'BUY') {
+      return position.currentPrice <= position.stopLoss;
+    } else {
+      return position.currentPrice >= position.stopLoss;
+    }
+  }
+
+  private isTrailingStopHit(position: Position): boolean {
+    if (!position.trailingStopLoss) return false;
+
+    if (position.side === 'BUY') {
+      return position.currentPrice <= position.trailingStopLoss;
+    } else {
+      return position.currentPrice >= position.trailingStopLoss;
+    }
+  }
+
+  private isTakeProfitHit(position: Position): boolean {
+    if (!position.takeProfit) return false;
+
+    if (position.side === 'BUY') {
+      return position.currentPrice >= position.takeProfit;
+    } else {
+      return position.currentPrice <= position.takeProfit;
+    }
+  }
+
+  private async checkMLExitSignal(position: Position): Promise<boolean> {
+    // Use same ML models to predict trend reversal
+    const features = await this.cortexService.getLatestFeatures(
+      position.symbol,
+    );
+    const prediction = await this.predictionService.predict(features);
+
+    // If we're LONG and model predicts VOL_DOWN with high confidence, exit
+    if (
+      position.side === 'BUY' &&
+      prediction.direction === 'VOL_DOWN' &&
+      prediction.confidence > 0.75
+    ) {
+      return true;
+    }
+
+    // If we're SHORT and model predicts VOL_UP with high confidence, exit
+    if (
+      position.side === 'SELL' &&
+      prediction.direction === 'VOL_UP' &&
+      prediction.confidence > 0.75
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+}
+```
+
+---
+
 ## Events Consumed
 
 ### **`OrderDecisionEvent`**
@@ -76,6 +309,62 @@ export class OrderPlacedEvent {
     public readonly side: 'BUY' | 'SELL',
     public readonly quantity: number,
     public readonly price: number,
+  ) {}
+}
+```
+
+---
+
+### **`PositionOpenedEvent`**
+
+```typescript
+export class PositionOpenedEvent {
+  constructor(
+    public readonly position: {
+      positionId: string;
+      userId: string;
+      symbol: string;
+      side: 'BUY' | 'SELL';
+      quantity: number;
+      entryPrice: number;
+      entryTime: number;
+      stopLoss: number;
+      trailingStopLoss: number | null;
+      takeProfit: number | null;
+    },
+  ) {}
+}
+```
+
+---
+
+### **`PositionUpdatedEvent`**
+
+```typescript
+export class PositionUpdatedEvent {
+  constructor(
+    public readonly position: {
+      positionId: string;
+      currentPrice: number;
+      unrealizedPnL: number;
+      realizedPnL: number;
+      trailingStopLoss: number | null;
+      lastUpdated: number;
+    },
+  ) {}
+}
+```
+
+---
+
+### **`ExitSignalEvent`**
+
+```typescript
+export class ExitSignalEvent {
+  constructor(
+    public readonly position: Position,
+    public readonly reasons: string[], // ['STOP_LOSS_HIT', 'ML_REVERSAL_SIGNAL']
+    public readonly priority: 'HIGH' | 'MEDIUM' | 'LOW', // Stop loss = HIGH, Take profit = MEDIUM
   ) {}
 }
 ```

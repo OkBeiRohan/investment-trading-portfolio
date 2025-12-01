@@ -187,12 +187,16 @@ cp onnx/*.onnx ../algo-worker/models/
 ### **Reinforcement Learning Agent** (Optional - Advanced)
 
 - **TD3 (Twin Delayed DDPG)** or **SAC (Soft Actor-Critic)**
-  - **Purpose**: Dynamic position sizing and portfolio allocation
-  - **State**: Market features + ensemble predictions + portfolio state
-  - **Action**: Continuous (position size 0-1, leverage 1-3)
-  - **Reward**: Sharpe-ratio-based reward shaping
-  - **Training**: Off-policy with replay buffer
-  - **Target**: Sharpe Ratio >1.8 (vs >1.5 for fixed sizing)
+  - **Purpose**: Dynamic position sizing, portfolio allocation, AND exit timing
+  - **State**: Market features + ensemble predictions + portfolio state + position age
+  - **Action Space**:
+    - **Entry Action**: Continuous position size (0-1), leverage (1-3)
+    - **Exit Action**: Hold vs. Exit decision, trailing stop adjustment
+  - **Reward**: Risk-adjusted return (Sharpe) + penalty for premature exits
+  - **Training**: Off-policy with replay buffer + prioritized experience replay
+  - **Target**:
+    - Entry accuracy: Sharpe Ratio >1.8 (vs >1.5 for fixed sizing)
+    - Exit accuracy: Max drawdown <15% (vs <20% for fixed stops)
 
 **Note**: RL agent is experimental. Start with fixed position sizing (5% per trade) before implementing RL.
 

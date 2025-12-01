@@ -25,9 +25,25 @@ Algo Worker is the **live trading execution engine** that implements the 7-Layer
 2. **Cortex**: Real-time feature engineering with sliding window caching
 3. **Prediction**: ONNX model ensemble inference (Level-0 + Level-1 meta-learner)
 4. **Cognition**: Strategy selection and risk management (RiskManager validates all trades)
-5. **Execution**: Smart order routing with TWAP/VWAP execution algorithms
+5. **Execution**: Smart order routing (TWAP/VWAP) + position tracking + exit management
 6. **Memory**: Hot (Redis), Warm (QuestDB), Cold (MongoDB) storage tiers
 7. **Control**: Prometheus metrics, circuit breakers, health checks
+
+### **Position Management & Exit Strategy**
+
+Critical trading components for managing open positions:
+
+- **Position Tracking**: Real-time monitoring of all open positions, PnL, Greeks
+- **Trailing Stop Loss**: Dynamic stop loss adjustment as position moves in profit
+- **Multi-Criteria Exits**:
+  - Fixed stop loss (user-configured ±10% adjustment)
+  - Trailing stop loss (default 5%, configurable)
+  - Take profit target (optional)
+  - Time-based exit (EOD for intraday)
+  - ML-based exit signals (trend reversal detection)
+  - Risk limit breaches (portfolio Greeks, max drawdown)
+- **Position Ledger**: Redis for hot access, MongoDB for historical records
+- **Exit Priority**: Stop loss (HIGH) → Risk breach (HIGH) → Take profit (MEDIUM) → ML signal (LOW)
 
 ### **Key Features**
 
@@ -160,15 +176,15 @@ GPU_DEVICE_ID=0
 
 ### **7-Layer Breakdown**
 
-| Layer         | Purpose             | Components                                                  | Latency Target |
-| ------------- | ------------------- | ----------------------------------------------------------- | -------------- |
-| 1. Perception | Event consumption   | MarketDataConsumer, NewsConsumer                            | <5ms           |
-| 2. Cortex     | Feature engineering | FeatureEngineService, FeatureCacheService                   | <10ms          |
-| 3. Prediction | ML inference        | ModelLoaderService, EnsembleInferenceService                | <50ms (GPU)    |
-| 4. Cognition  | Strategy & risk     | StrategySelectionService, RiskManagerService                | <20ms          |
-| 5. Execution  | Order placement     | OrderPlacementService, ExecutionMonitorService              | <50ms          |
-| 6. Memory     | State persistence   | RedisStateService, QuestDBWriterService, MongoDBSyncService | Async          |
-| 7. Control    | Observability       | MetricsService, HealthCheckService, CircuitBreakerService   | Async          |
+| Layer         | Purpose                         | Components                                                                | Latency Target |
+| ------------- | ------------------------------- | ------------------------------------------------------------------------- | -------------- |
+| 1. Perception | Event consumption               | MarketDataConsumer, NewsConsumer                                          | <5ms           |
+| 2. Cortex     | Feature engineering             | FeatureEngineService, FeatureCacheService                                 | <10ms          |
+| 3. Prediction | ML inference                    | ModelLoaderService, EnsembleInferenceService                              | <50ms (GPU)    |
+| 4. Cognition  | Strategy & risk                 | StrategySelectionService, RiskManagerService                              | <20ms          |
+| 5. Execution  | Order placement + position mgmt | OrderPlacementService, PositionManagerService, ExitSignalGeneratorService | <50ms          |
+| 6. Memory     | State persistence               | RedisStateService, QuestDBWriterService, MongoDBSyncService               | Async          |
+| 7. Control    | Observability                   | MetricsService, HealthCheckService, CircuitBreakerService                 | Async          |
 
 **Target End-to-End Latency**: <150ms (p95)
 
@@ -221,6 +237,9 @@ Each user has a `UserTradingConfig` stored in MongoDB:
 
   risk: {
     stopLossPercent: 5, // Algorithm calculates base, user can adjust ±10%
+    trailingStopLossPercent: 5, // Trailing stop distance (default 5%)
+    takeProfitPercent: 10, // Optional take profit target
+    enableTrailingStop: true, // Enable/disable trailing stops
     maxDailyDrawdown: 5000,
     maxLeverage: 2.0,
     positionSizingStrategy: "FIXED" | "KELLY" | "RL_BASED",
@@ -354,7 +373,10 @@ apps/algo-worker/
 │   │   │   ├── execution.module.ts
 │   │   │   ├── order-placement.service.ts
 │   │   │   ├── execution-monitor.service.ts
-│   │   │   └── position-manager.service.ts
+│   │   │   ├── position-manager.service.ts      # Track open positions
+│   │   │   ├── exit-signal-generator.service.ts # Generate exit signals
+│   │   │   ├── trailing-stop.service.ts         # Trailing stop loss logic
+│   │   │   └── pnl-calculator.service.ts        # Real-time PnL calculation
 │   │   ├── memory/                      # Layer 6: Storage
 │   │   │   ├── memory.module.ts
 │   │   │   ├── redis-state.service.ts

@@ -73,7 +73,13 @@ The `algo-worker` implements a **7-Layer Cognitive Architecture** designed for i
 [Layer 4: Cognition] - Strategy Selection + Risk Management
          ↓ (OrderValidatedEvent)
 [Layer 5: Execution] - Smart Order Routing
-         ↓ (OrderExecutedEvent)
+         ↓ (OrderFilledEvent)
+[Layer 5: Execution] - Position Manager (track open positions)
+         ↓ (PositionOpenedEvent, PositionUpdatedEvent)
+[Layer 5: Execution] - Exit Signal Generator (monitor exit conditions)
+         ↓ (ExitSignalEvent)
+[Layer 5: Execution] - Close Position (execute exit order)
+         ↓ (PositionClosedEvent)
 [Layer 6: Memory] - Hot/Warm/Cold Storage
          ↓
 [Layer 7: Control] - Metrics + Circuit Breakers
