@@ -14,31 +14,31 @@ Export all 8-10 Level-0 models + 1 Level-1 meta-learner to ONNX format with FP16
 
 ### **Core Level-0 Models (6)**
 
-| Model        | Original Format  | ONNX File           | Quantization |
-| ------------ | ---------------- | ------------------- | ------------ |
-| XGBoost      | .pkl (sklearn)   | `xgboost.onnx`      | FP16         |
-| LightGBM     | .pkl (sklearn)   | `lightgbm.onnx`     | FP16         |
-| CNN-LSTM     | .h5 (TensorFlow) | `cnn_lstm.onnx`     | FP16         |
-| GINN         | .h5 (TensorFlow) | `ginn.onnx`         | FP16         |
-| SVM          | .pkl (sklearn)   | `svm.onnx`          | FP32*        |
-| Transformer  | .h5 (TensorFlow) | `transformer.onnx`  | FP16         |
+| Model       | Original Format  | ONNX File          | Quantization |
+| ----------- | ---------------- | ------------------ | ------------ |
+| XGBoost     | .pkl (sklearn)   | `xgboost.onnx`     | FP16         |
+| LightGBM    | .pkl (sklearn)   | `lightgbm.onnx`    | FP16         |
+| CNN-LSTM    | .h5 (TensorFlow) | `cnn_lstm.onnx`    | FP16         |
+| GINN        | .h5 (TensorFlow) | `ginn.onnx`        | FP16         |
+| SVM         | .pkl (sklearn)   | `svm.onnx`         | FP32\*       |
+| Transformer | .h5 (TensorFlow) | `transformer.onnx` | FP16         |
 
 ### **Optional Level-0 Models (4)**
 
-| Model        | Original Format  | ONNX File           | Quantization |
-| ------------ | ---------------- | ------------------- | ------------ |
-| TimesNet-MLP | .h5 (TensorFlow) | `timesnet.onnx`     | FP16         |
-| WFTNet-MLP   | .h5 (TensorFlow) | `wftnet.onnx`       | FP16         |
-| PatchTST     | .h5 (TensorFlow) | `patchtst.onnx`     | FP16         |
-| KAN          | .h5 (TensorFlow) | `kan.onnx`          | FP16         |
+| Model        | Original Format  | ONNX File       | Quantization |
+| ------------ | ---------------- | --------------- | ------------ |
+| TimesNet-MLP | .h5 (TensorFlow) | `timesnet.onnx` | FP16         |
+| WFTNet-MLP   | .h5 (TensorFlow) | `wftnet.onnx`   | FP16         |
+| PatchTST     | .h5 (TensorFlow) | `patchtst.onnx` | FP16         |
+| KAN          | .h5 (TensorFlow) | `kan.onnx`      | FP16         |
 
 ### **Level-1 Meta-Learner (1)**
 
-| Model        | Original Format  | ONNX File           | Quantization |
-| ------------ | ---------------- | ------------------- | ------------ |
-| Meta-Learner | .pkl (sklearn)   | `meta_learner.onnx` | FP32         |
+| Model        | Original Format | ONNX File           | Quantization |
+| ------------ | --------------- | ------------------- | ------------ |
+| Meta-Learner | .pkl (sklearn)  | `meta_learner.onnx` | FP32         |
 
-* SVM quantization to FP16 causes accuracy loss
+- SVM quantization to FP16 causes accuracy loss
 
 ---
 
