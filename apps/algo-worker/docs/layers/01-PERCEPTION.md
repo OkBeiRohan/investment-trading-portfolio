@@ -10,6 +10,8 @@
 
 The Perception layer subscribes to Redis Streams and consumes raw market events from the `market-feeder` service. It transforms external data (ticks, candles, order book, news) into internal domain events for downstream layers.
 
+**Configuration-Aware Filtering**: Only subscribes to instruments enabled by at least one active user to reduce event processing overhead.
+
 ---
 
 ## Components

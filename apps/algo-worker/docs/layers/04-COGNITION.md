@@ -14,7 +14,94 @@ The Cognition layer receives ML predictions and makes trading decisions. It sele
 
 ## Components
 
-### **1. StrategySelectionService**
+### **1. UserConfigService**
+
+**File**: `src/cognition/user-config.service.ts`
+
+**Responsibilities**:
+
+- Load active user trading configurations on startup
+- Cache configurations in Redis for fast access
+- Compute union of enabled instruments/strategies
+- Provide user-specific validation methods
+
+**Example**:
+
+```typescript
+@Injectable()
+export class UserConfigService {
+  private activeConfigs: Map<string, UserTradingConfig> = new Map();
+  private unionConfig: UnionConfig;
+
+  async loadActiveConfigs() {
+    const configs = await this.mongo
+      .collection('user_trading_configs')
+      .find({ enabled: true })
+      .toArray();
+
+    this.activeConfigs = new Map(configs.map(c => [c.userId, c]));
+    this.unionConfig = this.computeUnion(configs);
+  }
+
+  computeUnion(configs: UserTradingConfig[]): UnionConfig {
+    return {
+      instruments: new Set(
+        configs.flatMap(c => this.getEnabledInstruments(c))
+      ),
+      strategies: new Set(
+        configs.flatMap(c => c.strategies.allowed)
+      ),
+      permissions: {
+        anyBuyCalls: configs.some(c => c.permissions.allowBuyCalls),
+        anySellCalls: configs.some(c => c.permissions.allowSellCalls),
+        anyBuyPuts: configs.some(c => c.permissions.allowBuyPuts),
+        anySellPuts: configs.some(c => c.permissions.allowSellPuts),
+      },
+    };
+  }
+
+  shouldAnalyzeInstrument(symbol: string): boolean {
+    return this.unionConfig.instruments.has(symbol);
+  }
+
+  getUsersInterestedIn(signal: TradingSignal): string[] {
+    return Array.from(this.activeConfigs.entries())
+      .filter(([_, config]) => this.matchesConfig(signal, config))
+      .map(([userId]) => userId);
+  }
+
+  validateSignalForUser(
+    signal: TradingSignal,
+    userId: string
+  ): ValidationResult {
+    const config = this.activeConfigs.get(userId);
+    if (!config) return { valid: false, reason: 'User not active' };
+
+    // Check permissions
+    if (signal.direction === 'BUY' && signal.instrumentType === 'CALL') {
+      if (!config.permissions.allowBuyCalls) {
+        return { valid: false, reason: 'Buy calls disabled' };
+      }
+    }
+
+    // Check strategy allowed
+    if (!config.strategies.allowed.includes(signal.strategy)) {
+      return { valid: false, reason: 'Strategy not allowed' };
+    }
+
+    // Check confidence threshold
+    if (signal.confidence < config.strategies.minSignalConfidence) {
+      return { valid: false, reason: 'Signal confidence too low' };
+    }
+
+    return { valid: true };
+  }
+}
+```
+
+---
+
+### **2. StrategySelectionService**
 
 **File**: `src/cognition/strategy-selection.service.ts`
 
@@ -31,7 +118,7 @@ The Cognition layer receives ML predictions and makes trading decisions. It sele
 - **Bull Call Spread**: Bullish prediction + trending market
 - **Bear Put Spread**: Bearish prediction + trending market
 
-### **2. RiskManagerService**
+### **3. RiskManagerService**
 
 **File**: `src/cognition/risk-manager.service.ts`
 

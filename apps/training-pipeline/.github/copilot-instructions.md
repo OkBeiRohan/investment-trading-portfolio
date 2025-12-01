@@ -4,6 +4,8 @@
 
 You are working on the **Training Pipeline** - a Kedro-based Python project for training and evaluating ML models for volatility prediction in options trading.
 
+**Important**: Models must be trained to support **user-configurable trading**. Users can enable/disable specific instruments, strategies, and model preferences. Train models to handle diverse scenarios.
+
 ## Project Overview
 
 **Purpose**: ML model training, backtesting, and model artifact generation
@@ -15,6 +17,82 @@ You are working on the **Training Pipeline** - a Kedro-based Python project for 
 - Perform walk-forward validation
 - Export models to ONNX format for algo-worker
 - Generate training metrics and performance reports
+
+## Configuration-Aware Training
+
+### **Why Configuration Matters for ML Training**
+
+In production, algo-worker only analyzes instruments enabled by active users:
+- If no user enables FINNIFTY, model won't predict FINNIFTY
+- If no user allows naked call writing, no SELL_CALL signals generated
+- If user disabled XGBoost, only other models used
+
+**Training Implication**: Models must generalize across instruments/strategies, not overfit to specific combinations.
+
+### **Training Best Practices**
+
+```python
+# ✅ GOOD: Train on diverse instrument/strategy combinations
+for symbol in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']:
+    for strategy in ['LONG_STRADDLE', 'IRON_CONDOR', 'BULL_PUT', 'BEAR_CALL']:
+        features = engineer_features(symbol, strategy)
+        labels = get_labels(symbol, strategy)
+        model.partial_fit(features, labels)
+
+# ❌ BAD: Train only on NIFTY LONG_STRADDLE
+features = engineer_features('NIFTY', 'LONG_STRADDLE')
+model.fit(features, labels)
+```
+
+### **Model Robustness Requirements**
+
+1. **Instrument Agnostic**: Model should work on NIFTY, BANKNIFTY, FINNIFTY without retraining
+2. **Strategy Agnostic**: Same features applicable to all option strategies
+3. **Confidence Calibration**: Confidence scores must be comparable across instruments
+4. **Missing Data Handling**: If user disables some models, remaining models compensate
+
+### **Feature Engineering Guidelines**
+
+```python
+# ✅ GOOD: Generic features (work for all instruments)
+features = [
+    'realized_vol_5d',
+    'realized_vol_10d',
+    'rsi_14',
+    'macd',
+    'atm_iv',
+    'pcr_volume',
+    'vol_skew',
+    # ... 50 total features
+]
+
+# ❌ BAD: Instrument-specific features
+features = [
+    'nifty_specific_indicator',  # Won't work for BANKNIFTY
+    'banknifty_only_metric',     # Won't work for NIFTY
+]
+```
+
+### **Validation Against User Configs**
+
+After training, validate model performance under realistic config scenarios:
+
+```python
+# Simulate user configurations
+user_configs = [
+    {'instruments': ['NIFTY'], 'strategies': ['LONG_STRADDLE']},
+    {'instruments': ['BANKNIFTY'], 'strategies': ['IRON_CONDOR']},
+    {'instruments': ['NIFTY', 'FINNIFTY'], 'strategies': ['BULL_PUT', 'BEAR_CALL']},
+]
+
+for config in user_configs:
+    test_data = filter_by_config(X_test, config)
+    predictions = model.predict(test_data)
+    auc = roc_auc_score(y_test_filtered, predictions)
+    assert auc > 0.70, f"Model fails for config {config}"
+```
+
+---
 
 ## Architecture Principles
 

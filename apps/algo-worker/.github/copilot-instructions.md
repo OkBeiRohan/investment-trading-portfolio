@@ -6,7 +6,71 @@
 
 ## Architecture Principles
 
-### 1. Event-Driven Core (CRITICAL)
+### 1. User-Configurable Trading (CRITICAL)
+
+**EVERY** trading decision MUST respect user-specific configuration stored in MongoDB.
+
+```typescript
+// ❌ BAD: Analyze everything, filter after
+const signals = await this.predictAllStrategies(allInstruments);
+const filtered = signals.filter(s => user.allowsStrategy(s));
+
+// ✅ GOOD: Filter before analysis
+const activeInstruments = this.configService.getUnionInstruments();
+const relevantFeatures = features.filter(f => activeInstruments.has(f.symbol));
+const signals = await this.predict(relevantFeatures);
+```
+
+**Why**: Reduces compute by 95%. If 100 users exist but only 2 active, analyze only what those 2 need.
+
+**Configuration Loading**:
+```typescript
+@Injectable()
+export class UserConfigService {
+  async loadActiveConfigs() {
+    const configs = await this.mongo
+      .collection('user_trading_configs')
+      .find({ enabled: true })
+      .toArray();
+    
+    this.unionConfig = this.computeUnion(configs);
+  }
+  
+  computeUnion(configs: UserTradingConfig[]): UnionConfig {
+    return {
+      instruments: new Set(configs.flatMap(c => c.enabledInstruments)),
+      strategies: new Set(configs.flatMap(c => c.strategies.allowed)),
+      permissions: {
+        anyBuyCalls: configs.some(c => c.permissions.allowBuyCalls),
+        anySellCalls: configs.some(c => c.permissions.allowSellCalls),
+        // ... other permissions
+      }
+    };
+  }
+}
+```
+
+**Validation Pattern**:
+```typescript
+// ALWAYS validate before execution
+const validation = await this.configService.validateSignalForUser(signal, userId);
+if (!validation.valid) {
+  this.logger.warn(`Signal rejected for user ${userId}: ${validation.reason}`);
+  return;
+}
+
+// Check financial limits
+if (order.amount > config.limits.maxSingleTradeAmount) {
+  throw new TradeLimitExceededError(...);
+}
+
+// Check risk limits
+if (portfolio.dailyLoss < config.risk.maxDailyDrawdown) {
+  await this.circuitBreaker.trigger(userId, 'DAILY_LOSS_LIMIT');
+}
+```
+
+### 2. Event-Driven Core (CRITICAL)
 
 **ALL** inter-engine communication MUST use Redis Streams, NOT direct function calls.
 
@@ -23,24 +87,27 @@ await this.redis.xadd('trading-signals', '*',
 
 **Why**: Research shows event-driven architectures achieve <10μs event processing vs. 10-50ms for HTTP calls.
 
-### 2. SEBI 2024-2025 Compliance (MANDATORY)
+### 3. SEBI 2024-2025 Compliance (MANDATORY)
 
 Every order MUST include:
 ```typescript
 const order = {
   algoId: `PROJ_QUANTUM_v${this.version}_USER_${userId}`,
+  userId: userId, // User-specific tracking
   timestamp: new Date(),
   preTradeChecksPassed: true,  // From RiskManager validation
   riskLimitsValidated: true,
+  userConfigValidated: true,   // NEW: User config validation
   // ... other fields
 };
 ```
 
 **Pre-Trade Checks** (RiskManager):
-- Position limits not exceeded
-- Margin sufficient
-- Max leverage within bounds
-- Greeks exposure acceptable
+- User configuration validated (permissions, limits, strategies)
+- Position limits not exceeded (user-specific + global)
+- Margin sufficient (per user account)
+- Max leverage within bounds (user.risk.maxLeverage)
+- Greeks exposure acceptable (user.risk.greeksLimits)
 
 ### 3. Latency Optimization (Sub-100ms Target)
 
@@ -74,10 +141,11 @@ for (const tick of ticks) {
 
 ### SignalEngine
 - **Responsibility**: ML inference using ONNX models
-- **Input**: Features from Redis Stream
+- **Input**: Features from Redis Stream (pre-filtered by union config)
 - **Output**: Trading signals (VOL_UP/VOL_DOWN) + confidence
 - **Services**: `ModelLoaderService`, `SignalEngineService`
-- **Models**: XGBoost, CNN-LSTM, GINN, SVM, Stacking (5 models)
+- **Models**: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer (6 core + 2 optional)
+- **Config-Aware**: Only run models enabled in user configs
 
 ### PolicyEngine
 - **Responsibility**: Strategy selection + risk management
@@ -249,6 +317,107 @@ this.logger.log({
 // ❌ BAD: Unstructured logging
 this.logger.log('Signal generated: VOL_UP');
 ```
+
+---
+
+## User Configuration Usage Patterns
+
+### **Configuration Schema** (MongoDB: `user_trading_configs`)
+
+```typescript
+interface UserTradingConfig {
+  userId: string;
+  enabled: boolean; // Master switch
+  
+  permissions: {
+    allowBuyCalls: boolean;
+    allowSellCalls: boolean;  // Naked call writing
+    allowBuyPuts: boolean;
+    allowSellPuts: boolean;   // Naked put writing
+    allowSpreads: boolean;    // Multi-leg strategies
+    allowIntraday: boolean;
+    allowOvernightPositions: boolean;
+  };
+  
+  limits: {
+    maxDailyTradeAmount: number;      // ₹50,000
+    maxSingleTradeAmount: number;     // ₹10,000
+    maxTotalExposure: number;         // ₹100,000
+    maxConcurrentPositions: number;   // 5
+    minCashReservePercent: number;    // 20%
+  };
+  
+  risk: {
+    stopLossPercent: number;          // ±10% of algo default
+    takeProfitPercent: number | null; // Optional
+    maxDailyDrawdown: number;         // ₹5,000
+    maxLeverage: number;              // 1.0 - 3.0
+    positionSizingStrategy: 'FIXED' | 'KELLY' | 'RL_BASED';
+    greeksLimits: {
+      maxDelta: number;
+      maxGamma: number;
+      maxTheta: number;
+      maxVega: number;
+    };
+  };
+  
+  strategies: {
+    allowed: string[];              // ['LONG_STRADDLE', 'IRON_CONDOR', ...]
+    minSignalConfidence: number;    // 0.5 - 0.9
+    preferredVolatilityRegime: 'HIGH' | 'LOW' | 'ALL';
+    timeHorizons: string[];         // ['5m', '15m', '1h', 'EOD']
+  };
+  
+  models: {
+    enabledModels: string[];        // ['xgboost', 'lightgbm', ...]
+    minEnsembleAgreement: number;   // 0.6 = 60% models must agree
+  };
+  
+  execution: {
+    algorithm: 'MARKET' | 'TWAP' | 'VWAP';
+    slippageTolerance: number;      // 0.1%
+    orderValidity: 'IOC' | 'DAY' | 'GTC';
+    maxRetryAttempts: number;       // 3
+  };
+}
+```
+
+### **Configuration Loading & Usage**
+
+```typescript
+// 1. Load configs on market open
+await this.userConfigService.loadActiveConfigs();
+
+// 2. Filter instruments before Perception layer
+const activeInstruments = this.userConfigService.getUnionInstruments();
+this.marketDataConsumer.subscribe(activeInstruments);
+
+// 3. Filter features before Cortex layer
+if (!this.userConfigService.shouldAnalyzeInstrument(tick.symbol)) {
+  return; // Skip feature computation
+}
+
+// 4. Filter before Prediction layer
+const enabledModels = this.userConfigService.getUnionEnabledModels();
+const predictions = await this.runModels(features, enabledModels);
+
+// 5. Validate per-user before Execution layer
+const interestedUsers = this.userConfigService.getUsersInterestedIn(signal);
+for (const userId of interestedUsers) {
+  const validation = await this.validateForUser(signal, userId);
+  if (validation.valid) {
+    await this.executeOrder(signal, userId);
+  }
+}
+```
+
+### **Anti-Patterns to Avoid**
+
+❌ Analyzing all instruments without checking config
+❌ Running all models when user disabled some
+❌ Generating signals for disabled strategies
+❌ Executing orders without user-specific validation
+❌ Hardcoding risk limits (must come from user config)
 
 ---
 

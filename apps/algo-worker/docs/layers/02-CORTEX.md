@@ -8,7 +8,9 @@
 
 ## Purpose
 
-The Cortex layer transforms raw market data from the Perception layer into engineered features for ML models. It maintains sliding windows of historical data and computes technical indicators, volatility metrics, and options-specific features in real-time.
+The Cortex layer transforms raw market data into engineered features suitable for ML model inference. It computes 50 technical indicators, Greeks, and microstructure metrics using sliding window caching for efficiency.
+
+**Configuration-Driven Processing**: Only computes features for instruments in the active user union set. For example, if no user enabled PUT trading, PUT-specific features (put Greeks, put-call ratio) are skipped.
 
 ---
 

@@ -12,10 +12,12 @@ Algo Worker is the **live trading execution engine** that implements the 7-Layer
 
 ### **Design Principles**
 
-1. **Event-Driven Core**: All components communicate via Redis Streams (sub-millisecond latency)
-2. **Stateless Inference**: Models loaded once at startup, zero cold-start
-3. **SEBI 2024-2025 Compliant**: Every order has unique `algoId`, pre-trade risk checks mandatory
-4. **Fail-Safe**: Circuit breakers halt trading on data staleness, risk breaches, or latency degradation
+1. **User-Configurable Trading**: Each user defines trading permissions, limits, and strategies in MongoDB
+2. **Resource-Efficient**: Only analyze instruments/strategies enabled by active users (95% cost reduction)
+3. **Event-Driven Core**: All components communicate via Redis Streams (sub-millisecond latency)
+4. **Stateless Inference**: Models loaded once at startup, zero cold-start
+5. **SEBI 2024-2025 Compliant**: Every order has unique `algoId`, pre-trade risk checks mandatory
+6. **Fail-Safe**: Circuit breakers halt trading on data staleness, risk breaches, or latency degradation
 
 ### **7-Layer Architecture**
 
@@ -171,6 +173,153 @@ GPU_DEVICE_ID=0
 **Target End-to-End Latency**: <150ms (p95)
 
 See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed design.
+
+---
+
+## ⚙️ User Configuration Management
+
+### **Why Configuration-Driven Architecture?**
+
+Traditional algo trading systems analyze **everything** and filter **after** prediction:
+- ❌ Analyze 50 symbols × 8 strategies × 2 directions = 800 predictions
+- ❌ Filter 750 predictions user didn't need
+- ❌ Wasted 94% of compute resources
+
+**Our approach** analyzes **only what users need**:
+- ✅ User A: Buy NIFTY calls only
+- ✅ User B: Sell BANKNIFTY puts only
+- ✅ System: Analyze 2 symbols × relevant strategies = 10 predictions
+- ✅ Resource usage: 98.75% reduction
+
+### **Configuration Schema**
+
+Each user has a `UserTradingConfig` stored in MongoDB:
+
+```typescript
+{
+  userId: "user_123",
+  enabled: true, // Master switch
+  
+  permissions: {
+    allowBuyCalls: true,
+    allowSellCalls: false, // Disable naked call writing
+    allowBuyPuts: true,
+    allowSellPuts: false,
+    allowSpreads: true,
+    allowIntraday: true,
+    allowOvernightPositions: false
+  },
+  
+  limits: {
+    maxDailyTradeAmount: 50000, // ₹50,000
+    maxSingleTradeAmount: 10000,
+    maxConcurrentPositions: 5,
+    minCashReservePercent: 20
+  },
+  
+  risk: {
+    stopLossPercent: 5, // Algorithm calculates base, user can adjust ±10%
+    maxDailyDrawdown: 5000,
+    maxLeverage: 2.0,
+    positionSizingStrategy: "FIXED" | "KELLY" | "RL_BASED",
+    greeksLimits: {
+      maxDelta: 100,
+      maxGamma: 50,
+      maxTheta: -500,
+      maxVega: 200
+    }
+  },
+  
+  strategies: {
+    allowed: ["LONG_STRADDLE", "IRON_CONDOR"],
+    minSignalConfidence: 0.65, // Only trade signals >65% confidence
+    preferredVolatilityRegime: "HIGH" | "LOW" | "ALL",
+    timeHorizons: ["15m", "1h", "EOD"]
+  },
+  
+  models: {
+    enabledModels: ["xgboost", "lightgbm", "cnn_lstm"], // User can disable models
+    minEnsembleAgreement: 0.6 // 60% of enabled models must agree
+  },
+  
+  execution: {
+    algorithm: "TWAP" | "VWAP" | "MARKET",
+    slippageTolerance: 0.1, // 0.1%
+    orderValidity: "DAY",
+    maxRetryAttempts: 3
+  }
+}
+```
+
+### **Configuration Processing Flow**
+
+```
+[Market Open 9:15 AM]
+         ↓
+[Load Active Configs] (enabled: true from MongoDB)
+         ↓
+[Compute Union Set]
+  - Instruments: {NIFTY, BANKNIFTY, FINNIFTY}
+  - Strategies: {LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD}
+  - Permissions: {BUY_CALLS: true, SELL_PUTS: true, ...}
+         ↓
+[Subscribe to Market Data] (only union instruments)
+         ↓
+[Feature Engineering] (only union instruments)
+         ↓
+[ML Prediction] (only union strategies)
+         ↓
+[Per-User Validation]
+  - User A: Check permissions, limits, risk
+  - User B: Check permissions, limits, risk
+         ↓
+[Execute Orders] (only for users who passed validation)
+```
+
+### **Configuration API Endpoints** (via `api` app)
+
+```typescript
+// Get user's trading config
+GET /api/trading-config/:userId
+
+// Update user's trading config
+PUT /api/trading-config/:userId
+Body: { permissions: {...}, limits: {...}, ... }
+
+// Enable/disable trading
+PATCH /api/trading-config/:userId/toggle
+Body: { enabled: true/false }
+
+// Get active instruments (for debugging)
+GET /api/trading-config/active-instruments
+Response: ["NIFTY", "BANKNIFTY"]
+
+// Get active strategies (for debugging)
+GET /api/trading-config/active-strategies
+Response: ["LONG_STRADDLE", "IRON_CONDOR"]
+```
+
+### **Resource Optimization Example**
+
+**Scenario**: 100 total users, 5 active today
+
+| User | Instruments | Strategies | Permissions |
+|------|-------------|------------|-------------|
+| A | NIFTY | LONG_STRADDLE | Buy Calls, Buy Puts |
+| B | BANKNIFTY | IRON_CONDOR | Buy Calls, Sell Puts |
+| C | NIFTY | BULL_PUT_SPREAD | Sell Puts |
+| D | FINNIFTY | LONG_STRADDLE | Buy Calls, Buy Puts |
+| E | NIFTY | IRON_CONDOR | All |
+
+**Union Computed**:
+- Instruments: {NIFTY, BANKNIFTY, FINNIFTY} (3 instead of 50)
+- Strategies: {LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD} (3 instead of 8)
+- Permissions: {BUY_CALLS: true, SELL_CALLS: true, BUY_PUTS: true, SELL_PUTS: true}
+
+**Resource Savings**:
+- Instruments: 94% reduction (3 vs 50)
+- Strategies: 62.5% reduction (3 vs 8)
+- **Total predictions**: 24 instead of 800 (97% reduction)
 
 ---
 

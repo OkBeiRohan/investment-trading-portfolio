@@ -12,11 +12,14 @@ Training Pipeline is a **scheduled offline process** that trains ML models for t
 
 ### **Design Principles**
 
-1. **Kedro Framework**: Reproducible, modular ML pipelines with data catalog
-2. **Walk-Forward Validation**: Expanding window to prevent lookahead bias
-3. **Ensemble Stacking**: Level-0 base models + Level-1 meta-learner
-4. **ONNX Export**: Hardware-agnostic inference for algo-worker
-5. **MLflow Tracking**: Experiment versioning and model registry
+1. **Configuration-Aware Training**: Models must generalize across diverse user preferences (instruments, strategies, permissions)
+2. **Kedro Framework**: Reproducible, modular ML pipelines with data catalog
+3. **Walk-Forward Validation**: Expanding window to prevent lookahead bias
+4. **Ensemble Stacking**: Level-0 base models + Level-1 meta-learner
+5. **ONNX Export**: Hardware-agnostic inference for algo-worker
+6. **MLflow Tracking**: Experiment versioning and model registry
+
+**Why Configuration-Aware?** In production, algo-worker only analyzes what users enable. If no user enables FINNIFTY, the model won't predict for it. Models must be robust enough to handle any combination of user preferences without retraining.
 
 ### **Data Flow**
 
@@ -192,6 +195,141 @@ cp onnx/*.onnx ../algo-worker/models/
   - **Target**: Sharpe Ratio >1.8 (vs >1.5 for fixed sizing)
 
 **Note**: RL agent is experimental. Start with fixed position sizing (5% per trade) before implementing RL.
+
+---
+
+## 🎯 Configuration-Aware Training Strategy
+
+### **Why Train for Configurability?**
+
+In production, **algo-worker operates based on user-specific configurations**. Each user can:
+- Enable/disable specific instruments (NIFTY, BANKNIFTY, FINNIFTY)
+- Allow/disallow specific permissions (buy calls, sell puts, naked positions)
+- Enable/disable specific strategies (LONG_STRADDLE, IRON_CONDOR)
+- Enable/disable specific models (XGBoost, LightGBM, etc.)
+
+**Training Challenge**: Models must perform well across **all possible configuration combinations**, not just the most common ones.
+
+### **Training Approach**
+
+#### **1. Diverse Data Sampling**
+
+```python
+# ✅ GOOD: Train on all instrument/strategy combinations
+instruments = ['NIFTY', 'BANKNIFTY', 'FINNIFTY']
+strategies = ['LONG_STRADDLE', 'IRON_CONDOR', 'BULL_PUT_SPREAD', 'BEAR_CALL_SPREAD']
+
+for symbol in instruments:
+    for strategy in strategies:
+        train_data = prepare_data(symbol, strategy)
+        model.partial_fit(train_data)
+
+# ❌ BAD: Train only on NIFTY LONG_STRADDLE
+train_data = prepare_data('NIFTY', 'LONG_STRADDLE')
+model.fit(train_data)
+```
+
+#### **2. Generic Feature Engineering**
+
+```python
+# ✅ GOOD: Instrument-agnostic features
+features = [
+    'realized_vol_5d',    # Works for all instruments
+    'realized_vol_10d',
+    'rsi_14',
+    'macd',
+    'atm_iv',             # At-the-money implied vol
+    'pcr_volume',         # Put-call ratio
+    'vol_skew',
+    # ... 50 total generic features
+]
+
+# ❌ BAD: Instrument-specific features
+features = [
+    'nifty_50_pe_ratio',        # Only for NIFTY
+    'bank_index_correlation',   # Only for BANKNIFTY
+]
+```
+
+#### **3. Stratified Validation**
+
+Validate model performance across different user configuration scenarios:
+
+```python
+# Simulate realistic user configurations
+test_scenarios = [
+    {'instrument': 'NIFTY', 'strategies': ['LONG_STRADDLE']},
+    {'instrument': 'BANKNIFTY', 'strategies': ['IRON_CONDOR']},
+    {'instrument': 'FINNIFTY', 'strategies': ['BULL_PUT_SPREAD', 'BEAR_CALL_SPREAD']},
+    {'instrument': 'NIFTY', 'strategies': ['ALL']},  # Power user
+]
+
+for scenario in test_scenarios:
+    test_data = filter_test_data(scenario)
+    auc = evaluate_model(model, test_data)
+    
+    # Ensure model performs well in ALL scenarios
+    assert auc > 0.70, f"Model fails for {scenario}: AUC={auc}"
+```
+
+#### **4. Model Robustness Requirements**
+
+| Requirement | Description | Validation |
+|-------------|-------------|------------|
+| **Instrument Agnostic** | Model works on NIFTY, BANKNIFTY, FINNIFTY without retraining | AUC >0.70 on each instrument separately |
+| **Strategy Agnostic** | Same features work for all option strategies | AUC >0.68 on each strategy separately |
+| **Confidence Calibration** | Confidence scores comparable across instruments | Calibration plot with ECE <0.10 |
+| **Ensemble Robustness** | If user disables 2 models, remaining 4 still effective | Subset AUC >0.72 (vs >0.75 full) |
+
+#### **5. Configuration Simulation Testing**
+
+After training, simulate production scenarios:
+
+```python
+# Test: Only 1 user, only NIFTY, only buy calls
+config = {
+    'instruments': ['NIFTY'],
+    'permissions': {'allowBuyCalls': True, 'allowSellCalls': False},
+    'strategies': ['LONG_STRADDLE'],
+    'enabledModels': ['xgboost', 'lightgbm']
+}
+
+# Filter test data to match config
+filtered_data = apply_config_filter(X_test, config)
+
+# Run only enabled models
+predictions = run_ensemble(filtered_data, config['enabledModels'])
+
+# Validate performance
+auc = roc_auc_score(y_test_filtered, predictions)
+assert auc > 0.70, "Model fails for single-user config"
+```
+
+### **Training Data Requirements**
+
+To ensure configuration robustness:
+
+| Data Type | Minimum Requirement | Recommended |
+|-----------|---------------------|-------------|
+| **Time Period** | 2 years | 3-5 years |
+| **Instruments** | All 3 (NIFTY, BANKNIFTY, FINNIFTY) | Include historical delisted instruments |
+| **Strategies** | All 8 primary strategies | Include custom strategy variations |
+| **Market Regimes** | Bull, Bear, Sideways | Include COVID crash, recovery periods |
+| **Volatility Regimes** | High (VIX >25), Low (VIX <15) | Include regime transitions |
+
+### **Practical Example: Configuration Impact**
+
+**Scenario**: 100 users, only 2 active
+- **User A**: `{'instruments': ['NIFTY'], 'strategies': ['LONG_STRADDLE'], 'models': ['xgboost', 'lightgbm']}`
+- **User B**: `{'instruments': ['BANKNIFTY'], 'strategies': ['IRON_CONDOR'], 'models': ['cnn_lstm', 'transformer']}`
+
+**Production Behavior**:
+1. algo-worker computes union: instruments={NIFTY, BANKNIFTY}, models={xgboost, lightgbm, cnn_lstm, transformer}
+2. Only runs 4 models (not all 6-8)
+3. Only analyzes 2 instruments (not all 50 symbols)
+4. **Result**: 97% resource reduction vs. analyzing everything
+
+**Training Requirement**: Models must perform well even if only 2/6 models used.
 
 ---
 
