@@ -40,6 +40,14 @@ A battle-tested algorithmic trading system specifically engineered for ultra-low
 
 ## 🏗️ Architecture
 
+**Deployment Model**: Hybrid Local-Cloud
+
+- **Cloud**: Web dashboard + API + config sync (Redis)
+- **Local**: algo-worker (RTX GPU) + databases (QuestDB, MongoDB, Redis)
+- **Why**: <100ms latency requires local execution, no cloud static IP compliance needed
+
+**See [DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md) for full details.**
+
 ```mermaid
 graph TD
     subgraph "Event-Driven Core"
@@ -122,12 +130,16 @@ pnpm dev  # Starts on port 3001
 ### Core Guides
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: Event-driven 7-layer system design
+- **[DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md)**: 🆕 Hybrid local-cloud deployment strategy
 - **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)**: Production roadmap (SEBI compliance, latency optimization)
 - **[.github/copilot-instructions.md](.github/copilot-instructions.md)**: Coding standards
 
 ### Component Docs
 
 - **[Algo Worker](apps/algo-worker/README.md)**: Trading engine
+  - [Performance Optimization](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md): 🆕 Worker Threads, GPU inference, zero-allocation patterns
+- **[Training Pipeline](apps/training-pipeline/README.md)**: ML model training
+  - [Advanced Validation](apps/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
 - **[Market SDK](packages/market-sdk/README.md)**: Upstox/Yahoo/Binance integration
 - **[Database](packages/database/README.md)**: QuestDB + MongoDB + Redis
 

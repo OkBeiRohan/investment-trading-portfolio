@@ -1,5 +1,29 @@
 - **Logging**: Structured JSON logging with trace IDs is mandatory for all transactions.
 
+## Deployment Model (CRITICAL)
+
+**Target Environment**: Small personal team (2 users max), local execution with RTX GPU
+
+**Architecture**:
+
+- ✅ **Cloud-Hosted**: Web dashboard + API backend + config sync (Cloud Redis)
+- ✅ **Local Execution**: algo-worker (Windows/ArchLinux with RTX GPU)
+- ✅ **Local Databases**: QuestDB, MongoDB, Local Redis (event bus)
+- ✅ **Training**: Nightly on local GPU (training-pipeline)
+
+**Why Local Algo Execution**:
+
+- <100ms latency required (cloud adds 50-200ms network hop)
+- Direct RTX GPU access for TensorRT/CUDA inference
+- No static IP compliance burden (not cloud-based)
+- Cost savings: ₹1,500/month vs ₹57,000/month cloud deployment
+
+**Key Design Constraint**: algo-worker runs locally, subscribes to cloud Redis for config changes from dashboard UI.
+
+**See**: [DEPLOYMENT_ARCHITECTURE.md](../DEPLOYMENT_ARCHITECTURE.md) for full details.
+
+---
+
 ## Architecture Philosophy
 
 ### **algo-worker: 7-Layer Event-Driven Architecture**
@@ -7,10 +31,10 @@
 All code must follow the **7-layer cognitive architecture** with strict layer separation:
 
 1. **Perception** → Event consumption (Redis Streams)
-2. **Cortex** → Feature engineering (real-time indicators)
-3. **Prediction** → ONNX model inference (ensemble)
+2. **Cortex** → Feature engineering (real-time indicators + Order Flow Imbalance)
+3. **Prediction** → ONNX model inference (ensemble) - runs in Worker Thread
 4. **Cognition** → Strategy selection + risk management
-5. **Execution** → Smart order routing (TWAP/VWAP)
+5. **Execution** → Smart order routing + position tracking + RL-based execution
 6. **Memory** → Multi-tier storage (Redis/QuestDB/MongoDB)
 7. **Control** → Observability (Prometheus metrics, health checks)
 
@@ -18,28 +42,34 @@ All code must follow the **7-layer cognitive architecture** with strict layer se
 
 - ✅ Layers communicate via **internal events** (`EventBus`)
 - ✅ Each layer has **single responsibility**
+- ✅ **Prediction** layer runs in dedicated Worker Thread (never block event loop)
+- ✅ Use **SharedArrayBuffer** for zero-copy data transfer
 - ❌ **Never** skip layers (e.g., Perception → Execution)
 - ❌ **Never** mix layer concerns (e.g., feature engineering in Prediction)
+- ❌ **Never** run GPU inference on main thread (blocks event loop)
 
-**Event Naming Convention**:
+**Performance Optimizations**:
 
-```
-{Layer}{Action}Event
-Examples: MarketDataReceivedEvent, FeaturesComputedEvent, PredictionCompletedEvent
-```
+- Worker Threads for GPU inference (eliminate 20-50ms blocking)
+- SharedArrayBuffer for market data (zero serialization overhead)
+- Object pooling for orders (eliminate GC pauses)
+- TypedArrays for numerical data (4x faster feature computation)
 
-**Documentation**: See `apps/algo-worker/docs/layers/*.md` for layer-specific guidelines.
+**Documentation**:
+
+- See `apps/algo-worker/docs/layers/*.md` for layer-specific guidelines
+- See `apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md` for zero-allocation patterns
 
 ---
 
 ### **training-pipeline: Kedro Walk-Forward Validation**
 
-All ML training must use **walk-forward validation** to prevent lookahead bias:
+All ML training must use **Combinatorial Purged Cross-Validation (CPCV)** to prevent lookahead bias:
 
 ```python
-# ✅ CORRECT: Expanding window
-Train: [----6 months----] | Test: [-1 month-]
-       [------7 months-------] | Test: [-1 month-]
+# ✅ CORRECT: Purged + Embargoing
+Train: [----6 months----] [PURGE] Test: [-1 month-] [EMBARGO]
+       [------7 months-------] [PURGE] Test: [-1 month-] [EMBARGO]
 
 # ❌ WRONG: Standard k-fold (temporal leakage)
 Fold 1: [--train--][--test--]
@@ -48,14 +78,21 @@ Fold 2: [--test--][--train--]  # Future data leaks into past!
 
 **Rules**:
 
-- ✅ Use `TimeSeriesSplit` with expanding window
+- ✅ Use **Combinatorial Purged Cross-Validation** (not standard TimeSeriesSplit)
+- ✅ Apply **purging** (drop data between train/test) and **embargoing** (drop data after test)
 - ✅ Save **out-of-fold predictions** for meta-learner
-- ✅ Export to **ONNX with FP16 quantization**
+- ✅ Export to **ONNX with FP16 quantization** for 2x faster inference
 - ✅ Track experiments in **MLflow**
+- ✅ Include **Order Flow Imbalance (OFI)** features for microstructure signals
+- ✅ Train **RL execution agent** (PPO) for optimal order placement
 - ❌ **Never** use shuffled train/test split
 - ❌ **Never** use future data for feature engineering
+- ❌ **Never** deploy model with `sharpe_p5 < 1.0` (quality gate)
 
-**Documentation**: See `apps/training-pipeline/docs/pipelines/*.md` for pipeline-specific guidelines.
+**Documentation**:
+
+- See `apps/training-pipeline/docs/pipelines/*.md` for pipeline-specific guidelines
+- See `apps/training-pipeline/docs/ADVANCED_VALIDATION.md` for CPCV, OFI, RL patterns
 
 ---
 

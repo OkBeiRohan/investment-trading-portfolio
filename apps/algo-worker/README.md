@@ -47,7 +47,10 @@ Critical trading components for managing open positions:
 
 ### **Key Features**
 
-- ⚡ **Ultra-Low Latency**: <150ms end-to-end (tick → signal → order)
+- ⚡ **Ultra-Low Latency**: <100ms end-to-end (tick → signal → order)
+  - **Worker Threads**: GPU inference isolated from event loop (see [PERFORMANCE_OPTIMIZATION.md](docs/PERFORMANCE_OPTIMIZATION.md))
+  - **SharedArrayBuffer**: Zero-copy data transfer between threads
+  - **Object Pooling**: Eliminates GC pauses (500ms → <10ms)
 - 🧠 **ML Ensemble**: 6-8 Level-0 models (core + optional) + Logistic Regression meta-learner
 - 📊 **Options Strategies**: LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD, BEAR_CALL_SPREAD
 - 🛡️ **Risk Management**: Portfolio Greeks limits, position sizing, circuit breakers
@@ -350,6 +353,10 @@ Response: ["LONG_STRADDLE", "IRON_CONDOR"]
 
 ```
 apps/algo-worker/
+├── docs/
+│   ├── layers/                          # 7-layer architecture docs
+│   ├── ARCHITECTURE.md                  # System design
+│   └── PERFORMANCE_OPTIMIZATION.md      # 🆕 Worker Threads, GPU tuning
 ├── src/
 │   ├── layers/                          # 7-Layer Architecture
 │   │   ├── perception/                  # Layer 1: Event Consumption

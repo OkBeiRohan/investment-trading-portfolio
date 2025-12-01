@@ -47,6 +47,18 @@ Copy to algo-worker/models/ → Production
 
 ## 🚀 Quick Start
 
+### **Advanced Features**
+
+This pipeline includes cutting-edge validation and features:
+
+- **Combinatorial Purged Cross-Validation (CPCV)**: Eliminate overfitting and lookahead bias
+- **Order Flow Imbalance (OFI)**: Microstructure features for sub-second signals
+- **RL Execution Agent**: Reinforcement learning for optimal order placement
+
+**See [docs/ADVANCED_VALIDATION.md](docs/ADVANCED_VALIDATION.md) for implementation details.**
+
+---
+
 ### **Prerequisites**
 
 - Python 3.11+
