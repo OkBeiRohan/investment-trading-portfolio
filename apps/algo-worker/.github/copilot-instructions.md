@@ -157,7 +157,7 @@ for (const tick of ticks) {
 - **Input**: Features from Redis Stream (pre-filtered by union config)
 - **Output**: Trading signals (VOL_UP/VOL_DOWN) + confidence
 - **Services**: `ModelLoaderService`, `SignalEngineService`
-- **Models**: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer (6 core + 2 optional)
+- **Models**: 8-10 total (Core 6: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; Optional 4: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN)
 - **Config-Aware**: Only run models enabled in user configs
 
 ### PolicyEngine

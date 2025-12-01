@@ -8,7 +8,7 @@
 
 ## Purpose
 
-The Prediction layer runs ML model inference on engineered features from the Cortex layer. It manages an ensemble of 6-8 Level-0 models (core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional: TimesNet-MLP, WFTNet-MLP) and 1 Level-1 meta-learner (Logistic Regression stacker) using ONNX Runtime with GPU acceleration.
+The Prediction layer runs ML model inference on engineered features from the Cortex layer. It manages an ensemble of 8-10 Level-0 models (core 6: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional 4: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN) and 1 Level-1 meta-learner (Logistic Regression stacker) using ONNX Runtime with GPU acceleration.
 
 ---
 
@@ -40,14 +40,22 @@ The Prediction layer runs ML model inference on engineered features from the Cor
 ```typescript
 @OnEvent('FeaturesComputedEvent')
 async handleFeatures(event: FeaturesComputedEvent) {
-  // Run Level-0 models in parallel (core 6 models)
-  const [xgb, lgb, cnn, ginn, svm, transformer] = await Promise.all([
+  // Run Level-0 core models in parallel (6 models)
+  const coreResults = await Promise.all([
     this.xgboostModel.predict(event.features),
     this.lightgbmModel.predict(event.features),
     this.cnnLstmModel.predict(event.features),
     this.ginnModel.predict(event.features),
     this.svmModel.predict(event.features),
     this.transformerModel.predict(event.features),
+  ]);
+
+  // Run Level-0 optional models if enabled (up to 4 models)
+  const optionalResults = await Promise.all([
+    this.config.enableTimesNet ? this.timesNetModel.predict(event.features) : null,
+    this.config.enableWFTNet ? this.wftNetModel.predict(event.features) : null,
+    this.config.enablePatchTST ? this.patchTSTModel.predict(event.features) : null,
+    this.config.enableKAN ? this.kanModel.predict(event.features) : null,
   ]);
 
   // Optional: Add feature-enhanced models if deployed

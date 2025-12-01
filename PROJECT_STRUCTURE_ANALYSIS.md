@@ -17,6 +17,7 @@ Based on 2024-2025 research on production HFT systems, here are structural impro
 ## 1. Algo-Worker Restructuring (Event-Driven Layers)
 
 ### Current Structure
+
 ```
 apps/algo-worker/src/
 ├── engines/
@@ -28,11 +29,13 @@ apps/algo-worker/src/
 ```
 
 ### ❌ Problem
+
 - Engines are tightly coupled through `trading-orchestrator.service.ts`
 - No clear event-driven boundaries
 - Doesn't align with the 7-Layer Cognitive Architecture
 
 ### ✅ Recommended Structure
+
 ```
 apps/algo-worker/src/
 ├── layers/                          # NEW: 7-Layer Architecture
@@ -41,20 +44,20 @@ apps/algo-worker/src/
 │   │   └── news.consumer.ts
 │   ├── cortex/                      # Layer 2: Feature Engineering
 │   │   ├── feature.service.ts
-│   │   └── sentiment.service.ts
-│   ├── prediction/                  # Layer 3: Alpha Generation
-│   │   ├── tft.service.ts
-│   │   └── ensemble.service.ts
-│   ├── cognition/                   # Layer 4: Strategy & RL
-│   │   ├── rl-agent.service.ts
-│   │   └── strategy.service.ts
-│   ├── execution/                   # Layer 5: Action
-│   │   ├── order.service.ts
+│   │   └── feature-cache.service.ts
+│   ├── prediction/                  # Layer 3: ML Inference
+│   │   ├── model-loader.service.ts
+│   │   └── ensemble-inference.service.ts
+│   ├── cognition/                   # Layer 4: Strategy & Risk
+│   │   ├── strategy-selector.service.ts
+│   │   └── risk-manager.service.ts
+│   ├── execution/                   # Layer 5: Order Execution
+│   │   ├── order-placement.service.ts
 │   │   └── smart-router.service.ts
 │   ├── memory/                      # Layer 6: Storage
 │   │   ├── questdb.writer.ts
 │   │   └── redis.cache.ts
-│   └── control/                     # Layer 7: Ops
+│   └── control/                     # Layer 7: Observability
 │       ├── metrics.service.ts
 │       └── health.service.ts
 ├── events/                          # NEW: Event Definitions
@@ -68,6 +71,7 @@ apps/algo-worker/src/
 ```
 
 **Benefits**:
+
 - Clear layer boundaries (matches ARCHITECTURE.md)
 - Event-driven by default
 - Easier to profile latency per layer
@@ -77,41 +81,60 @@ apps/algo-worker/src/
 ## 2. Create `@repo/ai-models` Package (MISSING)
 
 ### ❌ Current Problem
+
 - ML models likely scattered across `apps/algo-worker` and `apps/training-pipeline`
 - No shared ONNX model interface
 
 ### ✅ Recommended Structure
+
 ```
 packages/ai-models/
 ├── src/
 │   ├── interfaces/
 │   │   └── model.interface.ts       # IModel { load(), predict(), unload() }
 │   ├── models/
-│   │   ├── tft/
-│   │   │   ├── tft.model.ts
-│   │   │   └── metadata.json
 │   │   ├── xgboost/
 │   │   │   ├── xgboost.model.ts
 │   │   │   └── metadata.json
-│   │   └── finbert/
-│   │       ├── finbert.model.ts
+│   │   ├── lightgbm/
+│   │   │   ├── lightgbm.model.ts
+│   │   │   └── metadata.json
+│   │   ├── cnn-lstm/
+│   │   │   ├── cnn-lstm.model.ts
+│   │   │   └── metadata.json
+│   │   ├── ginn/
+│   │   │   ├── ginn.model.ts
+│   │   │   └── metadata.json
+│   │   ├── svm/
+│   │   │   ├── svm.model.ts
+│   │   │   └── metadata.json
+│   │   ├── transformer/
+│   │   │   ├── transformer.model.ts
+│   │   │   └── metadata.json
+│   │   ├── patchtst/
+│   │   │   ├── patchtst.model.ts
+│   │   │   └── metadata.json
+│   │   └── kan/
+│   │       ├── kan.model.ts
 │   │       └── metadata.json
 │   └── registry/
 │       └── model-registry.service.ts
 └── README.md
 ```
 
-**Why**: Centralized model management, versioning, and hot-reload logic.
+**Why**: Centralized model management for 8-10 model ensemble, versioning, and hot-reload logic.
 
 ---
 
 ## 3. Move Event Bus to `@repo/event-bus` (RECOMMENDED)
 
 ### ❌ Current Problem
+
 - Redis Streams logic likely embedded in apps
 - No shared event publisher/consumer
 
 ### ✅ Recommended Structure
+
 ```
 packages/event-bus/
 ├── src/
@@ -165,12 +188,14 @@ infrastructure/
 ## 5. Scripts Directory Organization
 
 ### Current (Likely Unstructured)
+
 ```
 scripts/
 ├── (various scripts)
 ```
 
 ### ✅ Recommended
+
 ```
 scripts/
 ├── dev/                     # Development helpers
@@ -195,13 +220,19 @@ scripts/
 ```
 investment-trading-portfolio/
 ├── models/                  # NEW: ONNX Model Registry
-│   ├── tft/
+│   ├── xgboost/
 │   │   └── v1.0.0/
 │   │       ├── model.onnx
 │   │       ├── metadata.json
 │   │       └── SHA256SUM
-│   ├── xgboost/
-│   └── finbert/
+│   ├── lightgbm/
+│   ├── cnn-lstm/
+│   ├── ginn/
+│   ├── svm/
+│   ├── transformer/
+│   ├── patchtst/
+│   ├── kan/
+│   └── meta-learner/
 ├── data/                    # NEW: Training Data Exports
 │   ├── exports/
 │   │   └── features_2024.parquet
@@ -217,17 +248,20 @@ investment-trading-portfolio/
 ## Implementation Priority
 
 ### Phase 1 (Immediate - Week 1)
+
 1. ✅ Create `@repo/ai-models` package
 2. ✅ Create `@repo/event-bus` package
 3. ✅ Add `models/` directory for ONNX registry
 4. ✅ Add `data/` directory for training exports
 
 ### Phase 2 (Short-term - Weeks 2-3)
+
 1. ✅ Refactor `algo-worker` to 7-layer structure
 2. ✅ Move all event logic to `@repo/event-bus`
 3. ✅ Implement event sequencer
 
 ### Phase 3 (Medium-term - Weeks 4-6)
+
 1. ⏳ Populate `infrastructure/kubernetes/`
 2. ⏳ Populate `infrastructure/monitoring/`
 3. ⏳ Organize `scripts/` directory
@@ -237,6 +271,7 @@ investment-trading-portfolio/
 ## Migration Strategy
 
 ### Step 1: Create New Packages (No Breaking Changes)
+
 ```bash
 pnpm create turbo@latest
 # Add @repo/ai-models
@@ -244,11 +279,13 @@ pnpm create turbo@latest
 ```
 
 ### Step 2: Gradual Migration
+
 - Move one layer at a time (start with Perception)
 - Keep old `engines/` folder until migration complete
 - Use feature flags to switch between old/new architecture
 
 ### Step 3: Remove Legacy Code
+
 - Delete `engines/` folder after all layers migrated
 - Update all imports
 - Run full test suite
@@ -258,16 +295,19 @@ pnpm create turbo@latest
 ## Summary
 
 ### High-Impact Changes
+
 1. **Create `@repo/ai-models`**: Shared ONNX model interface
 2. **Create `@repo/event-bus`**: Enforce event-driven architecture
 3. **Restructure `algo-worker`**: Align with 7-Layer Cognitive Architecture
 
 ### Medium-Impact Changes
+
 1. Add `models/` directory for ONNX registry
 2. Add infrastructure configs (K8s, monitoring)
 3. Organize scripts directory
 
 ### Current Structure Rating: 7/10
+
 **Strengths**: Good monorepo setup, shared packages
 **Weaknesses**: No event-bus abstraction, 7-layer structure not reflected in code
 

@@ -24,8 +24,8 @@ The `algo-worker` implements a **7-Layer Cognitive Architecture** designed for i
 
 - **Service**: `ModelLoaderService`, `EnsembleInferenceService`
 - **Models**:
-  - **Level-0 Core**: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer (6 models)
-  - **Level-0 Optional**: TimesNet-MLP, WFTNet-MLP (feature-enhanced)
+  - **Level-0 Core** (6): XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
+  - **Level-0 Optional** (4): TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
   - **Level-1 Meta-Learner**: Logistic Regression stacker
 - **Tech**: ONNX Runtime with TensorRT/OpenVINO
 - **Output**: Trading signal probability (0-1) with confidence
@@ -68,7 +68,7 @@ The `algo-worker` implements a **7-Layer Cognitive Architecture** designed for i
          ↓ (MarketDataReceivedEvent)
 [Layer 2: Cortex] - Feature Engineering
          ↓ (FeaturesComputedEvent)
-[Layer 3: Prediction] - ONNX Ensemble Inference (6-8 L0 + 1 L1)
+[Layer 3: Prediction] - ONNX Ensemble Inference (8-10 L0 + 1 L1)
          ↓ (PredictionCompletedEvent)
 [Layer 4: Cognition] - Strategy Selection + Risk Management
          ↓ (OrderValidatedEvent)

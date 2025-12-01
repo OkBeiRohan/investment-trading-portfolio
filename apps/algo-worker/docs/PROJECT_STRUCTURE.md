@@ -56,7 +56,7 @@ Based on my analysis, here's the **correct architecture** for your trading syste
 
 - Fetch historical data from QuestDB
 - Walk-forward validation
-- Train Level-0 models (core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional: TimesNet-MLP, WFTNet-MLP)
+- Train Level-0 models (core 6: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional 4: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN)
 - Train Level-1 meta-learner (Logistic Regression stacker)
 - Export to ONNX → Copy to algo-worker/models/
 - MLflow experiment tracking

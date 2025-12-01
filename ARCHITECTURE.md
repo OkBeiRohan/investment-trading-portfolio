@@ -66,6 +66,8 @@ graph LR
 
   MarketData-->QDB
   FeatureEngine-->QDB
+  QDB-->MLEnsemble[8-10 Model Ensemble]
+  MLEnsemble-->SignalEngine
   SignalEngine-->MDB
   ExecutionEngine-->MDB
   ExecutionEngine-->REDIS
@@ -83,6 +85,13 @@ graph LR
 
 ### 3. ML Inference Stack (Latency-Optimized)
 
+**Ensemble Architecture**:
+
+- **Level-0 Core (6 models)**: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
+- **Level-0 Optional (4 models)**: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
+- **Level-1 Meta-Learner**: Logistic Regression stacker
+- **Target**: AUC >0.75 (Level-0), >0.77 (Level-1)
+
 ```
 ONNX Runtime (Cross-Platform Base)
     ├── TensorRT Execution Provider (NVIDIA GPU)
@@ -92,7 +101,7 @@ ONNX Runtime (Cross-Platform Base)
 
 **Why ONNX Runtime**: Provides abstraction over hardware while achieving near-native performance through Execution Providers. More flexible than standalone TensorRT[5].
 
-**Quantization**: INT8 for non-critical models, FP16 for precision-sensitive options pricing.
+**Quantization**: FP16 for all models (2x speedup with minimal accuracy loss).
 
 ---
 
@@ -136,25 +145,28 @@ ONNX Runtime (Cross-Platform Base)
 
 **Model Stack**:
 
-1. **Temporal Fusion Transformer (TFT)**: Multi-horizon forecasting (5min, 15min, 1h)
-2. **XGBoost Ensemble**: Directional signals (VOL_UP/VOL_DOWN)
-3. **FinBERT-India**: News-driven overnight gap predictions
+1. **Level-0 Ensemble (8-10 models)**:
+   - Core (6): XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
+   - Optional (4): TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
+2. **Level-1 Meta-Learner**: Logistic Regression stacker
+3. **Target**: Ensemble AUC >0.77 (Level-1)
 
 **Inference Latency Target**: <50ms (GPU), <100ms (CPU)
 
-### Layer 4: Cognition (Strategy & RL)
+### Layer 4: Cognition (Strategy & Risk Management)
 
 **Components**:
 
-- `RL Agent`: Deep Q-Network (DQN) for dynamic allocation
+- `StrategySelector`: Choose appropriate option strategy based on market regime
 - `RiskManager`: Symbolic rules (MUST override AI if limits breached)
+- `RL Agent` (Optional): Reinforcement Learning for optimal execution timing (PPO)
 
 **Strategies** (Based on 2024 Indian Market Research):
 
-- 9:20 Straddle (Bank Nifty/Nifty Options) - Time decay on non-trending days
-- Iron Condor (High IV environments)
-- Bollinger Band + RSI Mean Reversion
-- VWAP Reversal
+- LONG_STRADDLE - High volatility expected
+- IRON_CONDOR - Range-bound markets
+- BULL_PUT_SPREAD - Bullish bias with defined risk
+- BEAR_CALL_SPREAD - Bearish bias with defined risk
 
 ### Layer 5: Execution (Action)
 

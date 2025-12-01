@@ -235,7 +235,7 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 
 **Engine 2: ML Signal Engine**
 
-- [ ] Train 4 Level-0 models (XGBoost, CNN-LSTM, GINN, SVM) in Python
+- [x] Train 8-10 Level-0 models (Core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; Optional: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN) in Python
 - [ ] Train Level-1 meta-model (Logistic Regression)
 - [ ] Export all models to ONNX format
 - [ ] Create SignalEngine module in NestJS
@@ -328,7 +328,7 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 1. **Database**: MongoDB (time-series collections for features)
 2. **Validation**: Zod schemas in @repo/schema
 3. **Market Data**: Multi-provider SDK (Upstox, Yahoo, Binance)
-4. **ML Stack**: 4-model ensemble + meta-learner
+4. **ML Stack**: 8-10 model ensemble (6 core + 4 optional) + meta-learner
 5. **Risk Management**: RL agents for delta hedging + optimal execution
 6. **Backtesting**: Walk-forward validation with full cost modeling
 

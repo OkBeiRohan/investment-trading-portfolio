@@ -6,7 +6,7 @@ Train Level-0 base models using walk-forward validation.
 
 ## Purpose
 
-Train 6-8 base models (core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional: TimesNet-MLP, WFTNet-MLP) independently using walk-forward validation to prevent lookahead bias.
+Train 8-10 base models (core 6: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional 4: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN) independently using walk-forward validation to prevent lookahead bias.
 
 ---
 
@@ -399,10 +399,11 @@ ensemble:
 
 ```bash
 # Train core ensemble (6 models: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer)
+# Train optional models (4 models: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN)
 kedro run --pipeline train_ensemble
 
-# Train extended ensemble (8 models: includes TimesNet-MLP, WFTNet-MLP)
-kedro run --pipeline train_ensemble --params use_feature_extractors:true
+# Train extended ensemble (10 models: includes TimesNet-MLP, WFTNet-MLP, PatchTST, KAN)
+kedro run --pipeline train_ensemble --params use_all_models:true
 ```
 
 ---

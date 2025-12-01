@@ -92,29 +92,30 @@
   - [ ] Economic Times API
   - [ ] Twitter Financial News accounts (via Firehose API)
 
-### 3.2 Temporal Fusion Transformer (TFT)
+### 3.2 ML Model Training (training-pipeline)
 
-- [ ] **Training Pipeline**
-  - [ ] Export 2 years of Nifty 50/Bank Nifty historical data from QuestDB
-  - [ ] Train TFT model (PyTorch) for multi-horizon forecasting (5m, 15m, 1h)
-  - [ ] Walk-forward validation (out-of-sample Sharpe >1.2)
-  - [ ] Export to ONNX
+- [x] **Training Pipeline (Kedro)**
+  - [x] Export historical data from QuestDB (2+ years)
+  - [x] Train 8-10 Level-0 models (XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer, TimesNet-MLP, WFTNet-MLP, PatchTST, KAN)
+  - [x] Walk-forward validation with CPCV (out-of-sample Sharpe >1.2)
+  - [x] Train Level-1 meta-learner (Logistic Regression stacker)
+  - [x] Export all models to ONNX with FP16 quantization
 - [ ] **Integration**
-  - [ ] Load TFT model in `SignalEngine`
-  - [ ] Generate predictions every 1 minute
-  - [ ] Store forecasts in Redis for low-latency access
+  - [ ] Load ONNX models in `algo-worker` SignalEngine
+  - [ ] Generate predictions on every feature update
+  - [ ] Store predictions in Redis for position tracking
 
-### 3.3 Reinforcement Learning Agent
+### 3.3 Reinforcement Learning Execution Agent (Optional)
 
-- [ ] **DQN/PPO Training**
+- [ ] **PPO Training for Optimal Execution**
   - [ ] Create Gym environment (Indian options market simulator)
-  - [ ] Train agent on 1 year of historical data
-  - [ ] Optimize for Sharpe Ratio reward function
+  - [ ] Train PPO agent for order placement timing (minimize slippage)
+  - [ ] Optimize for execution quality (price improvement vs benchmark)
   - [ ] Backtest with realistic slippage (0.05% per leg)
 - [ ] **Deployment**
   - [ ] Export policy network to ONNX
-  - [ ] Integrate with `PolicyEngine`
-  - [ ] Real-time state: {positions, Greeks, market regime}
+  - [ ] Integrate with `ExecutionEngine`
+  - [ ] Real-time state: {bid-ask spread, order book depth, time-of-day}
 
 ---
 
@@ -178,7 +179,7 @@
 
 ### Technical
 
-- [X] Tick-to-trade latency <100ms (p95)
+- [x] Tick-to-trade latency <100ms (p95)
 - [ ] Signal generation latency <50ms (GPU)
 - [ ] System uptime >99.5%
 - [ ] Zero data loss (all ticks persisted to QuestDB)

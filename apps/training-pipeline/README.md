@@ -362,11 +362,11 @@ To ensure configuration robustness:
 **Production Behavior**:
 
 1. algo-worker computes union: instruments={NIFTY, BANKNIFTY}, models={xgboost, lightgbm, cnn_lstm, transformer}
-2. Only runs 4 models (not all 6-8)
+2. Only runs 4 models (not all 8-10)
 3. Only analyzes 2 instruments (not all 50 symbols)
 4. **Result**: 97% resource reduction vs. analyzing everything
 
-**Training Requirement**: Models must perform well even if only 2/6 models used.
+**Training Requirement**: Models must perform well even if only subset of 8-10 models used.
 
 ---
 
@@ -450,9 +450,9 @@ kedro run --pipeline train_feature_extractor
 - Test Window: 1 month (rolling)
 - Total Folds: 12 (for 2-year dataset)
 
-**Models**: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer, (Optional: TimesNet-MLP, WFTNet-MLP)
+**Models**: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer (core 6), TimesNet-MLP, WFTNet-MLP, PatchTST, KAN (optional 4)
 
-**Output**: 6-8 trained models in `data/06_models/`
+**Output**: 8-10 trained models in `data/06_models/`
 
 **Run**:
 

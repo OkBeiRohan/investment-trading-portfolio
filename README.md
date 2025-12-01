@@ -16,11 +16,11 @@ A battle-tested algorithmic trading system specifically engineered for ultra-low
 
 ### Key Capabilities
 
-- **🧠 Neuro-Symbolic AI**:
-  - Temporal Fusion Transformers (TFT) for price forecasting
-  - FinBERT-India for sentiment analysis
-  - Deep Q-Network (DQN) for dynamic portfolio allocation
-  - Symbolic risk rules (hard limits override AI)
+- **🧠 ML Ensemble Stack**:
+  - 8-10 Level-0 models: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer (core 6) + TimesNet-MLP, WFTNet-MLP, PatchTST, KAN (optional 4)
+  - Level-1 meta-learner: Logistic Regression stacker
+  - Advanced architectures: Channel-independent Transformers (PatchTST) + learnable activation networks (KAN)
+  - Symbolic risk rules (hard limits override AI predictions)
 - **⚡ Ultra-Low Latency**:
   - Event-driven core with deterministic sequencer (<10μs event processing)
   - Kernel bypass (DPDK/Solarflare ef_vi) for network (-30% latency)
@@ -62,15 +62,14 @@ graph TD
     end
 
     subgraph "AI/ML Layer"
-        QDB --> TFT[Temporal Fusion Transformer]
-        QDB --> XGB[XGBoost Ensemble]
-        SENT --> XGB
+        QDB --> ENS["ML Ensemble (8-10 Models)"]
+        QDB --> META[Meta-Learner]
+        ENS --> META
     end
 
     subgraph "Decision Layer"
-        TFT --> DQN["RL Agent (DQN)"]
-        XGB --> DQN
-        DQN --> RISK[Risk Manager]
+        META --> RISK[Risk Manager]
+        RISK --> STRAT[Strategy Selection]
     end
 
     subgraph "Execution"
