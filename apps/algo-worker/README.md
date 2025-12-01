@@ -30,7 +30,7 @@ Algo Worker is the **live trading execution engine** that implements the 7-Layer
 ### **Key Features**
 
 - ⚡ **Ultra-Low Latency**: <150ms end-to-end (tick → signal → order)
-- 🧠 **ML Ensemble**: 5 Level-0 models + Logistic Regression meta-learner
+- 🧠 **ML Ensemble**: 6-8 Level-0 models (core + optional) + Logistic Regression meta-learner
 - 📊 **Options Strategies**: LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD, BEAR_CALL_SPREAD
 - 🛡️ **Risk Management**: Portfolio Greeks limits, position sizing, circuit breakers
 - 🚀 **GPU Acceleration**: ONNX Runtime with TensorRT/OpenVINO execution providers
@@ -224,12 +224,15 @@ apps/algo-worker/
 │   ├── app.module.ts
 │   └── main.ts
 ├── models/                              # ONNX Models (from training-pipeline)
-│   ├── xgboost.onnx
+│   ├── xgboost.onnx                     # Core L0 models
+│   ├── lightgbm.onnx
 │   ├── cnn_lstm.onnx
 │   ├── ginn.onnx
 │   ├── svm.onnx
 │   ├── transformer.onnx
-│   └── meta_learner.onnx
+│   ├── timesnet_mlp.onnx                # Optional L0 models (feature-enhanced)
+│   ├── wftnet_mlp.onnx
+│   └── meta_learner.onnx                # L1 meta-learner
 ├── docs/                                # Documentation
 │   ├── ARCHITECTURE.md
 │   └── layers/                          # Layer-specific docs
@@ -284,12 +287,23 @@ pnpm test:watch
 
 ### **ML/AI Stack** (Models from training-pipeline)
 
-- **XGBoost** - Gradient boosting classifier
-- **CNN-LSTM** - Hybrid deep learning (1D-CNN + LSTM)
-- **GINN** - GARCH-Informed Neural Network
-- **SVM** - Support Vector Machine with RBF kernel
-- **Transformer** - Attention-based encoder
-- **Meta-Learner** - Logistic Regression stacker
+**Core Level-0 Models**:
+
+- **XGBoost** - Gradient boosting classifier (AUC >0.70)
+- **LightGBM** - Fast gradient boosting (AUC >0.69)
+- **CNN-LSTM** - Hybrid deep learning (1D-CNN + LSTM, AUC >0.68)
+- **GINN** - GARCH-Informed Neural Network (AUC >0.69)
+- **SVM** - Support Vector Machine with RBF kernel (AUC >0.67)
+- **Transformer** - Attention-based encoder (AUC >0.70)
+
+**Optional Level-0 Models** (Feature-Enhanced):
+
+- **TimesNet-MLP** - Multi-scale temporal patterns (AUC >0.69)
+- **WFTNet-MLP** - Wavelet-based features (AUC >0.68)
+
+**Level-1 Meta-Learner**:
+
+- **Logistic Regression** - Ensemble stacker (AUC >0.75-0.77)
 
 ### **External APIs**
 

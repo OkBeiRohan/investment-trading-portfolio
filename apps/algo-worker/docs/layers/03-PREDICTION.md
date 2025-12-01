@@ -2,13 +2,13 @@
 
 > **ONNX model ensemble inference with sub-50ms latency**
 
-**Latency Target**: <50ms per prediction (5 L0 models + 1 L1 meta-learner)
+**Latency Target**: <50ms per prediction (6-8 L0 models + 1 L1 meta-learner)
 
 ---
 
 ## Purpose
 
-The Prediction layer runs ML model inference on engineered features from the Cortex layer. It manages an ensemble of 5 Level-0 models (XGBoost, CNN-LSTM, GINN, SVM, Transformer) and 1 Level-1 meta-learner (Logistic Regression stacker) using ONNX Runtime with GPU acceleration.
+The Prediction layer runs ML model inference on engineered features from the Cortex layer. It manages an ensemble of 6-8 Level-0 models (core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional: TimesNet-MLP, WFTNet-MLP) and 1 Level-1 meta-learner (Logistic Regression stacker) using ONNX Runtime with GPU acceleration.
 
 ---
 
@@ -40,23 +40,29 @@ The Prediction layer runs ML model inference on engineered features from the Cor
 ```typescript
 @OnEvent('FeaturesComputedEvent')
 async handleFeatures(event: FeaturesComputedEvent) {
-  // Run Level-0 models in parallel
-  const [xgb, cnn, ginn, svm, transformer] = await Promise.all([
+  // Run Level-0 models in parallel (core 6 models)
+  const [xgb, lgb, cnn, ginn, svm, transformer] = await Promise.all([
     this.xgboostModel.predict(event.features),
+    this.lightgbmModel.predict(event.features),
     this.cnnLstmModel.predict(event.features),
     this.ginnModel.predict(event.features),
     this.svmModel.predict(event.features),
     this.transformerModel.predict(event.features),
   ]);
 
+  // Optional: Add feature-enhanced models if deployed
+  const predictions = [xgb, lgb, cnn, ginn, svm, transformer];
+  if (this.timesnetMlpModel) predictions.push(await this.timesnetMlpModel.predict(event.features));
+  if (this.wftnetMlpModel) predictions.push(await this.wftnetMlpModel.predict(event.features));
+
   // Stack predictions for meta-learner
-  const l1Input = new Float32Array([xgb, cnn, ginn, svm, transformer]);
+  const l1Input = new Float32Array(predictions);
   const finalPred = await this.metaLearnerModel.predict(l1Input);
 
   this.eventBus.publish(new PredictionCompletedEvent(
     event.symbol,
     finalPred,
-    { xgb, cnn, ginn, svm, transformer } // Individual predictions
+    { xgb, lgb, cnn, ginn, svm, transformer } // Core predictions
   ));
 }
 ```
@@ -65,21 +71,31 @@ async handleFeatures(event: FeaturesComputedEvent) {
 
 ## Models
 
-### **Level-0 Models** (Base Models)
+### **Level-0 Models** (Core Models)
 
 | Model       | File               | Input Shape | Output            | Target AUC |
 | ----------- | ------------------ | ----------- | ----------------- | ---------- |
 | XGBoost     | `xgboost.onnx`     | (1, 50)     | Probability (0-1) | >0.70      |
+| LightGBM    | `lightgbm.onnx`    | (1, 50)     | Probability (0-1) | >0.69      |
 | CNN-LSTM    | `cnn_lstm.onnx`    | (1, 60, 50) | Probability (0-1) | >0.68      |
 | GINN        | `ginn.onnx`        | (1, 50)     | Probability (0-1) | >0.69      |
 | SVM         | `svm.onnx`         | (1, 50)     | Probability (0-1) | >0.67      |
 | Transformer | `transformer.onnx` | (1, 60, 50) | Probability (0-1) | >0.70      |
 
+### **Level-0 Models** (Optional Feature-Enhanced)
+
+| Model        | File                | Input Shape | Output            | Target AUC |
+| ------------ | ------------------- | ----------- | ----------------- | ---------- |
+| TimesNet-MLP | `timesnet_mlp.onnx` | (1, 60, 50) | Probability (0-1) | >0.69      |
+| WFTNet-MLP   | `wftnet_mlp.onnx`   | (1, 60, 50) | Probability (0-1) | >0.68      |
+
 ### **Level-1 Model** (Meta-Learner)
 
-| Model               | File                | Input Shape | Output            | Target AUC |
-| ------------------- | ------------------- | ----------- | ----------------- | ---------- |
-| Logistic Regression | `meta_learner.onnx` | (1, 5)      | Final Probability | >0.73      |
+| Model               | File                | Input Shape      | Output            | Target AUC |
+| ------------------- | ------------------- | ---------------- | ----------------- | ---------- |
+| Logistic Regression | `meta_learner.onnx` | (1, 6) or (1, 8) | Final Probability | >0.75-0.77 |
+
+**Note**: Input shape depends on number of L0 models deployed (6 core or 8 with optional models)
 
 ---
 
@@ -122,12 +138,16 @@ export class PredictionCompletedEvent {
     public readonly timestamp: number,
     public readonly prediction: number, // Final probability (0-1)
     public readonly l0Predictions: {
-      // Individual model predictions
+      // Core model predictions
       xgboost: number;
+      lightgbm: number;
       cnnLstm: number;
       ginn: number;
       svm: number;
       transformer: number;
+      // Optional feature-enhanced models
+      timesnetMlp?: number;
+      wftnetMlp?: number;
     },
   ) {}
 }
@@ -139,15 +159,19 @@ export class PredictionCompletedEvent {
 
 ## Performance Targets
 
-| Model                  | Inference Time (p95) | Throughput              |
-| ---------------------- | -------------------- | ----------------------- |
-| XGBoost                | <5ms                 | >1000 inferences/sec    |
-| CNN-LSTM               | <15ms                | >500 inferences/sec     |
-| GINN                   | <12ms                | >600 inferences/sec     |
-| SVM                    | <8ms                 | >800 inferences/sec     |
-| Transformer            | <20ms                | >400 inferences/sec     |
-| **Meta-Learner**       | <3ms                 | >2000 inferences/sec    |
-| **Total (End-to-End)** | **<50ms**            | **>100 inferences/sec** |
+| Model                | Inference Time (p95) | Throughput              |
+| -------------------- | -------------------- | ----------------------- |
+| XGBoost              | <5ms                 | >1000 inferences/sec    |
+| LightGBM             | <4ms                 | >1200 inferences/sec    |
+| CNN-LSTM             | <15ms                | >500 inferences/sec     |
+| GINN                 | <12ms                | >600 inferences/sec     |
+| SVM                  | <8ms                 | >800 inferences/sec     |
+| Transformer          | <20ms                | >400 inferences/sec     |
+| TimesNet-MLP (opt)   | <10ms                | >700 inferences/sec     |
+| WFTNet-MLP (opt)     | <9ms                 | >750 inferences/sec     |
+| **Meta-Learner**     | <3ms                 | >2000 inferences/sec    |
+| **Total (6 models)** | **<50ms**            | **>100 inferences/sec** |
+| **Total (8 models)** | **<60ms**            | **>80 inferences/sec**  |
 
 ---
 

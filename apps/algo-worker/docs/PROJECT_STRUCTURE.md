@@ -56,7 +56,7 @@ Based on my analysis, here's the **correct architecture** for your trading syste
 
 - Fetch historical data from QuestDB
 - Walk-forward validation
-- Train Level-0 models (XGBoost, CNN-LSTM, GINN, SVM, Transformer)
+- Train Level-0 models (core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional: TimesNet-MLP, WFTNet-MLP)
 - Train Level-1 meta-learner (Logistic Regression stacker)
 - Export to ONNX → Copy to algo-worker/models/
 - MLflow experiment tracking
@@ -147,15 +147,22 @@ market-feeder → Redis Stream → MarketDataConsumer → Layer 2 (Cortex)
 
 **Model Stack** (from training-pipeline):
 
-1. **Level-0 Base Models**:
+1. **Level-0 Core Models**:
    - XGBoost Classifier (`xgboost.onnx`)
+   - LightGBM Classifier (`lightgbm.onnx`)
    - CNN-LSTM Hybrid (`cnn_lstm.onnx`)
    - GINN (GARCH-LSTM) (`ginn.onnx`)
    - SVM RBF (`svm.onnx`)
    - Transformer (`transformer.onnx`)
 
-2. **Level-1 Meta-Model**:
+2. **Level-0 Optional Models** (Feature-Enhanced):
+   - TimesNet-MLP (`timesnet_mlp.onnx`)
+   - WFTNet-MLP (`wftnet_mlp.onnx`)
+
+3. **Level-1 Meta-Model**:
    - Logistic Regression Stacker (`meta_learner.onnx`)
+   - Input: 6 or 8 L0 predictions (depending on deployed models)
+   - Target AUC: >0.75 (core) or >0.77 (extended)
 
 **Output**: `TradingSignal` with direction (LONG/SHORT), confidence (0-1), and horizon (5m/15m/1h)
 
@@ -408,12 +415,15 @@ apps/algo-worker/
 │   └── main.ts
 │
 ├── models/                               # ONNX Models (from training-pipeline)
-│   ├── xgboost.onnx
+│   ├── xgboost.onnx                      # Core L0 models
+│   ├── lightgbm.onnx
 │   ├── cnn_lstm.onnx
 │   ├── ginn.onnx
 │   ├── svm.onnx
 │   ├── transformer.onnx
-│   └── meta_learner.onnx
+│   ├── timesnet_mlp.onnx              # Optional L0 models
+│   ├── wftnet_mlp.onnx
+│   └── meta_learner.onnx                # L1 meta-learner
 │
 ├── docs/                                 # Layer-specific documentation
 │   ├── ARCHITECTURE.md
