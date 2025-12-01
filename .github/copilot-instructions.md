@@ -1,33 +1,298 @@
 - **Logging**: Structured JSON logging with trace IDs is mandatory for all transactions.
 
+## Architecture Philosophy
+
+### **algo-worker: 7-Layer Event-Driven Architecture**
+
+All code must follow the **7-layer cognitive architecture** with strict layer separation:
+
+1. **Perception** → Event consumption (Redis Streams)
+2. **Cortex** → Feature engineering (real-time indicators)
+3. **Prediction** → ONNX model inference (ensemble)
+4. **Cognition** → Strategy selection + risk management
+5. **Execution** → Smart order routing (TWAP/VWAP)
+6. **Memory** → Multi-tier storage (Redis/QuestDB/MongoDB)
+7. **Control** → Observability (Prometheus metrics, health checks)
+
+**Rules**:
+
+- ✅ Layers communicate via **internal events** (`EventBus`)
+- ✅ Each layer has **single responsibility**
+- ❌ **Never** skip layers (e.g., Perception → Execution)
+- ❌ **Never** mix layer concerns (e.g., feature engineering in Prediction)
+
+**Event Naming Convention**:
+
+```
+{Layer}{Action}Event
+Examples: MarketDataReceivedEvent, FeaturesComputedEvent, PredictionCompletedEvent
+```
+
+**Documentation**: See `apps/algo-worker/docs/layers/*.md` for layer-specific guidelines.
+
+---
+
+### **training-pipeline: Kedro Walk-Forward Validation**
+
+All ML training must use **walk-forward validation** to prevent lookahead bias:
+
+```python
+# ✅ CORRECT: Expanding window
+Train: [----6 months----] | Test: [-1 month-]
+       [------7 months-------] | Test: [-1 month-]
+
+# ❌ WRONG: Standard k-fold (temporal leakage)
+Fold 1: [--train--][--test--]
+Fold 2: [--test--][--train--]  # Future data leaks into past!
+```
+
+**Rules**:
+
+- ✅ Use `TimeSeriesSplit` with expanding window
+- ✅ Save **out-of-fold predictions** for meta-learner
+- ✅ Export to **ONNX with FP16 quantization**
+- ✅ Track experiments in **MLflow**
+- ❌ **Never** use shuffled train/test split
+- ❌ **Never** use future data for feature engineering
+
+**Documentation**: See `apps/training-pipeline/docs/pipelines/*.md` for pipeline-specific guidelines.
+
+---
+
 ## Development Workflow
 
-1.  **Plan**: Check `implementation_plan.md` and `docs/ARCHITECTURE.md`.
-2.  **Define**: Create Zod schemas in `@repo/schema`.
-3.  **Implement**: Write code in `apps/` or `packages/`.
+1.  **Plan**: Check `implementation_plan.md` and app-specific `docs/ARCHITECTURE.md` (if exists).
+2.  **Define**: Create Zod schemas in `@repo/schema` for all data structures.
+3.  **Implement**:
+    - **algo-worker**: Place code in correct layer (`src/{layer-name}/`)
+    - **training-pipeline**: Place code in Kedro pipeline (`src/training_pipeline/pipelines/{pipeline-name}/`)
 4.  **Verify**: Run unit tests and (if applicable) backtests.
 5.  **Document**: Update `docs/PROGRESS.md` and `README.md`.
 
+---
+
 ## Specific Package Rules
 
-### @repo/ai-models
-- Implement `ModelInterface` for all models (load, predict, unload).
-- Include `preprocessing` and `postprocessing` methods within the model class.
-- Use `GPU` execution provider if available.
+### @repo/schema
+
+- Use **Zod** for all schemas (runtime validation)
+- Export TypeScript types: `export type MarketData = z.infer<typeof MarketDataSchema>;`
+- Validate external data (API responses, Redis messages) immediately upon entry
+
+### @repo/database
+
+- **Redis**: Use for hot state (<1 hour TTL)
+- **QuestDB**: Use for time-series (tick data, PnL, metrics)
+- **MongoDB**: Use for cold storage (audit trail, 5-year retention)
 
 ### @repo/market-sdk
-- Handle rate limits gracefully with exponential backoff.
-- Normalize data from different providers (Upstox, Binance) into a common `MarketData` format.
+
+- Handle rate limits gracefully with exponential backoff
+- Normalize data from different providers (Upstox, Binance) into common `MarketData` format
+- Use circuit breakers for external API calls
+
+### @repo/ai-models
+
+- Load ONNX models with TensorRT/OpenVINO execution providers
+- Pre-warm models on startup (run dummy inference)
+- Monitor inference latency (<50ms p95 target)
+
+---
+
+## algo-worker Specific Rules
+
+### **Event-Driven Patterns**
+
+```typescript
+// ✅ CORRECT: Publish event from Perception
+@Injectable()
+export class MarketDataConsumer {
+  @OnModuleInit()
+  async consumeStream() {
+    const messages = await this.redis.xread("stream:market-data");
+    this.eventBus.publish(new MarketDataReceivedEvent(data));
+  }
+}
+
+// ✅ CORRECT: Handle event in Cortex
+@Injectable()
+export class FeatureEngineService {
+  @OnEvent("MarketDataReceivedEvent")
+  async handleMarketData(event: MarketDataReceivedEvent) {
+    const features = this.compute(event.data);
+    this.eventBus.publish(new FeaturesComputedEvent(features));
+  }
+}
+```
+
+### **Redis Streams Best Practices**
+
+```typescript
+// ✅ CORRECT: Consumer group for load balancing
+await this.redis.xgroup(
+  "CREATE",
+  "stream:market-data",
+  "algo-worker",
+  "$",
+  "MKSTREAM"
+);
+const messages = await this.redis.xreadgroup(
+  "GROUP",
+  "algo-worker",
+  "worker-1",
+  "BLOCK",
+  5000,
+  "STREAMS",
+  "stream:market-data",
+  ">"
+);
+
+// ✅ CORRECT: Acknowledge message after processing
+await this.redis.xack("stream:market-data", "algo-worker", messageId);
+```
+
+### **SEBI Compliance (2024-2025)**
+
+```typescript
+// ✅ CORRECT: Generate Unique Algo ID
+const algoId = `${process.env.SEBI_ENTITY_CODE}-${format(new Date(), 'yyyyMMdd')}-${process.env.APP_VERSION}-${strategy.toUpperCase()}`;
+// Example: ABC123-20241215-V1.2.3-STRADDLE
+
+// ✅ CORRECT: Pre-trade risk checks
+if (order.quantity * order.price > this.maxPositionSize) {
+  throw new RiskLimitExceededError('Position size >5%');
+}
+
+// ✅ CORRECT: Audit trail (5-year retention)
+await this.mongo.collection('audit_trail').insertOne({
+  algoId,
+  timestamp: Date.now(),
+  symbol: order.symbol,
+  riskChecks: { ... },
+});
+```
+
+### **Performance Monitoring**
+
+```typescript
+// ✅ CORRECT: Record latency for each layer
+const start = performance.now();
+const features = await this.cortex.compute(data);
+const duration = performance.now() - start;
+this.metrics.recordDuration("cortex.feature_computation_duration_ms", duration);
+
+// ✅ CORRECT: Increment counters
+this.metrics.increment("perception.events_consumed_total", {
+  stream: "market-data",
+});
+```
+
+---
+
+## training-pipeline Specific Rules
+
+### **Kedro Best Practices**
+
+```python
+# ✅ CORRECT: Use data catalog for all I/O
+def fetch_ticks(catalog):
+    return catalog.load('raw_ticks')
+
+# ❌ WRONG: Direct file access
+def fetch_ticks():
+    return pd.read_parquet('data/raw/ticks.parquet')
+```
+
+### **Walk-Forward Validation**
+
+```python
+# ✅ CORRECT: TimeSeriesSplit with expanding window
+from sklearn.model_selection import TimeSeriesSplit
+
+tscv = TimeSeriesSplit(n_splits=12, test_size=30*375)
+oof_predictions = np.zeros(len(features))
+
+for train_idx, test_idx in tscv.split(features):
+    model.fit(X_train, y_train)
+    oof_predictions[test_idx] = model.predict_proba(X_test)[:, 1]
+
+# ❌ WRONG: Shuffled train_test_split
+X_train, X_test = train_test_split(features, shuffle=True)  # Temporal leakage!
+```
+
+### **ONNX Export**
+
+```python
+# ✅ CORRECT: Export with FP16 quantization
+import tf2onnx
+
+onnx_model, _ = tf2onnx.convert.from_keras(model, opset=13)
+quantize_dynamic(onnx_model, weight_type=QuantType.QFloat16)
+
+# ✅ CORRECT: Validate ONNX vs. original
+original_preds = model.predict(X_test)
+onnx_preds = ort_session.run(None, {input_name: X_test})[0]
+assert np.mean(np.abs(original_preds - onnx_preds)) < 1e-4
+```
+
+### **MLflow Tracking**
+
+```python
+# ✅ CORRECT: Log everything
+import mlflow
+
+with mlflow.start_run(run_name='xgboost_fold_1'):
+    mlflow.log_params(hyperparameters)
+    mlflow.log_metric('train_auc', train_auc)
+    mlflow.log_metric('test_auc', test_auc)
+    mlflow.sklearn.log_model(model, 'xgboost')
+```
+
+---
 
 ## Common Anti-Patterns
 
-❌ Hardcoding model paths.
-❌ Performing heavy tensor math in the main Node.js event loop (use worker threads or ONNX).
-❌ Ignoring `RiskManager` validation results.
-❌ Mixing business logic with data access code.
+### **algo-worker**
+
+❌ Hardcoding Redis keys (use config)
+❌ Blocking event loop with CPU-intensive tasks (use ONNX Runtime async)
+❌ Skipping SEBI compliance checks
+❌ Missing Prometheus metrics for layers
+
+### **training-pipeline**
+
+❌ Using future data in feature engineering
+❌ Training meta-learner on training set predictions (use OOF)
+❌ Exporting models without validation
+❌ Ignoring transaction costs in backtesting
+
+---
+
+## Testing Standards
+
+### **Unit Tests**
+
+- Test each layer/node in isolation
+- Mock external dependencies (Redis, QuestDB, broker API)
+- Use fixtures for sample data
+
+### **Integration Tests**
+
+- Test end-to-end data flow (Perception → Control)
+- Use real Redis/QuestDB in Docker
+- Verify event propagation
+
+### **E2E Tests**
+
+- Run full pipeline (training-pipeline)
+- Run full trading cycle (algo-worker)
+- Verify ONNX model deployment
+
+---
 
 ## Getting Help
 
-- **Architecture**: See `docs/ARCHITECTURE.md` in `apps/algo-worker`.
-- **AI Research**: Refer to the "Research & References" section in the root README.
-- **Agents**: Consult `.github/agents/` for role-specific guidelines.
+- **algo-worker Architecture**: `apps/algo-worker/README.md`, `apps/algo-worker/docs/layers/*.md`
+- **training-pipeline Architecture**: `apps/training-pipeline/README.md`, `apps/training-pipeline/docs/pipelines/*.md`
+- **AI Research**: Root README "Research & References" section
+- **Agents**: `.github/agents/` for role-specific guidelines
