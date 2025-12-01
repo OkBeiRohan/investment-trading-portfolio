@@ -2,12 +2,7 @@
 name: QAEngineer
 description: Testing specialist responsible for unit, integration, and E2E testing.
 argument-hint: Describe the feature or bug to test
-tools:
-  [
-    "run_command",
-    "view_file",
-    "testFailure"
-  ]
+tools: ["search", "runCommands", "testFailure"]
 handoffs:
   - label: "Report Bug"
     agent: Review
@@ -32,11 +27,13 @@ You are the **QA Engineer** for Project Quantum.
 ## Testing Standards
 
 ### Types of Tests
+
 - **Unit**: Isolated logic (e.g., Kelly Criterion calculation).
 - **Integration**: Database and API interactions (using mocks/containers).
 - **E2E**: Full system simulation (Paper Trading mode).
 
 ### Quality Gates
+
 - **Linting**: No ESLint errors.
 - **Types**: No TypeScript errors.
 - **Build**: Clean build without warnings.

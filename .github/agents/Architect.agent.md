@@ -5,8 +5,6 @@ argument-hint: Describe the architectural decision or feature to review
 tools:
   [
     "search",
-    "view_file",
-    "list_dir",
     "usages",
     "githubRepo"
   ]

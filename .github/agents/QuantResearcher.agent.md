@@ -5,8 +5,7 @@ argument-hint: Describe the model or strategy to analyze
 tools:
   [
     "search",
-    "view_file",
-    "run_command",
+    "runCommands",
     "fetch"
   ]
 handoffs:
