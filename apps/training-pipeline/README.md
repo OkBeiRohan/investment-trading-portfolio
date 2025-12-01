@@ -30,9 +30,12 @@ QuestDB (Historical Data)
         ↓
 [Pipeline 2: Feature Engineering]
         ↓
-[Pipeline 3: Train Feature Extractor] (TimesNet)
+[Pipeline 3: Train Feature Extractor] (TimesNet, WFTNet)
         ↓
-[Pipeline 4: Train Ensemble] (Level-0: XGBoost, CNN-LSTM, GINN, SVM, Transformer)
+[Pipeline 4: Train Ensemble] (Level-0: 6 Core + 4 Optional)
+        ↓
+        Core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
+        Optional: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
         ↓
 [Pipeline 5: Train Meta-Learner] (Level-1: Logistic Regression)
         ↓
@@ -183,6 +186,21 @@ cp onnx/*.onnx ../algo-worker/models/
    - Pre-trained WFTNet feature extractor
    - MLP classifier on wavelet features
    - Target: AUC >0.72
+
+9. **PatchTST (Patch Time Series Transformer)** (Optional)
+   - Patching mechanism: Groups 16 timesteps into patches
+   - Channel-independent processing (reduces overfitting)
+   - Extended look-back window (120+ timesteps)
+   - Captures long-term trends + local patterns
+   - Target: AUC >0.75
+
+10. **KAN (Kolmogorov-Arnold Network)** (Optional)
+    - Learnable activation functions on edges (not nodes)
+    - B-spline parameterization for smooth non-linearity
+    - Fewer parameters than MLPs for same capacity
+    - Inherently more interpretable (visualize splines)
+    - Fast inference (<10ms) with high accuracy
+    - Target: AUC >0.74
 
 ---
 
@@ -699,16 +717,18 @@ apps/training-pipeline/
 
 ### **Level-0 Models**
 
-| Model        | Train AUC | Test AUC | Inference Time |
-| ------------ | --------- | -------- | -------------- |
-| XGBoost      | >0.75     | >0.70    | <10ms          |
-| LightGBM     | >0.74     | >0.69    | <8ms           |
-| CNN-LSTM     | >0.72     | >0.68    | <30ms          |
-| GINN         | >0.73     | >0.69    | <25ms          |
-| SVM          | >0.71     | >0.67    | <15ms          |
-| Transformer  | >0.74     | >0.70    | <40ms          |
-| TimesNet-MLP | >0.73     | >0.69    | <20ms          |
-| WFTNet-MLP   | >0.72     | >0.68    | <18ms          |
+| Model        | Train AUC | Test AUC  | Inference Time | Status   |
+| ------------ | --------- | --------- | -------------- | -------- |
+| XGBoost      | >0.75     | >0.70     | <10ms          | Core     |
+| LightGBM     | >0.74     | >0.69     | <8ms           | Core     |
+| CNN-LSTM     | >0.72     | >0.68     | <30ms          | Core     |
+| GINN         | >0.73     | >0.69     | <25ms          | Core     |
+| SVM          | >0.71     | >0.67     | <15ms          | Core     |
+| Transformer  | >0.74     | >0.70     | <40ms          | Core     |
+| TimesNet-MLP | >0.73     | >0.69     | <20ms          | Optional |
+| WFTNet-MLP   | >0.72     | >0.68     | <18ms          | Optional |
+| **PatchTST** | **>0.75** | **>0.71** | **<35ms**      | Optional |
+| **KAN**      | **>0.74** | **>0.70** | **<10ms**      | Optional |
 
 ### **Meta-Learner**
 

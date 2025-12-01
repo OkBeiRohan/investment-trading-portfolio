@@ -51,7 +51,10 @@ Critical trading components for managing open positions:
   - **Worker Threads**: GPU inference isolated from event loop (see [PERFORMANCE_OPTIMIZATION.md](docs/PERFORMANCE_OPTIMIZATION.md))
   - **SharedArrayBuffer**: Zero-copy data transfer between threads
   - **Object Pooling**: Eliminates GC pauses (500ms → <10ms)
-- 🧠 **ML Ensemble**: 6-8 Level-0 models (core + optional) + Logistic Regression meta-learner
+- 🧠 **ML Ensemble**: 8-10 Level-0 models (core + optional) + Logistic Regression meta-learner
+  - **Core Models** (6): XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
+  - **Advanced Models** (4): TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
+  - **Architecture**: Channel-independent Transformers (PatchTST) + learnable activation networks (KAN)
 - 📊 **Options Strategies**: LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD, BEAR_CALL_SPREAD
 - 🛡️ **Risk Management**: Portfolio Greeks limits, position sizing, circuit breakers
 - 🚀 **GPU Acceleration**: ONNX Runtime with TensorRT/OpenVINO execution providers
