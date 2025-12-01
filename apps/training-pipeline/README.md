@@ -103,6 +103,24 @@ cp onnx/*.onnx ../algo-worker/models/
 
 ## 📊 ML Model Stack
 
+### **Feature Extraction Models** (Optional Pre-Training)
+
+1. **TimesNet** (ICML 2023)
+   - Multi-scale temporal pattern recognition
+   - Converts 1D time series to 2D tensors
+   - Inception-style architecture
+   - Target: Feature compression 50→128 dimensions
+
+2. **WFTNet** (2024)
+   - Wavelet Feature Transform Network
+   - Captures multi-resolution frequency patterns
+   - Combines DWT with neural networks
+   - Target: Feature compression 50→128 dimensions
+
+**Usage**: Pre-train for feature extraction, then freeze and use as input layer for Level-0 models
+
+---
+
 ### **Level-0 Base Models** (Train Independently)
 
 1. **XGBoost Classifier**
@@ -111,37 +129,69 @@ cp onnx/*.onnx ../algo-worker/models/
    - Early stopping (50 rounds)
    - Target: AUC >0.75
 
-2. **CNN-LSTM Hybrid**
+2. **LightGBM Classifier**
+   - Faster gradient boosting variant
+   - Histogram-based tree learning
+   - Better handling of categorical features
+   - Target: AUC >0.74
+
+3. **CNN-LSTM Hybrid**
    - 1D-CNN for local pattern detection
    - LSTM for temporal dependencies
    - Sequence length: 60 timesteps
    - Target: AUC >0.72
 
-3. **GINN (GARCH-Informed Neural Network)**
+4. **GINN (GARCH-Informed Neural Network)**
    - Two-stage: GARCH(1,1) + LSTM
    - Models volatility clustering + residuals
    - Combines linear & non-linear patterns
    - Target: AUC >0.73
 
-4. **SVM (Support Vector Machine)**
+5. **SVM (Support Vector Machine)**
    - RBF kernel with grid search
    - High economic gains (research-backed)
    - Class weight balancing
    - Target: AUC >0.71
 
-5. **Transformer Encoder**
+6. **Transformer Encoder**
    - Multi-head self-attention (8 heads)
    - 4 layers, d_model=256
    - Position encodings for sequences
    - Target: AUC >0.74
 
+7. **TimesNet-Enhanced MLP** (Optional)
+   - Pre-trained TimesNet feature extractor
+   - MLP classifier on compressed features
+   - Target: AUC >0.73
+
+8. **WFTNet-Enhanced MLP** (Optional)
+   - Pre-trained WFTNet feature extractor
+   - MLP classifier on wavelet features
+   - Target: AUC >0.72
+
+---
+
 ### **Level-1 Meta-Model** (Train After Level-0)
 
 - **Logistic Regression Stacker**
-  - Blends Level-0 probabilities
+  - Blends Level-0 probabilities (6-8 inputs)
   - Out-of-fold predictions (no leakage)
   - 5-fold TimeSeriesSplit cross-validation
   - Target: **Ensemble AUC >0.78**
+
+---
+
+### **Reinforcement Learning Agent** (Optional - Advanced)
+
+- **TD3 (Twin Delayed DDPG)** or **SAC (Soft Actor-Critic)**
+  - **Purpose**: Dynamic position sizing and portfolio allocation
+  - **State**: Market features + ensemble predictions + portfolio state
+  - **Action**: Continuous (position size 0-1, leverage 1-3)
+  - **Reward**: Sharpe-ratio-based reward shaping
+  - **Training**: Off-policy with replay buffer
+  - **Target**: Sharpe Ratio >1.8 (vs >1.5 for fixed sizing)
+
+**Note**: RL agent is experimental. Start with fixed position sizing (5% per trade) before implementing RL.
 
 ---
 
@@ -152,12 +202,14 @@ cp onnx/*.onnx ../algo-worker/models/
 **Purpose**: Fetch historical market data from QuestDB
 
 **Nodes**:
+
 - `fetch_tick_data` - Query 2 years of Nifty/Bank Nifty ticks
 - `aggregate_candles` - Compute OHLCV (1m, 5m, 15m, 1h)
 
 **Output**: `data/01_raw/tick_data.parquet`
 
 **Run**:
+
 ```bash
 kedro run --pipeline data_ingestion
 ```
@@ -171,6 +223,7 @@ kedro run --pipeline data_ingestion
 **Purpose**: Compute 50+ features from raw market data
 
 **Features**:
+
 - **Technical**: RSI, MACD, Bollinger Bands, SMA, EMA, ATR, OBV, ADX
 - **Volatility**: Realized Vol (5d/10d/20d), India VIX, Parkinson estimator
 - **Options**: ATM IV, skew, term structure, PCR (volume/OI), Max Pain
@@ -179,6 +232,7 @@ kedro run --pipeline data_ingestion
 **Output**: `data/04_feature/features.parquet`
 
 **Run**:
+
 ```bash
 kedro run --pipeline feature_engineering
 ```
@@ -187,15 +241,22 @@ kedro run --pipeline feature_engineering
 
 ---
 
-### **3. Train Feature Extractor** (`train_feature_extractor`)
+### **3. Train Feature Extractors** (`train_feature_extractor`)
 
-**Purpose**: Train TimesNet for feature compression (optional)
+**Purpose**: Train TimesNet and WFTNet for feature compression (optional)
 
-**Model**: TimesNet (2D-Variation Temporal Modeling)
+**Models**:
 
-**Output**: `data/06_models/timesnet.pkl`
+- **TimesNet** - Multi-scale temporal patterns (50→128 dimensions)
+- **WFTNet** - Wavelet-based features (50→128 dimensions)
+
+**Output**:
+
+- `data/06_models/timesnet.pkl`
+- `data/06_models/wftnet.pkl`
 
 **Run**:
+
 ```bash
 kedro run --pipeline train_feature_extractor
 ```
@@ -209,17 +270,23 @@ kedro run --pipeline train_feature_extractor
 **Purpose**: Train Level-0 base models with walk-forward validation
 
 **Walk-Forward Settings**:
+
 - Train Window: 6 months (expanding)
 - Test Window: 1 month (rolling)
 - Total Folds: 12 (for 2-year dataset)
 
-**Models**: XGBoost, CNN-LSTM, GINN, SVM, Transformer
+**Models**: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer, (Optional: TimesNet-MLP, WFTNet-MLP)
 
-**Output**: 5 trained models in `data/06_models/`
+**Output**: 6-8 trained models in `data/06_models/`
 
 **Run**:
+
 ```bash
+# Train core models (6 models)
 kedro run --pipeline train_ensemble
+
+# Train with feature extractors (8 models)
+kedro run --pipeline train_ensemble --params use_feature_extractors:true
 ```
 
 **Documentation**: [docs/pipelines/TRAIN_ENSEMBLE.md](./docs/pipelines/TRAIN_ENSEMBLE.md)
@@ -235,12 +302,14 @@ kedro run --pipeline train_ensemble
 **Input**: Out-of-fold probabilities from Level-0 models
 
 **Training Strategy**:
+
 - Use OOF predictions to avoid data leakage
 - 5-fold TimeSeriesSplit
 
 **Output**: `data/06_models/meta_learner.pkl`
 
 **Run**:
+
 ```bash
 kedro run --pipeline train_meta_learner
 ```
@@ -254,6 +323,7 @@ kedro run --pipeline train_meta_learner
 **Purpose**: Convert all models to ONNX format
 
 **Exports**:
+
 - `xgboost.onnx` (FP16 quantization)
 - `cnn_lstm.onnx` (FP16 quantization)
 - `ginn.onnx` (FP16 quantization)
@@ -266,6 +336,7 @@ kedro run --pipeline train_meta_learner
 **Output**: `onnx/*.onnx`
 
 **Run**:
+
 ```bash
 kedro run --pipeline export_onnx
 ```
@@ -279,6 +350,7 @@ kedro run --pipeline export_onnx
 **Purpose**: Simulate trading with realistic transaction costs
 
 **Metrics**:
+
 - Sharpe Ratio (target: >1.5)
 - Sortino Ratio (target: >2.0)
 - Maximum Drawdown (target: <20%)
@@ -286,6 +358,7 @@ kedro run --pipeline export_onnx
 - Profit Factor
 
 **Transaction Costs** (NSE Options):
+
 - Brokerage: ₹20 per order
 - STT: 0.0625% on sell side
 - Exchange fees: 0.053%
@@ -295,11 +368,49 @@ kedro run --pipeline export_onnx
 **Output**: `data/08_reporting/backtest_results.csv`
 
 **Run**:
+
 ```bash
 kedro run --pipeline backtesting
 ```
 
 **Documentation**: [docs/pipelines/BACKTESTING.md](./docs/pipelines/BACKTESTING.md)
+
+---
+
+### **8. Train RL Agent** (`train_rl_agent`) - **EXPERIMENTAL**
+
+**Purpose**: Train reinforcement learning agent for dynamic position sizing
+
+**Algorithm**: TD3 (Twin Delayed DDPG) or SAC (Soft Actor-Critic)
+
+**Environment**:
+
+- **State**: Market features (50D) + Ensemble prediction (1D) + Portfolio state (5D)
+- **Action**: Position size (continuous 0-1) + Leverage (continuous 1-3)
+- **Reward**: Sharpe-ratio-based with penalty for drawdown
+
+**Training**:
+
+- 1M timesteps (off-policy)
+- Replay buffer: 100k transitions
+- Update frequency: Every 4 steps
+- Target network update: Soft (τ=0.005)
+
+**Output**: `data/06_models/rl_agent.pkl`
+
+**Run**:
+
+```bash
+# Train RL agent (requires ensemble predictions)
+kedro run --pipeline train_rl_agent
+
+# Backtest with RL agent
+kedro run --pipeline backtesting --params use_rl_agent:true
+```
+
+**Documentation**: [docs/pipelines/TRAIN_RL_AGENT.md](./docs/pipelines/TRAIN_RL_AGENT.md)
+
+**⚠️ Warning**: RL agent is experimental. Requires significant computational resources and careful reward engineering. Start with fixed position sizing.
 
 ---
 
@@ -334,18 +445,34 @@ apps/training-pipeline/
 │       │   │       ├── technical.py
 │       │   │       ├── options.py
 │       │   │       └── sentiment.py
+│       │   ├── train_feature_extractor/
+│       │   │   ├── nodes.py
+│       │   │   ├── pipeline.py
+│       │   │   └── models/
+│       │   │       ├── timesnet.py
+│       │   │       └── wftnet.py
 │       │   ├── train_ensemble/
 │       │   │   ├── nodes.py
 │       │   │   ├── pipeline.py
 │       │   │   └── models/
 │       │   │       ├── xgboost_trainer.py
+│       │   │       ├── lightgbm_trainer.py
 │       │   │       ├── cnn_lstm_trainer.py
 │       │   │       ├── ginn_trainer.py
 │       │   │       ├── svm_trainer.py
-│       │   │       └── transformer_trainer.py
+│       │   │       ├── transformer_trainer.py
+│       │   │       ├── timesnet_mlp_trainer.py  # Optional
+│       │   │       └── wftnet_mlp_trainer.py    # Optional
 │       │   ├── train_meta_learner/
 │       │   │   ├── nodes.py
 │       │   │   └── pipeline.py
+│       │   ├── train_rl_agent/              # EXPERIMENTAL
+│       │   │   ├── nodes.py
+│       │   │   ├── pipeline.py
+│       │   │   └── agents/
+│       │   │       ├── td3_agent.py
+│       │   │       ├── sac_agent.py
+│       │   │       └── trading_env.py        # Gym environment
 │       │   ├── export_onnx/
 │       │   │   ├── nodes.py
 │       │   │   └── pipeline.py
@@ -387,8 +514,10 @@ apps/training-pipeline/
 │   └── pipelines/                       # Pipeline-specific documentation
 │       ├── DATA_INGESTION.md
 │       ├── FEATURE_ENGINEERING.md
+│       ├── TRAIN_FEATURE_EXTRACTOR.md  # TimesNet, WFTNet
 │       ├── TRAIN_ENSEMBLE.md
 │       ├── TRAIN_META_LEARNER.md
+│       ├── TRAIN_RL_AGENT.md           # EXPERIMENTAL
 │       ├── EXPORT_ONNX.md
 │       └── BACKTESTING.md
 │
@@ -404,16 +533,42 @@ apps/training-pipeline/
 
 ## 📈 Model Performance Targets
 
-| Model | Train AUC | Test AUC | Inference Time |
-|-------|-----------|----------|----------------|
-| XGBoost | >0.75 | >0.70 | <10ms |
-| CNN-LSTM | >0.72 | >0.68 | <30ms |
-| GINN | >0.73 | >0.69 | <25ms |
-| SVM | >0.71 | >0.67 | <15ms |
-| Transformer | >0.74 | >0.70 | <40ms |
-| **Meta-Learner** | **>0.78** | **>0.73** | **<5ms** |
+### **Feature Extractors** (Optional)
 
-**Ensemble Target**: Test AUC >0.75, Sharpe Ratio >1.5
+| Model    | Feature Dim | Training Time | Benefit               |
+| -------- | ----------- | ------------- | --------------------- |
+| TimesNet | 50→128      | ~2 hours      | +2-3% AUC improvement |
+| WFTNet   | 50→128      | ~1.5 hours    | +1-2% AUC improvement |
+
+### **Level-0 Models**
+
+| Model        | Train AUC | Test AUC | Inference Time |
+| ------------ | --------- | -------- | -------------- |
+| XGBoost      | >0.75     | >0.70    | <10ms          |
+| LightGBM     | >0.74     | >0.69    | <8ms           |
+| CNN-LSTM     | >0.72     | >0.68    | <30ms          |
+| GINN         | >0.73     | >0.69    | <25ms          |
+| SVM          | >0.71     | >0.67    | <15ms          |
+| Transformer  | >0.74     | >0.70    | <40ms          |
+| TimesNet-MLP | >0.73     | >0.69    | <20ms          |
+| WFTNet-MLP   | >0.72     | >0.68    | <18ms          |
+
+### **Meta-Learner**
+
+| Model                           | Train AUC | Test AUC  | Inference Time |
+| ------------------------------- | --------- | --------- | -------------- |
+| **Logistic Regression Stacker** | **>0.78** | **>0.73** | **<5ms**       |
+
+### **RL Agent** (Experimental)
+
+| Metric        | Target | Baseline (Fixed Sizing) |
+| ------------- | ------ | ----------------------- |
+| Sharpe Ratio  | >1.8   | 1.5                     |
+| Sortino Ratio | >2.3   | 2.0                     |
+| Max Drawdown  | <18%   | 20%                     |
+| Win Rate      | >55%   | 50%                     |
+
+**Ensemble Target**: Test AUC >0.75, Sharpe Ratio >1.5 (without RL) / >1.8 (with RL)
 
 ---
 
@@ -444,6 +599,7 @@ mlflow ui
 ```
 
 **Logged Metrics**:
+
 - Model AUC, precision, recall, F1
 - Sharpe ratio, Sortino ratio
 - Maximum drawdown, Calmar ratio
@@ -488,22 +644,26 @@ poetry run pytest tests/test_feature_engineering.py
 ## 🛠️ Tech Stack
 
 ### **Framework**
+
 - **Kedro** - ML pipeline framework
 - **MLflow** - Experiment tracking
 - **Poetry** - Dependency management
 
 ### **ML Libraries**
+
 - **XGBoost** - Gradient boosting
 - **TensorFlow/Keras** - Deep learning (CNN-LSTM, Transformer)
 - **scikit-learn** - SVM, preprocessing, meta-learner
 - **ONNX Runtime** - Model validation
 
 ### **Data Processing**
+
 - **pandas** - DataFrames
 - **NumPy** - Numerical operations
 - **TA-Lib** - Technical indicators (optional)
 
 ### **Databases**
+
 - **QuestDB** - Historical tick data (via psycopg2)
 - **MongoDB** - Training labels (via pymongo)
 
