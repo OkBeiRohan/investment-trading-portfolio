@@ -13,17 +13,20 @@
 ```typescript
 // ❌ BAD: Analyze everything, filter after
 const signals = await this.predictAllStrategies(allInstruments);
-const filtered = signals.filter(s => user.allowsStrategy(s));
+const filtered = signals.filter((s) => user.allowsStrategy(s));
 
 // ✅ GOOD: Filter before analysis
 const activeInstruments = this.configService.getUnionInstruments();
-const relevantFeatures = features.filter(f => activeInstruments.has(f.symbol));
+const relevantFeatures = features.filter((f) =>
+  activeInstruments.has(f.symbol),
+);
 const signals = await this.predict(relevantFeatures);
 ```
 
 **Why**: Reduces compute by 95%. If 100 users exist but only 2 active, analyze only what those 2 need.
 
 **Configuration Loading**:
+
 ```typescript
 @Injectable()
 export class UserConfigService {
@@ -32,25 +35,26 @@ export class UserConfigService {
       .collection('user_trading_configs')
       .find({ enabled: true })
       .toArray();
-    
+
     this.unionConfig = this.computeUnion(configs);
   }
-  
+
   computeUnion(configs: UserTradingConfig[]): UnionConfig {
     return {
-      instruments: new Set(configs.flatMap(c => c.enabledInstruments)),
-      strategies: new Set(configs.flatMap(c => c.strategies.allowed)),
+      instruments: new Set(configs.flatMap((c) => c.enabledInstruments)),
+      strategies: new Set(configs.flatMap((c) => c.strategies.allowed)),
       permissions: {
-        anyBuyCalls: configs.some(c => c.permissions.allowBuyCalls),
-        anySellCalls: configs.some(c => c.permissions.allowSellCalls),
+        anyBuyCalls: configs.some((c) => c.permissions.allowBuyCalls),
+        anySellCalls: configs.some((c) => c.permissions.allowSellCalls),
         // ... other permissions
-      }
+      },
     };
   }
 }
 ```
 
 **Validation Pattern**:
+
 ```typescript
 // ALWAYS validate before execution
 const validation = await this.configService.validateSignalForUser(signal, userId);
@@ -79,9 +83,13 @@ if (portfolio.dailyLoss < config.risk.maxDailyDrawdown) {
 const signal = await this.signalEngine.generate(features);
 
 // ✅ GOOD: Event-driven
-await this.redis.xadd('trading-signals', '*', 
-  'type', 'PRICE_FORECAST',
-  'data', JSON.stringify(features)
+await this.redis.xadd(
+  'trading-signals',
+  '*',
+  'type',
+  'PRICE_FORECAST',
+  'data',
+  JSON.stringify(features),
 );
 ```
 
@@ -90,19 +98,21 @@ await this.redis.xadd('trading-signals', '*',
 ### 3. SEBI 2024-2025 Compliance (MANDATORY)
 
 Every order MUST include:
+
 ```typescript
 const order = {
   algoId: `PROJ_QUANTUM_v${this.version}_USER_${userId}`,
   userId: userId, // User-specific tracking
   timestamp: new Date(),
-  preTradeChecksPassed: true,  // From RiskManager validation
+  preTradeChecksPassed: true, // From RiskManager validation
   riskLimitsValidated: true,
-  userConfigValidated: true,   // NEW: User config validation
+  userConfigValidated: true, // NEW: User config validation
   // ... other fields
 };
 ```
 
 **Pre-Trade Checks** (RiskManager):
+
 - User configuration validated (permissions, limits, strategies)
 - Position limits not exceeded (user-specific + global)
 - Margin sufficient (per user account)
@@ -112,6 +122,7 @@ const order = {
 ### 3. Latency Optimization (Sub-100ms Target)
 
 **Hot Path** (Tick → Signal → Order):
+
 - Use `TypedArray` for numerical data (not plain objects)
 - Avoid `JSON.parse/stringify` in loops
 - Pre-allocate buffers for feature vectors
@@ -134,12 +145,14 @@ for (const tick of ticks) {
 ## 4-Engine Architecture (Current)
 
 ### DataEngine
+
 - **Responsibility**: Market data ingestion + feature engineering
 - **Input**: Upstox WebSocket (ticks, quotes, option chain)
 - **Output**: Features to QuestDB + Redis Stream
 - **Services**: `DataCollectionService`, `FeatureEngineeringService`, `FeatureStoreService`
 
 ### SignalEngine
+
 - **Responsibility**: ML inference using ONNX models
 - **Input**: Features from Redis Stream (pre-filtered by union config)
 - **Output**: Trading signals (VOL_UP/VOL_DOWN) + confidence
@@ -148,12 +161,14 @@ for (const tick of ticks) {
 - **Config-Aware**: Only run models enabled in user configs
 
 ### PolicyEngine
+
 - **Responsibility**: Strategy selection + risk management
 - **Input**: Signals from Redis Stream
 - **Output**: Validated orders (or rejection)
 - **Services**: `PolicyEngineService`, `RiskManagementService`, `PositionSizingService`
 
 ### ExecutionEngine
+
 - **Responsibility**: Order placement + tracking
 - **Input**: Validated orders from Redux Stream
 - **Output**: API calls to Upstox + position updates
@@ -164,6 +179,7 @@ for (const tick of ticks) {
 ## Database Usage Rules
 
 ### QuestDB (Time-Series ONLY)
+
 ```typescript
 import { QuestDBService } from '@repo/database';
 
@@ -177,6 +193,7 @@ await this.questdb.insertOrder(order); // Use MongoDB!
 ```
 
 ### MongoDB (Documents ONLY)
+
 ```typescript
 import { TradingDatabaseModule } from '@repo/database';
 
@@ -190,6 +207,7 @@ await this.tickDataModel.insertMany(ticks); // Use QuestDB!
 ```
 
 ### Redis (Hot State + Event Bus)
+
 ```typescript
 import { RedisService } from '@repo/database';
 
@@ -197,7 +215,11 @@ import { RedisService } from '@repo/database';
 await this.redis.xadd('market-data', '*', 'tick', JSON.stringify(tick));
 
 // ✅ Hot State (Hash)
-await this.redis.hset('positions:active', instrumentKey, JSON.stringify(position));
+await this.redis.hset(
+  'positions:active',
+  instrumentKey,
+  JSON.stringify(position),
+);
 
 // ✅ Circuit Breaker (String)
 await this.redis.set('circuit-breaker:status', 'OPEN', 'EX', 300);
@@ -212,12 +234,12 @@ await this.redis.set('circuit-breaker:status', 'OPEN', 'EX', 300);
 ```typescript
 const session = await ort.InferenceSession.create(modelPath, {
   executionProviders: [
-    'TensorrtExecutionProvider',   // NVIDIA GPU (primary)
-    'OpenVINOExecutionProvider',    // Intel CPU (fallback)
-    'CPUExecutionProvider'          // Universal fallback
+    'TensorrtExecutionProvider', // NVIDIA GPU (primary)
+    'OpenVINOExecutionProvider', // Intel CPU (fallback)
+    'CPUExecutionProvider', // Universal fallback
   ],
   graphOptimizationLevel: 'all',
-  enableProfiling: false,           // Disable in production
+  enableProfiling: false, // Disable in production
 });
 ```
 
@@ -249,9 +271,9 @@ describe('SignalEngine', () => {
   it('should generate signal in <50ms (GPU)', async () => {
     const features = new Float32Array(1 * 60 * 13);
     const start = process.hrtime.bigint();
-    
+
     await signalEngine.generate(features);
-    
+
     const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
     expect(durationMs).toBeLessThan(50);
   });
@@ -261,6 +283,7 @@ describe('SignalEngine', () => {
 ### Backtest Validation
 
 Every new strategy MUST pass:
+
 - 1-year walk-forward backtest
 - Sharpe Ratio >1.2
 - Max Drawdown <20%
@@ -275,7 +298,9 @@ Every new strategy MUST pass:
 ```typescript
 export class InsufficientMarginError extends Error {
   constructor(required: number, available: number) {
-    super(`Insufficient margin: required ₹${required}, available ₹${available}`);
+    super(
+      `Insufficient margin: required ₹${required}, available ₹${available}`,
+    );
     this.name = 'InsufficientMarginError';
   }
 }
@@ -328,30 +353,30 @@ this.logger.log('Signal generated: VOL_UP');
 interface UserTradingConfig {
   userId: string;
   enabled: boolean; // Master switch
-  
+
   permissions: {
     allowBuyCalls: boolean;
-    allowSellCalls: boolean;  // Naked call writing
+    allowSellCalls: boolean; // Naked call writing
     allowBuyPuts: boolean;
-    allowSellPuts: boolean;   // Naked put writing
-    allowSpreads: boolean;    // Multi-leg strategies
+    allowSellPuts: boolean; // Naked put writing
+    allowSpreads: boolean; // Multi-leg strategies
     allowIntraday: boolean;
     allowOvernightPositions: boolean;
   };
-  
+
   limits: {
-    maxDailyTradeAmount: number;      // ₹50,000
-    maxSingleTradeAmount: number;     // ₹10,000
-    maxTotalExposure: number;         // ₹100,000
-    maxConcurrentPositions: number;   // 5
-    minCashReservePercent: number;    // 20%
+    maxDailyTradeAmount: number; // ₹50,000
+    maxSingleTradeAmount: number; // ₹10,000
+    maxTotalExposure: number; // ₹100,000
+    maxConcurrentPositions: number; // 5
+    minCashReservePercent: number; // 20%
   };
-  
+
   risk: {
-    stopLossPercent: number;          // ±10% of algo default
+    stopLossPercent: number; // ±10% of algo default
     takeProfitPercent: number | null; // Optional
-    maxDailyDrawdown: number;         // ₹5,000
-    maxLeverage: number;              // 1.0 - 3.0
+    maxDailyDrawdown: number; // ₹5,000
+    maxLeverage: number; // 1.0 - 3.0
     positionSizingStrategy: 'FIXED' | 'KELLY' | 'RL_BASED';
     greeksLimits: {
       maxDelta: number;
@@ -360,24 +385,24 @@ interface UserTradingConfig {
       maxVega: number;
     };
   };
-  
+
   strategies: {
-    allowed: string[];              // ['LONG_STRADDLE', 'IRON_CONDOR', ...]
-    minSignalConfidence: number;    // 0.5 - 0.9
+    allowed: string[]; // ['LONG_STRADDLE', 'IRON_CONDOR', ...]
+    minSignalConfidence: number; // 0.5 - 0.9
     preferredVolatilityRegime: 'HIGH' | 'LOW' | 'ALL';
-    timeHorizons: string[];         // ['5m', '15m', '1h', 'EOD']
+    timeHorizons: string[]; // ['5m', '15m', '1h', 'EOD']
   };
-  
+
   models: {
-    enabledModels: string[];        // ['xgboost', 'lightgbm', ...]
-    minEnsembleAgreement: number;   // 0.6 = 60% models must agree
+    enabledModels: string[]; // ['xgboost', 'lightgbm', ...]
+    minEnsembleAgreement: number; // 0.6 = 60% models must agree
   };
-  
+
   execution: {
     algorithm: 'MARKET' | 'TWAP' | 'VWAP';
-    slippageTolerance: number;      // 0.1%
+    slippageTolerance: number; // 0.1%
     orderValidity: 'IOC' | 'DAY' | 'GTC';
-    maxRetryAttempts: number;       // 3
+    maxRetryAttempts: number; // 3
   };
 }
 ```

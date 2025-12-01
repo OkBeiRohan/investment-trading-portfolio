@@ -23,6 +23,7 @@ You are working on the **Training Pipeline** - a Kedro-based Python project for 
 ### **Why Configuration Matters for ML Training**
 
 In production, algo-worker only analyzes instruments enabled by active users:
+
 - If no user enables FINNIFTY, model won't predict FINNIFTY
 - If no user allows naked call writing, no SELL_CALL signals generated
 - If user disabled XGBoost, only other models used

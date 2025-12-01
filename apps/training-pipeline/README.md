@@ -203,6 +203,7 @@ cp onnx/*.onnx ../algo-worker/models/
 ### **Why Train for Configurability?**
 
 In production, **algo-worker operates based on user-specific configurations**. Each user can:
+
 - Enable/disable specific instruments (NIFTY, BANKNIFTY, FINNIFTY)
 - Allow/disallow specific permissions (buy calls, sell puts, naked positions)
 - Enable/disable specific strategies (LONG_STRADDLE, IRON_CONDOR)
@@ -267,19 +268,19 @@ test_scenarios = [
 for scenario in test_scenarios:
     test_data = filter_test_data(scenario)
     auc = evaluate_model(model, test_data)
-    
+
     # Ensure model performs well in ALL scenarios
     assert auc > 0.70, f"Model fails for {scenario}: AUC={auc}"
 ```
 
 #### **4. Model Robustness Requirements**
 
-| Requirement | Description | Validation |
-|-------------|-------------|------------|
-| **Instrument Agnostic** | Model works on NIFTY, BANKNIFTY, FINNIFTY without retraining | AUC >0.70 on each instrument separately |
-| **Strategy Agnostic** | Same features work for all option strategies | AUC >0.68 on each strategy separately |
-| **Confidence Calibration** | Confidence scores comparable across instruments | Calibration plot with ECE <0.10 |
-| **Ensemble Robustness** | If user disables 2 models, remaining 4 still effective | Subset AUC >0.72 (vs >0.75 full) |
+| Requirement                | Description                                                  | Validation                              |
+| -------------------------- | ------------------------------------------------------------ | --------------------------------------- |
+| **Instrument Agnostic**    | Model works on NIFTY, BANKNIFTY, FINNIFTY without retraining | AUC >0.70 on each instrument separately |
+| **Strategy Agnostic**      | Same features work for all option strategies                 | AUC >0.68 on each strategy separately   |
+| **Confidence Calibration** | Confidence scores comparable across instruments              | Calibration plot with ECE <0.10         |
+| **Ensemble Robustness**    | If user disables 2 models, remaining 4 still effective       | Subset AUC >0.72 (vs >0.75 full)        |
 
 #### **5. Configuration Simulation Testing**
 
@@ -309,21 +310,23 @@ assert auc > 0.70, "Model fails for single-user config"
 
 To ensure configuration robustness:
 
-| Data Type | Minimum Requirement | Recommended |
-|-----------|---------------------|-------------|
-| **Time Period** | 2 years | 3-5 years |
-| **Instruments** | All 3 (NIFTY, BANKNIFTY, FINNIFTY) | Include historical delisted instruments |
-| **Strategies** | All 8 primary strategies | Include custom strategy variations |
-| **Market Regimes** | Bull, Bear, Sideways | Include COVID crash, recovery periods |
-| **Volatility Regimes** | High (VIX >25), Low (VIX <15) | Include regime transitions |
+| Data Type              | Minimum Requirement                | Recommended                             |
+| ---------------------- | ---------------------------------- | --------------------------------------- |
+| **Time Period**        | 2 years                            | 3-5 years                               |
+| **Instruments**        | All 3 (NIFTY, BANKNIFTY, FINNIFTY) | Include historical delisted instruments |
+| **Strategies**         | All 8 primary strategies           | Include custom strategy variations      |
+| **Market Regimes**     | Bull, Bear, Sideways               | Include COVID crash, recovery periods   |
+| **Volatility Regimes** | High (VIX >25), Low (VIX <15)      | Include regime transitions              |
 
 ### **Practical Example: Configuration Impact**
 
 **Scenario**: 100 users, only 2 active
+
 - **User A**: `{'instruments': ['NIFTY'], 'strategies': ['LONG_STRADDLE'], 'models': ['xgboost', 'lightgbm']}`
 - **User B**: `{'instruments': ['BANKNIFTY'], 'strategies': ['IRON_CONDOR'], 'models': ['cnn_lstm', 'transformer']}`
 
 **Production Behavior**:
+
 1. algo-worker computes union: instruments={NIFTY, BANKNIFTY}, models={xgboost, lightgbm, cnn_lstm, transformer}
 2. Only runs 4 models (not all 6-8)
 3. Only analyzes 2 instruments (not all 50 symbols)

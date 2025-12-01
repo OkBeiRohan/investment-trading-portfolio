@@ -113,7 +113,7 @@ User B: { allowBuyCalls: false, allowSellCalls: true, strategies: ['IRON_CONDOR'
 interface UserTradingConfig {
   userId: string;
   enabled: boolean; // Master switch
-  
+
   // Trading Permissions
   permissions: {
     allowBuyCalls: boolean;
@@ -126,7 +126,7 @@ interface UserTradingConfig {
     allowIntraday: boolean;
     allowOvernightPositions: boolean;
   };
-  
+
   // Financial Limits
   limits: {
     maxDailyTradeAmount: number; // ₹50,000
@@ -136,7 +136,7 @@ interface UserTradingConfig {
     maxConcurrentPositions: number; // 5
     minCashReservePercent: number; // 20%
   };
-  
+
   // Risk Management
   risk: {
     stopLossPercent: number; // User adjustment: -10% to +10% of algo default
@@ -152,7 +152,7 @@ interface UserTradingConfig {
       maxVega: number;
     };
   };
-  
+
   // Strategy Preferences
   strategies: {
     allowed: string[]; // ['LONG_STRADDLE', 'IRON_CONDOR', ...]
@@ -160,13 +160,13 @@ interface UserTradingConfig {
     preferredVolatilityRegime: 'HIGH' | 'LOW' | 'ALL';
     timeHorizons: string[]; // ['5m', '15m', '1h', 'EOD']
   };
-  
+
   // Model Preferences
   models: {
     enabledModels: string[]; // ['xgboost', 'lightgbm', 'cnn_lstm', ...]
     minEnsembleAgreement: number; // 0.6 = 60% models must agree
   };
-  
+
   // Execution Preferences
   execution: {
     algorithm: 'MARKET' | 'TWAP' | 'VWAP';
@@ -174,7 +174,7 @@ interface UserTradingConfig {
     orderValidity: 'IOC' | 'DAY' | 'GTC';
     maxRetryAttempts: number; // 3
   };
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -194,15 +194,18 @@ interface UserTradingConfig {
 ### **Resource Optimization Example**
 
 **Scenario**: 100 users, only 2 active today
+
 - User A: Enabled CALL buying on NIFTY
 - User B: Enabled PUT buying on BANKNIFTY
 
 **Traditional Approach** (Wasteful):
+
 - Analyze: NIFTY + BANKNIFTY + 48 other symbols (all) ❌
 - Strategies: All 8 strategies for all symbols ❌
 - Models: Run full ensemble for everything ❌
 
 **Config-Driven Approach** (Efficient):
+
 - Analyze: NIFTY (calls) + BANKNIFTY (puts) ✅
 - Strategies: Only relevant strategies per symbol ✅
 - Models: Filter predictions for enabled permissions ✅

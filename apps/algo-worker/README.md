@@ -181,11 +181,13 @@ See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed design.
 ### **Why Configuration-Driven Architecture?**
 
 Traditional algo trading systems analyze **everything** and filter **after** prediction:
+
 - ❌ Analyze 50 symbols × 8 strategies × 2 directions = 800 predictions
 - ❌ Filter 750 predictions user didn't need
 - ❌ Wasted 94% of compute resources
 
 **Our approach** analyzes **only what users need**:
+
 - ✅ User A: Buy NIFTY calls only
 - ✅ User B: Sell BANKNIFTY puts only
 - ✅ System: Analyze 2 symbols × relevant strategies = 10 predictions
@@ -199,7 +201,7 @@ Each user has a `UserTradingConfig` stored in MongoDB:
 {
   userId: "user_123",
   enabled: true, // Master switch
-  
+
   permissions: {
     allowBuyCalls: true,
     allowSellCalls: false, // Disable naked call writing
@@ -209,14 +211,14 @@ Each user has a `UserTradingConfig` stored in MongoDB:
     allowIntraday: true,
     allowOvernightPositions: false
   },
-  
+
   limits: {
     maxDailyTradeAmount: 50000, // ₹50,000
     maxSingleTradeAmount: 10000,
     maxConcurrentPositions: 5,
     minCashReservePercent: 20
   },
-  
+
   risk: {
     stopLossPercent: 5, // Algorithm calculates base, user can adjust ±10%
     maxDailyDrawdown: 5000,
@@ -229,19 +231,19 @@ Each user has a `UserTradingConfig` stored in MongoDB:
       maxVega: 200
     }
   },
-  
+
   strategies: {
     allowed: ["LONG_STRADDLE", "IRON_CONDOR"],
     minSignalConfidence: 0.65, // Only trade signals >65% confidence
     preferredVolatilityRegime: "HIGH" | "LOW" | "ALL",
     timeHorizons: ["15m", "1h", "EOD"]
   },
-  
+
   models: {
     enabledModels: ["xgboost", "lightgbm", "cnn_lstm"], // User can disable models
     minEnsembleAgreement: 0.6 // 60% of enabled models must agree
   },
-  
+
   execution: {
     algorithm: "TWAP" | "VWAP" | "MARKET",
     slippageTolerance: 0.1, // 0.1%
@@ -303,20 +305,22 @@ Response: ["LONG_STRADDLE", "IRON_CONDOR"]
 
 **Scenario**: 100 total users, 5 active today
 
-| User | Instruments | Strategies | Permissions |
-|------|-------------|------------|-------------|
-| A | NIFTY | LONG_STRADDLE | Buy Calls, Buy Puts |
-| B | BANKNIFTY | IRON_CONDOR | Buy Calls, Sell Puts |
-| C | NIFTY | BULL_PUT_SPREAD | Sell Puts |
-| D | FINNIFTY | LONG_STRADDLE | Buy Calls, Buy Puts |
-| E | NIFTY | IRON_CONDOR | All |
+| User | Instruments | Strategies      | Permissions          |
+| ---- | ----------- | --------------- | -------------------- |
+| A    | NIFTY       | LONG_STRADDLE   | Buy Calls, Buy Puts  |
+| B    | BANKNIFTY   | IRON_CONDOR     | Buy Calls, Sell Puts |
+| C    | NIFTY       | BULL_PUT_SPREAD | Sell Puts            |
+| D    | FINNIFTY    | LONG_STRADDLE   | Buy Calls, Buy Puts  |
+| E    | NIFTY       | IRON_CONDOR     | All                  |
 
 **Union Computed**:
+
 - Instruments: {NIFTY, BANKNIFTY, FINNIFTY} (3 instead of 50)
 - Strategies: {LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD} (3 instead of 8)
 - Permissions: {BUY_CALLS: true, SELL_CALLS: true, BUY_PUTS: true, SELL_PUTS: true}
 
 **Resource Savings**:
+
 - Instruments: 94% reduction (3 vs 50)
 - Strategies: 62.5% reduction (3 vs 8)
 - **Total predictions**: 24 instead of 800 (97% reduction)

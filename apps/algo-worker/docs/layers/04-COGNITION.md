@@ -39,23 +39,21 @@ export class UserConfigService {
       .find({ enabled: true })
       .toArray();
 
-    this.activeConfigs = new Map(configs.map(c => [c.userId, c]));
+    this.activeConfigs = new Map(configs.map((c) => [c.userId, c]));
     this.unionConfig = this.computeUnion(configs);
   }
 
   computeUnion(configs: UserTradingConfig[]): UnionConfig {
     return {
       instruments: new Set(
-        configs.flatMap(c => this.getEnabledInstruments(c))
+        configs.flatMap((c) => this.getEnabledInstruments(c)),
       ),
-      strategies: new Set(
-        configs.flatMap(c => c.strategies.allowed)
-      ),
+      strategies: new Set(configs.flatMap((c) => c.strategies.allowed)),
       permissions: {
-        anyBuyCalls: configs.some(c => c.permissions.allowBuyCalls),
-        anySellCalls: configs.some(c => c.permissions.allowSellCalls),
-        anyBuyPuts: configs.some(c => c.permissions.allowBuyPuts),
-        anySellPuts: configs.some(c => c.permissions.allowSellPuts),
+        anyBuyCalls: configs.some((c) => c.permissions.allowBuyCalls),
+        anySellCalls: configs.some((c) => c.permissions.allowSellCalls),
+        anyBuyPuts: configs.some((c) => c.permissions.allowBuyPuts),
+        anySellPuts: configs.some((c) => c.permissions.allowSellPuts),
       },
     };
   }
@@ -72,7 +70,7 @@ export class UserConfigService {
 
   validateSignalForUser(
     signal: TradingSignal,
-    userId: string
+    userId: string,
   ): ValidationResult {
     const config = this.activeConfigs.get(userId);
     if (!config) return { valid: false, reason: 'User not active' };
