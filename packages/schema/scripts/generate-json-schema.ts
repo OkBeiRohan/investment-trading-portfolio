@@ -22,30 +22,14 @@ import {
   signalMetadataSchema,
 } from "../src/trading/signal.schema";
 
-import {
-  orderSchema,
-  orderLegSchema,
-  orderCreateInputSchema,
-} from "../src/trading/order.schema";
+import { orderSchema, orderLegSchema } from "../src/trading/order.schema";
 
 import {
   positionSchema,
   positionLegSchema,
-  greeksSchema,
-  costsSchema,
 } from "../src/trading/position.schema";
 
-import {
-  strategySchema,
-  strategyLegSchema,
-  riskProfileSchema,
-} from "../src/trading/strategy.schema";
-
-import {
-  performanceMetricsSchema,
-  tradeMetricsSchema,
-  costMetricsSchema,
-} from "../src/trading/performance.schema";
+import { strategySchema } from "../src/trading/strategy.schema";
 
 import {
   rlAgentStateSchema,
@@ -129,28 +113,6 @@ const schemas = {
   // Strategy schemas
   Strategy: zodToJsonSchema(strategySchema, {
     name: "Strategy",
-    $refStrategy: "none",
-  }),
-  StrategyLeg: zodToJsonSchema(strategyLegSchema, {
-    name: "StrategyLeg",
-    $refStrategy: "none",
-  }),
-  RiskProfile: zodToJsonSchema(riskProfileSchema, {
-    name: "RiskProfile",
-    $refStrategy: "none",
-  }),
-
-  // Performance schemas
-  PerformanceMetrics: zodToJsonSchema(performanceMetricsSchema, {
-    name: "PerformanceMetrics",
-    $refStrategy: "none",
-  }),
-  TradeMetrics: zodToJsonSchema(tradeMetricsSchema, {
-    name: "TradeMetrics",
-    $refStrategy: "none",
-  }),
-  CostMetrics: zodToJsonSchema(costMetricsSchema, {
-    name: "CostMetrics",
     $refStrategy: "none",
   }),
 
