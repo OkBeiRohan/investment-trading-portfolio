@@ -1,23 +1,21 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TRPCModule } from 'nestjs-trpc';
 import { AuthModule } from '@repo/authentication';
 import { DevtoolsModule } from '@nestjs/devtools-integration';
+import { TrpcModule } from './trpc/trpc.module';
+import { HealthModule } from './health/health.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
     DevtoolsModule.register({
       http: process.env.NODE_ENV !== 'production',
     }),
-    TRPCModule.forRoot({
-      autoSchemaFile:
-        process.env.DEVTOOLS === 'true'
-          ? undefined
-          : '../../packages/trpc/src/server',
-      basePath: '/api/trpc',
-    }),
     AuthModule,
+    TrpcModule,
+    HealthModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
