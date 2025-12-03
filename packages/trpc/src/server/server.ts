@@ -1,3 +1,6 @@
+"use server"
+
+import { userSchema } from "@repo/schema";
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
 

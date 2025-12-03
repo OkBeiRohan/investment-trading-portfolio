@@ -4,7 +4,8 @@ import { BetterAuthOptions } from "better-auth";
 export const AUTH_CONFIG = {
   appName: process.env.APP_NAME || "My App",
   baseURL: process.env.APP_URL || "http://localhost:3004",
-  secret: process.env.AUTH_SECRET || "dev-secret",
+  secret:
+    process.env.AUTH_SECRET || "QV/ip1mm8B9jENzPZdaMTVqftKqWaz7NdFlzu0G07ww=",
   trustedOrigins: process.env.TRUSTED_ORIGINS?.split(",") || [
     "http://localhost:3000",
   ],
