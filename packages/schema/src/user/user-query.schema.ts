@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { userPublicSchema } from "./user.schema";
-import { userRoleEnum, sortOrderEnum, userSortByEnum } from "./user.enums";
+import { userRoleEnum } from "./user.schema";
 
 /**
  * User Query/Filter Schema
@@ -8,8 +8,6 @@ import { userRoleEnum, sortOrderEnum, userSortByEnum } from "./user.enums";
 export const userQuerySchema = z.object({
   page: z.number().int().positive().default(1),
   limit: z.number().int().positive().max(100).default(10),
-  sortBy: userSortByEnum.default("createdAt"),
-  sortOrder: sortOrderEnum.default("desc"),
   search: z.string().optional(), // Search in email, firstName, lastName
   role: userRoleEnum.optional(),
   isActive: z.boolean().optional(),
