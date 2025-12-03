@@ -1,4 +1,4 @@
-import { type IUser, userSchema } from '@repo/schema';
+import { type IUser, userSchema } from '@repo/schema/user';
 import { Input, Mutation, Query, Router } from 'nestjs-trpc';
 import { z } from 'zod';
 
