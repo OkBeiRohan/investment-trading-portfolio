@@ -4,7 +4,7 @@
  */
 
 // User-related schemas
-export * from "./user";
+export * from "./user/index";
 
 // Authentication-related schemas
 export * from "./authentication";

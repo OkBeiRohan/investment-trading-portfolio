@@ -1,5 +1,4 @@
 // User schemas
-export * from "./user.enums";
 export * from "./user.schema";
 export * from "./password.schema";
 export * from "./user-update.schema";
