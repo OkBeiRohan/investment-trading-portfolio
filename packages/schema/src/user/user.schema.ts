@@ -1,11 +1,8 @@
 /**
  * User Role Enum
- */
-export enum UserRole {
-  Investor = "Investor",
-  Trader = "Trader",
-  Admin = "Admin",
-}
+ */ 
+export const USER_ROLES = ["Investor", "Trader", "Admin"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
 
 export interface IUser {
   id: string;

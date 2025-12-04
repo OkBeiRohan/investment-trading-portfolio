@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { IUser, UserRole } from "@repo/schema";
+import { IUser, USER_ROLES, UserRole } from "@repo/schema";
 import { Document } from "mongoose";
 
 @Schema({
@@ -50,8 +50,8 @@ export class User
   @Prop({
     required: true,
     type: [String],
-    default: [UserRole.Investor],
-    enum: UserRole,
+    default: [USER_ROLES[0]],
+    enum: USER_ROLES,
   })
   role: UserRole[];
 

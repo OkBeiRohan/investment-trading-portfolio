@@ -23,8 +23,8 @@ const appRouter = t.router({
       isActive: z.boolean().default(true),
       isBlocked: z.boolean().default(false),
       role: z
-        .array(z.enum([UserRole.Investor, UserRole.Trader, UserRole.Admin]))
-        .default([UserRole.Investor])
+        .array(z.enum(['Investor', 'Trader', 'Admin']))
+        .default(['Investor'])
         .refine((arr) => new Set(arr).size === arr.length, {
           message: 'Roles must be unique.',
         }),
@@ -51,8 +51,8 @@ const appRouter = t.router({
       isActive: z.boolean().default(true),
       isBlocked: z.boolean().default(false),
       role: z
-        .array(z.enum([UserRole.Investor, UserRole.Trader, UserRole.Admin]))
-        .default([UserRole.Investor])
+        .array(z.enum(['Investor', 'Trader', 'Admin']))
+        .default(['Investor'])
         .refine((arr) => new Set(arr).size === arr.length, {
           message: 'Roles must be unique.',
         }),
@@ -78,8 +78,8 @@ const appRouter = t.router({
       isActive: z.boolean().default(true),
       isBlocked: z.boolean().default(false),
       role: z
-        .array(z.enum([UserRole.Investor, UserRole.Trader, UserRole.Admin]))
-        .default([UserRole.Investor])
+        .array(z.enum(['Investor', 'Trader', 'Admin']))
+        .default(['Investor'])
         .refine((arr) => new Set(arr).size === arr.length, {
           message: 'Roles must be unique.',
         }),

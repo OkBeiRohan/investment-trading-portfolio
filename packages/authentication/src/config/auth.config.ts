@@ -1,4 +1,4 @@
-import { UserRole } from "@repo/schema";
+import { USER_ROLES } from "@repo/schema";
 import { BetterAuthOptions } from "better-auth";
 
 export const AUTH_CONFIG = {
@@ -32,7 +32,7 @@ export const AUTH_CONFIG = {
       role: {
         type: "string[]",
         required: false,
-        defaultValue: [UserRole.Investor],
+        defaultValue: [USER_ROLES[0]],
         input: false,
       },
       lastLoginAt: {
