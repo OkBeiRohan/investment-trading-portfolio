@@ -1,0 +1,211 @@
+.container {
+  max-width: 896px;
+  margin: 0 auto;
+  padding: 32px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.header {
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.subtitle {
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.section {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.sectionPadding {
+  padding: 24px;
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 16px;
+}
+
+.inviteForm {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.formGroup {
+  flex: 1;
+}
+
+.formGroupFixed {
+  width: 192px;
+}
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.input,
+.select {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.inviteButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #6366f1;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.inviteButton:hover {
+  background-color: #4f46e5;
+}
+
+.inviteButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.membersHeader {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.membersList {
+  display: flex;
+  flex-direction: column;
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.memberRow:last-child {
+  border-bottom: none;
+}
+
+.memberInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+}
+
+.memberName {
+  font-weight: 500;
+  color: #1f2937;
+  margin: 0;
+}
+
+.memberEmail {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.memberActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.roleBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #f3f4f6;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  color: #4b5563;
+}
+
+.removeButton {
+  padding: 8px;
+  border-radius: 6px;
+  color: #6b7280;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.removeButton:hover {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.loaderContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.loader {
+  color: #6366f1;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,116 @@
+.container {
+  padding: 32px;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.subtitle {
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.cardContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.iconContainer {
+  padding: 12px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blueIcon {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.greenIcon {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+.purpleIcon {
+  background-color: #f3e8ff;
+  color: #9333ea;
+}
+
+.cardLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin: 0;
+}
+
+.cardValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.positive {
+  color: #16a34a;
+}
+
+.placeholder {
+  margin-top: 32px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.loaderContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.loader {
+  color: #6366f1;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
