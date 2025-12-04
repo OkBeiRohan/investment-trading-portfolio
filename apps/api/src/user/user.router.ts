@@ -1,6 +1,7 @@
-import { type IUser, userSchema } from '@repo/schema';
+import { type IUser } from '@repo/schema';
 import { Input, Mutation, Query, Router } from 'nestjs-trpc';
 import { z } from 'zod';
+import { userSchema } from './dto/user.dto';
 
 @Router({ alias: 'user' })
 export class UserRouter {
