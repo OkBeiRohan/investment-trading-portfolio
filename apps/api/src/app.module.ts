@@ -8,11 +8,19 @@ import { UserModule } from './user/user.module';
 import { TRPCModule } from 'nestjs-trpc';
 import { AppContext } from './app.context';
 
+const DevelopmentUtils = [
+  ...(process.env.DEVTOOLS === 'true'
+    ? [
+        DevtoolsModule.register({
+          http: process.env.NODE_ENV !== 'production',
+        }),
+      ]
+    : []),
+];
+
 @Module({
   imports: [
-    DevtoolsModule.register({
-      http: process.env.NODE_ENV !== 'production',
-    }),
+    ...DevelopmentUtils,
     TRPCModule.forRoot({
       autoSchemaFile:
         process.env.DEVTOOLS === 'true'
@@ -26,6 +34,6 @@ import { AppContext } from './app.context';
     UserModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, AppContext],
 })
 export class AppModule {}
