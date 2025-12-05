@@ -30,9 +30,10 @@ The Unified Financial Operating System (UFOS) eliminates the bifurcation in fina
 
 1. **Multi-Dashboard Modularity**: Each dashboard (Wealth, Trade, Account, Organization, Admin) is a self-contained module
 2. **Organization-First Design**: All data access is scoped to organizations and teams with RBAC
-3. **Real-Time by Default**: WebSocket subscriptions for live data, optimistic updates for actions
-4. **Type-Safe Everything**: tRPC for APIs, Zod for validation, TypeScript discriminated unions
-5. **Observability-Driven**: Every action logged, every model prediction explainable
+3. **Data Access Layer (DAL)**: Centralized, secure data fetching with automatic session verification and permission checks
+4. **Real-Time by Default**: WebSocket subscriptions for live data, optimistic updates for actions
+5. **Type-Safe Everything**: tRPC for APIs, Zod for validation, TypeScript discriminated unions
+6. **Observability-Driven**: Every action logged, every model prediction explainable
 
 ---
 

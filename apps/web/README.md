@@ -118,6 +118,7 @@ Forensic AI observability and system governance for administrators.
 - **Styling**: TailwindCSS + Shadcn/ui components
 - **Authentication**: Better Auth (with organization plugin, 2FA, passkey)
 - **API Layer**: tRPC client (via @repo/trpc) + Better Auth client
+- **Data Access Layer**: Secure, centralized data fetching with automatic session verification
 - **State Management**: React Query (via tRPC), Zustand (local UI state)
 - **Charts & Visualization**:
   - **Recharts**: Line/area charts for time-series (P&L, equity curves)
@@ -227,6 +228,7 @@ See `.env.example` for required configuration:
 
 - [Copilot Instructions](.github/copilot-instructions.md) - Development guidelines
 - [Architecture](docs/ARCHITECTURE.md) - Detailed system architecture
+- [Data Access Layer](docs/DATA_ACCESS_LAYER.md) - Secure data fetching and mutations
 - [Progress Tracking](docs/PROGRESS.md) - Implementation status
 - [Component Library](docs/COMPONENTS.md) - Reusable UI components (TODO)
 - [Dashboard Patterns](docs/DASHBOARD_PATTERNS.md) - Multi-dashboard design patterns (TODO)

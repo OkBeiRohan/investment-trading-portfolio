@@ -37,12 +37,17 @@ import { useWealthData } from "@/hooks/wealth";
 
 // ✅ GOOD: Clear module separation
 // In app/(dashboards)/wealth/overview/page.tsx
-import { trpc } from "@/lib/trpc";
+import { getNetWorthData } from "@/lib/data";
 
-const netWorth = await trpc.wealth.getNetWorth.query();
+const netWorth = await getNetWorthData();
 
 // In app/(dashboards)/trade/options/greeks/page.tsx
-const greeks = await trpc.trade.options.getGreeks.query();
+import { getVolatilitySurface } from "@/lib/data";
+
+const surface = await getVolatilitySurface({
+  symbol: "NIFTY",
+  expiry: "WEEKLY",
+});
 ```
 
 ### 2. Organization-First Design (CRITICAL)
@@ -50,13 +55,22 @@ const greeks = await trpc.trade.options.getGreeks.query();
 **ALL data access is scoped to organizations and teams:**
 
 ```typescript
-// ✅ CORRECT: Always include organization context
-const { data } = trpc.wealth.getNetWorth.useQuery({
-  organizationId: activeOrganizationId, // from useOrganization()
-});
+// ✅ CORRECT: Use DAL which automatically scopes to organization
+import { getNetWorthData } from '@/lib/data';
 
-// ❌ WRONG: Global queries without org scope
-const { data } = trpc.wealth.getNetWorth.useQuery(); // Security risk!
+export default async function WealthPage() {
+  const netWorth = await getNetWorthData(); // Automatic org scoping
+  return <NetWorthWaterfall data={netWorth} />;
+}
+
+// ✅ CORRECT: Client Components use tRPC hooks
+import { trpc } from '@/lib/trpc/client';
+
+export function LiveData() {
+  // Organization context automatically added by provider
+  const { data } = trpc.wealth.getNetWorth.useQuery();
+  return <Display data={data} />;
+}
 ```
 
 **Permission Checking Before Render:**
@@ -97,7 +111,51 @@ interface NetWorthData { ... } // NEVER
 - `@repo/authentication` - Better Auth client configuration
 - `@repo/eslint-config`, `@repo/typescript-config` - Config packages
 
-### 4. Data Fetching Strategy
+### 4. Data Access Layer (DAL) - MANDATORY
+
+**ALL data access MUST go through the Data Access Layer:**
+
+```typescript
+// ✅ CORRECT - Use DAL for Server Components
+import { getNetWorthData, getActiveStrategies } from '@/lib/data';
+
+export default async function WealthOverviewPage() {
+  // Automatic session verification (via NestJS Better Auth backend)
+  // Automatic org scoping
+  const netWorth = await getNetWorthData();
+  return <NetWorthWaterfall data={netWorth} />;
+}
+
+// ✅ CORRECT - Use Server Actions for mutations
+import { updateStrategyParameters } from '@/lib/actions';
+
+export function LiveTunerPanel() {
+  const handleUpdate = async () => {
+    const result = await updateStrategyParameters({
+      strategyId: 'strategy123',
+      parameters: { stopLoss: 10 }
+    });
+    if (result.success) toast.success('Updated');
+  };
+}
+
+// ❌ WRONG - Direct tRPC calls (bypasses security)
+import { trpc } from '@/lib/trpc/server';
+const data = await trpc.wealth.getNetWorth.query(); // Security risk!
+```
+
+**DAL Benefits:**
+
+- ✅ Automatic session verification via NestJS Better Auth backend (`/api/auth/*`)
+- ✅ Organization scoping (all queries scoped to user's active org)
+- ✅ Permission checking (sensitive operations require specific permissions)
+- ✅ Input validation (Zod schemas validate all inputs)
+- ✅ Resource ownership verification (prevents cross-org access)
+- ✅ Centralized error handling
+
+**Reference**: See [DATA_ACCESS_LAYER.md](../docs/DATA_ACCESS_LAYER.md) for full documentation
+
+### 5. Data Fetching Strategy
 
 **Use appropriate pattern based on component type:**
 
