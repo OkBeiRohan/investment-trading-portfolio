@@ -110,6 +110,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
         creatorRole: "owner",
         allowUserToCreateOrganization: true,
         organizationLimit: 10,
+        teams: { enabled: true, defaultTeam: { enabled: true } },
       }),
 
       // Two-factor authentication plugin
