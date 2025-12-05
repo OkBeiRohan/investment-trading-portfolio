@@ -23,7 +23,7 @@ export function PasskeyForm() {
       if (error) {
         setError(error.message || "Passkey authentication failed");
       } else {
-        router.push("/dashboard");
+        router.push("/");
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -45,11 +45,7 @@ export function PasskeyForm() {
       {error && <div className={styles.error}>{error}</div>}
 
       <form className={styles.form} onSubmit={handlePasskeyLogin}>
-        <button
-          type="submit"
-          disabled={loading}
-          className={styles.authButton}
-        >
+        <button type="submit" disabled={loading} className={styles.authButton}>
           {loading && <Loader2 className={`${styles.icon} animate-spin`} />}
           Authenticate with Passkey
         </button>

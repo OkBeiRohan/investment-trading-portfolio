@@ -19,7 +19,7 @@ export const invitationSchema = z.object({
   expiresAt: z.date(),
   inviterId: z.uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date().optional(),
 });
 
 export type IInvitation = z.infer<typeof invitationSchema>;

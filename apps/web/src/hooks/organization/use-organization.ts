@@ -1,10 +1,10 @@
 "use client";
 
-import { useOrganization as useBetterOrg } from "@repo/authentication/client";
 import { authClient } from "@/lib/auth/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { OrganizationRole } from "@repo/schema";
+import { useOrganizationData } from "@/hooks/auth/use-organization-data";
 
 /**
  * Organization Management Hook
@@ -21,9 +21,7 @@ export function useOrganization() {
     error,
     refetch,
     setActive,
-  } = useBetterOrg({
-    authClient,
-  });
+  } = useOrganizationData();
 
   const switchOrganization = async (organizationId: string) => {
     setLoading(true);

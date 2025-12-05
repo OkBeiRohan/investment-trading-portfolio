@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useOrganization } from "@/hooks/organization/use-organization";
 import { Loader2, Trash2, Shield, Plus } from "lucide-react";
 import type { OrganizationRole } from "@repo/schema";
-import styles from "@/app/organizations/[id]/settings/settings.module.css";
+import styles from "@/app/(dashboard)/organizations/[id]/settings/settings.module.css";
 
 export function OrgSettings() {
   const {

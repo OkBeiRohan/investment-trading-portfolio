@@ -1,42 +1,32 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth/auth-client";
-import { AuthClient } from "@repo/authentication/client";
+import { AuthContext, AuthContextValue } from "@/contexts/auth-context";
+import { useContext } from "react";
 
 /**
- * Main Authentication Hook
- * Uses Better Auth's built-in session management
+ * useAuth Hook
+ *
+ * Access authentication state from any Client Component.
+ * Must be used within an AuthProvider.
+ *
+ * @example
+ * ```tsx
+ * function Dashboard() {
+ *   const { user, isLoading, signOut } = useAuth();
+ *
+ *   if (isLoading) return <Loading />;
+ *   if (!user) return <LoginPrompt />;
+ *
+ *   return <div>Welcome, {user.name}!</div>;
+ * }
+ * ```
  */
-export function useAuth(): {
-  client: AuthClient;
-  signOut: () => Promise<void>;
-} {
-  const router = useRouter();
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
 
-  const signOut = async () => {
-    await authClient.signOut();
-    router.push("/login");
-    router.refresh();
-  };
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
 
-  return {
-    client: authClient,
-    signOut,
-  };
-}
-
-/**
- * Get session on server components
- * Use this in Server Components
- */
-export async function getServerSession() {
-  const { headers } = await import("next/headers");
-  const headersList = await headers();
-
-  return authClient.getSession({
-    fetchOptions: {
-      headers: headersList,
-    },
-  });
+  return context;
 }

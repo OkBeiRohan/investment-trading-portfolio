@@ -7,7 +7,7 @@ export const organizationSchema = z.object({
   logo: z.url().optional(),
   metadata: z.record(z.string(), z.string()).optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date().optional(),
 });
 export type IOrganization = z.infer<typeof organizationSchema>;
 

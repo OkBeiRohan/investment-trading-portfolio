@@ -228,6 +228,7 @@ See `.env.example` for required configuration:
 
 - [Copilot Instructions](.github/copilot-instructions.md) - Development guidelines
 - [Architecture](docs/ARCHITECTURE.md) - Detailed system architecture
+- [Authentication](docs/AUTHENTICATION.md) - Auth state management and patterns
 - [Data Access Layer](docs/DATA_ACCESS_LAYER.md) - Secure data fetching and mutations
 - [Progress Tracking](docs/PROGRESS.md) - Implementation status
 - [Component Library](docs/COMPONENTS.md) - Reusable UI components (TODO)

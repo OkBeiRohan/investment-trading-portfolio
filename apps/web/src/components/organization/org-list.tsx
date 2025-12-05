@@ -5,7 +5,7 @@ import { useOrganization } from "@/hooks/organization/use-organization";
 import { authClient } from "@/lib/auth/auth-client";
 import { Plus, Loader2, ArrowRight, Building2 } from "lucide-react";
 import Link from "next/link";
-import styles from "@/app/organizations/organizations.module.css";
+import styles from "@/app/(dashboard)/organizations/organizations.module.css";
 
 export function OrgList() {
   const { createOrganization } = useOrganization();

@@ -4,13 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
-import {
-  Mail,
-  KeyRound,
-  Loader2,
-  Fingerprint,
-  Github,
-} from "lucide-react";
+import { Mail, KeyRound, Loader2, Fingerprint, Github } from "lucide-react";
 import GoogleIcon from "@/components/icons/brands/Google";
 import styles from "@/app/(auth)/login/login.module.css";
 
@@ -35,7 +29,7 @@ export function LoginForm() {
       if (error) {
         setError(error.message || "Invalid credentials");
       } else {
-        router.push("/dashboard");
+        router.push("/");
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -49,7 +43,7 @@ export function LoginForm() {
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: "/dashboard",
+        callbackURL: "/",
       });
     } catch (err) {
       setError(`Failed to login with ${provider}`);
@@ -107,11 +101,7 @@ export function LoginForm() {
           </Link>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={styles.loginButton}
-        >
+        <button type="submit" disabled={loading} className={styles.loginButton}>
           {loading && <Loader2 className={`${styles.icon} animate-spin`} />}
           Sign in
         </button>

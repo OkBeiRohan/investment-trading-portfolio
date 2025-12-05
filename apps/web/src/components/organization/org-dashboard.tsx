@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useOrganization } from "@/hooks/organization/use-organization";
 import { useParams } from "next/navigation";
 import { Loader2, Users, TrendingUp, Activity } from "lucide-react";
-import styles from "@/app/organizations/[id]/dashboard.module.css";
+import styles from "@/app/(dashboard)/organizations/[id]/dashboard.module.css";
 
 export function OrgDashboard() {
   const params = useParams();

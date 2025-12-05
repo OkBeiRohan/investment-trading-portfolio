@@ -1,6 +1,5 @@
 export * from "./auth-client.config";
 export * from "./auth-client.types";
-export * from "./hooks";
 export { createAuthClient } from "better-auth/client";
 export {
   organizationClient,
