@@ -1,6 +1,5 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Header } from '@nestjs/common';
 import { AllowAnonymous } from '@repo/authentication';
-import type { Response } from 'express';
 import { AppService } from './app.service';
 import { version } from '../package.json';
 
@@ -10,34 +9,34 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  async getHome(@Res() res: Response) {
+  @Header('Content-Type', 'text/html')
+  async getHome() {
     const html = this.appService.getHome();
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
+    return html;
   }
 
   @Get('/home.css')
-  getHomeCss(@Res() res: Response) {
+  @Header('Content-Type', 'text/css')
+  getHomeCss() {
     const css = this.appService.getHomeCss();
-    res.setHeader('Content-Type', 'text/css');
-    res.send(css);
+    return css;
   }
 
   @Get('/home.js')
-  getHomeJs(@Res() res: Response) {
+  @Header('Content-Type', 'application/javascript')
+  getHomeJs() {
     const js = this.appService.getHomeJs();
-    res.setHeader('Content-Type', 'application/javascript');
-    res.send(js);
+    return js;
   }
 
   @Get('/api/version')
-  getVersion(@Res() res: Response) {
-    res.json({ version: version || 'unknown' });
+  getVersion() {
+    return { version: version || 'unknown' };
   }
 
   @Get('/api/frontend-url')
-  getFrontendUrl(@Res() res: Response) {
+  getFrontendUrl() {
     const url = process.env.FRONTEND_URL || 'unknown';
-    res.json({ url });
+    return { url };
   }
 }
