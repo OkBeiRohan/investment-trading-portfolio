@@ -89,20 +89,22 @@ async getProfile(@Request() req) {
 
 ### 4. tRPC Integration
 
-**Use `@repo/trpc` for type-safe APIs:**
+**tRPC routers are defined in the API app, AppRouter type is exported to @repo/schema:**
 
 ```typescript
-import { createNestJsContext, appRouter } from '@repo/trpc';
-import * as trpcExpress from '@trpc/server/adapters/express';
+// src/app.module.ts
+import { TRPCModule } from '@mguay/nestjs-trpc';
+import { UserRouter } from './user/user.router';
 
-// Mount tRPC
-app.use(
-  '/trpc',
-  trpcExpress.createExpressMiddleware({
-    router: appRouter,
-    createContext: createNestJsContext,
-  }),
-);
+@Module({
+  imports: [
+    TRPCModule.forRoot({
+      autoSchemaFile: './node_modules/@repo/schema/src/api/app-router.ts',
+    }),
+  ],
+  controllers: [UserRouter],
+})
+export class AppModule {}
 ```
 
 ### 5. Rate Limiting
@@ -339,7 +341,7 @@ ALGO_WORKER_URL=http://localhost:3000
 
 ## When Making Changes
 
-1. ✅ Use shared packages (@repo/schema, @repo/database, @repo/trpc)
+1. ✅ Use shared packages (@repo/schema, @repo/database, @repo/authentication)
 2. ✅ Validate all inputs with class-validator
 3. ✅ Implement proper error handling
 4. ✅ Add authentication guards to protected routes

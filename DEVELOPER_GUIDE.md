@@ -27,7 +27,7 @@
 - **pnpm 9+** (install via `npm install -g pnpm`)
 - **Python 3.11+** (for ML training)
 - **MongoDB 8.0+** (local or Docker)
-- **QuestDB 8.0+** (local or Docker) - *Primary Time-Series Store*
+- **QuestDB 8.0+** (local or Docker) - _Primary Time-Series Store_
 - **Redis 7.0+** (local or Docker)
 - **Git for Windows**
 - **VS Code** (recommended IDE)
@@ -215,13 +215,13 @@ pnpm build
 cd packages/schema/src/api
 nano your-endpoint.schema.ts
 
-# 2. Add tRPC router in @repo/trpc
-cd packages/trpc/src/routers
-nano your-router.ts
+# 2. Add tRPC router in API app
+cd apps/api/src
+# Create router file (e.g., portfolio/portfolio.router.ts)
+# Define procedures using @mguay/nestjs-trpc decorators
+# Register router in app.module.ts
 
-# 3. Implement in algo-worker/api
-cd apps/algo-worker/src
-nano controllers/your-controller.ts
+# 3. AppRouter type auto-exports to @repo/schema/src/api/app-router.ts
 
 # 4. Test
 pnpm test

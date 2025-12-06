@@ -532,7 +532,7 @@ export default async function TradePage() {
 
 ### 1. Implement tRPC API Routes
 
-Add the following routers to `packages/trpc/src/server/server.ts`:
+Add the following routers to `apps/api/src/app.module.ts` (tRPC routers are now defined in the API app):
 
 ```typescript
 const appRouter = t.router({

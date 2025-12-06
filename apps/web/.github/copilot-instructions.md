@@ -106,8 +106,7 @@ interface NetWorthData { ... } // NEVER
 
 **Shared Packages:**
 
-- `@repo/schema` - Zod schemas and TypeScript types (source of truth)
-- `@repo/trpc` - Type-safe API client with auto-generated routers
+- `@repo/schema` - Zod schemas, TypeScript types, and tRPC AppRouter type (source of truth)
 - `@repo/authentication` - Better Auth client configuration
 - `@repo/eslint-config`, `@repo/typescript-config` - Config packages
 

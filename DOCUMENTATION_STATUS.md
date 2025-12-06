@@ -143,21 +143,48 @@ This document tracks the documentation status for all packages and apps in the m
 - WebSocket streaming
 - Rate limiting
 
-### 🔄 tRPC Router Package (@repo/trpc)
+### ✅ tRPC Architecture (No Separate Package)
 
-**Status**: NEEDS REVIEW
+**Status**: DOCUMENTED ✅
 
-**Files**:
+**Implementation**:
 
-- [x] `README.md` - Exists (basic)
-- [ ] `.github/copilot-instructions.md` - TODO
-- [ ] `docs/ARCHITECTURE.md` - TODO
+- tRPC routers defined in `apps/api/src/*/*.router.ts`
+- AppRouter type auto-exported to `@repo/schema/src/api/app-router.ts`
+- Web app creates tRPC client locally
+- No separate `@repo/trpc` package
 
-**Required Content**:
+**Primary Documentation**:
 
-- Shared router principles
-- Type-safe procedures
-- Authentication middleware
+- [x] 📖 **`docs/TRPC_ARCHITECTURE.md`** - Comprehensive migration guide (NEW)
+  - Architecture diagrams with data flow
+  - Step-by-step implementation guide
+  - API router patterns and examples
+  - Web app client setup
+  - Common patterns (queries, mutations, nested routers)
+  - Troubleshooting guide
+  - Performance & security considerations
+  - Testing strategies
+
+**Supporting Documentation**:
+
+- [x] API app Copilot instructions updated
+- [x] Web app Copilot instructions updated
+- [x] Developer guide updated
+- [x] Schema package README updated
+- [x] Project status updated
+- [x] Root Copilot instructions updated
+
+**Benefits**:
+
+- Single source of truth (API app)
+- Automatic type propagation
+- Simplified dependency graph
+- No circular dependencies
+- Easier maintenance
+
+**Architecture Change Date**: December 5, 2025
+
 - Error handling
 - Real-time subscriptions
 
@@ -436,16 +463,18 @@ Must include:
 | @repo/database       | ✅ (559 lines) | ✅ (342 lines)       | ⚠️           | ⚠️       | 85%   |
 | @repo/schema         | ✅ (350 lines) | ✅ (394 lines)       | ⚠️           | ✅       | 90%   |
 | @repo/market-sdk     | ✅             | ⚠️                   | ⚠️           | ⚠️       | 40%   |
-| @repo/trpc           | 🔄             | ❌                   | ❌           | ❌       | 25%   |
+| tRPC (in apps/api)   | ✅             | ✅                   | ✅           | ✅       | 100%  |
 | apps/algo-worker     | ✅             | ✅ (extensive)       | ✅           | ✅       | 100%  |
-| apps/api             | 🔄             | ⚠️                   | ❌           | ⚠️       | 40%   |
-| apps/web             | ✅             | ❌                   | ❌           | ⚠️       | 35%   |
+| apps/api             | ✅             | ✅                   | ⚠️           | ⚠️       | 75%   |
+| apps/web             | ✅             | ✅                   | ✅           | ✅       | 95%   |
 | apps/market-feeder   | 🔄             | 🔄                   | ❌           | ❌       | 20%   |
 | apps/data-processor  | 🔄             | ❌                   | ❌           | ❌       | 15%   |
 
-**Overall Documentation Coverage**: 60%
+**Overall Documentation Coverage**: 75%
 
 **Target**: 90%+
+
+**Note**: @repo/trpc package removed - tRPC implementation now in apps/api with AppRouter exported to @repo/schema
 
 ## References
 

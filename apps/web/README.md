@@ -117,7 +117,7 @@ Forensic AI observability and system governance for administrators.
 - **Framework**: Next.js 16 (App Router, React Server Components)
 - **Styling**: TailwindCSS + Shadcn/ui components
 - **Authentication**: Better Auth (with organization plugin, 2FA, passkey)
-- **API Layer**: tRPC client (via @repo/trpc) + Better Auth client
+- **API Layer**: tRPC client (generated from API router) + Better Auth client
 - **Data Access Layer**: Secure, centralized data fetching with automatic session verification
 - **State Management**: React Query (via tRPC), Zustand (local UI state)
 - **Charts & Visualization**:

@@ -115,6 +115,7 @@ Fold 2: [--test--][--train--]  # Future data leaks into past!
 - Use **Zod** for all schemas (runtime validation)
 - Export TypeScript types: `export type MarketData = z.infer<typeof MarketDataSchema>;`
 - Validate external data (API responses, Redis messages) immediately upon entry
+- **tRPC AppRouter Type**: Auto-exported from `apps/api` to `src/api/app-router.ts`
 
 ### @repo/database
 
@@ -133,6 +134,13 @@ Fold 2: [--test--][--train--]  # Future data leaks into past!
 - Load ONNX models with TensorRT/OpenVINO execution providers
 - Pre-warm models on startup (run dummy inference)
 - Monitor inference latency (<50ms p95 target)
+
+### tRPC Architecture
+
+- **No separate @repo/trpc package**
+- tRPC routers defined in `apps/api/src/*/*.router.ts` using `@mguay/nestjs-trpc`
+- AppRouter type auto-exported to `@repo/schema/src/api/app-router.ts`
+- Web app creates tRPC client locally: `import type { AppRouter } from '@repo/schema/api'`
 
 ---
 

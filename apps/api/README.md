@@ -63,9 +63,11 @@ See `.env.example` for required configuration.
 
 Uses shared packages:
 
-- `@repo/schema` - Type definitions
+- `@repo/schema` - Type definitions and tRPC AppRouter export
 - `@repo/database` - Database access (MongoDB)
-- `@repo/trpc` - tRPC routes
+- `@repo/authentication` - Better Auth server configuration
+
+tRPC routers are defined in this API app and the AppRouter type is auto-exported to `@repo/schema/src/api/app-router.ts`.
 
 ## Documentation
 

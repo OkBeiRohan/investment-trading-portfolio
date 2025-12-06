@@ -262,18 +262,28 @@ export type * from "@repo/schema";
 import { type Order, type Position } from "@repo/market-sdk";
 ```
 
-### @repo/trpc
+### apps/api
 
-Uses schemas for input validation and type inference:
+The API backend defines tRPC routers using `@mguay/nestjs-trpc` decorators.
+The AppRouter type is auto-exported to `@repo/schema/src/api/app-router.ts`:
 
 ```typescript
-import { orderSchema } from "@repo/schema";
+// apps/api/src/user/user.router.ts
+import { Router, Query, Input } from "@mguay/nestjs-trpc";
+import { userSchema } from "@repo/schema";
 
-export const router = {
-  createOrder: procedure.input(orderSchema).mutation(({ input }) => {
-    // input is fully typed
-  }),
-};
+@Router({ alias: "user" })
+export class UserRouter {
+  @Query({ input: z.object({ id: z.string() }), output: userSchema })
+  getUser(@Input("id") id: string) {
+    // Implementation
+  }
+}
+
+// Web app imports AppRouter type from schema
+import type { AppRouter } from "@repo/schema/api";
+import { createTRPCReact } from "@trpc/react-query";
+const trpc = createTRPCReact<AppRouter>();
 ```
 
 ## Best Practices

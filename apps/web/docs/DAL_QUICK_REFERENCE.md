@@ -2,7 +2,7 @@
 
 > **Status**: ✅ Frontend DAL Complete | ⏳ Backend API Routes Needed
 >
-> The DAL is ready to use. Implement corresponding tRPC routes in `apps/api` and `packages/trpc`.
+> The DAL is ready to use. Implement corresponding tRPC routes in `apps/api`. The AppRouter type will be exported from `@repo/schema`.
 
 ## Structure Overview
 

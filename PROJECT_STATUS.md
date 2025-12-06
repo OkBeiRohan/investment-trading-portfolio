@@ -175,18 +175,25 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 
 ---
 
-### ⏳ @repo/trpc
+### ✅ tRPC Architecture (No Separate Package)
 
-**Location**: `/packages/trpc/`
+**Implementation**: API app defines routers, AppRouter type exports to @repo/schema
 
-**Status**: Placeholder ⏳
+**Status**: Implemented ✅
 
-**TODO**:
+**Architecture**:
 
-- [ ] Create tRPC routers for trading data
-- [ ] Add subscriptions for real-time updates
-- [ ] Integrate with @repo/database
-- [ ] Share routes between api and algo-worker
+- tRPC routers defined in `apps/api/src/*/*.router.ts` using `@mguay/nestjs-trpc`
+- AppRouter type auto-exported to `@repo/schema/src/api/app-router.ts`
+- Web app creates tRPC client locally using AppRouter type
+- No separate `@repo/trpc` package needed
+
+**Benefits**:
+
+- ✅ Single source of truth for API routes (in API app)
+- ✅ Type safety through auto-generated AppRouter
+- ✅ Simplified dependency graph
+- ✅ Easier to maintain and update
 
 ---
 
