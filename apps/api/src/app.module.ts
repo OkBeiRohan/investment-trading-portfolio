@@ -5,7 +5,7 @@ import { AuthModule } from '@repo/authentication';
 import { DevtoolsModule } from '@nestjs/devtools-integration';
 import { HealthModule } from './health/health.module';
 import { UserModule } from './user/user.module';
-import { TRPCModule } from 'nestjs-trpc';
+import { TRPCModule } from '@mguay/nestjs-trpc';
 import { AppContext } from './app.context';
 
 const DevelopmentUtils = [
