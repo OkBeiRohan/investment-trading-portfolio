@@ -1,98 +1,222 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Wealth Analyzer Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> **AI-powered financial analytics with local Phi-3 LLM, RAG-enhanced insights, and predictive analytics for holistic wealth management.**
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Overview
 
-## Description
+The **Wealth Analyzer Service** is the AI/ML intelligence layer for the wealth management platform. It provides natural language query processing, anomaly detection, spending insights, and predictive analytics—all powered by locally-hosted AI models for maximum privacy and zero API costs.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**Port**: 3007  
+**Architecture**: Event-driven with Redis Streams  
+**Database**: MongoDB (PRIMARY - analytics cache), QuestDB (time-series queries), ChromaDB (vector store)  
+**AI Stack**: Phi-3 (local LLM), ONNX Runtime (ML inference), ChromaDB (RAG)  
+**Transport**: tRPC (API), Redis Streams (events)
 
-## Project setup
+---
 
-```bash
-$ pnpm install
+## Key Features
+
+### 1. **Natural Language Query Interface**
+
+Ask questions about your finances in plain English:
+
+```
+User: "How much did I spend on groceries last month?"
+AI: "You spent ₹12,450 on groceries in November 2024 across 8 transactions."
+
+User: "Am I on track to meet my retirement goal?"
+AI: "Yes, you are on track. At your current SIP rate of ₹25,000/month,
+     you will reach your goal of ₹2 crores in 18 years."
+
+User: "What's my biggest expense category this year?"
+AI: "Housing (₹4.2L) is your biggest expense, followed by Transport (₹1.8L)
+     and Food (₹1.5L)."
 ```
 
-## Compile and run the project
+**How It Works**:
 
-```bash
-# development
-$ pnpm run start
+1. **Intent Classification**: Detect query type (spending, net worth, goals, etc.)
+2. **Entity Extraction**: Extract categories, dates, amounts
+3. **RAG Context Retrieval**: Fetch relevant context from ChromaDB
+4. **Prompt Generation**: Build structured prompt with context
+5. **LLM Response**: Phi-3 generates natural language answer
 
-# watch mode
-$ pnpm run start:dev
+### 2. **AI-Powered Insights**
 
-# production mode
-$ pnpm run start:prod
+Automated insights delivered daily/weekly:
+
+- **Spending Trends**: "You spent 25% more on utilities this month"
+- **Anomaly Detection**: "Unusual transaction: ₹45,000 credit card payment"
+- **Optimization Suggestions**: "You can save ₹5,000/month by switching to a prepaid electricity plan"
+- **Investment Recommendations**: "Consider rebalancing: Your equity allocation is 78% (target: 70%)"
+
+### 3. **Predictive Analytics**
+
+ML models for forecasting:
+
+- **Cash Flow Forecasting**: Predict income/expenses for next 6 months
+- **Net Worth Projection**: Monte Carlo simulation for retirement planning
+- **Goal Completion Probability**: Likelihood of meeting financial goals
+- **Emergency Fund Adequacy**: Predict months of runway based on spending patterns
+
+### 4. **Portfolio Analytics**
+
+Deep investment analysis:
+
+- **XIRR/CAGR Calculation**: Accurate returns accounting for cash flows
+- **Risk Metrics**: Sharpe ratio, max drawdown, volatility
+- **Asset Allocation Analysis**: Current vs target allocation
+- **Rebalancing Suggestions**: Specific buy/sell recommendations
+
+---
+
+## Architecture
+
+### AI Model Stack
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Natural Language Query                   │
+│  "How much did I spend on food last month?"                 │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Intent Classification (ONNX)                   │
+│  Intent: spending_query | Entities: {category: food}        │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              RAG Context Retrieval (ChromaDB)               │
+│  Fetch: food transaction history, category mappings         │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Prompt Generation (Template-based)             │
+│  Context: [food transactions] + Query                       │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Phi-3 LLM (ONNX, Local Inference)              │
+│  Generate: "You spent ₹12,450 on food..."                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Run tests
+### Event-Driven Analytics
 
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+```
+┌─────────────────────────────────────────────────────────────┐
+│           Wealth Management Service                         │
+│  Creates transaction: "Zomato - ₹850"                       │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                  Publishes Event
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Redis Stream: WEALTH_TRANSACTION_CREATED          │
+│  {transactionId, category, amount, merchant}                │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                   Consumes Event
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Wealth Analyzer (Analytics Pipeline)              │
+│  1. Update spending trends                                  │
+│  2. Check for anomalies (if amount > threshold)             │
+│  3. Update category embeddings (ChromaDB)                   │
+│  4. Trigger daily insights if threshold reached             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## AI Models
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 1. **Phi-3 Mini (3.8B Parameters)**
+
+**Purpose**: Natural language understanding and generation
+
+**Model**: `microsoft/Phi-3-mini-4k-instruct`  
+**Deployment**: ONNX Runtime with CUDA/TensorRT  
+**Context Window**: 4K tokens  
+**Quantization**: 4-bit GGUF for fast inference  
+**Inference Time**: <500ms on RTX 3060
+
+**Fine-Tuning**: See `../../docs/AI_MODEL_TRAINING.md` for complete guide
+
+### 2. **Isolation Forest (Anomaly Detection)**
+
+**Purpose**: Detect unusual transactions
+
+**Framework**: Scikit-learn → ONNX  
+**Features**: `[amount, day_of_week, hour_of_day, merchant_frequency, category_avg_amount]`  
+**Threshold**: Anomaly score < -0.5  
+**Inference Time**: <10ms per transaction
+
+### 3. **XGBoost (Cash Flow Forecasting)**
+
+**Purpose**: Predict income/expenses for next 6 months
+
+**Framework**: XGBoost → ONNX  
+**Features**: `[month, category, rolling_3m_avg, seasonal_pattern, trend]`  
+**Accuracy**: MAE < 15% for recurring expenses  
+**Inference Time**: <50ms for 6-month forecast
+
+### 4. **ChromaDB (Vector Store for RAG)**
+
+**Purpose**: Store embeddings for semantic search
+
+**Embedding Model**: `all-MiniLM-L6-v2` (384 dimensions)  
+**Collections**: `transactions`, `merchant_names`, `user_queries`
+
+---
+
+## Development
+
+### Prerequisites
+
+- Node.js 20+
+- NVIDIA GPU (RTX 3060 or better) with CUDA 12.1
+- MongoDB 7+
+- Redis 7+
+- QuestDB 8+
+- Python 3.10+ (for model training)
+
+### Installation
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm install
+
+# Download Phi-3 model
+mkdir -p models
+cd models
+wget https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Running
 
-## Resources
+```bash
+# Development
+pnpm run start:dev
 
-Check out a few resources that may come in handy when working with NestJS:
+# Production
+pnpm run build
+pnpm run start:prod
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+---
 
-## Support
+## References
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- [AI Model Training Guide](../../docs/AI_MODEL_TRAINING.md)
+- [Copilot Instructions](./.github/copilot-instructions.md)
+- [Phi-3 Documentation](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**Status**: Active Development  
+**Port**: 3007  
+**Last Updated**: December 8, 2024
