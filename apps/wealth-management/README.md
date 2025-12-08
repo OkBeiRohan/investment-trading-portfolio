@@ -1,10 +1,10 @@
-# Wealth Management Microservice
+# Wealth Management Service
 
 > **Professional-grade personal wealth management with double-entry bookkeeping, real-time analytics, and AI-powered insights.**
 
 ## Overview
 
-The **Wealth Management Microservice** is the core financial ledger system for the investment trading portfolio platform. It implements industry-standard double-entry bookkeeping principles to provide accurate, auditable tracking of:
+The **Wealth Management Service** is the core financial ledger system for the investment trading portfolio platform. It implements industry-standard double-entry bookkeeping principles to provide accurate, auditable tracking of:
 
 - **Assets**: Bank accounts, demat holdings, crypto wallets, real estate, insurance
 - **Liabilities**: Loans, credit cards, chit fund obligations
@@ -13,8 +13,9 @@ The **Wealth Management Microservice** is the core financial ledger system for t
 - **Net Worth Tracking**: Real-time calculation with historical snapshots
 
 **Port**: 3005  
-**Database**: PostgreSQL (double-entry ledger), MongoDB (metadata), Redis (caching)  
-**Transport**: gRPC (internal), REST (external)
+**Architecture**: Event-driven with Redis Streams  
+**Database**: MongoDB (PRIMARY - documents, transactions), QuestDB (time-series net worth), Redis (hot state)  
+**Transport**: tRPC (API), Redis Streams (events)
 
 ---
 

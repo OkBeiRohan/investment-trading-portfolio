@@ -27,10 +27,10 @@ The Wealth Management System is a comprehensive addition to the Investment Tradi
 **Technology Stack**:
 
 - NestJS (TypeScript)
-- PostgreSQL (double-entry ledger)
-- MongoDB (metadata, documents)
-- Redis (caching, real-time updates)
-- gRPC (internal microservices communication)
+- **MongoDB (PRIMARY)**: Double-entry ledger, embedded postings
+- QuestDB: Time-series (historical snapshots)
+- Redis: Event bus (Redis Streams) + hot state cache
+- tRPC: Type-safe API communication
 - REST API (external access)
 
 ### 2. **Wealth Analyzer** (`apps/wealth-analyzer`)
@@ -84,14 +84,15 @@ The Wealth Management System is a comprehensive addition to the Investment Tradi
 │                    Web Dashboard (Next.js)                  │
 │     /wealth, /planning, /tax, /analytics                    │
 └────────────────────────┬────────────────────────────────────┘
-                         │ HTTP/REST
+                         │ HTTP/tRPC
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  API Gateway (apps/api)                     │
 │  Authentication, Rate Limiting, Request Routing             │
 └──────┬──────────┬──────────┬──────────┬─────────────────────┘
        │          │          │          │
-       │ gRPC     │ gRPC     │ gRPC     │ gRPC
+       │ Redis    │ Redis    │ Redis    │ Redis
+       │ Streams  │ Streams  │ Streams  │ Streams
        ▼          ▼          ▼          ▼
 ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
 │  Algo    │ │  Wealth  │ │  Wealth  │ │ Document │
@@ -100,7 +101,7 @@ The Wealth Management System is a comprehensive addition to the Investment Tradi
      │            │             │            │
      └────────────┴─────────────┴────────────┘
                   │
-           RabbitMQ (Event Bus)
+           Redis Streams (Event Bus)
 ```
 
 ### Data Flow Examples
@@ -109,21 +110,22 @@ The Wealth Management System is a comprehensive addition to the Investment Tradi
 
 ```
 Algo Worker executes trade
-  → Publishes event: "trade.executed"
-  → Wealth Management consumes
-  → Creates double-entry transaction:
-      DR: Demat Holdings (Asset)
-      CR: Bank Account (Asset + Brokerage)
+  → Publishes event: "TRADE_EXECUTED" (Redis Stream)
+  → Wealth Management consumes via consumer group
+  → Creates double-entry transaction (MongoDB):
+      DR: Demat Holdings (Asset) - embedded posting
+      CR: Bank Account (Asset + Brokerage) - embedded posting
 ```
 
 #### 2. **Bank Statement Upload → Ledger**
 
 ```
 User uploads PDF
-  → API Gateway → Document Processor (via RabbitMQ)
+  → API Gateway → Document Processor (via Redis Streams)
   → AI parses transactions
-  → Returns structured JSON
-  → Wealth Management creates ledger entries
+  → Publishes "DOCUMENT_TRANSACTIONS_EXTRACTED" event
+  → Wealth Management consumes event
+  → Creates ledger entries (MongoDB with embedded postings)
   → Notifies user of completion
 ```
 
@@ -142,30 +144,73 @@ User asks: "How much did I spend on food last month?"
 
 ## 🗄️ Database Schema
 
-### Double-Entry Ledger (PostgreSQL)
+### MongoDB Collections (PRIMARY Database)
 
-**Core Tables**:
+**Core Collections**:
 
-1. **accounts**: Chart of accounts (Assets, Liabilities, Income, Expenses)
-2. **transactions**: Financial events (salary, purchases, transfers)
-3. **postings**: Atomic ledger entries (Debit/Credit)
-4. **account_snapshots**: Daily balance checkpoints for fast historical queries
+1. **accounts**: Chart of accounts with hierarchical structure
+   - Fields: `accountId`, `name`, `type`, `parentId`, `pathHierarchy`, `balance`, `currency`
+   - Indexes: `accountId`, `pathHierarchy`, `type`
+
+2. **transactions**: Financial events with embedded postings
+   - Fields: `transactionId`, `date`, `description`, `postings[]` (embedded), `source`, `metadata`
+   - Postings contain: `accountId`, `accountName`, `debit`, `credit`
+   - Indexes: `transactionId`, `date`, `postings.accountId`
+
+3. **snapshots**: Daily net worth checkpoints
+   - Fields: `snapshotDate`, `totalAssets`, `totalLiabilities`, `netWorth`, `breakdown{}`
+   - Indexes: `snapshotDate`, `userId`
+
+4. **goals**: Financial planning goals
+   - Fields: `goalId`, `name`, `targetAmount`, `currentAmount`, `targetDate`, `contributions[]`
+   - Indexes: `goalId`, `userId`
+
+5. **tax_records**: Tax calculation history
+   - Fields: `financialYear`, `grossIncome`, `deductions`, `taxableIncome`, `taxPayable`
+   - Indexes: `financialYear`, `userId`
 
 **Key Principles**:
 
-- Sum of all postings for a transaction = 0 (mathematical guarantee)
-- Hierarchical accounts (e.g., Expenses → Food → Groceries)
-- Multi-currency support
+- **Embedded Postings**: Transactions contain embedded debit/credit postings (no separate postings table)
+- **Denormalized Account Details**: Account name embedded in postings for fast queries
+- **Hierarchical Accounts**: Use `pathHierarchy` array (e.g., `["Expenses", "Food", "Groceries"]`) for zero-JOIN queries
+- **Multi-Currency Support**: All amounts stored with currency field
+- **ACID Transactions**: MongoDB transactions ensure balance integrity
 
-**Example Transaction**:
+**Example Transaction Document**:
 
+```javascript
+{
+  _id: ObjectId("..."),
+  transactionId: "TXN-2024-001",
+  date: ISODate("2024-12-08"),
+  description: "Salary Credit",
+  postings: [
+    {
+      accountId: "ACC-001",
+      accountName: "Bank Account - HDFC",
+      debit: 50000,
+      credit: 0
+    },
+    {
+      accountId: "ACC-100",
+      accountName: "Income - Salary",
+      debit: 0,
+      credit: 50000
+    }
+  ],
+  source: "manual",
+  metadata: {
+    importedFrom: null,
+    tags: ["salary"],
+    notes: "December salary"
+  }
+}
 ```
-Description: "Salary Credit"
-Postings:
-  1. DR Bank Account (Asset): +₹50,000
-  2. CR Salary Income: -₹50,000
-Balance: +50,000 + (-50,000) = 0 ✓
-```
+
+**Balance Validation**: Sum of debits = Sum of credits for every transaction
+
+**See**: `apps/wealth-management/docs/MONGODB_SCHEMA.md` for complete schema reference
 
 ---
 
@@ -345,9 +390,11 @@ AI: "Your loan rate is 8.5%. Investing in mid-cap funds could yield 12-15%. Cons
 ### Phase 1: Foundation (Months 1-3)
 
 - [x] Create microservices (wealth-management, wealth-analyzer, document-processor)
-- [ ] Implement double-entry ledger (PostgreSQL schema)
-- [ ] Build core CRUD APIs (accounts, transactions)
-- [ ] Integrate with API gateway
+- [x] Design MongoDB schema with embedded postings
+- [x] Create copilot instructions for all three services
+- [x] Document AI model training procedures
+- [ ] Implement core CRUD APIs (accounts, transactions)
+- [ ] Integrate with API gateway via tRPC
 - [ ] Create basic web dashboard (/wealth/overview)
 
 ### Phase 2: Automation (Months 4-6)
@@ -416,30 +463,33 @@ AI: "Your loan rate is 8.5%. Investing in mid-cap funds could yield 12-15%. Cons
 
 ```
 apps/wealth-management/
-  ├── README.md (✓ Created - comprehensive guide)
+  ├── README.md (✓ Created - comprehensive MongoDB guide)
   ├── .github/
-  │   └── copilot-instructions.md (To be created)
+  │   └── copilot-instructions.md (✓ Created - MongoDB patterns, double-entry)
   └── docs/
+      ├── MONGODB_SCHEMA.md (✓ Created - complete schema reference)
       ├── ARCHITECTURE.md (To be created)
-      ├── DATABASE_SCHEMA.md (To be created)
       ├── API_REFERENCE.md (To be created)
       └── TAX_COMPLIANCE.md (To be created)
 
 apps/wealth-analyzer/
   ├── README.md (To be created)
   ├── .github/
-  │   └── copilot-instructions.md (To be created)
+  │   └── copilot-instructions.md (✓ Created - Phi-3, RAG, ML models)
   └── docs/
-      ├── AI_MODELS.md (To be created)
-      └── FINE_TUNING.md (To be created)
+      ├── AI_MODELS.md (See: ../../docs/AI_MODEL_TRAINING.md)
+      └── FINE_TUNING.md (See: ../../docs/AI_MODEL_TRAINING.md)
 
 apps/document-processor/
   ├── README.md (To be created)
   ├── .github/
-  │   └── copilot-instructions.md (To be created)
+  │   └── copilot-instructions.md (✓ Created - LayoutLMv3, Donut)
   └── docs/
       ├── PARSERS.md (To be created)
-      └── AI_MODELS.md (To be created)
+      └── AI_MODELS.md (See: ../../docs/AI_MODEL_TRAINING.md)
+
+docs/
+  └── AI_MODEL_TRAINING.md (✓ Created - Phi-3, LayoutLMv3, Donut training)
 ```
 
 ---
