@@ -1,22 +1,27 @@
 # Investment Trading Portfolio - Project Quantum
 
-> **Institutional-grade algorithmic trading for Indian Index Options (Nifty 50, Bank Nifty).**
-> Event-Driven Neuro-Symbolic Architecture | SEBI 2024-2025 Compliant | Production-Ready
+> **Institutional-grade algorithmic trading + Professional wealth management for comprehensive financial sovereignty.**
+> Event-Driven Architecture | AI-Powered Insights | SEBI 2024-2025 Compliant | Production-Ready
 
 ---
 
 ## 🎯 What is Project Quantum?
 
-A battle-tested algorithmic trading system specifically engineered for ultra-low latency NSE options trading. Built on 2024-2025 research validating:
+A comprehensive financial ecosystem combining two powerful systems:
 
-- **Event-Driven Architecture** for HFT (not microservices-only)
-- **QuestDB** as the fastest time-series DB for financial tick data (22x faster than ClickHouse)
-- **ONNX Runtime + TensorRT** for hardware-agnostic ML inference with GPU acceleration
-- **SEBI 2025-2026 Compliance** with unique Algo IDs, mandatory pre-trade risk checks (deadline: Jan 1, 2026)
+### 1. **Algorithmic Trading Engine**
 
-**Research-Validated Performance**: Academic studies (Sherasiya et al. 2025) demonstrate XGBoost + LSTM models with Greeks/IV features achieve **Sharpe ≈1.78** in NIFTY options, confirming our ensemble approach's viability.
+Battle-tested system for ultra-low latency NSE options trading with institutional-grade risk management.
 
-### Key Capabilities
+### 2. **Professional Wealth Management** 🆕
+
+State-of-the-art personal finance system with double-entry bookkeeping, AI-powered insights, and holistic financial planning.
+
+---
+
+## 🚀 Core Capabilities
+
+### Algo Trading (algo-worker)
 
 - **🧠 ML Ensemble Stack**:
   - 8-10 Level-0 models: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer (core 6) + TimesNet-MLP, WFTNet-MLP, PatchTST, KAN (optional 4)
@@ -35,11 +40,37 @@ A battle-tested algorithmic trading system specifically engineered for ultra-low
   - Real-time Greeks monitoring (Delta, Gamma, Vega, Theta)
   - Kelly Criterion position sizing with dynamic leverage
   - Automated circuit breakers (max loss, drawdown, latency degradation)
-- **📊 Production-Grade Infrastructure**:
-  - QuestDB for time-series (ticks, candles, features)
-  - MongoDB for documents (signals, orders, positions)
-  - Redis Streams for event bus (microsecond-latency pub/sub)
-  - Prometheus + Grafana for observability
+
+### Wealth Management (wealth-management, wealth-analyzer, document-processor) 🆕
+
+- **💰 Double-Entry Ledger**:
+  - Mathematically guaranteed balance (Assets = Liabilities + Equity + Income - Expenses)
+  - Multi-account tracking (bank, demat, crypto, loans, insurance)
+  - Real-time net worth with historical snapshots
+  - Multi-currency support
+- **🤖 AI-Powered Insights**:
+  - Spending pattern analysis and anomaly detection
+  - Investment performance recommendations
+  - Predictive cash flow forecasting
+  - Natural language queries (chat with your finances using Phi-3 LLM)
+- **📊 Advanced Analytics**:
+  - Net worth dashboard with waterfall visualization
+  - Asset allocation sunburst charts
+  - Cash flow analysis (income vs expense trends)
+  - Investment returns (XIRR, CAGR by asset class)
+  - Tax optimization (FY 2025-26 New Tax Regime vs Old Regime)
+- **🔗 Automated Data Ingestion**:
+  - Account Aggregator integration (Setu/Finvu - RBI compliant)
+  - Bank statement parsing (AI-powered OCR with LayoutLMv3)
+  - Zerodha Kite Connect (stocks, F&O auto-sync)
+  - Crypto exchange APIs (Binance, WazirX)
+  - Seamless integration with algo trading activity
+- **📈 Financial Planning**:
+  - Retirement planner (Monte Carlo simulations)
+  - SIP goal tracker with corpus calculations
+  - Emergency fund calculator (dynamic targets)
+  - Loan optimizer (EMI vs prepayment analysis)
+  - Insurance gap analysis
 
 ---
 
@@ -136,9 +167,52 @@ pnpm dev  # Starts on port 3001
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: Event-driven 7-layer system design
 - **[DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md)**: 🆕 Hybrid local-cloud deployment strategy
 - **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)**: Production roadmap (SEBI compliance, latency optimization)
+- **[WEALTH_MANAGEMENT_SYSTEM.md](docs/WEALTH_MANAGEMENT_SYSTEM.md)**: 🆕 Comprehensive wealth management guide
 - **[.github/copilot-instructions.md](.github/copilot-instructions.md)**: Coding standards
 
-### Component Docs
+### Algo Trading Components
+
+- **[Algo Worker](apps/algo-worker/README.md)**: Trading engine
+  - [Performance Optimization](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md): 🆕 Worker Threads, GPU inference, zero-allocation patterns
+- **[Training Pipeline](apps/training-pipeline/README.md)**: ML model training
+  - [Advanced Validation](apps/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
+- **[Market SDK](packages/market-sdk/README.md)**: Upstox/Yahoo/Binance integration
+
+### Wealth Management Components 🆕
+
+- **[Wealth Management](apps/wealth-management/README.md)**: Double-entry ledger, net worth tracking
+  - Core financial system with PostgreSQL double-entry bookkeeping
+  - Account Aggregator integration (Setu/Finvu)
+  - Tax calculators (FY 2025-26 compliant)
+  - Financial planning tools (retirement, goals, insurance)
+- **[Wealth Analyzer](apps/wealth-analyzer/README.md)**: AI-powered insights
+  - Microsoft Phi-3 LLM for natural language queries
+  - Spending pattern analysis and anomaly detection
+  - Investment performance recommendations
+  - Predictive cash flow forecasting
+- **[Document Processor](apps/document-processor/README.md)**: Bank statement parsing
+  - LayoutLMv3 for structured documents
+  - Donut for unstructured receipts
+  - Support for Indian banks (HDFC, SBI, ICICI, Axis)
+  - Insurance policy and invoice extraction
+
+### Web Dashboard & API
+
+- **[Web Dashboard](apps/web/README.md)**: UFOS (Unified Financial Operating System)
+  - [Authentication](apps/web/docs/AUTHENTICATION.md): Auth state management with Context Provider
+  - [Data Access Layer](apps/web/docs/DATA_ACCESS_LAYER.md): Secure data fetching with auto org scoping
+  - **Algo Trading Cockpit**: Options analytics, Greeks visualization, strategy management
+  - **Wealth Management Dashboard**: 🆕 Net worth, asset allocation, cash flow, tax planning
+- **[API Backend](apps/api/README.md)**: NestJS REST + tRPC
+  - User authentication and authorization
+  - Portfolio aggregation and reporting
+  - Historical trade queries
+  - Wealth management endpoints
+
+### Shared Infrastructure
+
+- **[Database](packages/database/README.md)**: QuestDB + MongoDB + Redis + PostgreSQL 🆕
+- **[Schema](packages/schema/README.md)**: Zod schemas and TypeScript types
 
 - **[Algo Worker](apps/algo-worker/README.md)**: Trading engine
   - [Performance Optimization](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md): 🆕 Worker Threads, GPU inference, zero-allocation patterns
