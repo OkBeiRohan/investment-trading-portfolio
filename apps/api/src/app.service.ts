@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { version } from '../package.json';
 
 @Injectable()
 export class AppService {
@@ -149,5 +150,14 @@ footer {
 
   getHomeJs(): string {
     return this.homeJs;
+  }
+
+  getVersion() {
+    return { version: version || 'unknown' };
+  }
+
+  getFrontendUrl() {
+    const url = process.env.FRONTEND_URL || 'unknown';
+    return { url };
   }
 }

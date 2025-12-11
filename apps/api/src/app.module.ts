@@ -5,8 +5,9 @@ import { AuthModule } from '@repo/authentication';
 import { DevtoolsModule } from '@nestjs/devtools-integration';
 import { HealthModule } from './health/health.module';
 import { UserModule } from './user/user.module';
-import { TRPCModule } from '@mguay/nestjs-trpc';
+import { TRPCModule } from 'nestjs-trpc-v2';
 import { AppContext } from './app.context';
+import { AppRouter } from './app.router';
 
 const DevelopmentUtils = [
   ...(process.env.DEVTOOLS === 'true'
@@ -25,7 +26,7 @@ const DevelopmentUtils = [
       autoSchemaFile:
         process.env.DEVTOOLS === 'true'
           ? undefined
-          : '../../packages/schema/src/api',
+          : '../../packages/trpc/src/server',
       context: AppContext,
       basePath: '/api/trpc',
     }),
@@ -34,6 +35,6 @@ const DevelopmentUtils = [
     UserModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AppContext],
+  providers: [AppService, AppContext, AppRouter],
 })
 export class AppModule {}

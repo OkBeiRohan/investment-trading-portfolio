@@ -1,7 +1,7 @@
-import { type IUser } from '@repo/schema';
-import { Input, Mutation, Query, Router } from '@mguay/nestjs-trpc';
+import { type IUser, userSchema } from '@repo/schema/user';
+import { Input, Mutation, Query, Router } from 'nestjs-trpc-v2';
 import { z } from 'zod';
-import { userSchema } from './dto/user.dto';
+// import {} from './dto/user.dto';
 
 @Router({ alias: 'user' })
 export class UserRouter {
