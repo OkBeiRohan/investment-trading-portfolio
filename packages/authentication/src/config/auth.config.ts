@@ -28,32 +28,31 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
 
     user: {
       additionalFields: {
-        // Add custom fields as needed
         dateOfBirth: {
-          type: "string",
+          type: "date",
           required: false,
         },
         isActive: {
           type: "boolean",
           defaultValue: true,
-          required: false,
+          required: true,
           input: false,
         },
         isBlocked: {
           type: "boolean",
           defaultValue: false,
-          required: false,
+          required: true,
           input: false,
         },
         role: {
-          type: "string[]",
-          required: false,
-          defaultValue: [USER_ROLES[0]],
+          type: ["Investor", "Trader", "Admin"],
+          required: true,
+          defaultValue: USER_ROLES[0],
           input: false,
         },
         lastLoginAt: {
           type: "date",
-          required: false,
+          required: true,
           input: false,
         },
         passwordChangedAt: {

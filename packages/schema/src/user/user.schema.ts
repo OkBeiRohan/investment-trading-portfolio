@@ -12,14 +12,14 @@ export interface IUser {
   emailVerified: boolean;
   name: string;
   phoneNumber?: string | null;
-  phoneVerified: boolean;
+  phoneNumberVerified?: boolean | null;
   image?: string | null;
   dateOfBirth?: Date | null;
   country?: string | null;
   isActive: boolean;
   isBlocked: boolean;
-  role: UserRole[];
-  twoFactorEnabled: boolean;
+  role: UserRole;
+  twoFactorEnabled?: boolean | null;
   lastLoginAt?: Date | null;
   passwordChangedAt?: Date | null;
   createdAt: Date;
@@ -36,18 +36,13 @@ export const userSchema: z.ZodType<IUser> = z.object({
     .regex(/^\+?[1-9]\d{1,14}$/)
     .optional()
     .nullable(),
-  phoneVerified: z.boolean().default(false),
+  phoneNumberVerified: z.boolean().default(false),
   image: z.url().optional().nullable(),
   dateOfBirth: z.date().optional().nullable(),
   country: z.string().length(2).optional().nullable(), // ISO 3166-1 alpha-2
   isActive: z.boolean().default(true),
   isBlocked: z.boolean().default(false),
-  role: z
-    .array(z.enum(["Investor", "Trader", "Admin"]))
-    .default(["Investor"])
-    .refine((arr) => new Set(arr).size === arr.length, {
-      message: "Roles must be unique.",
-    }),
+  role: z.enum(USER_ROLES).default("Investor"),
   twoFactorEnabled: z.boolean().default(false),
   lastLoginAt: z.date().optional().nullable(),
   passwordChangedAt: z.date().optional().nullable(),

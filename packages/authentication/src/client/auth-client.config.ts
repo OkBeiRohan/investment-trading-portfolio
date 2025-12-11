@@ -2,6 +2,7 @@ import { createAuthClient } from "better-auth/react";
 import {
   deviceAuthorizationClient,
   emailOTPClient,
+  inferAdditionalFields,
   magicLinkClient,
   multiSessionClient,
   oneTimeTokenClient,
@@ -29,6 +30,41 @@ export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
       oneTimeTokenClient(),
       multiSessionClient(),
       organizationClient(),
+      inferAdditionalFields({
+        user: {
+          dateOfBirth: {
+            type: "date",
+            required: false,
+          },
+          isActive: {
+            type: "boolean",
+            defaultValue: true,
+            required: true,
+            input: false,
+          },
+          isBlocked: {
+            type: "boolean",
+            defaultValue: false,
+            required: true,
+            input: false,
+          },
+          role: {
+            type: ["Investor", "Trader", "Admin"],
+            required: true,
+            input: false,
+          },
+          lastLoginAt: {
+            type: "date",
+            required: true,
+            input: false,
+          },
+          passwordChangedAt: {
+            type: "date",
+            required: false,
+            input: false,
+          },
+        },
+      }),
     ],
   });
 };

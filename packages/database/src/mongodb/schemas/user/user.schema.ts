@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { IUser, USER_ROLES, UserRole } from "@repo/schema";
+import { IUser, USER_ROLES, type UserRole } from "@repo/schema";
 import { Document } from "mongoose";
 
 @Schema({
@@ -24,7 +24,7 @@ export class User
   phoneNumber?: string;
 
   @Prop({ default: false })
-  phoneVerified: boolean;
+  phoneNumberVerified: boolean;
 
   @Prop({ required: false })
   image?: string;
@@ -49,11 +49,11 @@ export class User
 
   @Prop({
     required: true,
-    type: [String],
-    default: [USER_ROLES[0]],
+    type: String,
+    default: USER_ROLES[0],
     enum: USER_ROLES,
   })
-  role: UserRole[];
+  role: UserRole;
 
   @Prop({ required: true, default: false })
   twoFactorEnabled: boolean;

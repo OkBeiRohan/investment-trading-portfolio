@@ -8,10 +8,9 @@ import {
   type ReactNode,
 } from "react";
 import { authClient } from "@/lib/auth/auth-client";
-import type { ISession, IUser } from "@repo/schema";
+import type { IUser } from "@repo/schema";
 
 export interface AuthContextValue {
-  session: ISession | null;
   user: IUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -20,7 +19,9 @@ export interface AuthContextValue {
   signOut: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(
+  undefined
+);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -42,7 +43,7 @@ export function AuthProvider({
   children,
   redirectOnUnauthenticated,
 }: AuthProviderProps) {
-  const [session, setSession] = useState<ISession | null>(null);
+  const [user, setUser] = useState<IUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -58,9 +59,9 @@ export function AuthProvider({
       });
 
       if (response.data) {
-        setSession(response.data);
+        setUser(response.data.user);
       } else {
-        setSession(null);
+        setUser(null);
         if (redirectOnUnauthenticated && typeof window !== "undefined") {
           window.location.href = redirectOnUnauthenticated;
         }
@@ -68,7 +69,7 @@ export function AuthProvider({
     } catch (err) {
       console.error("Failed to fetch session:", err);
       setError(err as Error);
-      setSession(null);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +87,7 @@ export function AuthProvider({
           credentials: "include",
         },
       });
-      setSession(null);
+      setUser(null);
       if (typeof window !== "undefined") {
         window.location.href = "/auth/sign-in";
       }
@@ -97,10 +98,9 @@ export function AuthProvider({
   }, []);
 
   const value: AuthContextValue = {
-    session,
-    user: session?.user || null,
+    user,
     isLoading,
-    isAuthenticated: !!session,
+    isAuthenticated: !!user,
     error,
     refetch: fetchSession,
     signOut,

@@ -1,7 +1,6 @@
 import { type IUser, userSchema } from '@repo/schema/user';
 import { Input, Mutation, Query, Router } from 'nestjs-trpc-v2';
 import { z } from 'zod';
-// import {} from './dto/user.dto';
 
 @Router({ alias: 'user' })
 export class UserRouter {
@@ -17,10 +16,10 @@ export class UserRouter {
       email: '',
       emailVerified: false,
       name: '',
-      phoneVerified: false,
+      phoneNumberVerified: false,
       isActive: false,
       isBlocked: false,
-      role: [],
+      role: 'Investor',
       twoFactorEnabled: false,
       createdAt: new Date(),
       updatedAt: new Date(),
