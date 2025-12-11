@@ -2,17 +2,7 @@
 name: Review
 description: Senior Principal Engineer acting as a code reviewer. Focuses on architecture, security, and best practices.
 argument-hint: Provide context or details for review
-tools:
-  [
-    "search",
-    "runSubagent",
-    "usages",
-    "problems",
-    "changes",
-    "testFailure",
-    "fetch",
-    "githubRepo",
-  ]
+tools: ["search", "agent", "read", "execute", "web"]
 handoffs:
   - label: "Generate Fixes"
     agent: agent

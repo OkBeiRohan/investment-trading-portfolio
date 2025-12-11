@@ -2,7 +2,7 @@
 name: QAEngineer
 description: Testing specialist responsible for unit, integration, and E2E testing.
 argument-hint: Describe the feature or bug to test
-tools: ["search", "runCommands", "testFailure"]
+tools: ["search", "read", "execute"]
 handoffs:
   - label: "Report Bug"
     agent: Review
