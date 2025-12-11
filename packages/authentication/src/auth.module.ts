@@ -15,6 +15,15 @@ import { AuthModule as BetterAuthModule } from "@thallesp/nestjs-better-auth";
       imports: [AuthModule, ConfigModule],
       useFactory: (authService: AuthService) => ({
         auth: authService.getAuthInstance(),
+        
+        // Fix for Express 5: The /*path pattern sets req.url=/ and req.baseUrl=full_path
+        // better-call concatenates baseUrl+url creating a trailing slash that causes 404
+        // This middleware restores req.url to the full path before the handler runs
+        middleware: (req, _res, next) => {
+          req.url = req.originalUrl;
+          req.baseUrl = "";
+          next();
+        },
       }),
       inject: [AuthService],
     }),

@@ -52,7 +52,7 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         },
         lastLoginAt: {
           type: "date",
-          required: true,
+          required: false,
           input: false,
         },
         passwordChangedAt: {
