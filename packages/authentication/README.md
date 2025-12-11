@@ -19,6 +19,82 @@ Provider-agnostic authentication system for the investment trading portfolio mon
 - ✅ Session management with Redis caching
 - ✅ Database-agnostic (adapter pattern)
 
+## ⚠️ Configuration (IMPORTANT)
+
+**This package uses NestJS ConfigModule pattern - it does NOT read .env files directly.**
+
+### Environment Variables
+
+All configuration is managed by the root app (`apps/api`). Add these variables to `apps/api/.env`:
+
+```bash
+# Authentication (REQUIRED)
+APP_NAME=Investment Trading Portfolio
+APP_URL=http://localhost:3004
+AUTH_SECRET=your-secret-key-minimum-32-characters-long
+TRUSTED_ORIGINS=http://localhost:3000,http://localhost:3004
+FRONTEND_URL=http://localhost:3000
+
+# Social Providers (OPTIONAL)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+
+# Rate Limiting
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_WINDOW=60000
+RATE_LIMIT_MAX=100
+```
+
+### How Configuration Works
+
+1. **Root app** (`apps/api`) loads `.env` file via `ConfigModule.forRoot({ isGlobal: true })`
+2. **Zod validation** ensures all required fields are present and valid
+3. **ConfigService** is injected globally to all modules
+4. **This package** receives config via `ConfigService` dependency injection
+
+**See**: [`docs/NESTJS_CONFIG_PATTERN.md`](../../docs/NESTJS_CONFIG_PATTERN.md) for detailed explanation.
+
+### Migration from process.env (BREAKING CHANGE)
+
+If you previously had a `.env` file in this package, **delete it**. All configuration is now managed by the root app.
+
+**Before (❌ Old pattern)**:
+
+```typescript
+// packages/authentication/.env
+AUTH_SECRET = my - secret;
+
+// packages/authentication/src/config/auth.config.ts
+export const AUTH_CONFIG = {
+  secret: process.env.AUTH_SECRET, // ❌ Won't work
+};
+```
+
+**After (✅ New pattern)**:
+
+```typescript
+// apps/api/.env
+AUTH_SECRET=my-secret
+
+// packages/authentication/src/config/auth.config.ts
+export const createAuthConfig = (options: AuthConfigOptions) => ({
+  secret: options.secret, // ✅ Receives config from root app
+});
+
+// packages/authentication/src/services/auth.service.ts
+constructor(private readonly configService: ConfigService) {}
+
+getAuthInstance() {
+  const config = this.configService.get('config');
+  return createAuthConfig({
+    secret: config.auth.secret, // ✅ Reads from ConfigService
+  });
+}
+```
+
 ## Installation
 
 This package is part of the monorepo. Import in your NestJS app:
@@ -28,7 +104,10 @@ This package is part of the monorepo. Import in your NestJS app:
 import { AuthModule } from "@repo/authentication";
 
 @Module({
-  imports: [AuthModule.forRoot({ adapter: "mongodb" })],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }), // ✅ Required for config
+    AuthModule,
+  ],
 })
 export class AppModule {}
 

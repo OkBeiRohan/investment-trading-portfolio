@@ -1,8 +1,6 @@
 import { registerAs } from '@nestjs/config';
-import { IEnvironment, environmentSchema } from '.';
+import { CONFIG_TOKEN, environmentSchema, IEnvironment } from '@repo/schema';
 import z from 'zod';
-
-export const CONFIG_TOKEN = 'config';
 
 export const registerConfiguration = registerAs(
   CONFIG_TOKEN,

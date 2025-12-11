@@ -1,4 +1,5 @@
 import { Module, Global } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
 import { BetterAuthAdapterFactory } from "./adapters/adapter.factory";
 import { AuthService } from "./services/auth.service";
 import { EmailService } from "./services/email.service";
@@ -8,9 +9,10 @@ import { AuthModule as BetterAuthModule } from "@thallesp/nestjs-better-auth";
 @Global()
 @Module({
   imports: [
+    ConfigModule, // Import ConfigModule to access environment config
     MongoDBModule,
     BetterAuthModule.forRootAsync({
-      imports: [AuthModule],
+      imports: [AuthModule, ConfigModule],
       useFactory: (authService: AuthService) => ({
         auth: authService.getAuthInstance(),
       }),
