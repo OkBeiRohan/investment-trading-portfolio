@@ -1,5 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import axios from "axios";
 import { AuthenticationError } from "../../../core/error";
 import { UPSTOX_CONSTANTS } from "../constants";
@@ -21,7 +20,7 @@ export interface TokenResponse {
 export class LiveAuthStrategy {
   private readonly logger = new Logger(LiveAuthStrategy.name);
 
-  constructor(private config: ConfigService) {}
+  constructor() {}
 
   generateAuthUrl(config: LiveAuthConfig, state?: string): string {
     const params = new URLSearchParams({

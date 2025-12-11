@@ -1,5 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import * as crypto from "crypto";
 
 @Injectable()
@@ -7,8 +6,8 @@ export class EncryptionUtil {
   private readonly algorithm = "aes-256-gcm";
   private readonly secretKey: Buffer;
 
-  constructor(private config: ConfigService) {
-    const key = this.config.get<string>("ENCRYPTION_KEY");
+  constructor() {
+    const key = process.env.ENCRYPTION_KEY;
     if (!key || key.length !== 32) {
       throw new Error("ENCRYPTION_KEY must be 32 characters");
     }

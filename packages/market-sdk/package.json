@@ -22,7 +22,6 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",
-    "@nestjs/config": "^4.0.2",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "axios": "^1.13.2",

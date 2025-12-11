@@ -1,5 +1,4 @@
 import { Module, Global } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
 // import { MongooseModule } from "@nestjs/mongoose";
 // import { DatabaseModule, UpstoxToken, UpstoxTokenSchema } from "@repo/database";
 
@@ -17,7 +16,6 @@ import { OrdersApi } from "./api/orders.api";
 @Global()
 @Module({
   imports: [
-    ConfigModule,
     // DatabaseModule,
     // MongooseModule.forFeature([
     //   { name: UpstoxToken.name, schema: UpstoxTokenSchema },

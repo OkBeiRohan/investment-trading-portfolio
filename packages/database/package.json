@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",
-    "@nestjs/config": "^4.0.2",
     "@nestjs/mongoose": "^11.0.4",
     "@repo/schema": "workspace:*",
     "ioredis": "^5.8.2",

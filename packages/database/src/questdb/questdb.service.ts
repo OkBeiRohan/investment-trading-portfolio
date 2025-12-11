@@ -12,7 +12,6 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 // import { Pool, PoolClient, QueryResult } from "pg";
 
 export interface QuestDBConfig {
@@ -61,7 +60,7 @@ export class QuestDBService {
   // private pool: Pool;
   private isConnected = false;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor() {}
 
   // async onModuleInit() {
   //   await this.connect();
