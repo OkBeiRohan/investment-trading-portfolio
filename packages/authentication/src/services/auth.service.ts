@@ -1,4 +1,4 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createBetterAuthInstance } from "../server/auth.config";
 import { BetterAuthAdapterFactory } from "../adapters/adapter.factory";

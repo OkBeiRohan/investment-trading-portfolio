@@ -44,7 +44,7 @@
         "transient": false,
         "exported": false,
         "token": "FastifyDriver",
-        "initTime": 40.15219999999954
+        "initTime": 50.459899999999834
       }
     },
     "164185830": {
@@ -60,7 +60,7 @@
         "transient": false,
         "exported": true,
         "token": "AuthRepositoryFactory",
-        "initTime": 97.45330000000013
+        "initTime": 130.91630000000077
       }
     },
     "173995905": {
@@ -76,7 +76,7 @@
         "transient": false,
         "exported": true,
         "token": "OrganizationRepository",
-        "initTime": 97.0058999999992
+        "initTime": 130.3090999999995
       }
     },
     "201492889": {
@@ -92,7 +92,7 @@
         "transient": false,
         "exported": true,
         "token": "VerificationRepository",
-        "initTime": 97.01330000000053
+        "initTime": 130.32570000000032
       }
     },
     "203550704": {
@@ -108,7 +108,7 @@
         "transient": false,
         "exported": true,
         "token": "ExternalContextCreator",
-        "initTime": 41.06999999999971
+        "initTime": 52.102600000000166
       }
     },
     "211572259": {
@@ -135,7 +135,7 @@
         "transient": false,
         "exported": false,
         "token": "InternalCoreModule",
-        "initTime": 41.8125
+        "initTime": 53.6208000000006
       }
     },
     "233936880": {
@@ -151,7 +151,7 @@
         "transient": false,
         "exported": false,
         "token": "AppController",
-        "initTime": 2.1914999999999054
+        "initTime": 3.324399999999514
       }
     },
     "238654288": {
@@ -167,7 +167,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/SessionModel",
-        "initTime": 91.09829999999965
+        "initTime": 123.90790000000015
       }
     },
     "264711474": {
@@ -184,7 +184,7 @@
         "transient": false,
         "exported": false,
         "token": "MongooseModule",
-        "initTime": 39.76090000000022
+        "initTime": 49.73319999999967
       }
     },
     "303302557": {
@@ -216,7 +216,7 @@
         "transient": false,
         "exported": false,
         "token": "SandboxedCodeExecutor",
-        "initTime": 44.36000000000058
+        "initTime": 55.894499999999425
       }
     },
     "400681591": {
@@ -232,7 +232,7 @@
         "transient": false,
         "exported": true,
         "token": "DiscoveryService",
-        "initTime": 43.90259999999944
+        "initTime": 55.47019999999975
       }
     },
     "408294170": {
@@ -248,7 +248,7 @@
         "transient": false,
         "exported": true,
         "token": "ImportsScanner",
-        "initTime": 40.07629999999972
+        "initTime": 50.28679999999986
       }
     },
     "454158649": {
@@ -264,7 +264,7 @@
         "transient": false,
         "exported": true,
         "token": "TwoFactorRepository",
-        "initTime": 96.96090000000004
+        "initTime": 130.22170000000006
       }
     },
     "540575486": {
@@ -280,7 +280,7 @@
         "transient": false,
         "exported": true,
         "token": "SessionRepository",
-        "initTime": 97.04269999999997
+        "initTime": 130.40729999999985
       }
     },
     "555176277": {
@@ -306,7 +306,7 @@
         "transient": false,
         "exported": true,
         "token": "PasskeyRepository",
-        "initTime": 96.94419999999991
+        "initTime": 130.1871999999994
       }
     },
     "656860397": {
@@ -338,7 +338,7 @@
         "transient": false,
         "exported": true,
         "token": "Reflector",
-        "initTime": 41.589500000000044
+        "initTime": 53.16369999999915
       }
     },
     "678913651": {
@@ -364,7 +364,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/OrganizationModel",
-        "initTime": 91.05879999999979
+        "initTime": 123.82320000000072
       }
     },
     "699745446": {
@@ -390,7 +390,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection",
-        "initTime": 78.74479999999949
+        "initTime": 100.40170000000035
       }
     },
     "844885056": {
@@ -407,7 +407,7 @@
         "transient": false,
         "exported": false,
         "token": "ScannerModule",
-        "initTime": 40.08359999999993
+        "initTime": 50.315599999999904
       }
     },
     "861972147": {
@@ -423,17 +423,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/UserModel",
-        "initTime": 91.11989999999969
-      }
-    },
-    "863216333": {
-      "id": "863216333",
-      "label": "ConfigModule",
-      "metadata": {
-        "type": "module",
-        "global": false,
-        "dynamic": false,
-        "internal": false
+        "initTime": 123.94920000000002
       }
     },
     "902560543": {
@@ -481,7 +471,7 @@
         "transient": false,
         "exported": true,
         "token": "Symbol(CONFIG_SERVICE)",
-        "initTime": 43.91619999999966
+        "initTime": 55.64599999999973
       }
     },
     "981404832": {
@@ -514,7 +504,23 @@
         "transient": false,
         "exported": false,
         "token": "MongooseModule",
-        "initTime": 39.72810000000027
+        "initTime": 49.64009999999962
+      }
+    },
+    "1012523956": {
+      "id": "1012523956",
+      "label": "CONFIGURABLE_MODULE_OPTIONS[6cfe96e875b52de8fcbae]",
+      "parent": "-1033621697",
+      "metadata": {
+        "type": "provider",
+        "internal": false,
+        "sourceModuleName": "DevtoolsModule",
+        "durable": false,
+        "static": true,
+        "scope": 0,
+        "transient": false,
+        "exported": false,
+        "token": "CONFIGURABLE_MODULE_OPTIONS[6cfe96e875b52de8fcbae]"
       }
     },
     "1051058129": {
@@ -546,7 +552,7 @@
         "transient": false,
         "exported": true,
         "token": "CONFIGURATION_TOKEN",
-        "initTime": 40.55649999999969
+        "initTime": 51.039200000000164
       }
     },
     "1067658839": {
@@ -581,22 +587,6 @@
         "token": "ModuleRef"
       }
     },
-    "1144875719": {
-      "id": "1144875719",
-      "label": "ModuleRef",
-      "parent": "863216333",
-      "metadata": {
-        "type": "provider",
-        "internal": true,
-        "sourceModuleName": "ConfigModule",
-        "durable": false,
-        "static": true,
-        "scope": 0,
-        "transient": false,
-        "exported": false,
-        "token": "ModuleRef"
-      }
-    },
     "1157935208": {
       "id": "1157935208",
       "label": "FileScanner",
@@ -610,7 +600,7 @@
         "transient": false,
         "exported": true,
         "token": "FileScanner",
-        "initTime": 40.07969999999932
+        "initTime": 50.30070000000069
       }
     },
     "1227416967": {
@@ -626,7 +616,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountRepository",
-        "initTime": 97.02279999999973
+        "initTime": 130.36340000000018
       }
     },
     "1234297242": {
@@ -658,7 +648,7 @@
         "transient": false,
         "exported": true,
         "token": "RouterFactory",
-        "initTime": 49.32009999999991
+        "initTime": 61.23499999999967
       }
     },
     "1263312832": {
@@ -675,7 +665,7 @@
         "transient": false,
         "exported": false,
         "token": "FactoryModule",
-        "initTime": 40.136899999999514
+        "initTime": 50.438500000000204
       }
     },
     "1310883338": {
@@ -691,7 +681,7 @@
         "transient": false,
         "exported": false,
         "token": "CONFIGURATION_LOADER",
-        "initTime": 44.15140000000065
+        "initTime": 55.95520000000033
       }
     },
     "1404309219": {
@@ -723,7 +713,7 @@
         "transient": false,
         "exported": true,
         "token": "AppRouterHost",
-        "initTime": 40.146200000000135
+        "initTime": 50.45159999999942
       }
     },
     "1429872227": {
@@ -739,7 +729,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/VerificationModel",
-        "initTime": 91.08819999999923
+        "initTime": 123.89069999999992
       }
     },
     "1434456218": {
@@ -756,7 +746,7 @@
         "transient": false,
         "exported": true,
         "token": "Reflector",
-        "initTime": 45.0654999999997
+        "initTime": 57.99250000000029
       }
     },
     "1468559210": {
@@ -829,7 +819,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/MemberModel",
-        "initTime": 91.03589999999986
+        "initTime": 123.80450000000019
       }
     },
     "1616110253": {
@@ -845,7 +835,7 @@
         "transient": false,
         "exported": false,
         "token": "EmailService",
-        "initTime": 40.02610000000004
+        "initTime": 50.19809999999961
       }
     },
     "1688619051": {
@@ -861,7 +851,7 @@
         "transient": false,
         "exported": false,
         "token": "DevtoolsHttpServerHost",
-        "initTime": 47.717499999999745
+        "initTime": 58.90180000000055
       }
     },
     "1690574933": {
@@ -903,7 +893,7 @@
         "transient": false,
         "exported": false,
         "token": "AppRouter",
-        "initTime": 44.39040000000023
+        "initTime": 56.58300000000054
       }
     },
     "1737837706": {
@@ -946,7 +936,7 @@
         "transient": false,
         "exported": false,
         "token": "ConfigModule",
-        "initTime": 40.949499999999716
+        "initTime": 51.84830000000056
       }
     },
     "1787828844": {
@@ -963,7 +953,7 @@
         "transient": false,
         "exported": false,
         "token": "ConfigHostModule",
-        "initTime": 40.580699999999524
+        "initTime": 51.066899999999805
       }
     },
     "1814910027": {
@@ -979,7 +969,7 @@
         "transient": false,
         "exported": false,
         "token": "UserRouter",
-        "initTime": 39.46989999999914
+        "initTime": 49.098400000000765
       }
     },
     "1919157847": {
@@ -996,7 +986,7 @@
         "transient": false,
         "exported": true,
         "token": "REQUEST",
-        "initTime": 40.06880000000001
+        "initTime": 51.049299999999675
       }
     },
     "1986699406": {
@@ -1044,7 +1034,7 @@
         "transient": false,
         "exported": false,
         "token": "ConsoleLogger",
-        "initTime": 44.805999999999585
+        "initTime": 56.167599999999766
       }
     },
     "2009097199": {
@@ -1086,7 +1076,7 @@
         "transient": false,
         "exported": false,
         "token": "MetadataScanner",
-        "initTime": 40.10779999999977
+        "initTime": 50.39010000000053
       }
     },
     "2062711352": {
@@ -1102,7 +1092,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/PasskeyModel",
-        "initTime": 91.06890000000021
+        "initTime": 123.84900000000016
       }
     },
     "2087960093": {
@@ -1177,7 +1167,7 @@
         "transient": true,
         "exported": true,
         "token": "INQUIRER",
-        "initTime": 40.0627999999997
+        "initTime": 51.02419999999984
       }
     },
     "-26938366": {
@@ -1193,7 +1183,7 @@
         "transient": false,
         "exported": true,
         "token": "ModulesContainer",
-        "initTime": 41.0574000000006
+        "initTime": 52.08779999999933
       }
     },
     "-326832201": {
@@ -1209,7 +1199,7 @@
         "transient": false,
         "exported": true,
         "token": "HttpAdapterHost",
-        "initTime": 41.04399999999987
+        "initTime": 52.0656999999992
       }
     },
     "-702581189": {
@@ -1225,7 +1215,7 @@
         "transient": false,
         "exported": true,
         "token": "LazyModuleLoader",
-        "initTime": 41.040500000000065
+        "initTime": 52.036299999999756
       }
     },
     "-1904419534": {
@@ -1241,7 +1231,7 @@
         "transient": false,
         "exported": true,
         "token": "SerializedGraph",
-        "initTime": 41.02590000000055
+        "initTime": 52.00960000000032
       }
     },
     "-19112576": {
@@ -1268,7 +1258,7 @@
         "transient": false,
         "exported": false,
         "token": "AppModule",
-        "initTime": 41.01520000000073
+        "initTime": 51.98109999999997
       }
     },
     "-71302842": {
@@ -1316,7 +1306,7 @@
         "transient": false,
         "exported": false,
         "token": "AppService",
-        "initTime": 41.00789999999961
+        "initTime": 51.94880000000012
       }
     },
     "-297651425": {
@@ -1332,7 +1322,7 @@
         "transient": false,
         "exported": false,
         "token": "AppContext",
-        "initTime": 41.00420000000031
+        "initTime": 51.9336000000003
       }
     },
     "-503631789": {
@@ -1348,7 +1338,7 @@
         "transient": false,
         "exported": true,
         "token": "ConfigService",
-        "initTime": 47.637000000000626
+        "initTime": 59.21470000000045
       }
     },
     "-260433981": {
@@ -1364,7 +1354,7 @@
         "transient": false,
         "exported": true,
         "token": "CONFIGURATION(config)",
-        "initTime": 40.64180000000033
+        "initTime": 51.24199999999928
       }
     },
     "-334061787": {
@@ -1391,7 +1381,7 @@
         "transient": false,
         "exported": false,
         "token": "ConditionalModule",
-        "initTime": 40.48940000000039
+        "initTime": 50.94639999999981
       }
     },
     "-1785389845": {
@@ -1450,7 +1440,7 @@
         "transient": false,
         "exported": false,
         "token": "DevtoolsModule",
-        "initTime": 40.46430000000055
+        "initTime": 50.92000000000007
       }
     },
     "-751962311": {
@@ -1467,22 +1457,6 @@
         "transient": false,
         "exported": false,
         "token": "ModuleRef"
-      }
-    },
-    "-925301509": {
-      "id": "-925301509",
-      "label": "CONFIGURABLE_MODULE_OPTIONS[ca6b26aad2776e09ad3d8]",
-      "parent": "-1033621697",
-      "metadata": {
-        "type": "provider",
-        "internal": false,
-        "sourceModuleName": "DevtoolsModule",
-        "durable": false,
-        "static": true,
-        "scope": 0,
-        "transient": false,
-        "exported": false,
-        "token": "CONFIGURABLE_MODULE_OPTIONS[ca6b26aad2776e09ad3d8]"
       }
     },
     "-643397745": {
@@ -1509,7 +1483,7 @@
         "transient": false,
         "exported": false,
         "token": "DiscoveryModule",
-        "initTime": 40.26839999999993
+        "initTime": 50.60390000000007
       }
     },
     "-501891371": {
@@ -1557,7 +1531,7 @@
         "transient": false,
         "exported": true,
         "token": "MetadataScanner",
-        "initTime": 40.251499999999396
+        "initTime": 50.58359999999993
       }
     },
     "-222165702": {
@@ -1574,7 +1548,7 @@
         "transient": false,
         "exported": false,
         "token": "TRPCModule",
-        "initTime": 50.6238000000003
+        "initTime": 62.91150000000016
       }
     },
     "-149339036": {
@@ -1622,7 +1596,7 @@
         "transient": false,
         "exported": false,
         "token": "ConsoleLogger",
-        "initTime": 45.5015999999996
+        "initTime": 56.891200000000026
       }
     },
     "-1009976330": {
@@ -1638,7 +1612,7 @@
         "transient": false,
         "exported": false,
         "token": "TRPCDriver",
-        "initTime": 50.18549999999959
+        "initTime": 62.441100000000006
       }
     },
     "-1121052587": {
@@ -1654,7 +1628,7 @@
         "transient": false,
         "exported": false,
         "token": "ExpressDriver",
-        "initTime": 40.14879999999994
+        "initTime": 50.45519999999942
       }
     },
     "-1275057538": {
@@ -1712,7 +1686,7 @@
         "transient": false,
         "exported": true,
         "token": "TRPCFactory",
-        "initTime": 49.8761999999997
+        "initTime": 62.033400000000256
       }
     },
     "-20622721": {
@@ -1728,7 +1702,7 @@
         "transient": false,
         "exported": true,
         "token": "ProcedureFactory",
-        "initTime": 47.66610000000037
+        "initTime": 59.03189999999995
       }
     },
     "-1837518850": {
@@ -1744,7 +1718,7 @@
         "transient": false,
         "exported": true,
         "token": "MiddlewareFactory",
-        "initTime": 49.86790000000019
+        "initTime": 62.014500000000226
       }
     },
     "-1139652968": {
@@ -1787,7 +1761,7 @@
         "transient": false,
         "exported": false,
         "token": "AuthModule",
-        "initTime": 40.08429999999953
+        "initTime": 50.27039999999943
       }
     },
     "-120792986": {
@@ -1819,7 +1793,7 @@
         "transient": false,
         "exported": false,
         "token": "BetterAuthAdapterFactory",
-        "initTime": 97.87069999999949
+        "initTime": 131.57659999999942
       }
     },
     "-793915935": {
@@ -1835,57 +1809,7 @@
         "transient": false,
         "exported": true,
         "token": "AuthService",
-        "initTime": 98.3753999999999
-      }
-    },
-    "-491114354": {
-      "id": "-491114354",
-      "label": "ConfigModule",
-      "parent": "863216333",
-      "metadata": {
-        "type": "provider",
-        "internal": true,
-        "sourceModuleName": "ConfigModule",
-        "durable": false,
-        "static": true,
-        "scope": 0,
-        "transient": false,
-        "exported": false,
-        "token": "ConfigModule",
-        "initTime": 39.99030000000039
-      }
-    },
-    "-408540750": {
-      "id": "-408540750",
-      "label": "ApplicationConfig",
-      "parent": "863216333",
-      "metadata": {
-        "type": "provider",
-        "internal": true,
-        "sourceModuleName": "ConfigModule",
-        "durable": false,
-        "static": true,
-        "scope": 0,
-        "transient": false,
-        "exported": false,
-        "token": "ApplicationConfig"
-      }
-    },
-    "-503631788": {
-      "id": "-503631788",
-      "label": "ConfigService",
-      "parent": "863216333",
-      "metadata": {
-        "type": "provider",
-        "internal": false,
-        "sourceModuleName": "ConfigModule",
-        "durable": false,
-        "static": true,
-        "scope": 0,
-        "transient": false,
-        "exported": true,
-        "token": "ConfigService",
-        "initTime": 46.49789999999939
+        "initTime": 132.00820000000022
       }
     },
     "-2103072576": {
@@ -1902,7 +1826,7 @@
         "transient": false,
         "exported": false,
         "token": "MongoDBModule",
-        "initTime": 39.94489999999951
+        "initTime": 50.1273999999994
       }
     },
     "-1476303348": {
@@ -1934,7 +1858,7 @@
         "transient": false,
         "exported": true,
         "token": "UserRepository",
-        "initTime": 97.0631000000003
+        "initTime": 130.4438
       }
     },
     "-572011637": {
@@ -1977,7 +1901,7 @@
         "transient": false,
         "exported": false,
         "token": "MongooseCoreModule",
-        "initTime": 43.006499999999505
+        "initTime": 54.2453000000005
       }
     },
     "-1854488872": {
@@ -2019,7 +1943,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/AccountModel",
-        "initTime": 91.10789999999997
+        "initTime": 123.92510000000038
       }
     },
     "-453809653": {
@@ -2035,7 +1959,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/TwoFactorModel",
-        "initTime": 91.07870000000003
+        "initTime": 123.8725999999997
       }
     },
     "-757639387": {
@@ -2051,7 +1975,7 @@
         "transient": false,
         "exported": true,
         "token": "AccountConnection/InvitationModel",
-        "initTime": 91.02169999999933
+        "initTime": 123.78650000000016
       }
     },
     "-452868774": {
@@ -2100,7 +2024,7 @@
         "transient": false,
         "exported": false,
         "token": "HealthModule",
-        "initTime": 39.51339999999982
+        "initTime": 49.16600000000017
       }
     },
     "-759299295": {
@@ -2116,7 +2040,7 @@
         "transient": false,
         "exported": false,
         "token": "HealthService",
-        "initTime": 39.509000000000015
+        "initTime": 49.142900000000736
       }
     },
     "-1910447296": {
@@ -2132,7 +2056,7 @@
         "transient": false,
         "exported": false,
         "token": "HealthController",
-        "initTime": 3.9804000000003725
+        "initTime": 4.0504000000000815
       }
     },
     "-1537098012": {
@@ -2159,7 +2083,7 @@
         "transient": false,
         "exported": false,
         "token": "UserModule",
-        "initTime": 39.478399999999965
+        "initTime": 49.12740000000031
       }
     },
     "-523403191": {
@@ -2191,7 +2115,7 @@
         "transient": false,
         "exported": false,
         "token": "UserService",
-        "initTime": 39.47370000000046
+        "initTime": 49.10940000000028
       }
     },
     "-207939746": {
@@ -2207,7 +2131,7 @@
         "transient": false,
         "exported": false,
         "token": "UserController",
-        "initTime": 3.8927999999996246
+        "initTime": 3.9635000000007494
       }
     }
   },
@@ -3253,16 +3177,6 @@
       },
       "id": "1872738994"
     },
-    "1901737855": {
-      "source": "863216333",
-      "target": "211572259",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "ConfigModule",
-        "targetModuleName": "ConfigHostModule"
-      },
-      "id": "1901737855"
-    },
     "1923272676": {
       "source": "-1854488872",
       "target": "1712628187",
@@ -3338,16 +3252,6 @@
         "injectionType": "property"
       },
       "id": "2091982854"
-    },
-    "2109546608": {
-      "source": "863216333",
-      "target": "1712628187",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "ConfigModule",
-        "targetModuleName": "ConfigModule"
-      },
-      "id": "2109546608"
     },
     "2110428795": {
       "source": "-1537098012",
@@ -3523,22 +3427,6 @@
       },
       "id": "-1593545969"
     },
-    "-1851085465": {
-      "source": "-503631788",
-      "target": "930519593",
-      "metadata": {
-        "type": "class-to-class",
-        "sourceModuleName": "ConfigModule",
-        "sourceClassName": "ConfigService",
-        "targetClassName": "ConfigService",
-        "sourceClassToken": "ConfigService",
-        "targetClassToken": "Symbol(CONFIG_SERVICE)",
-        "targetModuleName": "ConfigHostModule",
-        "keyOrIndex": 0,
-        "injectionType": "constructor"
-      },
-      "id": "-1851085465"
-    },
     "-1609063867": {
       "source": "1688619051",
       "target": "373235992",
@@ -3555,21 +3443,21 @@
       },
       "id": "-1609063867"
     },
-    "-1501345636": {
+    "-489469639": {
       "source": "1688619051",
-      "target": "-925301509",
+      "target": "1012523956",
       "metadata": {
         "type": "class-to-class",
         "sourceModuleName": "DevtoolsModule",
         "sourceClassName": "DevtoolsHttpServerHost",
-        "targetClassName": "CONFIGURABLE_MODULE_OPTIONS[ca6b26aad2776e09ad3d8]",
+        "targetClassName": "CONFIGURABLE_MODULE_OPTIONS[6cfe96e875b52de8fcbae]",
         "sourceClassToken": "DevtoolsHttpServerHost",
-        "targetClassToken": "CONFIGURABLE_MODULE_OPTIONS[ca6b26aad2776e09ad3d8]",
+        "targetClassToken": "CONFIGURABLE_MODULE_OPTIONS[6cfe96e875b52de8fcbae]",
         "targetModuleName": "DevtoolsModule",
         "keyOrIndex": 2,
         "injectionType": "constructor"
       },
-      "id": "-1501345636"
+      "id": "-489469639"
     },
     "-429580362": {
       "source": "-20622721",
@@ -4007,22 +3895,6 @@
       },
       "id": "-1072313234"
     },
-    "-1125038999": {
-      "source": "-793915935",
-      "target": "-503631788",
-      "metadata": {
-        "type": "class-to-class",
-        "sourceModuleName": "AuthModule",
-        "sourceClassName": "AuthService",
-        "targetClassName": "ConfigService",
-        "sourceClassToken": "AuthService",
-        "targetClassToken": "ConfigService",
-        "targetModuleName": "ConfigModule",
-        "keyOrIndex": 2,
-        "injectionType": "constructor"
-      },
-      "id": "-1125038999"
-    },
     "-844262897": {
       "source": "-19112576",
       "target": "1712628187",
@@ -4343,16 +4215,6 @@
       },
       "id": "-551321294"
     },
-    "-864449071": {
-      "source": "-1134487807",
-      "target": "863216333",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "AuthModule",
-        "targetModuleName": "ConfigModule"
-      },
-      "id": "-864449071"
-    },
     "-1128619301": {
       "source": "-1134487807",
       "target": "1751309713",
@@ -4382,56 +4244,6 @@
         "targetModuleName": "MongooseCoreModule"
       },
       "id": "-1941719021"
-    },
-    "-1982558226": {
-      "source": "863216333",
-      "target": "555176277",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "ConfigModule",
-        "targetModuleName": "InternalCoreModule"
-      },
-      "id": "-1982558226"
-    },
-    "-1382266849": {
-      "source": "863216333",
-      "target": "-1134487807",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "ConfigModule",
-        "targetModuleName": "AuthModule"
-      },
-      "id": "-1382266849"
-    },
-    "-218091860": {
-      "source": "863216333",
-      "target": "1751309713",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "ConfigModule",
-        "targetModuleName": "MongoDBModule"
-      },
-      "id": "-218091860"
-    },
-    "-282073552": {
-      "source": "863216333",
-      "target": "-1350909915",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "ConfigModule",
-        "targetModuleName": "MongooseCoreModule"
-      },
-      "id": "-282073552"
-    },
-    "-1243654325": {
-      "source": "863216333",
-      "target": "678913651",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "ConfigModule",
-        "targetModuleName": "AuthModule"
-      },
-      "id": "-1243654325"
     },
     "-2133973100": {
       "source": "1751309713",
@@ -4562,16 +4374,6 @@
         "targetModuleName": "DiscoveryModule"
       },
       "id": "-960619071"
-    },
-    "-929809755": {
-      "source": "678913651",
-      "target": "863216333",
-      "metadata": {
-        "type": "module-to-module",
-        "sourceModuleName": "AuthModule",
-        "targetModuleName": "ConfigModule"
-      },
-      "id": "-929809755"
     },
     "-335593203": {
       "source": "678913651",

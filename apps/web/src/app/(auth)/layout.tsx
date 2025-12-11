@@ -5,5 +5,12 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className={styles.authRoot}>{children}</div>;
+  return (
+    <div className={styles.authRoot}>
+      <div className={styles.informationPanel}>
+        Welcome to Investment and Trading
+      </div>
+      {children}
+    </div>
+  );
 }

@@ -11,7 +11,11 @@ export async function proxy(request: NextRequest) {
     "/forgot-password",
     "/reset-password",
     "/verify-email",
+    "/verify-phone",
+    "/magic-link",
+    "/passkey",
     "/api/auth", // Allow auth API calls
+    ".well-known/*",
   ];
 
   // Check if the path is public

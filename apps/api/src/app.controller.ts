@@ -1,7 +1,6 @@
 import { Controller, Get, Header } from '@nestjs/common';
 import { AllowAnonymous } from '@repo/authentication';
 import { AppService } from './app.service';
-import { version } from '../package.json';
 
 @AllowAnonymous()
 @Controller()
@@ -31,12 +30,11 @@ export class AppController {
 
   @Get('/api/version')
   getVersion() {
-    return { version: version || 'unknown' };
+    return this.appService.getVersion();
   }
 
   @Get('/api/frontend-url')
   getFrontendUrl() {
-    const url = process.env.FRONTEND_URL || 'unknown';
-    return { url };
+    return this.appService.getFrontendUrl();
   }
 }

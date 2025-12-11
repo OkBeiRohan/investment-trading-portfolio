@@ -27,6 +27,8 @@ export function RegisterForm() {
         name,
       });
 
+      console.log(data, error);
+
       if (error) {
         setError(error.message || "Registration failed");
       } else {
@@ -61,6 +63,7 @@ export function RegisterForm() {
               onChange={(e) => setName(e.target.value)}
               className={styles.input}
               placeholder="John Doe"
+              autoComplete="name"
             />
           </div>
         </div>
@@ -79,6 +82,7 @@ export function RegisterForm() {
               onChange={(e) => setEmail(e.target.value)}
               className={styles.input}
               placeholder="you@example.com"
+              autoComplete="email"
             />
           </div>
         </div>
@@ -97,6 +101,7 @@ export function RegisterForm() {
               onChange={(e) => setPassword(e.target.value)}
               className={styles.input}
               placeholder="••••••••"
+              autoComplete="new-password"
             />
           </div>
         </div>

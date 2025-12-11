@@ -9,7 +9,7 @@ import { AuthModule as BetterAuthModule } from "@thallesp/nestjs-better-auth";
 @Global()
 @Module({
   imports: [
-    ConfigModule, // Import ConfigModule to access environment config
+    ConfigModule,
     MongoDBModule,
     BetterAuthModule.forRootAsync({
       imports: [AuthModule, ConfigModule],
