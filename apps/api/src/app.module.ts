@@ -25,7 +25,7 @@ const DevelopmentUtils = [
       autoSchemaFile:
         process.env.DEVTOOLS === 'true'
           ? undefined
-          : '../../packages/trpc/src/server',
+          : '../../packages/schema/src/api',
       context: AppContext,
       basePath: '/api/trpc',
     }),
