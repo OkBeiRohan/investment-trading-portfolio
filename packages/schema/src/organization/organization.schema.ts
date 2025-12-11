@@ -4,7 +4,7 @@ export const organizationSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   slug: z.string(),
-  logo: z.url().optional(),
+  logo: z.url().optional().nullable(),
   metadata: z.record(z.string(), z.string()).optional(),
   createdAt: z.date(),
   updatedAt: z.date().optional(),
