@@ -752,5 +752,5 @@ FORECAST_MODEL_PATH=../models/prophet-forecast.onnx
 - [Phi-3 Model](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
 - [ChromaDB Documentation](https://docs.trychroma.com/)
 - [ONNX Runtime Node.js](https://onnxruntime.ai/docs/get-started/with-javascript.html)
-- [Root Architecture](../../ARCHITECTURE.md)
-- [Root Copilot Instructions](../../.github/copilot-instructions.md)
+- [Root Architecture](../../../ARCHITECTURE.md)
+- [Root Copilot Instructions](../../../.github/copilot-instructions.md)

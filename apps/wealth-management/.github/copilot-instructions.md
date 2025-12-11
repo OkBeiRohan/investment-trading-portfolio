@@ -716,8 +716,8 @@ Keep these files updated:
 
 ## References
 
-- [Root Architecture](../../ARCHITECTURE.md) - Project-wide architecture
-- [Root Copilot Instructions](../../.github/copilot-instructions.md) - Common patterns
+- [Root Architecture](../../../ARCHITECTURE.md) - Project-wide architecture
+- [Root Copilot Instructions](../../../.github/copilot-instructions.md) - Common patterns
 - [MongoDB Double-Entry](https://www.mongodb.com/developer/products/mongodb/double-entry-accounting-example/)
 - [Income Tax Act 2025-26](https://www.incometax.gov.in/)
 - [RBI Account Aggregator Framework](https://rbi.org.in/)

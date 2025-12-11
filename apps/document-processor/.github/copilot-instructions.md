@@ -593,5 +593,5 @@ AWS_REGION=ap-south-1
 - [Donut Paper](https://arxiv.org/abs/2111.15664)
 - [ONNX Runtime](https://onnxruntime.ai/)
 - [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)
-- [Root Architecture](../../ARCHITECTURE.md)
-- [AI Model Training Guide](../../docs/AI_MODEL_TRAINING.md)
+- [Root Architecture](../../../ARCHITECTURE.md)
+- [AI Model Training Guide](../../../docs/AI_MODEL_TRAINING.md)
