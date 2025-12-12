@@ -6,14 +6,14 @@ export async function proxy(request: NextRequest) {
 
   // Define public paths that don't require authentication
   const publicPaths = [
-    "/login",
-    "/register",
-    "/forgot-password",
-    "/reset-password",
-    "/verify-email",
-    "/verify-phone",
-    "/magic-link",
-    "/passkey",
+    "/authentication/login",
+    "/authentication/register",
+    "/authentication/forgot-password",
+    "/authentication/reset-password",
+    "/authentication/verify-email",
+    "/authentication/verify-phone",
+    "/authentication/magic-link",
+    "/authentication/passkey",
     "/api/auth", // Allow auth API calls
   ];
 

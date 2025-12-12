@@ -4,9 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
-import { Mail, KeyRound, Loader2, Fingerprint, Github } from "lucide-react";
+import { Mail, KeyRound, Loader2, Fingerprint } from "lucide-react";
 import GoogleIcon from "@/components/icons/brands/Google";
 import styles from "@/app/(auth)/login/login.module.css";
+import GitHubIcon from "../icons/brands/GitHub";
 
 export function LoginForm() {
   const router = useRouter();
@@ -127,7 +128,7 @@ export function LoginForm() {
           disabled={loading}
           className={styles.socialButton}
         >
-          <Github className={styles.icon} />
+          <GitHubIcon className={styles.icon} />
           GitHub
         </button>
       </div>
