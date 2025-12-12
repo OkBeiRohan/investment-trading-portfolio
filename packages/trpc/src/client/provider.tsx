@@ -4,15 +4,13 @@ import { PropsWithChildren } from "react";
 import { createTrpcClient, queryClient, trpc } from "./react";
 import { QueryClientProvider } from "@tanstack/react-query";
 
-interface TrpcProviderProps extends PropsWithChildren {
-  url: string;
-}
+interface TrpcProviderProps extends PropsWithChildren {}
 
-export default function TrpcProvider({ children, url }: TrpcProviderProps) {
-  const client = createTrpcClient(url);
+export const trpcClient = createTrpcClient("/api/trpc");
 
+export default function TrpcProvider({ children }: TrpcProviderProps) {
   return (
-    <trpc.Provider client={client} queryClient={queryClient}>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </trpc.Provider>
   );

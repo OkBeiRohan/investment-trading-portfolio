@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
 import { Mail, KeyRound, User, Loader2 } from "lucide-react";
-import styles from "@/app/(auth)/register/register.module.css";
+import styles from "@/app/authentication/register/register.module.css";
 
 export function RegisterForm() {
   const router = useRouter();
