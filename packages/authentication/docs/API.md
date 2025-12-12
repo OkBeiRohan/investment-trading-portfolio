@@ -1,220 +1,167 @@
 # API Reference - Authentication Package
 
-Complete API documentation for the `@repo/authentication` package.
+Complete API endpoint documentation for better-auth integration.
 
 ---
 
-## Base URL
+## Overview
 
-```
-http://localhost:3004/auth  # Development
-https://api.yourdomain.com/auth  # Production
-```
+**Base URL**: `/api/auth` (configured in BetterAuthModule)
 
----
+All authentication endpoints are provided automatically by **better-auth**. No custom endpoint implementations needed.
 
-## Authentication
+**Authentication**: Most endpoints require session cookie (`better-auth.session_token`)
 
-### Register
-
-Create a new user account.
-
-**Endpoint**: `POST /auth/register`
-
-**Request Body**:
-
-```typescript
-{
-  email: string; // Valid email address
-  password: string; // Min 12 chars, mixed case, number, special char
-  name: string; // User's display name
-}
-```
-
-**Response** (201 Created):
-
-```typescript
-{
-  success: true;
-  message: "Registration successful. Please check your email to verify your account.";
-}
-```
-
-**Errors**:
-
-- `400 Bad Request`: Invalid input (email format, weak password)
-- `409 Conflict`: User with this email already exists
-- `429 Too Many Requests`: Rate limit exceeded (3 per hour)
+**Rate Limiting**: Built-in rate limiting applied per endpoint (see limits below)
 
 ---
 
-### Verify Email
+## Core Authentication
 
-Verify user's email address with token from email.
+### Sign Up (Email)
 
-**Endpoint**: `GET /auth/verify-email`
+```http
+POST /api/auth/sign-up/email
+Content-Type: application/json
 
-**Query Parameters**:
-
-```typescript
 {
-  token: string; // Verification token from email
+  "email": "user@example.com",
+  "password": "SecurePassword123!",
+  "name": "John Doe"
 }
 ```
 
-**Response** (200 OK):
+**Response (201 Created)**:
 
-```typescript
+```json
 {
-  success: true;
-  message: "Email verified successfully. You can now log in.";
-}
-```
-
-**Errors**:
-
-- `400 Bad Request`: Invalid or expired token
-- `404 Not Found`: Token not found
-
----
-
-### Login
-
-Authenticate user with email and password.
-
-**Endpoint**: `POST /auth/login`
-
-**Request Body**:
-
-```typescript
-{
-  email: string;
-  password: string;
-}
-```
-
-**Response** (200 OK):
-
-_Without 2FA_:
-
-```typescript
-{
-  accessToken: string; // JWT, expires in 15 minutes
-  refreshToken: string; // JWT, expires in 7 days
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    emailVerified: boolean;
-    twoFactorEnabled: boolean;
-    createdAt: Date;
+  "user": {
+    "id": "usr_123",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "emailVerified": false,
+    "createdAt": "2024-12-12T10:00:00Z"
+  },
+  "session": {
+    "id": "ses_456",
+    "userId": "usr_123",
+    "expiresAt": "2024-12-19T10:00:00Z"
   }
 }
 ```
 
-_With 2FA_:
-
-```typescript
-{
-  requiresTwoFactor: true;
-  userId: string; // Use this for 2FA verification
-}
-```
-
-**Errors**:
-
-- `401 Unauthorized`: Invalid credentials or email not verified
-- `429 Too Many Requests`: Rate limit exceeded (5 per minute)
+**Rate Limit**: 3 requests / hour
 
 ---
 
-### Refresh Token
+### Sign In (Email)
 
-Get a new access token using refresh token.
+```http
+POST /api/auth/sign-in/email
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/refresh`
-
-**Request Body**:
-
-```typescript
 {
-  refreshToken: string;
+  "email": "user@example.com",
+  "password": "SecurePassword123!"
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  accessToken: string;
-  refreshToken: string; // New refresh token (optional, if rotating)
+  "user": {
+    "id": "usr_123",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "emailVerified": true
+  },
+  "session": {
+    "id": "ses_789",
+    "expiresAt": "2024-12-19T10:00:00Z"
+  }
 }
 ```
 
-**Errors**:
+**Response (200 OK - 2FA Required)**:
 
-- `401 Unauthorized`: Invalid or expired refresh token
-- `404 Not Found`: Session not found
+```json
+{
+  "requiresTwoFactor": true,
+  "tempToken": "tmp_abc123"
+}
+```
+
+**Rate Limit**: 5 requests / minute
 
 ---
 
-### Logout
+### Sign Out
 
-Invalidate current session.
-
-**Endpoint**: `POST /auth/logout`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
+```http
+POST /api/auth/sign-out
+Cookie: better-auth.session_token=xxx
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  success: true;
-  message: "Logged out successfully";
+  "success": true
 }
 ```
 
-**Errors**:
-
-- `401 Unauthorized`: Invalid or missing access token
+**Rate Limit**: 100 requests / minute
 
 ---
 
-### Get Current User
+### Get Session
 
-Get authenticated user's profile.
-
-**Endpoint**: `GET /auth/me`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
+```http
+GET /api/auth/get-session
+Cookie: better-auth.session_token=xxx
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  id: string;
-  email: string;
-  name: string;
-  emailVerified: boolean;
-  twoFactorEnabled: boolean;
-  avatar?: string;
-  createdAt: Date;
-  updatedAt?: Date;
+  "user": {
+    "id": "usr_123",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "emailVerified": true,
+    "role": "user",
+    "isActive": true
+  },
+  "session": {
+    "id": "ses_789",
+    "expiresAt": "2024-12-19T10:00:00Z"
+  }
 }
 ```
 
-**Errors**:
+**Response (401 Unauthorized)**: If session invalid or expired
 
-- `401 Unauthorized`: Invalid or missing access token
+**Rate Limit**: 100 requests / minute
+
+---
+
+## OAuth (Social Sign-On)
+
+### Initiate Social Login
+
+```http
+GET /api/auth/sign-in/social/google
+GET /api/auth/sign-in/social/github
+GET /api/auth/sign-in/social/discord
+```
+
+**Response**: 302 Redirect to OAuth provider
+
+**Callback**: `GET /api/auth/callback/{provider}` (handled automatically)
+
+**Rate Limit**: 10 requests / minute
 
 ---
 
@@ -222,832 +169,1047 @@ Authorization: Bearer <accessToken>
 
 ### Forgot Password
 
-Request password reset email.
+```http
+POST /api/auth/forget-password
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/forgot-password`
-
-**Request Body**:
-
-```typescript
 {
-  email: string;
+  "email": "user@example.com"
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  success: true;
-  message: "If an account exists with this email, a password reset link has been sent.";
+  "success": true,
+  "message": "Password reset email sent"
 }
 ```
 
-**Note**: Response is same whether email exists or not (security: don't reveal user existence)
-
-**Errors**:
-
-- `429 Too Many Requests`: Rate limit exceeded (3 per 15 minutes)
+**Rate Limit**: 3 requests / 15 minutes
 
 ---
 
 ### Reset Password
 
-Reset password with token from email.
+```http
+POST /api/auth/reset-password
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/reset-password`
-
-**Request Body**:
-
-```typescript
 {
-  token: string; // Reset token from email
-  newPassword: string; // Min 12 chars, mixed case, number, special char
+  "token": "reset_token_from_email",
+  "newPassword": "NewSecurePassword123!"
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  success: true;
-  message: "Password reset successfully. Please log in with your new password.";
+  "success": true
 }
 ```
 
-**Errors**:
-
-- `400 Bad Request`: Invalid token, weak password, or expired token
-- `404 Not Found`: Token not found
+**Rate Limit**: 5 requests / minute
 
 ---
 
 ### Change Password
 
-Change password for authenticated user.
+```http
+POST /api/auth/change-password
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/change-password`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Request Body**:
-
-```typescript
 {
-  oldPassword: string;
-  newPassword: string;
+  "currentPassword": "OldPassword123!",
+  "newPassword": "NewSecurePassword123!"
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  success: true;
-  message: "Password changed successfully. All sessions have been invalidated.";
+  "success": true
 }
 ```
 
-**Errors**:
-
-- `400 Bad Request`: Weak new password
-- `401 Unauthorized`: Invalid old password or missing token
-- `429 Too Many Requests`: Rate limit exceeded
+**Rate Limit**: 5 requests / minute
 
 ---
 
-## Two-Factor Authentication (2FA)
+## Email Verification
+
+### Verify Email
+
+```http
+GET /api/auth/verify-email?token=xxx
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true
+}
+```
+
+**Response (400 Bad Request)**: If token invalid or expired
+
+**Rate Limit**: 10 requests / minute
+
+---
+
+### Resend Verification Email
+
+```http
+POST /api/auth/resend-verification-email
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true
+}
+```
+
+**Rate Limit**: 3 requests / hour
+
+---
+
+## User Management
+
+### Update User
+
+```http
+POST /api/auth/update-user
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "name": "Jane Doe",
+  "image": "https://example.com/avatar.jpg"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "user": {
+    "id": "usr_123",
+    "name": "Jane Doe",
+    "image": "https://example.com/avatar.jpg"
+  }
+}
+```
+
+**Rate Limit**: 10 requests / minute
+
+---
+
+### Change Email
+
+```http
+POST /api/auth/change-email
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "newEmail": "newemail@example.com"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true,
+  "message": "Verification email sent to new address"
+}
+```
+
+**Rate Limit**: 3 requests / hour
+
+---
+
+## Two-Factor Authentication
 
 ### Enable 2FA
 
-Generate QR code for authenticator app.
-
-**Endpoint**: `POST /auth/2fa/enable`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
+```http
+POST /api/auth/two-factor/enable
+Cookie: better-auth.session_token=xxx
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  secret: string;  // Base32 encoded secret (for manual entry)
-  qrCode: string;  // Data URL of QR code image
-  backupCodes: string[];  // Array of 10 backup codes
+  "secret": "JBSWY3DPEHPK3PXP",
+  "qrCode": "data:image/png;base64,...",
+  "backupCodes": [
+    "ABC123XYZ",
+    "DEF456UVW",
+    ...
+  ]
 }
 ```
 
-**Note**: Save backup codes securely. They are shown only once.
-
-**Errors**:
-
-- `401 Unauthorized`: Invalid or missing access token
-- `409 Conflict`: 2FA already enabled
+**Rate Limit**: 5 requests / minute
 
 ---
 
-### Verify 2FA
+### Verify 2FA Code
 
-Verify TOTP code and enable 2FA.
+```http
+POST /api/auth/two-factor/verify
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/2fa/verify`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Request Body**:
-
-```typescript
 {
-  code: string; // 6-digit TOTP code from authenticator app
+  "code": "123456",
+  "tempToken": "tmp_abc123"
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  success: true;
-  message: "Two-factor authentication enabled successfully.";
+  "user": {
+    "id": "usr_123",
+    "email": "user@example.com"
+  },
+  "session": {
+    "id": "ses_789",
+    "expiresAt": "2024-12-19T10:00:00Z"
+  }
 }
 ```
 
-**Errors**:
-
-- `400 Bad Request`: Invalid code
-- `401 Unauthorized`: Invalid or missing access token
-- `429 Too Many Requests`: Rate limit exceeded (5 per minute)
+**Rate Limit**: 5 requests / minute
 
 ---
 
 ### Disable 2FA
 
-Disable two-factor authentication.
+```http
+POST /api/auth/two-factor/disable
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/2fa/disable`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Request Body**:
-
-```typescript
 {
-  code: string; // 6-digit TOTP code or backup code
+  "password": "UserPassword123!"
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  success: true;
-  message: "Two-factor authentication disabled successfully.";
+  "success": true
 }
 ```
 
-**Errors**:
-
-- `400 Bad Request`: Invalid code
-- `401 Unauthorized`: Invalid or missing access token
-
----
-
-### Regenerate Backup Codes
-
-Generate new backup codes (invalidates old ones).
-
-**Endpoint**: `POST /auth/2fa/regenerate-backup-codes`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Request Body**:
-
-```typescript
-{
-  code: string; // 6-digit TOTP code to confirm
-}
-```
-
-**Response** (200 OK):
-
-```typescript
-{
-  backupCodes: string[];  // Array of 10 new backup codes
-}
-```
-
-**Errors**:
-
-- `400 Bad Request`: Invalid code
-- `401 Unauthorized`: Invalid or missing access token
-- `404 Not Found`: 2FA not enabled
+**Rate Limit**: 5 requests / minute
 
 ---
 
 ## Passkeys (WebAuthn)
 
-### Start Passkey Registration
+### Register Passkey (Start)
 
-Get WebAuthn registration options.
-
-**Endpoint**: `POST /auth/passkey/register-start`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
+```http
+POST /api/auth/passkey/register
+Cookie: better-auth.session_token=xxx
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  challenge: string;
-  rp: {
-    name: string;
-    id: string;
-  };
-  user: {
-    id: string;
-    name: string;
-    displayName: string;
-  };
-  pubKeyCredParams: Array<{
-    type: string;
-    alg: number;
-  }>;
-  timeout: number;
-  attestation: string;
-  authenticatorSelection: {
-    authenticatorAttachment?: string;
-    residentKey: string;
-    userVerification: string;
-  };
-  excludeCredentials: Array<{
-    id: string;
-    type: string;
-  }>;
+  "challenge": "randomBase64Challenge",
+  "rp": {
+    "name": "Trading App",
+    "id": "yourdomain.com"
+  },
+  "user": {
+    "id": "usr_123",
+    "name": "user@example.com",
+    "displayName": "John Doe"
+  },
+  "pubKeyCredParams": [
+    { "type": "public-key", "alg": -7 },
+    { "type": "public-key", "alg": -257 }
+  ]
 }
 ```
 
-**Errors**:
+**Usage**: Pass to `navigator.credentials.create()`
 
-- `401 Unauthorized`: Invalid or missing access token
+**Rate Limit**: 10 requests / minute
 
 ---
 
-### Finish Passkey Registration
+### Register Passkey (Finish)
 
-Verify and store passkey credential.
+```http
+POST /api/auth/passkey/register
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/passkey/register-finish`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Request Body**:
-
-```typescript
 {
-  id: string;
-  rawId: string;
-  response: {
-    clientDataJSON: string;
-    attestationObject: string;
-  }
-  type: string;
+  "credential": { /* WebAuthn credential from browser */ }
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  success: true;
-  verified: boolean;
-  message: "Passkey registered successfully.";
+  "success": true,
+  "passkeyId": "pk_789"
 }
 ```
 
-**Errors**:
-
-- `400 Bad Request`: Invalid credential or verification failed
-- `401 Unauthorized`: Invalid or missing access token
+**Rate Limit**: 10 requests / minute
 
 ---
 
-### Start Passkey Login
+### Authenticate with Passkey (Start)
 
-Get WebAuthn authentication options.
+```http
+POST /api/auth/passkey/authenticate
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/passkey/login-start`
-
-**Request Body**:
-
-```typescript
 {
-  email: string;
+  "email": "user@example.com"
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  challenge: string;
-  timeout: number;
-  rpId: string;
-  allowCredentials: Array<{
-    id: string;
-    type: string;
-  }>;
-  userVerification: string;
+  "challenge": "randomBase64Challenge",
+  "allowCredentials": [
+    {
+      "id": "credentialId1",
+      "type": "public-key"
+    }
+  ]
 }
 ```
 
-**Errors**:
+**Usage**: Pass to `navigator.credentials.get()`
 
-- `404 Not Found`: No passkeys found for this email
+**Rate Limit**: 10 requests / minute
 
 ---
 
-### Finish Passkey Login
+### Authenticate with Passkey (Finish)
 
-Verify passkey and authenticate.
+```http
+POST /api/auth/passkey/authenticate
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/passkey/login-finish`
-
-**Request Body**:
-
-```typescript
 {
-  id: string;
-  rawId: string;
-  response: {
-    clientDataJSON: string;
-    authenticatorData: string;
-    signature: string;
-    userHandle?: string;
-  };
-  type: string;
+  "assertion": { /* WebAuthn assertion from browser */ }
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  accessToken: string;
-  refreshToken: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    // ... other user fields
+  "user": {
+    "id": "usr_123",
+    "email": "user@example.com"
+  },
+  "session": {
+    "id": "ses_789",
+    "expiresAt": "2024-12-19T10:00:00Z"
   }
 }
 ```
 
-**Errors**:
-
-- `400 Bad Request`: Invalid credential or verification failed
-- `401 Unauthorized`: Authentication failed
+**Rate Limit**: 10 requests / minute
 
 ---
 
 ### List Passkeys
 
-Get all registered passkeys for authenticated user.
-
-**Endpoint**: `GET /auth/passkey/list`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
+```http
+GET /api/auth/passkey/list
+Cookie: better-auth.session_token=xxx
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  passkeys: Array<{
-    id: string;
-    credentialID: string;
-    createdAt: Date;
-    lastUsed?: Date;
-    device?: string; // User agent when registered
-  }>;
+  "passkeys": [
+    {
+      "id": "pk_789",
+      "name": "MacBook Pro TouchID",
+      "createdAt": "2024-12-01T10:00:00Z"
+    },
+    {
+      "id": "pk_790",
+      "name": "YubiKey 5",
+      "createdAt": "2024-12-05T14:30:00Z"
+    }
+  ]
 }
 ```
 
-**Errors**:
-
-- `401 Unauthorized`: Invalid or missing access token
+**Rate Limit**: 100 requests / minute
 
 ---
 
 ### Delete Passkey
 
-Remove a passkey.
+```http
+DELETE /api/auth/passkey/delete
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
 
-**Endpoint**: `DELETE /auth/passkey/:id`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Response** (200 OK):
-
-```typescript
 {
-  success: true;
-  message: "Passkey deleted successfully.";
+  "passkeyId": "pk_789"
 }
 ```
 
-**Errors**:
+**Response (200 OK)**:
 
-- `401 Unauthorized`: Invalid or missing access token
-- `404 Not Found`: Passkey not found
-
----
-
-## OAuth
-
-### Start OAuth Flow
-
-Redirect to OAuth provider.
-
-**Endpoint**: `GET /auth/oauth/:provider`
-
-**Supported Providers**: `google`, `github`, `discord`
-
-**Response**: Redirects to OAuth provider's consent page
-
-**Example**:
-
-```
-GET /auth/oauth/google
-→ Redirects to https://accounts.google.com/o/oauth2/v2/auth?...
-```
-
----
-
-### OAuth Callback
-
-Handle OAuth provider redirect.
-
-**Endpoint**: `GET /auth/oauth/:provider/callback`
-
-**Query Parameters**:
-
-```typescript
+```json
 {
-  code: string;     // Authorization code from provider
-  state?: string;   // CSRF protection token
-  error?: string;   // Error from provider
+  "success": true
 }
 ```
 
-**Response**: Redirects to frontend with tokens
-
-**Success**:
-
-```
-→ Redirects to https://app.yourdomain.com/auth/callback?
-    accessToken=xxx&refreshToken=yyy
-```
-
-**Error**:
-
-```
-→ Redirects to https://app.yourdomain.com/auth/error?
-    error=access_denied
-```
+**Rate Limit**: 10 requests / minute
 
 ---
 
-## Organizations
+## Magic Link (Passwordless)
+
+### Send Magic Link
+
+```http
+POST /api/auth/sign-in/magic-link
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true,
+  "message": "Magic link sent to your email"
+}
+```
+
+**Rate Limit**: 3 requests / 15 minutes
+
+---
+
+### Verify Magic Link
+
+```http
+GET /api/auth/magic-link/verify?token=xxx
+```
+
+**Response**: 302 Redirect to app with session cookie set
+
+**Rate Limit**: 10 requests / minute
+
+---
+
+## Phone Number Verification
+
+### Send OTP
+
+```http
+POST /api/auth/phone-number/send-otp
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "phoneNumber": "+919876543210"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true,
+  "message": "OTP sent to +919876543210"
+}
+```
+
+**Rate Limit**: 3 requests / 15 minutes
+
+---
+
+### Verify OTP
+
+```http
+POST /api/auth/phone-number/verify
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "phoneNumber": "+919876543210",
+  "otp": "123456"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true,
+  "user": {
+    "phoneNumber": "+919876543210",
+    "phoneNumberVerified": true
+  }
+}
+```
+
+**Rate Limit**: 5 requests / minute
+
+---
+
+## Organization Management
 
 ### Create Organization
 
-Create a new organization.
+```http
+POST /api/auth/organization/create
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/organization/create`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Request Body**:
-
-```typescript
 {
-  name: string;     // Organization name
-  slug: string;     // URL-friendly slug
-  logo?: string;    // Logo URL (optional)
+  "name": "Acme Trading",
+  "slug": "acme-trading"
 }
 ```
 
-**Response** (201 Created):
+**Response (201 Created)**:
 
-```typescript
+```json
 {
-  id: string;
-  name: string;
-  slug: string;
-  logo?: string;
-  createdAt: Date;
-  members: Array<{
-    userId: string;
-    role: 'owner' | 'admin' | 'member';
-  }>;
+  "organization": {
+    "id": "org_123",
+    "name": "Acme Trading",
+    "slug": "acme-trading",
+    "createdAt": "2024-12-12T10:00:00Z"
+  },
+  "role": "owner"
 }
 ```
 
-**Errors**:
-
-- `400 Bad Request`: Invalid input
-- `401 Unauthorized`: Invalid or missing access token
-- `409 Conflict`: Slug already exists
+**Rate Limit**: 5 requests / hour
 
 ---
 
 ### List Organizations
 
-Get all organizations for authenticated user.
-
-**Endpoint**: `GET /auth/organization/list`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
+```http
+GET /api/auth/organization/list
+Cookie: better-auth.session_token=xxx
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  organizations: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    logo?: string;
-    role: "owner" | "admin" | "member";
-    createdAt: Date;
-  }>;
+  "organizations": [
+    {
+      "id": "org_123",
+      "name": "Acme Trading",
+      "slug": "acme-trading",
+      "role": "owner"
+    },
+    {
+      "id": "org_456",
+      "name": "Beta Corp",
+      "slug": "beta-corp",
+      "role": "member"
+    }
+  ]
 }
 ```
 
-**Errors**:
-
-- `401 Unauthorized`: Invalid or missing access token
+**Rate Limit**: 100 requests / minute
 
 ---
 
 ### Get Organization
 
-Get full organization details.
-
-**Endpoint**: `GET /auth/organization/:id`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
+```http
+GET /api/auth/organization/get-full-organization?organizationId=org_123
+Cookie: better-auth.session_token=xxx
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  id: string;
-  name: string;
-  slug: string;
-  logo?: string;
-  createdAt: Date;
-  updatedAt?: Date;
-  members: Array<{
-    userId: string;
-    email: string;
-    name: string;
-    role: 'owner' | 'admin' | 'member';
-    joinedAt: Date;
-  }>;
-  invites: Array<{
-    id: string;
-    email: string;
-    role: 'admin' | 'member';
-    status: 'pending' | 'accepted' | 'expired';
-    expiresAt: Date;
-  }>;
+  "organization": {
+    "id": "org_123",
+    "name": "Acme Trading",
+    "slug": "acme-trading"
+  },
+  "members": [
+    {
+      "id": "mem_789",
+      "userId": "usr_123",
+      "role": "owner",
+      "user": {
+        "name": "John Doe",
+        "email": "john@example.com"
+      }
+    },
+    {
+      "id": "mem_790",
+      "userId": "usr_456",
+      "role": "admin",
+      "user": {
+        "name": "Jane Smith",
+        "email": "jane@example.com"
+      }
+    }
+  ],
+  "invitations": [
+    {
+      "id": "inv_111",
+      "email": "bob@example.com",
+      "role": "member",
+      "status": "pending"
+    }
+  ]
 }
 ```
 
-**Errors**:
+**Rate Limit**: 100 requests / minute
 
-- `401 Unauthorized`: Invalid or missing access token
-- `403 Forbidden`: Not a member of this organization
-- `404 Not Found`: Organization not found
+---
+
+### Update Organization
+
+```http
+POST /api/auth/organization/update
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "organizationId": "org_123",
+  "name": "Acme Trading Inc."
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "organization": {
+    "id": "org_123",
+    "name": "Acme Trading Inc.",
+    "slug": "acme-trading"
+  }
+}
+```
+
+**Permission**: Owner or Admin
+
+**Rate Limit**: 10 requests / minute
+
+---
+
+### Delete Organization
+
+```http
+DELETE /api/auth/organization/delete
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "organizationId": "org_123"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true
+}
+```
+
+**Permission**: Owner only
+
+**Rate Limit**: 5 requests / hour
 
 ---
 
 ### Set Active Organization
 
-Switch to a different organization.
+```http
+POST /api/auth/organization/set-active
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/organization/set-active`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Request Body**:
-
-```typescript
 {
-  organizationId: string;
+  "organizationId": "org_456"
 }
 ```
 
-**Response** (200 OK):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  success: true;
-  organizationId: string;
+  "success": true,
+  "activeOrganizationId": "org_456"
 }
 ```
 
-**Errors**:
-
-- `401 Unauthorized`: Invalid or missing access token
-- `403 Forbidden`: Not a member of this organization
-- `404 Not Found`: Organization not found
+**Rate Limit**: 100 requests / minute
 
 ---
 
 ### Invite Member
 
-Invite a user to organization.
+```http
+POST /api/auth/organization/invite-member
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/organization/:id/invite`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Request Body**:
-
-```typescript
 {
-  email: string;
-  role: "admin" | "member";
+  "organizationId": "org_123",
+  "email": "bob@example.com",
+  "role": "member"
 }
 ```
 
-**Response** (201 Created):
+**Response (200 OK)**:
 
-```typescript
+```json
 {
-  id: string;
-  email: string;
-  role: "admin" | "member";
-  status: "pending";
-  expiresAt: Date; // 7 days from now
+  "invitation": {
+    "id": "inv_111",
+    "email": "bob@example.com",
+    "role": "member",
+    "expiresAt": "2024-12-19T10:00:00Z"
+  }
 }
 ```
 
-**Errors**:
+**Permission**: Owner or Admin
 
-- `400 Bad Request`: Invalid email or role
-- `401 Unauthorized`: Invalid or missing access token
-- `403 Forbidden`: Not an admin of this organization
-- `404 Not Found`: Organization not found
-- `409 Conflict`: User already a member or has pending invite
+**Rate Limit**: 10 requests / hour
 
 ---
 
-### Accept Invite
+### Accept Invitation
 
-Accept organization invitation.
+```http
+POST /api/auth/organization/accept-invitation
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
 
-**Endpoint**: `POST /auth/organization/invite/:token/accept`
-
-**Headers**:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-**Response** (200 OK):
-
-```typescript
 {
-  success: true;
-  organization: {
-    id: string;
-    name: string;
-    slug: string;
-  }
-  role: "admin" | "member";
+  "invitationId": "inv_111"
 }
 ```
 
-**Errors**:
+**Response (200 OK)**:
 
-- `400 Bad Request`: Invalid or expired token
-- `401 Unauthorized`: Invalid or missing access token
-- `404 Not Found`: Invite not found
+```json
+{
+  "success": true,
+  "membership": {
+    "organizationId": "org_123",
+    "role": "member"
+  }
+}
+```
+
+**Rate Limit**: 10 requests / minute
+
+---
+
+### Revoke Invitation
+
+```http
+POST /api/auth/organization/revoke-invitation
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "invitationId": "inv_111"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true
+}
+```
+
+**Permission**: Owner or Admin
+
+**Rate Limit**: 10 requests / minute
+
+---
+
+### Remove Member
+
+```http
+POST /api/auth/organization/remove-member
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "organizationId": "org_123",
+  "userId": "usr_456"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true
+}
+```
+
+**Permission**: Owner or Admin (cannot remove owner)
+
+**Rate Limit**: 10 requests / minute
+
+---
+
+### Update Member Role
+
+```http
+POST /api/auth/organization/update-member-role
+Cookie: better-auth.session_token=xxx
+Content-Type: application/json
+
+{
+  "organizationId": "org_123",
+  "userId": "usr_456",
+  "role": "admin"
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "success": true,
+  "member": {
+    "userId": "usr_456",
+    "role": "admin"
+  }
+}
+```
+
+**Permission**: Owner only
+
+**Rate Limit**: 10 requests / minute
 
 ---
 
 ## Error Responses
 
-All error responses follow this format:
+All endpoints may return error responses:
 
-```typescript
+### 400 Bad Request
+
+```json
 {
-  statusCode: number;
-  message: string | string[];
-  error: string;
-  timestamp: string;
-  path: string;
+  "error": "VALIDATION_ERROR",
+  "message": "Invalid email format",
+  "statusCode": 400
 }
 ```
 
-### Common Error Codes
+**Common Codes**:
 
-- `400 Bad Request`: Invalid input or validation error
-- `401 Unauthorized`: Missing or invalid authentication
-- `403 Forbidden`: Insufficient permissions
-- `404 Not Found`: Resource not found
-- `409 Conflict`: Resource already exists
-- `429 Too Many Requests`: Rate limit exceeded
-- `500 Internal Server Error`: Server error
+- `VALIDATION_ERROR`: Invalid input data
+- `INVALID_TOKEN`: Token expired or invalid
+- `WEAK_PASSWORD`: Password doesn't meet requirements
 
 ---
 
-## Rate Limits
+### 401 Unauthorized
 
-| Endpoint                     | Limit        | Window     |
-| ---------------------------- | ------------ | ---------- |
-| `POST /auth/login`           | 5 requests   | 1 minute   |
-| `POST /auth/register`        | 3 requests   | 1 hour     |
-| `POST /auth/forgot-password` | 3 requests   | 15 minutes |
-| `POST /auth/2fa/verify`      | 5 requests   | 1 minute   |
-| `POST /auth/passkey/*`       | 10 requests  | 1 minute   |
-| All other endpoints          | 100 requests | 1 minute   |
-
-Rate limit headers are included in all responses:
-
+```json
+{
+  "error": "UNAUTHORIZED",
+  "message": "Invalid credentials",
+  "statusCode": 401
+}
 ```
-X-RateLimit-Limit: 5
-X-RateLimit-Remaining: 4
-X-RateLimit-Reset: 1640000000
+
+**Common Codes**:
+
+- `INVALID_CREDENTIALS`: Wrong email/password
+- `SESSION_EXPIRED`: Session token expired
+- `EMAIL_NOT_VERIFIED`: Email verification required
+
+---
+
+### 403 Forbidden
+
+```json
+{
+  "error": "FORBIDDEN",
+  "message": "Insufficient permissions",
+  "statusCode": 403
+}
+```
+
+**Common Codes**:
+
+- `INSUFFICIENT_PERMISSIONS`: Missing required role
+- `ORGANIZATION_ACCESS_DENIED`: Not a member
+
+---
+
+### 409 Conflict
+
+```json
+{
+  "error": "USER_EXISTS",
+  "message": "User with this email already exists",
+  "statusCode": 409
+}
+```
+
+**Common Codes**:
+
+- `USER_EXISTS`: Email already registered
+- `ORGANIZATION_SLUG_EXISTS`: Slug already taken
+
+---
+
+### 429 Too Many Requests
+
+```json
+{
+  "error": "RATE_LIMIT_EXCEEDED",
+  "message": "Too many requests, please try again later",
+  "statusCode": 429,
+  "retryAfter": 60
+}
 ```
 
 ---
 
-## Webhooks (Future)
+### 500 Internal Server Error
 
-Coming soon: Webhook support for real-time notifications of authentication events.
+```json
+{
+  "error": "INTERNAL_ERROR",
+  "message": "An unexpected error occurred",
+  "statusCode": 500
+}
+```
+
+---
+
+## Client Usage Examples
+
+### React (Next.js)
+
+```typescript
+'use client';
+import { useAuth } from '@repo/authentication/client';
+
+export default function LoginForm() {
+  const { signIn, signUp, signOut, user } = useAuth();
+
+  const handleLogin = async (email: string, password: string) => {
+    const { data, error } = await signIn.email({ email, password });
+    if (error) {
+      console.error('Login failed:', error.message);
+    } else {
+      console.log('Logged in:', data.user);
+    }
+  };
+
+  return (
+    <div>
+      {user ? (
+        <button onClick={() => signOut()}>Sign Out</button>
+      ) : (
+        <button onClick={() => handleLogin('user@example.com', 'pass')}>
+          Sign In
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+### NestJS (Server-Side)
+
+```typescript
+import { Controller, Get, Post, Body, UseGuards } from "@nestjs/common";
+import {
+  AuthGuard,
+  CurrentUser,
+  Roles,
+  RolesGuard,
+} from "@repo/authentication";
+
+@Controller("profile")
+@UseGuards(AuthGuard, RolesGuard)
+export class ProfileController {
+  @Get()
+  getProfile(@CurrentUser() user: User) {
+    return user;
+  }
+
+  @Post("update")
+  updateProfile(@CurrentUser() user: User, @Body() data: UpdateProfileDto) {
+    // Update logic
+  }
+
+  @Delete("admin-only")
+  @Roles("admin")
+  dangerousAction(@CurrentUser() user: User) {
+    // Only admins can access
+  }
+}
+```
 
 ---
 
 ## Related Documentation
 
-- [Authentication Flow Diagrams](./FLOWS.md)
-- [Security Best Practices](./SECURITY.md)
-- [Authentication Package README](../README.md)
+- [Authentication Flows](./FLOWS.md) - Flow diagrams with timing
+- [Security Best Practices](./SECURITY.md) - Security features
+- [Architecture](./ARCHITECTURE.md) - System architecture
+- [better-auth API Docs](https://better-auth.com/docs/api) - Upstream documentation

@@ -1,449 +1,222 @@
 # Security Best Practices - Authentication Package
 
-Comprehensive security guidelines for the `@repo/authentication` package.
+Comprehensive security guidelines for better-auth integration.
+
+---
+
+## Overview
+
+**better-auth** provides enterprise-grade security out of the box. This document outlines the built-in security features and best practices for configuration.
+
+**Key Security Features**:
+
+- ✅ Automatic bcrypt password hashing (12 rounds)
+- ✅ Built-in CSRF protection
+- ✅ Rate limiting with configurable rules
+- ✅ Secure httpOnly cookies
+- ✅ XSS protection
+- ✅ Session management with automatic refresh
+- ✅ OAuth 2.1 with PKCE
+- ✅ WebAuthn (passkey) security
+- ✅ Two-factor authentication
 
 ---
 
 ## 1. Password Security
 
-### Hashing Requirements
+### Automatic Hashing
 
-✅ **ALWAYS use bcrypt with 12+ salt rounds**:
+better-auth automatically hashes passwords using bcrypt with 12 salt rounds:
 
 ```typescript
-import * as bcrypt from "bcrypt";
-
-const SALT_ROUNDS = 12; // Minimum 12, recommended 14 for high-security
-
-// Hash password
-const hashedPassword = await bcrypt.hash(plainPassword, SALT_ROUNDS);
-
-// Verify password
-const isValid = await bcrypt.compare(plainPassword, hashedPassword);
+// Automatic - no custom code needed
+POST /api/auth/sign-up/email
+{
+  "email": "user@example.com",
+  "password": "SecurePassword123!"  // ← Automatically hashed with bcrypt
+}
 ```
 
-❌ **NEVER**:
+**What better-auth does**:
 
-- Store passwords in plain text
-- Use MD5, SHA1, or other non-salted hashes
-- Use salt rounds < 12
-- Implement custom password hashing
+- Uses bcrypt with 12 salt rounds (industry standard)
+- Validates password strength automatically
+- Uses timing-safe comparison to prevent timing attacks
+- Never stores plaintext passwords
 
 ### Password Requirements
 
-```typescript
-export const PASSWORD_RULES = {
-  minLength: 12,
-  maxLength: 128,
-  requireUppercase: true,
-  requireLowercase: true,
-  requireNumber: true,
-  requireSpecialChar: true,
-} as const;
-
-// Validation regex
-const passwordRegex =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,128}$/;
-```
-
-**Rationale**:
-
-- 12+ characters: Resists brute force (2^68 combinations)
-- Mixed case + numbers + special chars: Prevents dictionary attacks
-- Max 128 chars: Prevents DoS via extremely long passwords
-
----
-
-## 2. Token Management
-
-### JWT Configuration
+Configure password rules in your auth config:
 
 ```typescript
-// Access Token (short-lived)
-const accessToken = this.jwtService.sign(payload, {
-  secret: process.env.JWT_ACCESS_SECRET,
-  expiresIn: "15m", // ✅ Short lifetime
-  algorithm: "HS256", // ✅ Secure algorithm
-});
-
-// Refresh Token (long-lived, but revocable)
-const refreshToken = this.jwtService.sign(payload, {
-  secret: process.env.JWT_REFRESH_SECRET, // ⚠️ DIFFERENT secret
-  expiresIn: "7d",
-  algorithm: "HS256",
+// src/config/auth.config.ts
+export const createAuthConfig = (options: AuthConfigOptions) => ({
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+    password: {
+      minLength: 12,
+      maxLength: 128,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSpecialChars: true,
+    },
+  },
 });
 ```
 
-### Secret Requirements
+**Recommended rules**:
 
-✅ **JWT secrets MUST**:
-
-- Be at least 32 bytes (256 bits)
-- Use cryptographically secure random generation
-- Be different for access vs refresh tokens
-- Be rotated every 6-12 months
-
-```bash
-# Generate secure secret (Unix/Mac)
-openssl rand -base64 32
-
-# Generate secure secret (Windows PowerShell)
-[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
-```
-
-❌ **NEVER**:
-
-- Hardcode secrets in code
-- Use weak secrets (e.g., "secret123")
-- Commit secrets to version control
-- Reuse secrets across environments
-
-### Token Storage
-
-**Client-Side**:
-
-- ✅ Store access token in memory (React state/context)
-- ✅ Store refresh token in httpOnly cookie (if using cookies)
-- ✅ Use localStorage ONLY if necessary (XSS risk)
-- ❌ NEVER store tokens in sessionStorage (persists across tabs)
-
-**Server-Side**:
-
-- ✅ Store refresh tokens in MongoDB (revocable)
-- ✅ Cache active sessions in Redis (fast lookup)
-- ✅ Implement token blacklist for logout
+- Minimum 12 characters
+- Mixed case (upper + lower)
+- At least one number
+- At least one special character
+- Maximum 128 characters (prevent DoS)
 
 ---
 
-## 3. Session Security
+## 2. Session Security
+
+### Secure Cookies
+
+better-auth automatically sets secure httpOnly cookies:
+
+```http
+Set-Cookie: better-auth.session_token=<token>;
+  HttpOnly;
+  Secure;
+  SameSite=Lax;
+  Path=/;
+  Max-Age=604800
+```
+
+**Security properties**:
+
+- **HttpOnly**: Prevents JavaScript access (XSS protection)
+- **Secure**: Only sent over HTTPS in production
+- **SameSite=Lax**: CSRF protection
+- **Max-Age**: 7 days (configurable)
 
 ### Session Configuration
 
 ```typescript
-@Injectable()
-export class SessionService {
-  async createSession(userId: string, refreshToken: string) {
-    const session = await this.sessionRepo.create({
-      userId,
-      token: refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      ipAddress: request.ip, // ✅ Track IP for suspicious activity
-      userAgent: request.headers["user-agent"], // ✅ Track device
-      createdAt: new Date(),
-    });
-
-    // Cache in Redis for fast lookup
-    await this.redis.setSession(session.id, session, 7 * 24 * 60 * 60);
-
-    return session;
-  }
+// src/config/auth.config.ts
+session: {
+  expiresIn: 60 * 60 * 24 * 7,      // 7 days
+  updateAge: 60 * 60 * 24,           // Update session daily
+  cookieCache: {
+    enabled: true,
+    maxAge: 60 * 5,                  // 5 minutes cookie cache
+  },
 }
 ```
 
-### Session Invalidation
+### Automatic Session Refresh
 
-✅ **Invalidate sessions when**:
-
-- User logs out
-- User changes password
-- User enables/disables 2FA
-- Suspicious activity detected
-- Token expires naturally
+better-auth automatically refreshes sessions when they're nearing expiry:
 
 ```typescript
-async invalidateAllUserSessions(userId: string) {
-  // Delete from MongoDB
-  await this.sessionRepo.deleteByUserId(userId);
+// Automatic - no custom code needed
+// If session expires in < 1 day, better-auth extends it by 7 days
+```
 
-  // Delete from Redis
-  await this.redis.deletePattern(`session:${userId}:*`);
-}
+---
+
+## 3. CSRF Protection
+
+### Automatic CSRF Tokens
+
+better-auth includes built-in CSRF protection:
+
+```typescript
+// State parameter for OAuth (automatic)
+GET /api/auth/sign-in/social/google
+  → Generates state: crypto.randomBytes(16).toString('hex')
+  → Stores in session
+  → Validates on callback
+
+// PKCE for OAuth 2.1 (automatic)
+  → Generates code_verifier and code_challenge
+  → Prevents authorization code interception
+```
+
+### SameSite Cookies
+
+better-auth sets `SameSite=Lax` by default, preventing CSRF attacks:
+
+```http
+Set-Cookie: better-auth.session_token=xxx; SameSite=Lax
 ```
 
 ---
 
 ## 4. Rate Limiting
 
+### Built-in Rate Limiter
+
+better-auth includes automatic rate limiting:
+
+```typescript
+// src/config/auth.config.ts
+rateLimit: {
+  enabled: true,
+  window: 60000,        // 60 seconds
+  max: 100,             // 100 requests per window
+  storage: "memory",    // or "redis" for distributed systems
+}
+```
+
 ### Endpoint-Specific Limits
 
-```typescript
-// Login endpoint (prevent brute force)
-@UseGuards(ThrottlerGuard)
-@Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
-@Post('login')
-async login(@Body() dto: LoginDto) {
-  // ...
-}
+better-auth applies stricter limits to sensitive endpoints:
 
-// Registration endpoint (prevent spam)
-@Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 per hour
-@Post('register')
-async register(@Body() dto: RegisterDto) {
-  // ...
-}
+| Endpoint                           | Limit        | Window     |
+| ---------------------------------- | ------------ | ---------- |
+| `POST /api/auth/sign-in/email`     | 5 requests   | 1 minute   |
+| `POST /api/auth/sign-up/email`     | 3 requests   | 1 hour     |
+| `POST /api/auth/forget-password`   | 3 requests   | 15 minutes |
+| `POST /api/auth/two-factor/verify` | 5 requests   | 1 minute   |
+| All other endpoints                | 100 requests | 1 minute   |
 
-// Password reset (prevent enumeration)
-@Throttle({ default: { limit: 3, ttl: 900000 } }) // 3 per 15 min
-@Post('forgot-password')
-async forgotPassword(@Body() dto: ForgotPasswordDto) {
-  // ...
-}
-```
-
-### IP-Based Blocking
+### Custom Rate Limits (Optional)
 
 ```typescript
-@Injectable()
-export class IpBlockService {
-  private readonly MAX_FAILED_ATTEMPTS = 10;
-  private readonly BLOCK_DURATION = 15 * 60 * 1000; // 15 minutes
+// Override specific endpoint limits
+import { rateLimit } from 'better-auth';
 
-  async recordFailedAttempt(ip: string) {
-    const key = `failed:${ip}`;
-    const attempts = await this.redis.incr(key);
-
-    if (attempts === 1) {
-      // Set expiry on first attempt
-      await this.redis.expire(key, this.BLOCK_DURATION / 1000);
-    }
-
-    if (attempts >= this.MAX_FAILED_ATTEMPTS) {
-      await this.redis.set(`blocked:${ip}`, "1", this.BLOCK_DURATION / 1000);
-      throw new TooManyRequestsException("IP temporarily blocked");
-    }
-  }
-
-  async isBlocked(ip: string): Promise<boolean> {
-    return (await this.redis.get(`blocked:${ip}`)) !== null;
-  }
+@Post('custom-endpoint')
+@UseGuards(rateLimit({ max: 10, window: 60000 }))
+async customEndpoint() {
+  // 10 requests per minute
 }
 ```
 
 ---
 
-## 5. Input Validation
+## 5. XSS Protection
 
-### Use Zod Schemas
+### HttpOnly Cookies
 
-✅ **Always validate with Zod**:
-
-```typescript
-import { z } from 'zod';
-
-export const loginSchema = z.object({
-  email: z.string().email().max(255),
-  password: z.string().min(1).max(128), // Don't reveal password rules in error
-});
-
-export const registerSchema = z.object({
-  email: z.string().email().max(255),
-  password: z.string()
-    .min(12, 'Password must be at least 12 characters')
-    .max(128)
-    .regex(/[a-z]/, 'Must contain lowercase letter')
-    .regex(/[A-Z]/, 'Must contain uppercase letter')
-    .regex(/\d/, 'Must contain number')
-    .regex(/[@$!%*?&]/, 'Must contain special character'),
-  name: z.string().min(1).max(100),
-});
-
-// In controller
-@Post('login')
-async login(@Body(new ZodValidationPipe(loginSchema)) dto: LoginDto) {
-  // dto is validated and type-safe
-}
-```
-
-### Sanitization
+better-auth stores session tokens in httpOnly cookies, preventing JavaScript access:
 
 ```typescript
-import { escape } from "validator";
+// ❌ CANNOT access token via JavaScript
+localStorage.getItem("token"); // undefined
+document.cookie; // does not include session_token
 
-// Sanitize user input before storage
-const sanitizedName = escape(dto.name.trim());
-```
-
----
-
-## 6. Two-Factor Authentication (2FA)
-
-### TOTP Configuration
-
-```typescript
-import * as speakeasy from "speakeasy";
-
-// Generate secret
-const secret = speakeasy.generateSecret({
-  name: "Investment Trading Portfolio",
-  issuer: "YourCompany",
-  length: 32, // ✅ Use 32 bytes for security
-});
-
-// Verify with time window
-const verified = speakeasy.totp.verify({
-  secret: twoFactor.secret,
-  encoding: "base32",
-  token: userCode,
-  window: 2, // ✅ Allow ±60 seconds (2 time steps)
+// ✅ Token automatically sent with requests
+fetch("/api/auth/get-session", {
+  credentials: "include", // Include cookies
 });
 ```
 
-### Backup Codes
+### Content Security Policy
 
-✅ **Provide backup codes when enabling 2FA**:
-
-```typescript
-async generateBackupCodes(userId: string) {
-  const codes = [];
-  for (let i = 0; i < 10; i++) {
-    const code = crypto.randomBytes(4).toString('hex'); // 8-char hex
-    codes.push(code);
-  }
-
-  // Hash before storing (like passwords)
-  const hashedCodes = await Promise.all(
-    codes.map(code => bcrypt.hash(code, 10))
-  );
-
-  await this.twoFactorRepo.update(userId, {
-    backupCodes: hashedCodes,
-  });
-
-  return codes; // Return plaintext ONCE for user to save
-}
-```
-
----
-
-## 7. Passkey (WebAuthn) Security
-
-### Registration Options
+Enable CSP headers in production:
 
 ```typescript
-import { generateRegistrationOptions } from "@simplewebauthn/server";
-
-const options = await generateRegistrationOptions({
-  rpName: "Investment Trading Portfolio",
-  rpID: "yourdomain.com", // ✅ Must match actual domain
-  userID: user.id,
-  userName: user.email,
-  attestationType: "none", // ✅ 'none' for privacy, 'direct' for enterprise
-  authenticatorSelection: {
-    authenticatorAttachment: "platform", // ✅ Prefer platform (Touch ID, Windows Hello)
-    residentKey: "preferred", // ✅ Allow discoverable credentials
-    userVerification: "preferred", // ✅ Biometric verification
-  },
-  excludeCredentials: existingPasskeys.map((pk) => ({
-    id: pk.credentialID,
-    type: "public-key",
-  })), // ✅ Prevent duplicate registration
-});
-```
-
-### Verification
-
-```typescript
-import { verifyRegistrationResponse } from "@simplewebauthn/server";
-
-const verification = await verifyRegistrationResponse({
-  response: credential,
-  expectedChallenge: storedChallenge,
-  expectedOrigin: "https://yourdomain.com", // ✅ Must match actual origin
-  expectedRPID: "yourdomain.com",
-  requireUserVerification: true, // ✅ Enforce biometric/PIN
-});
-
-if (!verification.verified) {
-  throw new BadRequestException("Passkey verification failed");
-}
-
-// ✅ Store counter to prevent replay attacks
-await this.passkeyRepo.create({
-  userId,
-  credentialID: verification.registrationInfo.credentialID,
-  credentialPublicKey: verification.registrationInfo.credentialPublicKey,
-  counter: verification.registrationInfo.counter, // ✅ CRITICAL for security
-});
-```
-
----
-
-## 8. Email Security
-
-### Verification Tokens
-
-```typescript
-// Generate cryptographically secure token
-const token = crypto.randomBytes(32).toString("hex");
-
-// Store with expiration
-await this.verificationRepo.create({
-  userId,
-  token,
-  type: "EMAIL_VERIFICATION",
-  expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-});
-
-// ✅ One-time use: delete after verification
-await this.verificationRepo.delete(verificationId);
-```
-
-### Email Content
-
-❌ **NEVER include**:
-
-- Passwords or password hints
-- Full credit card numbers
-- Social security numbers
-- Raw API tokens
-
-✅ **DO include**:
-
-- Time-limited verification links
-- Clear instructions
-- Support contact information
-- Expiration time
-
----
-
-## 9. CORS & CSRF Protection
-
-### CORS Configuration
-
-```typescript
-// main.ts
-app.enableCors({
-  origin: process.env.FRONTEND_URL, // ✅ Specific origin, not '*'
-  credentials: true, // ✅ Required for cookies
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-});
-```
-
-### CSRF Protection
-
-```typescript
-import * as csurf from "csurf";
-
-// Enable CSRF for state-changing operations
-app.use(
-  csurf({
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // HTTPS only in prod
-      sameSite: "strict",
-    },
-  })
-);
-```
-
----
-
-## 10. Secure Headers
-
-### Helmet Configuration
-
-```typescript
+// apps/api/src/main.ts
 import helmet from "helmet";
 
 app.use(
@@ -451,245 +224,425 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
       },
     },
-    hsts: {
-      maxAge: 31536000, // 1 year
-      includeSubDomains: true,
-      preload: true,
-    },
-    frameguard: {
-      action: "deny", // Prevent clickjacking
-    },
-    noSniff: true, // Prevent MIME sniffing
-    xssFilter: true, // Enable XSS filter
   })
 );
 ```
 
 ---
 
-## 11. Audit Logging
+## 6. OAuth Security
 
-### Log Security Events
+### PKCE (Proof Key for Code Exchange)
+
+better-auth automatically implements PKCE for OAuth 2.1:
 
 ```typescript
-@Injectable()
-export class AuditLogService {
-  async log(event: {
-    userId?: string;
-    action: string;
-    ip: string;
-    userAgent: string;
-    success: boolean;
-    metadata?: Record<string, any>;
-  }) {
-    await this.mongo.collection('audit_log').insertOne({
-      ...event,
-      timestamp: new Date(),
-    });
-  }
+// Automatic - no custom code needed
+1. Generate code_verifier (random 43-128 chars)
+2. Generate code_challenge = base64url(sha256(code_verifier))
+3. Send code_challenge to OAuth provider
+4. Exchange authorization code with code_verifier
+5. Provider validates code_verifier matches code_challenge
+```
+
+**Security benefits**:
+
+- Prevents authorization code interception attacks
+- No need for client_secret in public clients
+- Required for OAuth 2.1 compliance
+
+### State Parameter
+
+better-auth generates and validates state parameters:
+
+```typescript
+// Automatic CSRF protection for OAuth
+1. Generate state: crypto.randomBytes(16).toString('hex')
+2. Store in session
+3. Send to OAuth provider
+4. Validate on callback
+```
+
+---
+
+## 7. Two-Factor Authentication
+
+### TOTP Security
+
+better-auth uses industry-standard TOTP (Time-based One-Time Password):
+
+```typescript
+// Automatic configuration
+{
+  algorithm: "SHA1",
+  digits: 6,
+  step: 30,           // 30-second time window
+  window: 1,          // ±30 seconds tolerance
 }
+```
 
-// Usage in AuthService
-async login(email: string, password: string, request: Request) {
-  try {
-    // ... authentication logic
+### Backup Codes
 
-    await this.auditLog.log({
-      userId: user.id,
-      action: 'LOGIN',
-      ip: request.ip,
-      userAgent: request.headers['user-agent'],
-      success: true,
-    });
-  } catch (error) {
-    await this.auditLog.log({
-      action: 'LOGIN_FAILED',
-      ip: request.ip,
-      userAgent: request.headers['user-agent'],
-      success: false,
-      metadata: { email, error: error.message },
-    });
-    throw error;
-  }
+better-auth generates 10 backup codes when 2FA is enabled:
+
+```typescript
+// Automatic - bcrypt hashed (12 rounds)
+backupCodes: [
+  "$2b$12$...", // Hashed backup code 1
+  "$2b$12$...", // Hashed backup code 2
+  // ... 8 more codes
+];
+```
+
+**Security features**:
+
+- One-time use (deleted after successful use)
+- Bcrypt hashed (never stored in plaintext)
+- 8-character alphanumeric codes
+
+---
+
+## 8. Passkey (WebAuthn) Security
+
+### WebAuthn Configuration
+
+better-auth automatically configures WebAuthn with secure defaults:
+
+```typescript
+// Registration options (automatic)
+{
+  rp: { name: "Trading App", id: "yourdomain.com" },
+  user: { id: userId, name: email, displayName: name },
+  pubKeyCredParams: [
+    { type: "public-key", alg: -7 },   // ES256 (preferred)
+    { type: "public-key", alg: -257 }, // RS256 (fallback)
+  ],
+  authenticatorSelection: {
+    residentKey: "preferred",          // Enable passwordless
+    userVerification: "preferred",     // Prefer biometric/PIN
+  },
+  attestation: "none",                 // No attestation needed
+  timeout: 60000,                      // 60 seconds
+}
+```
+
+### Replay Attack Prevention
+
+better-auth tracks credential counters to prevent replay attacks:
+
+```typescript
+// Automatic counter validation
+1. Store initial counter on registration
+2. On authentication, verify new counter > old counter
+3. Update stored counter
+4. Reject if counter doesn't increment (replay attack detected)
+```
+
+---
+
+## 9. Email Security
+
+### Verification Tokens
+
+better-auth generates cryptographically secure tokens:
+
+```typescript
+// Automatic token generation
+token = crypto.randomBytes(32).toString('hex')  // 64 hex characters
+
+// Automatic expiration
+expiresAt = now + 24 hours  // Email verification
+expiresAt = now + 15 minutes  // Magic link
+expiresAt = now + 1 hour   // Password reset
+```
+
+### One-Time Use
+
+All tokens are single-use:
+
+```typescript
+// Automatic - token deleted after use
+1. User clicks link
+2. better-auth validates token
+3. Token is deleted from database
+4. Subsequent clicks return 404
+```
+
+---
+
+## 10. Database Security
+
+### Parameterized Queries
+
+better-auth uses Mongoose ODM with automatic parameterization:
+
+```typescript
+// ✅ Safe - automatic parameterization
+users.findOne({ email: userInput });
+
+// ❌ Never construct queries manually
+db.collection.find({ $where: userInput }); // NoSQL injection!
+```
+
+### Input Validation
+
+better-auth validates all inputs automatically:
+
+```typescript
+// Automatic validation
+POST /api/auth/sign-up/email
+{
+  "email": "invalid-email",  // ← Rejected: invalid email format
+  "password": "weak"         // ← Rejected: password too short
 }
 ```
 
 ---
 
-## 12. Environment Variables
+## 11. Environment Variables
 
-### Required Variables
+### Required Secrets
 
 ```bash
-# Secrets (32+ bytes each)
-JWT_ACCESS_SECRET=
-JWT_REFRESH_SECRET=
-AUTH_SECRET= # For better-auth
+# apps/api/.env
 
-# URLs
-APP_URL=https://yourdomain.com
-FRONTEND_URL=https://app.yourdomain.com
-TRUSTED_ORIGINS=https://app.yourdomain.com,https://yourdomain.com
+# AUTH_SECRET: Must be 32+ characters, cryptographically random
+AUTH_SECRET=your-secret-key-minimum-32-characters-long
 
-# Database
-MONGODB_URI=mongodb://localhost:27017/trading
-
-# OAuth (if using)
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-
-# Email (SMTP)
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-
-# Rate Limiting
-RATE_LIMIT_ENABLED=true
-RATE_LIMIT_WINDOW=60000
-RATE_LIMIT_MAX=100
+# Generate secure secret:
+# Unix/Mac: openssl rand -base64 32
+# Windows: [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
-### Secrets Management
+### Secret Management
 
-✅ **Production**:
+**❌ NEVER**:
 
-- Use AWS Secrets Manager, Azure Key Vault, or HashiCorp Vault
+- Commit secrets to version control
+- Hardcode secrets in code
+- Use weak secrets ("secret123")
+- Share secrets across environments
+
+**✅ ALWAYS**:
+
+- Use environment variables
 - Rotate secrets every 6-12 months
-- Never log secrets
-
-✅ **Development**:
-
-- Use `.env` file (gitignored)
-- Use different secrets than production
-- Document required variables in `.env.example`
+- Use different secrets for dev/staging/production
+- Store secrets in secure vault (AWS Secrets Manager, Azure Key Vault)
 
 ---
 
-## 13. Common Vulnerabilities
+## 12. Common Vulnerabilities (Prevented)
 
-### Prevent SQL/NoSQL Injection
+### SQL/NoSQL Injection
 
-✅ **Use Mongoose/Prisma**:
+**Protected**: Mongoose ODM with automatic parameterization
 
 ```typescript
-// ✅ SAFE: Mongoose escapes automatically
-const user = await this.userModel.findOne({ email });
+// ✅ Safe - parameterized
+users.findOne({ email: userEmail });
 
-// ❌ UNSAFE: Raw MongoDB query without validation
-const user = await this.mongo
-  .collection("users")
-  .findOne({ email: req.body.email });
+// ❌ Vulnerable (don't do this)
+db.collection.find({ $where: `this.email == '${userEmail}'` });
 ```
 
-### Prevent XSS
+### XSS (Cross-Site Scripting)
 
-✅ **Sanitize output in templates**:
+**Protected**: HttpOnly cookies prevent token theft
 
 ```typescript
-// In React/Next.js, use proper escaping
-<div>{user.name}</div> {/* ✅ React auto-escapes */}
-<div dangerouslySetInnerHTML={{ __html: user.bio }} /> {/* ❌ DANGEROUS */}
+// ✅ Token in httpOnly cookie (safe)
+Set-Cookie: better-auth.session_token=xxx; HttpOnly
+
+// ❌ Token in localStorage (vulnerable to XSS)
+localStorage.setItem('token', xxx)  // Don't do this
 ```
 
-### Prevent Timing Attacks
+### CSRF (Cross-Site Request Forgery)
 
-✅ **Use constant-time comparison**:
+**Protected**: SameSite cookies + state parameters
 
 ```typescript
-import { timingSafeEqual } from "crypto";
+// ✅ Automatic CSRF protection
+Set-Cookie: better-auth.session_token=xxx; SameSite=Lax
+```
 
-// ✅ SAFE: Constant-time comparison
-const isValid = timingSafeEqual(
-  Buffer.from(storedToken),
-  Buffer.from(providedToken)
-);
+### Timing Attacks
 
-// ❌ UNSAFE: Early return reveals information
-if (storedToken !== providedToken) {
-  throw new Error("Invalid token");
-}
+**Protected**: Constant-time comparisons
+
+```typescript
+// ✅ better-auth uses constant-time comparison
+bcrypt.compare(password, hashedPassword); // Constant time
+
+// ❌ Vulnerable (don't do this)
+password === hashedPassword; // Variable time
+```
+
+### Brute Force
+
+**Protected**: Built-in rate limiting
+
+```typescript
+// ✅ Automatic rate limiting
+POST /api/auth/sign-in/email
+  → 5 requests per minute
+  → After 5 failed attempts: 429 Too Many Requests
 ```
 
 ---
 
-## 14. Testing Security
+## 13. Incident Response
 
-### Unit Tests
+### Suspected Breach
+
+1. **Immediate Actions**:
+
+   ```typescript
+   // Invalidate all sessions
+   await sessions.deleteMany({});
+
+   // Force password reset for all users
+   await users.updateMany({}, { forcePasswordReset: true });
+
+   // Rotate AUTH_SECRET
+   // Update environment variable and restart services
+   ```
+
+2. **Investigation**:
+   - Check audit logs (enable in better-auth)
+   - Review failed authentication attempts
+   - Analyze suspicious IP addresses
+   - Check for unusual API activity
+
+3. **Communication**:
+   - Notify affected users
+   - Provide incident timeline
+   - Explain remediation steps
+   - Offer credit monitoring (if applicable)
+
+### Enable Audit Logging
 
 ```typescript
-describe("AuthService - Security", () => {
+// src/config/auth.config.ts
+export const createAuthConfig = (options: AuthConfigOptions) => ({
+  // ... other config
+  advanced: {
+    auditLog: {
+      enabled: true,
+      events: [
+        "user.signUp",
+        "user.signIn",
+        "user.signOut",
+        "user.failedSignIn",
+        "twoFactor.enabled",
+        "twoFactor.disabled",
+        "passkey.registered",
+        "organization.created",
+      ],
+    },
+  },
+});
+```
+
+---
+
+## 14. Security Checklist
+
+### Production Deployment
+
+- [ ] AUTH_SECRET is 32+ characters, cryptographically random
+- [ ] HTTPS enabled (Secure cookies require HTTPS)
+- [ ] Rate limiting enabled
+- [ ] Email verification enabled for sign-ups
+- [ ] CSRF protection enabled (automatic)
+- [ ] Content Security Policy configured
+- [ ] Secrets stored in secure vault
+- [ ] Different secrets for production vs dev
+- [ ] Audit logging enabled
+- [ ] Regular security updates (npm audit)
+- [ ] 2FA encouraged for admin users
+- [ ] Passkeys offered as phishing-resistant option
+
+### Ongoing Maintenance
+
+- [ ] Rotate AUTH_SECRET every 6-12 months
+- [ ] Monitor failed authentication attempts
+- [ ] Review audit logs weekly
+- [ ] Update better-auth monthly (security patches)
+- [ ] Test authentication flows after updates
+- [ ] Review and update password policies annually
+- [ ] Conduct security audits quarterly
+
+---
+
+## 15. Testing Security
+
+### Example Security Tests
+
+```typescript
+import { Test } from "@nestjs/testing";
+import { INestApplication } from "@nestjs/common";
+import * as request from "supertest";
+
+describe("Security Tests", () => {
+  let app: INestApplication;
+
   it("should reject weak passwords", async () => {
-    await expect(
-      authService.register("test@example.com", "weak", "Test User")
-    ).rejects.toThrow("Password must be at least 12 characters");
+    await request(app.getHttpServer())
+      .post("/api/auth/sign-up/email")
+      .send({
+        email: "test@example.com",
+        password: "weak", // Too short
+      })
+      .expect(400);
   });
 
-  it("should not reveal user existence on login", async () => {
-    const result1 = await authService.login(
-      "nonexistent@example.com",
-      "password"
-    );
-    const result2 = await authService.login(
-      "exists@example.com",
-      "wrongpassword"
-    );
+  it("should enforce rate limiting on login", async () => {
+    // Attempt 6 logins (limit is 5)
+    for (let i = 0; i < 6; i++) {
+      const response = await request(app.getHttpServer())
+        .post("/api/auth/sign-in/email")
+        .send({
+          email: "test@example.com",
+          password: "wrong",
+        });
 
-    // Both should return same error
-    expect(result1.error).toBe("Invalid credentials");
-    expect(result2.error).toBe("Invalid credentials");
+      if (i < 5) {
+        expect(response.status).toBe(401);
+      } else {
+        expect(response.status).toBe(429); // Rate limited
+      }
+    }
   });
 
-  it("should invalidate sessions on password change", async () => {
-    await authService.changePassword(userId, "oldpass", "newpass");
+  it("should set httpOnly cookies", async () => {
+    const response = await request(app.getHttpServer())
+      .post("/api/auth/sign-in/email")
+      .send({
+        email: "test@example.com",
+        password: "correct",
+      })
+      .expect(200);
 
-    const sessions = await sessionRepo.findByUserId(userId);
-    expect(sessions).toHaveLength(0);
+    const cookie = response.headers["set-cookie"][0];
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("Secure");
+    expect(cookie).toContain("SameSite=Lax");
   });
 });
 ```
 
 ---
 
-## 15. Incident Response
-
-### Breach Response Plan
-
-If credentials are compromised:
-
-1. **Immediate Actions** (< 1 hour):
-   - Invalidate all sessions
-   - Force password reset for affected users
-   - Rotate JWT secrets
-   - Block suspicious IPs
-
-2. **Investigation** (< 24 hours):
-   - Review audit logs
-   - Identify scope of breach
-   - Document timeline
-
-3. **Communication** (< 72 hours):
-   - Notify affected users
-   - Report to authorities if required (GDPR, etc.)
-   - Publish post-mortem (internal)
-
-4. **Prevention** (ongoing):
-   - Implement additional security measures
-   - Update security documentation
-   - Train team on new procedures
-
----
-
 ## Related Documentation
 
-- [Authentication Flow Diagrams](./FLOWS.md)
-- [API Reference](./API.md)
-- [Authentication Package README](../README.md)
-- [NestJS ConfigModule Pattern](../../docs/NESTJS_CONFIG_PATTERN.md)
+- [Authentication Flows](./FLOWS.md) - Flow diagrams with security details
+- [API Reference](./API.md) - API endpoint documentation
+- [Architecture](./ARCHITECTURE.md) - System architecture
+- [better-auth Security](https://better-auth.com/docs/concepts/security) - Upstream documentation

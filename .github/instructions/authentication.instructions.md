@@ -630,9 +630,9 @@ MONGODB_URI=mongodb://localhost:27017
 
 ## Documentation
 
-- [Authentication Flow Diagrams](docs/FLOWS.md)
-- [Security Best Practices](docs/SECURITY.md)
-- [API Reference](docs/API.md)
+- [Authentication Flow Diagrams](../../packages/authentication/docs/FLOWS.md)
+- [Security Best Practices](../../packages/authentication/docs/SECURITY.md)
+- [API Reference](../../packages/authentication/docs/API.md)
 
 ## Contributing
 
