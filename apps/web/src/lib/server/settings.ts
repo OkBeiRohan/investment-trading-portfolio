@@ -125,15 +125,6 @@ export async function clearCallbackUrl(): Promise<void> {
 }
 
 /**
- * Resolve effective theme for SSR
- * Theme is always actual value (light or dark), so just return it
- */
-export async function resolveEffectiveTheme(): Promise<"light" | "dark"> {
-  const settings = await getAppSettings();
-  return settings.theme;
-}
-
-/**
  * Get theme settings for client-side theme detection
  * Returns only theme-related data (not sensitive settings)
  */

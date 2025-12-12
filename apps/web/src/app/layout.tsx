@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Providers } from "./providers";
 import mainFont from "@/lib/fonts";
 import "./globals.css";
-import { getAppSettings, resolveEffectiveTheme } from "@/lib/server/settings";
+import { getAppSettings } from "@/lib/server/settings";
 
 export const metadata: Metadata = {
   title: "Investment Trading Portfolio",
@@ -15,14 +15,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const settings = await getAppSettings();
-  const effectiveTheme = await resolveEffectiveTheme();
   const lang = settings.language || "en";
+  const theme = settings.theme || "light";
 
   return (
     <html
       dir="ltr"
       lang={lang}
-      data-theme={effectiveTheme}
+      data-theme={theme}
       className={mainFont.className}
     >
       <body>
