@@ -1,7 +1,7 @@
 .authRoot {
   min-height: 100vh;
   display: flex;
-  background-image: linear-gradient(to top, #fad0c4 0%, #ffd1ff 100%);
+  background-image: linear-gradient(to bottom, #ffffff 0%, #ffe6ff 100%);
   gap: 1rem;
 }
 

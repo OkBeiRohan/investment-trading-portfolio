@@ -4,7 +4,7 @@
   border-radius: 4rem;
   max-width: 40vw;
   flex: 1;
-  background-image: linear-gradient(to bottom, #ffffff 0%, #ffe6ff 100%);
+  background-image: linear-gradient(to top, #fad0c4 0%, #ffd1ff 100%);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 
   display: flex;

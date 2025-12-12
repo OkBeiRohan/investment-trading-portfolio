@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth/auth-client";
 import { Mail, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
-import styles from "@/app/(auth)/forgot-password/forgot-password.module.css";
+import styles from "@/app/authentication/forgot-password/forgot-password.module.css";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -18,9 +18,8 @@ export function ForgotPasswordForm() {
     setError(null);
 
     try {
-      const { data, error } = await authClient.forgetPassword({
+      const { data, error } = await authClient.forgetPassword.emailOtp({
         email,
-        redirectTo: "/reset-password",
       });
 
       if (error) {
@@ -39,7 +38,8 @@ export function ForgotPasswordForm() {
     <div className={styles.forgotBox}>
       <h1 className={styles.title}>Reset password</h1>
       <p className={styles.subtitle}>
-        Enter your email address and we'll send you a link to reset your password
+        Enter your email address and we'll send you a link to reset your
+        password
       </p>
 
       {success ? (
