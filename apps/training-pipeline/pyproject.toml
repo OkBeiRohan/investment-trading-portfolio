@@ -7,7 +7,7 @@ description = "ML Training Pipeline for Algo Trading"
 python = "^3.11"
 kedro = "^1.1.1"
 pandas = "^2.1.0"
-numpy = "^1.26.0"
+numpy = "^2.3.5"
 scikit-learn = "^1.4.0"
 
 # Deep Learning
