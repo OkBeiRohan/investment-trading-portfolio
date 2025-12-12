@@ -1,3 +1,7 @@
+---
+applyTo: "packages/authentication/**"
+---
+
 # GitHub Copilot Instructions - Authentication Package
 
 ## Role & Context
@@ -626,9 +630,9 @@ MONGODB_URI=mongodb://localhost:27017
 
 ## Documentation
 
-- [Authentication Flow Diagrams](docs/FLOWS.md) (TODO)
-- [Security Best Practices](docs/SECURITY.md) (TODO)
-- [API Reference](docs/API.md) (TODO)
+- [Authentication Flow Diagrams](../../packages/authentication/docs/FLOWS.md)
+- [Security Best Practices](../../packages/authentication/docs/SECURITY.md)
+- [API Reference](../../packages/authentication/docs/API.md)
 
 ## Contributing
 

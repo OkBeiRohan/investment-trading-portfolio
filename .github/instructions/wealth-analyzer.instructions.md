@@ -1,3 +1,7 @@
+---
+applyTo: "apps/wealth-analyzer/**"
+---
+
 # GitHub Copilot Instructions - Wealth Analyzer Service
 
 ## Role & Context
@@ -64,24 +68,24 @@ const response = await openai.createChatCompletion({ ... });
 
 ```typescript
 // src/phi3/phi3.service.ts
-import { spawn } from 'child_process';
+import { spawn } from "child_process";
 
 @Injectable()
 export class Phi3Service {
   private modelPath =
-    process.env.PHI3_MODEL_PATH || '../models/phi3-mini-4k-instruct.gguf';
+    process.env.PHI3_MODEL_PATH || "../models/phi3-mini-4k-instruct.gguf";
 
   async generate(params: Phi3GenerateParams): Promise<Phi3Response> {
     // Use llama.cpp or ollama for GGUF model inference
-    const process = spawn('ollama', ['run', 'phi3:mini', params.prompt]);
+    const process = spawn("ollama", ["run", "phi3:mini", params.prompt]);
 
-    let output = '';
-    process.stdout.on('data', (data) => {
+    let output = "";
+    process.stdout.on("data", (data) => {
       output += data.toString();
     });
 
     return new Promise((resolve, reject) => {
-      process.on('close', (code) => {
+      process.on("close", (code) => {
         if (code === 0) {
           resolve({ text: output.trim() });
         } else {
@@ -192,17 +196,17 @@ User Query: "How much did I spend on groceries last month?"
 
 ```typescript
 // ✅ CORRECT - Subscribe to wealth transaction events
-import { OnEvent } from '@nestjs/event-emitter';
+import { OnEvent } from "@nestjs/event-emitter";
 
 @Injectable()
 export class TransactionAnalyticsService {
   constructor(
     private readonly anomalyDetector: AnomalyDetectorService,
     private readonly insightGenerator: InsightGeneratorService,
-    private readonly contextRetrieval: ContextRetrievalService,
+    private readonly contextRetrieval: ContextRetrievalService
   ) {}
 
-  @OnEvent('WEALTH_TRANSACTION_CREATED')
+  @OnEvent("WEALTH_TRANSACTION_CREATED")
   async analyzeTransaction(event: WealthTransactionCreatedEvent) {
     // Check for anomalies
     const isAnomaly = await this.anomalyDetector.detect({
@@ -213,10 +217,10 @@ export class TransactionAnalyticsService {
 
     if (isAnomaly) {
       await this.publishInsight({
-        type: 'ANOMALY',
+        type: "ANOMALY",
         userId: event.userId,
         message: `Unusual transaction detected: ₹${event.amount} in ${event.category}`,
-        severity: 'HIGH',
+        severity: "HIGH",
       });
     }
 
@@ -225,7 +229,7 @@ export class TransactionAnalyticsService {
 
     // Generate spending insights (async)
     setImmediate(() =>
-      this.insightGenerator.generateSpendingInsights(event.userId),
+      this.insightGenerator.generateSpendingInsights(event.userId)
     );
   }
 }
@@ -247,7 +251,7 @@ setInterval(async () => {
 
 ```typescript
 // ✅ CORRECT - Use ONNX model for anomaly detection
-import * as ort from 'onnxruntime-node';
+import * as ort from "onnxruntime-node";
 
 @Injectable()
 export class AnomalyDetectorService {
@@ -255,10 +259,10 @@ export class AnomalyDetectorService {
 
   async onModuleInit() {
     this.session = await ort.InferenceSession.create(
-      '../models/isolation-forest-anomaly.onnx',
+      "../models/isolation-forest-anomaly.onnx",
       {
-        executionProviders: ['cuda', 'cpu'], // GPU if available
-      },
+        executionProviders: ["cuda", "cpu"], // GPU if available
+      }
     );
   }
 
@@ -267,14 +271,14 @@ export class AnomalyDetectorService {
     const history = await this.getHistoricalSpending(
       params.userId,
       params.category,
-      { days: 90 },
+      { days: 90 }
     );
 
     // Compute features
     const mean = history.reduce((sum, x) => sum + x, 0) / history.length;
     const stdDev = Math.sqrt(
       history.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) /
-        history.length,
+        history.length
     );
     const zScore = (params.amount - mean) / stdDev;
 
@@ -289,7 +293,7 @@ export class AnomalyDetectorService {
 
     // Run inference
     const feeds = {
-      input: new ort.Tensor('float32', features, [1, features.length]),
+      input: new ort.Tensor("float32", features, [1, features.length]),
     };
     const results = await this.session.run(feeds);
     const anomalyScore = results.output.data[0] as number;
@@ -319,7 +323,7 @@ export class CashFlowForecastService {
 
     // XGBoost inference
     const feeds = {
-      input: new ort.Tensor('float32', features, [1, features.length]),
+      input: new ort.Tensor("float32", features, [1, features.length]),
     };
     const results = await this.session.run(feeds);
 
@@ -341,14 +345,14 @@ export class CashFlowForecastService {
 
 ```typescript
 // ✅ CORRECT - Use QuestDB for time-series queries
-import { Injectable } from '@nestjs/common';
-import { QuestDBClient } from '@repo/database';
+import { Injectable } from "@nestjs/common";
+import { QuestDBClient } from "@repo/database";
 
 @Injectable()
 export class NetWorthAnalyticsService {
   constructor(
     private readonly questdb: QuestDBClient,
-    @InjectModel('Snapshot') private snapshotModel: Model<Snapshot>,
+    @InjectModel("Snapshot") private snapshotModel: Model<Snapshot>
   ) {}
 
   async getNetWorthTrend(userId: string, days: number): Promise<NetWorthTrend> {
@@ -387,12 +391,12 @@ export class NetWorthAnalyticsService {
           snapshotDate: { $gte: startDate, $lte: endDate },
         },
       },
-      { $unwind: '$postings' },
+      { $unwind: "$postings" },
       {
         $group: {
-          _id: '$category',
-          totalSpent: { $sum: '$postings.debit' },
-          avgSpent: { $avg: '$postings.debit' },
+          _id: "$category",
+          totalSpent: { $sum: "$postings.debit" },
+          avgSpent: { $avg: "$postings.debit" },
           count: { $sum: 1 },
         },
       },
@@ -476,12 +480,12 @@ export class InsightGeneratorService {
     const spendingTrends = await this.analyzeSpendingTrends(userId);
     if (spendingTrends.increasingCategories.length > 0) {
       insights.push({
-        type: 'SPENDING_TREND',
-        severity: 'MEDIUM',
-        title: `Spending increased in ${spendingTrends.increasingCategories.join(', ')}`,
+        type: "SPENDING_TREND",
+        severity: "MEDIUM",
+        title: `Spending increased in ${spendingTrends.increasingCategories.join(", ")}`,
         message: `Your spending in these categories increased by ${spendingTrends.avgIncrease}% compared to last month.`,
         actionable: true,
-        actions: ['Review budget', 'Set spending alerts'],
+        actions: ["Review budget", "Set spending alerts"],
       });
     }
 
@@ -489,12 +493,12 @@ export class InsightGeneratorService {
     const assetAllocation = await this.analyzeAssetAllocation(userId);
     if (assetAllocation.equityPercent > 80) {
       insights.push({
-        type: 'ASSET_ALLOCATION',
-        severity: 'HIGH',
-        title: 'High equity concentration detected',
+        type: "ASSET_ALLOCATION",
+        severity: "HIGH",
+        title: "High equity concentration detected",
         message: `Your portfolio is ${assetAllocation.equityPercent}% equities. Consider diversifying.`,
         actionable: true,
-        actions: ['Rebalance portfolio', 'Add debt instruments'],
+        actions: ["Rebalance portfolio", "Add debt instruments"],
       });
     }
 
@@ -503,12 +507,12 @@ export class InsightGeneratorService {
     for (const goal of goals) {
       if (goal.behindSchedule) {
         insights.push({
-          type: 'GOAL_PROGRESS',
-          severity: 'HIGH',
+          type: "GOAL_PROGRESS",
+          severity: "HIGH",
           title: `Goal "${goal.name}" behind schedule`,
           message: `Increase monthly SIP by ₹${goal.requiredIncrease} to stay on track.`,
           actionable: true,
-          actions: ['Increase SIP', 'Extend target date'],
+          actions: ["Increase SIP", "Extend target date"],
         });
       }
     }
@@ -548,22 +552,22 @@ export class AnomalyDetectorService {
       {
         $group: {
           _id: {
-            amount: '$postings.debit',
-            description: '$description',
+            amount: "$postings.debit",
+            description: "$description",
             date: {
-              $dateToString: { format: '%Y-%m-%d', date: '$transactionDate' },
+              $dateToString: { format: "%Y-%m-%d", date: "$transactionDate" },
             },
           },
           count: { $sum: 1 },
-          ids: { $push: '$_id' },
+          ids: { $push: "$_id" },
         },
       },
       { $match: { count: { $gt: 1 } } },
     ]);
 
     return transactions.map((t) => ({
-      type: 'DUPLICATE_TRANSACTION',
-      severity: 'HIGH',
+      type: "DUPLICATE_TRANSACTION",
+      severity: "HIGH",
       transactionIds: t.ids,
       message: `Potential duplicate: ${t._id.description} - ₹${t._id.amount} on ${t._id.date}`,
       confidence: 0.95,
@@ -579,7 +583,7 @@ export class AnomalyDetectorService {
 export class PredictiveAnalyticsService {
   async forecastNetWorth(
     userId: string,
-    months: number,
+    months: number
   ): Promise<NetWorthForecast> {
     // Fetch historical net worth from QuestDB
     const history = await this.questdb.query(`
@@ -602,15 +606,15 @@ export class PredictiveAnalyticsService {
       upperBound: forecast.yhat_upper,
       confidence: 0.8,
       assumptions: [
-        'Current income remains stable',
-        'Spending patterns remain consistent',
-        'Market returns average 12% annually',
+        "Current income remains stable",
+        "Spending patterns remain consistent",
+        "Market returns average 12% annually",
       ],
     };
   }
 
   async predictGoalCompletion(
-    goalId: string,
+    goalId: string
   ): Promise<GoalCompletionPrediction> {
     const goal = await Goal.findById(goalId);
     const contributionHistory = goal.contributionHistory;
@@ -620,7 +624,7 @@ export class PredictiveAnalyticsService {
       this.computeAvgContribution(contributionHistory);
     const remainingAmount = goal.targetAmount - goal.currentAmount;
     const monthsToCompletion = Math.ceil(
-      remainingAmount / avgMonthlyContribution,
+      remainingAmount / avgMonthlyContribution
     );
 
     const predictedDate = new Date();
@@ -645,12 +649,12 @@ export class PredictiveAnalyticsService {
 
 ```typescript
 // Prevent abuse of Phi-3 inference
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard } from "@nestjs/throttler";
 
 @Injectable()
 @UseGuards(ThrottlerGuard)
 export class NLQueryController {
-  @Post('query')
+  @Post("query")
   @Throttle(10, 60) // 10 queries per minute
   async processQuery(@Body() dto: NLQueryDto) {
     return this.nlQueryService.processQuery(dto.userId, dto.query);
@@ -683,18 +687,18 @@ async generateInsights(userId: string): Promise<Insight[]> {
 ## Testing
 
 ```typescript
-describe('AnomalyDetectorService', () => {
-  it('should detect duplicate transactions', async () => {
-    const anomalies = await service.detectDuplicates('user123');
+describe("AnomalyDetectorService", () => {
+  it("should detect duplicate transactions", async () => {
+    const anomalies = await service.detectDuplicates("user123");
     expect(anomalies.length).toBeGreaterThan(0);
-    expect(anomalies[0].type).toBe('DUPLICATE_TRANSACTION');
+    expect(anomalies[0].type).toBe("DUPLICATE_TRANSACTION");
   });
 
-  it('should detect unusual spending', async () => {
+  it("should detect unusual spending", async () => {
     const isAnomaly = await service.detect({
-      userId: 'user123',
+      userId: "user123",
       amount: 50000, // Unusual grocery spend
-      category: 'Groceries',
+      category: "Groceries",
     });
     expect(isAnomaly).toBe(true);
   });
@@ -752,5 +756,5 @@ FORECAST_MODEL_PATH=../models/prophet-forecast.onnx
 - [Phi-3 Model](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
 - [ChromaDB Documentation](https://docs.trychroma.com/)
 - [ONNX Runtime Node.js](https://onnxruntime.ai/docs/get-started/with-javascript.html)
-- [Root Architecture](../../../ARCHITECTURE.md)
-- [Root Copilot Instructions](../../../.github/copilot-instructions.md)
+- [Root Architecture](../../ARCHITECTURE.md)
+- [Root Copilot Instructions](../copilot-instructions.md)

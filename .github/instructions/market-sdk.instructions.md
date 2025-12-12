@@ -1,3 +1,7 @@
+---
+applyTo: "packages/market-sdk/**"
+---
+
 # @repo/market-sdk - Coding Instructions
 
 > Multi-provider SDK for market data and trading (Upstox, Yahoo Finance, Binance).
@@ -318,3 +322,4 @@ describe('UpstoxProvider (Sandbox)', () => {
 
 **Last Updated**: November 29, 2025
 **Status**: Production-Ready (Upstox), Yahoo Finance Implemented
+

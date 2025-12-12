@@ -1,3 +1,7 @@
+---
+applyTo: "apps/data-processor/**"
+---
+
 # GitHub Copilot Instructions - Data Processor
 
 ## Role & Context
@@ -579,3 +583,4 @@ describe("FeatureEngineeringService", () => {
 ❌ Missing data validation  
 ❌ Direct database writes (use batching)  
 ❌ Hardcoded indicator parameters
+

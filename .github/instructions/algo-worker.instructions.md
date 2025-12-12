@@ -1,3 +1,7 @@
+---
+applyTo: "apps/algo-worker/**"
+---
+
 # Algo Worker - Coding Instructions
 
 > Core trading engine implementing the Event-Driven 7-Layer Cognitive Architecture.
@@ -639,3 +643,4 @@ clinic doctor -- node dist/main.js
 
 **Last Updated**: November 29, 2025
 **Status**: Production-Ready
+

@@ -1,25 +1,81 @@
 # @repo/authentication
 
-Provider-agnostic authentication system for the investment trading portfolio monorepo.
+Better Auth integration for the investment trading portfolio monorepo.
 
 ## Overview
 
-**Purpose**: Centralized authentication logic supporting multiple authentication strategies, session management, and role-based access control.
+**Purpose**: Production-ready authentication system using [better-auth](https://better-auth.com) - a comprehensive, framework-agnostic authentication library for TypeScript.
 
-**Key Features**:
+**Key Features** (provided by better-auth):
 
-- ✅ Multiple authentication methods (credentials, OAuth, passkeys, magic links)
-- ✅ JWT + refresh token management
-- ✅ Two-factor authentication (TOTP)
-- ✅ Email verification workflow
-- ✅ Password reset flow
+- ✅ Email & password authentication
+- ✅ Social sign-on (Google, GitHub, Discord)
+- ✅ Magic link authentication
+- ✅ Email OTP authentication
 - ✅ Passkey (WebAuthn) support
-- ✅ Organization-based access control
-- ✅ Role-based permissions (RBAC)
-- ✅ Session management with Redis caching
-- ✅ Database-agnostic (adapter pattern)
+- ✅ Two-factor authentication (TOTP + SMS)
+- ✅ Phone number verification
+- ✅ Organization & access control (multi-tenancy)
+- ✅ Session management with automatic refresh
+- ✅ Built-in rate limiting
+- ✅ Automatic database management
+- ✅ Device authorization
+- ✅ Multi-session support
 
-## ⚠️ Configuration (IMPORTANT)
+## Architecture
+
+This package wraps **better-auth** with NestJS integration:
+
+```
+┌────────────────────────────────────────────┐
+│   NestJS App (@repo/api)                   │
+│   ├─ AuthModule (this package)             │
+│   │  ├─ BetterAuthModule (NestJS wrapper)  │
+│   │  │  └─ better-auth instance            │
+│   │  ├─ AuthService (creates instance)     │
+│   │  └─ EmailService (email provider)      │
+│   └─ ConfigModule (environment config)     │
+└────────────────────────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────────────┐
+│   better-auth Core                         │
+│   ├─ Authentication handlers               │
+│   ├─ Session management                    │
+│   ├─ Rate limiting                         │
+│   └─ Plugins:                              │
+│      ├─ organization (multi-tenancy)       │
+│      ├─ twoFactor (TOTP + SMS)             │
+│      ├─ phoneNumber (phone verification)   │
+│      └─ passkey (WebAuthn)                 │
+└────────────────────────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────────────┐
+│   MongoDB (via @repo/database)             │
+│   Collections:                             │
+│   ├─ users                                 │
+│   ├─ sessions                              │
+│   ├─ accounts (OAuth)                      │
+│   ├─ verifications                         │
+│   ├─ organizations                         │
+│   ├─ members                               │
+│   ├─ invitations                           │
+│   ├─ twoFactors                            │
+│   └─ passkeys                              │
+└────────────────────────────────────────────┘
+```
+
+**Why better-auth?**
+
+- Battle-tested, production-ready library
+- Automatic security best practices (bcrypt, CSRF, rate limiting)
+- Built-in plugin ecosystem (2FA, passkeys, organizations)
+- Framework-agnostic (works with NestJS, Next.js, Express, etc.)
+- Automatic database migrations
+- Zero custom authentication logic needed
+
+## Configuration
 
 **This package uses NestJS ConfigModule pattern - it does NOT read .env files directly.**
 
@@ -42,7 +98,10 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
 
-# Rate Limiting
+DISCORD_CLIENT_ID=your-discord-client-id
+DISCORD_CLIENT_SECRET=your-discord-client-secret
+
+# Rate Limiting (OPTIONAL - better-auth has built-in defaults)
 RATE_LIMIT_ENABLED=true
 RATE_LIMIT_WINDOW=60000
 RATE_LIMIT_MAX=100
@@ -51,49 +110,12 @@ RATE_LIMIT_MAX=100
 ### How Configuration Works
 
 1. **Root app** (`apps/api`) loads `.env` file via `ConfigModule.forRoot({ isGlobal: true })`
-2. **Zod validation** ensures all required fields are present and valid
+2. **Zod validation** (in `@repo/schema`) ensures all required fields are present and valid
 3. **ConfigService** is injected globally to all modules
-4. **This package** receives config via `ConfigService` dependency injection
+4. **AuthService** receives config via `ConfigService` and creates better-auth instance
+5. **better-auth** handles all authentication logic automatically
 
-**See**: [`docs/NESTJS_CONFIG_PATTERN.md`](../../docs/NESTJS_CONFIG_PATTERN.md) for detailed explanation.
-
-### Migration from process.env (BREAKING CHANGE)
-
-If you previously had a `.env` file in this package, **delete it**. All configuration is now managed by the root app.
-
-**Before (❌ Old pattern)**:
-
-```typescript
-// packages/authentication/.env
-AUTH_SECRET = my - secret;
-
-// packages/authentication/src/config/auth.config.ts
-export const AUTH_CONFIG = {
-  secret: process.env.AUTH_SECRET, // ❌ Won't work
-};
-```
-
-**After (✅ New pattern)**:
-
-```typescript
-// apps/api/.env
-AUTH_SECRET=my-secret
-
-// packages/authentication/src/config/auth.config.ts
-export const createAuthConfig = (options: AuthConfigOptions) => ({
-  secret: options.secret, // ✅ Receives config from root app
-});
-
-// packages/authentication/src/services/auth.service.ts
-constructor(private readonly configService: ConfigService) {}
-
-getAuthInstance() {
-  const config = this.configService.get('config');
-  return createAuthConfig({
-    secret: config.auth.secret, // ✅ Reads from ConfigService
-  });
-}
-```
+**See**: [Configuration Pattern](../../docs/NESTJS_CONFIG_PATTERN.md) for detailed explanation.
 
 ## Installation
 
@@ -105,14 +127,14 @@ import { AuthModule } from "@repo/authentication";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }), // ✅ Required for config
-    AuthModule,
+    ConfigModule.forRoot({ isGlobal: true }), // Required
+    AuthModule, // better-auth integration
   ],
 })
 export class AppModule {}
 
 // Client-side (Next.js)
-import { useAuth } from "@repo/authentication/client";
+import { createAuthClient } from "better-auth/react";
 ```
 
 ## Quick Start
@@ -123,413 +145,353 @@ import { useAuth } from "@repo/authentication/client";
 // app.module.ts
 import { Module } from '@nestjs/common';
 import { AuthModule } from '@repo/authentication';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    AuthModule.forRoot({
-      adapter: 'mongodb',
-      jwt: {
-        accessSecret: process.env.JWT_ACCESS_SECRET,
-        refreshSecret: process.env.JWT_REFRESH_SECRET,
-      },
-    }),
+    ConfigModule.forRoot({ isGlobal: true }),
+    AuthModule, // Automatically configured via ConfigService
   ],
 })
 export class AppModule {}
 
-// Protected route
-import { AuthGuard } from '@repo/authentication';
-import { UseGuards } from '@nestjs/common';
+// Protected route using better-auth guards
+import { AuthGuard, Session } from '@repo/authentication';
 
 @UseGuards(AuthGuard)
 @Get('profile')
-async getProfile(@CurrentUser() user: User) {
-  return user;
+async getProfile(@Session() session: any) {
+  return session.user; // Provided by better-auth
+}
+
+// Allow anonymous access
+import { AllowAnonymous } from '@repo/authentication';
+
+@AllowAnonymous()
+@Get('public')
+getPublic() {
+  return { message: 'This endpoint is public' };
+}
+
+// Role-based access control
+import { Roles } from '@repo/authentication';
+
+@Roles(['Admin', 'Trader'])
+@Delete('sensitive-operation')
+async sensitiveOp(@Session() session: any) {
+  // Only Admin or Trader roles can access
 }
 ```
 
 ### Client-Side (Next.js)
 
 ```typescript
-// app/providers.tsx
-import { AuthProvider } from '@repo/authentication/client';
+// lib/auth-client.ts
+import { createAuthClient } from "better-auth/react";
+import { organizationClient, twoFactorClient } from "better-auth/client/plugins";
+import { passkeyClient } from "@better-auth/passkey/client";
 
-export function Providers({ children }) {
-  return <AuthProvider>{children}</AuthProvider>;
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_API_URL!, // http://localhost:3004
+  plugins: [
+    organizationClient(),
+    twoFactorClient(),
+    passkeyClient(),
+  ],
+});
+
+// app/providers.tsx
+"use client";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return children; // better-auth React hooks work automatically
 }
 
 // app/dashboard/page.tsx
 'use client';
-import { useAuth } from '@repo/authentication/client';
+import { authClient } from '@/lib/auth-client';
 
 export default function Dashboard() {
-  const { user, isLoading, login, logout } = useAuth();
+  const { data: session, isPending } = authClient.useSession();
 
-  if (isLoading) return <div>Loading...</div>;
-  if (!user) return <LoginPage />;
+  if (isPending) return <div>Loading...</div>;
+  if (!session) return <LoginPage />;
 
   return (
     <div>
-      <h1>Welcome, {user.name}</h1>
-      <button onClick={logout}>Logout</button>
+      <h1>Welcome, {session.user.name}</h1>
+      <button onClick={() => authClient.signOut()}>Logout</button>
     </div>
+  );
+}
+
+// Login component example
+function LoginPage() {
+  const { signIn } = authClient;
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    await signIn.email({
+      email: formData.get('email') as string,
+      password: formData.get('password') as string,
+    });
+  };
+
+  return (
+    <form onSubmit={handleLogin}>
+      <input name="email" type="email" placeholder="Email" required />
+      <input name="password" type="password" placeholder="Password" required />
+      <button type="submit">Login</button>
+    </form>
   );
 }
 ```
 
-## Architecture
-
-### Adapter Pattern
-
-This package uses the **adapter pattern** to support multiple database backends:
-
-```
-┌──────────────────────────────────────┐
-│      Auth Service (Business Logic)   │
-├──────────────────────────────────────┤
-│              ↓ uses                  │
-│      IAuthRepositories Interface     │
-├──────────────────────────────────────┤
-│              ↓ implements            │
-│     MongoDB Adapter (Current)        │
-│     PostgreSQL Adapter (Future)      │
-│     Supabase Adapter (Future)        │
-└──────────────────────────────────────┘
-```
-
-**Benefits**:
-
-- Database independence
-- Easy to switch databases
-- Testability (mock adapters)
-- Single source of authentication logic
-
 ## Authentication Flows
 
-### 1. Credentials Login
-
-```
-User → POST /auth/login
-     → Validate email/password
-     → Check 2FA (if enabled)
-     → Generate JWT tokens
-     → Create session (Redis + MongoDB)
-     → Return tokens
-```
-
-### 2. Email Verification
-
-```
-User → POST /auth/register
-     → Create user (emailVerified: false)
-     → Generate verification token
-     → Send verification email
-     → User clicks link
-     → GET /auth/verify-email?token=xxx
-     → Mark email as verified
-```
-
-### 3. Two-Factor Authentication
-
-```
-User → POST /auth/2fa/enable
-     → Generate TOTP secret
-     → Return QR code
-     → User scans with authenticator app
-     → POST /auth/2fa/verify with code
-     → Enable 2FA
-
-Login Flow with 2FA:
-     → POST /auth/login (credentials)
-     → Return { requiresTwoFactor: true }
-     → POST /auth/2fa/verify with TOTP code
-     → Return tokens
-```
-
-### 4. Passkey (WebAuthn)
-
-```
-Registration:
-     → POST /auth/passkey/register-start
-     → Return WebAuthn options
-     → User interacts with authenticator
-     → POST /auth/passkey/register-finish
-     → Store credential
-
-Login:
-     → POST /auth/passkey/login-start
-     → Return WebAuthn challenge
-     → User authenticates with passkey
-     → POST /auth/passkey/login-finish
-     → Return tokens
-```
+All authentication flows are handled automatically by better-auth. See [FLOWS.md](./docs/FLOWS.md) for detailed diagrams.
 
 ## API Endpoints
 
-### Authentication
+All endpoints are automatically created by better-auth at the `/api/auth` prefix. See [API.md](./docs/API.md) for complete documentation.
 
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login with credentials
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - Logout (invalidate session)
-- `POST /auth/forgot-password` - Request password reset
-- `POST /auth/reset-password` - Reset password with token
-- `GET /auth/verify-email?token=xxx` - Verify email address
+**Core endpoints**:
 
-### Two-Factor Authentication
+- `POST /api/auth/sign-up/email` - Register with email/password
+- `POST /api/auth/sign-in/email` - Login with email/password
+- `GET /api/auth/sign-in/social/{provider}` - Social sign-in
+- `POST /api/auth/sign-out` - Logout
+- `GET /api/auth/get-session` - Get current session
+- And 40+ more endpoints...
 
-- `POST /auth/2fa/enable` - Enable 2FA
-- `POST /auth/2fa/verify` - Verify 2FA code
-- `POST /auth/2fa/disable` - Disable 2FA
-- `POST /auth/2fa/backup-codes` - Generate backup codes
+## Guards & Decorators (NestJS)
 
-### Passkey (WebAuthn)
-
-- `POST /auth/passkey/register-start` - Start passkey registration
-- `POST /auth/passkey/register-finish` - Complete passkey registration
-- `POST /auth/passkey/login-start` - Start passkey authentication
-- `POST /auth/passkey/login-finish` - Complete passkey authentication
-
-## Guards & Decorators
-
-### Guards
-
-```typescript
-import { AuthGuard, RolesGuard, OrganizationGuard } from '@repo/authentication';
-
-// Apply globally
-@Module({
-  providers: [
-    { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
-  ],
-})
-export class AppModule {}
-
-// Or use per-route
-@UseGuards(AuthGuard)
-@Get('protected')
-getProtected() {}
-```
-
-### Decorators
+better-auth integration provides several decorators for NestJS:
 
 ```typescript
 import {
-  CurrentUser,
-  CurrentSession,
-  Roles,
-  Public,
+  AuthGuard,      // Require authentication
+  AllowAnonymous, // Skip authentication
+  OptionalAuth,   // Optional authentication
+  Roles,          // Role-based access control
+  Session,        // Get session data
 } from '@repo/authentication';
 
-// Public route (skip auth)
-@Public()
-@Get('health')
-getHealth() {}
+// Require authentication (applies globally if set as APP_GUARD)
+@UseGuards(AuthGuard)
+@Get('protected')
+getProtected(@Session() session: any) {
+  return session.user;
+}
 
-// Get current user
-@Get('profile')
-getProfile(@CurrentUser() user: User) {
-  return user;
+// Public route (skip auth guard)
+@AllowAnonymous()
+@Get('public')
+getPublic() {
+  return { message: 'Public endpoint' };
+}
+
+// Optional authentication (session injected if authenticated)
+@OptionalAuth()
+@Get('optional')
+getOptional(@Session() session: any) {
+  if (session) {
+    return { message: `Hello ${session.user.name}` };
+  }
+  return { message: 'Hello anonymous' };
 }
 
 // Role-based access
-@Roles('admin', 'manager')
-@Delete('users/:id')
-deleteUser(@Param('id') id: string) {}
-
-// Organization guard
-@UseGuards(OrganizationGuard)
-@Get('org/settings')
-getOrgSettings(@CurrentUser() user: User) {}
+@Roles(['Admin', 'Trader'])
+@Delete('sensitive')
+deleteSensitive() {
+  // Only Admin or Trader can access
+}
 ```
 
-## Client Hooks (Next.js)
+## Custom User Fields
 
-### useAuth Hook
+We've extended the default User model with additional fields:
 
 ```typescript
-const {
-  user, // Current user or null
-  isLoading, // Loading state
-  isAuthenticated, // Boolean
-  login, // (email, password) => Promise<void>
-  logout, // () => Promise<void>
-  register, // (data) => Promise<void>
-  refresh, // () => Promise<void>
-} = useAuth();
+// Defined in src/config/auth.config.ts
+user: {
+  additionalFields: {
+    dateOfBirth: {
+      type: "date",
+      required: false,
+    },
+    isActive: {
+      type: "boolean",
+      defaultValue: true,
+      required: true,
+    },
+    isBlocked: {
+      type: "boolean",
+      defaultValue: false,
+      required: true,
+    },
+    role: {
+      type: ["Investor", "Trader", "Admin"],
+      required: true,
+      defaultValue: "Investor",
+    },
+    lastLoginAt: {
+      type: "date",
+      required: false,
+    },
+    passwordChangedAt: {
+      type: "date",
+      required: false,
+    },
+  },
+}
 ```
 
-### useOrganization Hook
+## Security Features (Built-in)
+
+better-auth provides enterprise-grade security out of the box. See [SECURITY.md](./docs/SECURITY.md) for details.
+
+**Key security features**:
+
+- bcrypt password hashing (12 rounds)
+- Automatic CSRF protection
+- Built-in rate limiting
+- Secure httpOnly cookies
+- XSS protection
+- Session management
+- And more...
+
+## Email Service
+
+Custom email provider implementation:
 
 ```typescript
-const {
-  organization, // Current organization
-  role, // User's role in org
-  isAdmin, // Boolean
-  isOwner, // Boolean
-  switchOrganization, // (orgId) => Promise<void>
-} = useOrganization();
-```
+// src/services/email.service.ts
+@Injectable()
+export class EmailService {
+  async sendVerificationEmail(data: {
+    user: User;
+    url: string;
+    token: string;
+  }) {
+    // Send email using your SMTP provider
+  }
 
-## Security Features
+  async sendResetPasswordEmail(data: {
+    user: User;
+    url: string;
+    token: string;
+  }) {
+    // Send password reset email
+  }
 
-### 1. Password Security
+  async sendInvitationEmail(data: {
+    email: string;
+    organizationName: string;
+    inviterName: string;
+    invitationLink: string;
+    role: string;
+  }) {
+    // Send organization invitation
+  }
 
-- bcrypt with 12 salt rounds
-- Minimum password strength requirements
-- Password history (prevent reuse)
-
-### 2. Token Management
-
-- Short-lived access tokens (15 minutes)
-- Long-lived refresh tokens (7 days)
-- Automatic token rotation
-- Refresh token reuse detection
-
-### 3. Session Security
-
-- Redis caching for fast lookups
-- Session invalidation on logout
-- Concurrent session limits
-- Suspicious activity detection
-
-### 4. Rate Limiting
-
-- Login attempts: 5 per minute
-- Password reset: 3 per hour
-- Email verification: 3 per hour
-
-### 5. CSRF Protection
-
-- CSRF tokens for state-changing operations
-- SameSite cookie attribute
-- Origin validation
-
-## Environment Variables
-
-```bash
-# JWT Configuration
-JWT_ACCESS_SECRET=your-strong-secret-key
-JWT_REFRESH_SECRET=another-strong-secret-key
-JWT_ACCESS_EXPIRY=15m
-JWT_REFRESH_EXPIRY=7d
-
-# Email Service
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=noreply@example.com
-SMTP_PASS=your-smtp-password
-EMAIL_FROM=noreply@example.com
-
-# WebAuthn (Passkeys)
-RP_ID=yourdomain.com
-RP_NAME="Your App Name"
-ORIGIN=https://yourdomain.com
-
-# Redis
-REDIS_URL=redis://localhost:6379
-
-# Database
-MONGODB_URI=mongodb://localhost:27017/auth
+  async sendOTP(data: { user: User; otp: string }) {
+    // Send 2FA OTP code via email
+  }
+}
 ```
 
 ## Testing
 
 ```typescript
 import { Test } from "@nestjs/testing";
-import { AuthService } from "@repo/authentication";
+import { AuthModule } from "@repo/authentication";
+import { ConfigModule } from "@nestjs/config";
 
-describe("AuthService", () => {
-  let service: AuthService;
+describe("Authentication", () => {
+  let app: INestApplication;
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [
-        AuthService,
-        {
-          provide: "AUTH_ADAPTER",
-          useValue: createMockAdapter(),
-        },
-      ],
+      imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule],
     }).compile();
 
-    service = module.get<AuthService>(AuthService);
+    app = module.createNestApplication();
+    await app.init();
   });
 
-  it("should login user with valid credentials", async () => {
-    const result = await service.login("test@example.com", "password");
-    expect(result.accessToken).toBeDefined();
+  it("should register user", async () => {
+    const response = await request(app.getHttpServer())
+      .post("/api/auth/sign-up/email")
+      .send({
+        email: "test@example.com",
+        password: "SecurePass123!",
+        name: "Test User",
+      })
+      .expect(200);
+
+    expect(response.body.user).toBeDefined();
+    expect(response.body.session).toBeDefined();
   });
 });
 ```
 
-## Future Enhancements
+## Plugins Enabled
 
-### Planned Features
+This package enables the following better-auth plugins:
 
-1. **Magic Link Authentication**
-   - Passwordless login via email
-   - One-time use tokens
-   - Configurable expiry
+1. **organization** - Multi-tenancy, teams, role-based access
+2. **twoFactor** - TOTP and SMS-based 2FA
+3. **phoneNumber** - Phone verification with OTP
+4. **passkey** - WebAuthn (biometric authentication)
 
-2. **OAuth Providers**
-   - Google OAuth 2.0
-   - GitHub OAuth
-   - Microsoft Azure AD
-   - Apple Sign In
-
-3. **SMS Two-Factor**
-   - Twilio integration
-   - SMS verification codes
-   - Phone number verification
-
-4. **Biometric Authentication**
-   - Face ID / Touch ID
-   - Platform authenticators
-   - Device-based auth
-
-5. **Advanced Session Management**
-   - Device tracking
-   - IP-based geolocation
-   - Force logout from all devices
-   - Session activity logs
-
-6. **Audit Logging**
-   - Login/logout events
-   - Failed authentication attempts
-   - Permission changes
-   - Security events
-
-7. **Account Recovery**
-   - Security questions
-   - Backup codes
-   - Account recovery flow
-   - Emergency contacts
-
-8. **Enterprise Features**
-   - SAML SSO
-   - LDAP/Active Directory
-   - Multi-tenancy
-   - Custom authentication flows
+Additional plugins available on client: 5. **magicLink** - Passwordless authentication via email 6. **emailOTP** - One-time password via email 7. **deviceAuthorization** - OAuth device flow 8. **oneTimeToken** - Single-use tokens 9. **multiSession** - Multiple concurrent sessions per user
 
 ## Documentation
 
-- [Copilot Instructions](.github/copilot-instructions.md)
-- [Authentication Flows](docs/FLOWS.md) (TODO)
-- [Security Best Practices](docs/SECURITY.md) (TODO)
-- [API Reference](docs/API.md) (TODO)
+- [Authentication Flows](./docs/FLOWS.md) - Detailed flow diagrams
+- [Security Best Practices](./docs/SECURITY.md) - Security guidelines
+- [API Reference](./docs/API.md) - Complete API documentation
+- [Architecture](./docs/ARCHITECTURE.md) - System architecture
+- [better-auth Official Docs](https://better-auth.com/docs) - Upstream documentation
 
 ## Stack
 
-- NestJS
-- JWT (jsonwebtoken)
-- bcrypt
-- Redis
-- MongoDB (via @repo/database)
-- WebAuthn (@simplewebauthn)
-- speakeasy (TOTP)
+- **better-auth** - Authentication library
+- **@thallesp/nestjs-better-auth** - NestJS integration
+- **@better-auth/passkey** - WebAuthn plugin
+- **MongoDB** - Database (via @repo/database)
+- **Mongoose** - ODM
+- **NestJS** - Server framework
+- **Next.js** - Client framework (React)
+
+## Migration from Custom Auth
+
+If you previously had custom authentication logic, it has been replaced with better-auth. Key changes:
+
+| Old (Custom)                | New (better-auth)              |
+| --------------------------- | ------------------------------ |
+| Custom AuthService methods  | better-auth automatic handlers |
+| Manual bcrypt hashing       | Automatic (12 rounds)          |
+| Custom JWT token generation | Automatic session management   |
+| Manual 2FA implementation   | twoFactor plugin               |
+| Custom passkey logic        | passkey plugin                 |
+| Custom OAuth flow           | Automatic OAuth handling       |
+| Manual session storage      | Automatic (MongoDB + cookies)  |
+| Custom rate limiting        | Built-in rate limiter          |
+| Manual CSRF protection      | Automatic CSRF tokens          |
+| Custom adapter pattern      | better-auth adapter factory    |
 
 ## Contributing
 
-Follow the coding standards in `.github/copilot-instructions.md`.
+Follow the coding standards and ensure all tests pass before submitting changes.
+
+## Resources
+
+- [better-auth Documentation](https://better-auth.com/docs)
+- [better-auth GitHub](https://github.com/better-auth/better-auth)
+- [NestJS better-auth Integration](https://github.com/thallesp/nestjs-better-auth)
+- [Copilot Instructions](../../.github/instructions/authentication.instructions.md)

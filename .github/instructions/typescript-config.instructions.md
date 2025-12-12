@@ -1,3 +1,7 @@
+---
+applyTo: "packages/typescript-config/**"
+---
+
 # GitHub Copilot Instructions - TypeScript Config
 
 ## Role & Context
@@ -40,3 +44,4 @@ All configs enforce:
 1. ✅ Test compilation across all apps
 2. ✅ Version bump for breaking changes
 3. ✅ Document compiler option changes
+
