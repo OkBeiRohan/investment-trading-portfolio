@@ -28,7 +28,7 @@ function DashboardContent() {
       </div>
 
       <div className={styles.grid}>
-        <Link href="/organizations" className={styles.card}>
+        <Link href="/organization" className={styles.card}>
           <div className={styles.cardIcon}>
             <Building2 size={24} />
           </div>

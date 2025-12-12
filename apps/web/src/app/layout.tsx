@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import { Providers } from "./providers";
+import mainFont from "@/lib/fonts";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Investment Trading Portfolio",
@@ -13,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html dir="ltr" lang="en" className={mainFont.className}>
       <body>
         <Providers>{children}</Providers>
       </body>

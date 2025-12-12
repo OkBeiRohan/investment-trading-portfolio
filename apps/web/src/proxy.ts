@@ -15,7 +15,6 @@ export async function proxy(request: NextRequest) {
     "/magic-link",
     "/passkey",
     "/api/auth", // Allow auth API calls
-    ".well-known/*",
   ];
 
   // Check if the path is public
@@ -50,9 +49,10 @@ export const config = {
      * - api/auth (handled above, but good to exclude from heavy processing if possible, though we need to allow it)
      * - _next/static (static files)
      * - _next/image (image optimization files)
+     * - .well-known (ACME challenges, security.txt, etc)
      * - favicon.ico (favicon file)
      * - public folder files (images, etc)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|.well-known|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

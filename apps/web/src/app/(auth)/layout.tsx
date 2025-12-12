@@ -1,3 +1,4 @@
+import InformationPanel from "@/components/auth/layout/information.panel";
 import styles from "./auth.module.css";
 
 export default function AuthLayout({
@@ -7,9 +8,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className={styles.authRoot}>
-      <div className={styles.informationPanel}>
-        Welcome to Investment and Trading
-      </div>
+      <InformationPanel />
       {children}
     </div>
   );
