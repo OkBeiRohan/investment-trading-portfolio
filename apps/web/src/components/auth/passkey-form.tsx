@@ -5,7 +5,7 @@ import { authClient } from "@/lib/auth/auth-client";
 import { Fingerprint, Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import styles from "@/app/(auth)/passkey/passkey.module.css";
+import styles from "@/app/authentication/passkey/passkey.module.css";
 
 export function PasskeyForm() {
   const router = useRouter();

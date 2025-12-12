@@ -6,6 +6,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+.loginContainer {
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-lg);
 }
 
@@ -30,5 +35,47 @@
   font-size: var(--font-size-sm);
   margin-top: calc(var(--spacing-md) * -1);
   margin-bottom: var(--spacing-sm);
+  transition: color var(--transition-base);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: var(--spacing-md) 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-base);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border-primary);
+  transition: background-color var(--transition-base);
+}
+
+.divider span {
+  padding: 0 var(--spacing-md);
+}
+
+.link {
+  color: var(--color-link);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-base);
+}
+
+.link:hover {
+  text-decoration: underline;
+  color: var(--color-link-hover);
+}
+
+.signupText {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-lg);
   transition: color var(--transition-base);
 }
