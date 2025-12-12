@@ -1,3 +1,7 @@
+---
+applyTo: "packages/eslint-config/**"
+---
+
 # GitHub Copilot Instructions - ESLint Config
 
 ## Role & Context
@@ -44,3 +48,4 @@ module.exports = {
 2. ✅ Update README with rule explanations
 3. ✅ Version bump for breaking changes
 4. ✅ Document any new rules
+

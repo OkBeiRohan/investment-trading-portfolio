@@ -1,3 +1,7 @@
+---
+applyTo: "apps/training-pipeline/**"
+---
+
 # GitHub Copilot Instructions - Training Pipeline
 
 ## Role & Context
@@ -572,3 +576,4 @@ def test_xgboost_training():
 ❌ Not exporting to ONNX  
 ❌ Missing random seeds  
 ❌ Training on leaky features
+

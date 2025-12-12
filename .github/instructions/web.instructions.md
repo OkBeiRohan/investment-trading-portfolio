@@ -1,3 +1,7 @@
+---
+applyTo: "apps/web/**"
+---
+
 # GitHub Copilot Instructions - Web Dashboard (UFOS)
 
 ## Role & Context
@@ -992,3 +996,4 @@ Keep these files updated:
 
 **Last Updated**: December 5, 2025  
 **Status**: Active Development - UFOS Implementation
+

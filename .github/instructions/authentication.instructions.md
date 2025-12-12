@@ -1,3 +1,7 @@
+---
+applyTo: "packages/authentication/**"
+---
+
 # GitHub Copilot Instructions - Authentication Package
 
 ## Role & Context
@@ -633,3 +637,4 @@ MONGODB_URI=mongodb://localhost:27017
 ## Contributing
 
 Follow the coding standards and ensure all tests pass before submitting changes.
+

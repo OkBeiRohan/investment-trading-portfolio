@@ -1,3 +1,7 @@
+---
+applyTo: "packages/jest-config/**"
+---
+
 # GitHub Copilot Instructions - Jest Config
 
 ## Role & Context
@@ -37,3 +41,4 @@ export default config;
 1. ✅ Test across all apps
 2. ✅ Update transformer configurations
 3. ✅ Document any new test utilities
+

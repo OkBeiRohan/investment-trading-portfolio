@@ -1,3 +1,7 @@
+---
+applyTo: "apps/api/**"
+---
+
 # GitHub Copilot Instructions - API Server
 
 ## Role & Context
@@ -375,3 +379,4 @@ Keep these files updated:
 - [Passport.js](http://www.passportjs.org/)
 - [JWT Best Practices](https://tools.ietf.org/html/rfc8725)
 - [OWASP API Security](https://owasp.org/www-project-api-security/)
+

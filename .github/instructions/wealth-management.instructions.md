@@ -1,3 +1,7 @@
+---
+applyTo: "apps/wealth-management/**"
+---
+
 # GitHub Copilot Instructions - Wealth Management Service
 
 ## Role & Context
@@ -721,3 +725,4 @@ Keep these files updated:
 - [MongoDB Double-Entry](https://www.mongodb.com/developer/products/mongodb/double-entry-accounting-example/)
 - [Income Tax Act 2025-26](https://www.incometax.gov.in/)
 - [RBI Account Aggregator Framework](https://rbi.org.in/)
+

@@ -1,3 +1,7 @@
+---
+applyTo: "apps/wealth-analyzer/**"
+---
+
 # GitHub Copilot Instructions - Wealth Analyzer Service
 
 ## Role & Context
@@ -754,3 +758,4 @@ FORECAST_MODEL_PATH=../models/prophet-forecast.onnx
 - [ONNX Runtime Node.js](https://onnxruntime.ai/docs/get-started/with-javascript.html)
 - [Root Architecture](../../../ARCHITECTURE.md)
 - [Root Copilot Instructions](../../../.github/copilot-instructions.md)
+
