@@ -1,22 +1,46 @@
 {
   "name": "@repo/market-sdk",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./upstox": "./src/providers/upstox/index.ts",
+    "./yahoo": "./src/providers/yahoo/index.ts",
+    "./binance": "./src/providers/binance/index.ts"
+  },
+  "scripts": {
+    "proto:update": "bash scripts/fetch-proto.sh",
+    "build": "npm run proto:update && tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
-    "@binance/connector": "^3.6.1",
-    "@coingecko/coingecko-typescript": "^2.2.0",
+    "@nestjs/common": "^11.1.9",
+    "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "axios": "^1.13.2",
-    "bottleneck": "^2.19.5",
-    "upstox-js-sdk": "^2.21.0",
-    "yahoo-finance2": "^3.10.2"
+    "long": "^5.3.2",
+    "protobufjs": "^7.5.4",
+    "ws": "^8.18.3",
+    "yahoo-finance2": "^3.10.2",
+    "@binance/connector": "^3.6.1"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.0.0",
+    "@types/ws": "^8.18.1",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "typescript": "5.9.3"
   }
 }

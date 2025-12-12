@@ -1,12 +1,40 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Header } from '@nestjs/common';
+import { AllowAnonymous } from '@repo/authentication';
 import { AppService } from './app.service';
 
+@AllowAnonymous()
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  @Header('Content-Type', 'text/html')
+  async getHome() {
+    const html = this.appService.getHome();
+    return html;
+  }
+
+  @Get('/home.css')
+  @Header('Content-Type', 'text/css')
+  getHomeCss() {
+    const css = this.appService.getHomeCss();
+    return css;
+  }
+
+  @Get('/home.js')
+  @Header('Content-Type', 'application/javascript')
+  getHomeJs() {
+    const js = this.appService.getHomeJs();
+    return js;
+  }
+
+  @Get('/api/version')
+  getVersion() {
+    return this.appService.getVersion();
+  }
+
+  @Get('/api/frontend-url')
+  getFrontendUrl() {
+    return this.appService.getFrontendUrl();
   }
 }

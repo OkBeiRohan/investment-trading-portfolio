@@ -4,7 +4,10 @@ packages:
 
 onlyBuiltDependencies:
   - '@nestjs/core'
+  - esbuild
   - msgpackr-extract
+  - onnxruntime-node
   - protobufjs
+  - protolint
   - sharp
   - unrs-resolver

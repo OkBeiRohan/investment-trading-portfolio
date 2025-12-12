@@ -1,0 +1,135 @@
+# Data Processing
+data_processing:
+  lookback_window: 60 # Sequence length for time-series models
+  forecast_horizon: 4 # Hours ahead to predict
+  train_test_split: 0.8
+  validation_split: 0.1
+  walk_forward_window: 30 # Days for walk-forward validation
+
+# Feature Engineering
+features:
+  technical_indicators:
+    - RSI_14
+    - MACD_12_26_9
+    - SMA_20
+    - SMA_50
+    - EMA_20
+    - BBANDS_20_2
+    - OBV
+    - ADX_14
+
+  volatility_windows:
+    - 5 # days
+    - 10
+    - 20
+
+  sentiment:
+    - india_vix
+    - pcr_volume
+    - pcr_oi
+    - max_pain
+
+  options:
+    - atm_iv
+    - vol_skew
+    - term_structure
+
+# TimesNet (Feature Extractor)
+timesnet:
+  num_layers: 2
+  d_model: 128
+  d_ff: 256
+  num_kernels: 6
+  top_k: 5
+  dropout: 0.1
+  learning_rate: 0.001
+  batch_size: 32
+  epochs: 50
+  early_stopping_patience: 10
+
+# XGBoost
+xgboost:
+  max_depth: 8
+  learning_rate: 0.01
+  n_estimators: 500
+  subsample: 0.8
+  colsample_bytree: 0.8
+  objective: "binary:logistic"
+  eval_metric: "logloss"
+  early_stopping_rounds: 50
+
+# CNN-LSTM
+cnn_lstm:
+  conv_filters: [64, 128]
+  kernel_size: 3
+  lstm_units: 50
+  dense_units: 32
+  dropout: 0.3
+  learning_rate: 0.001
+  batch_size: 64
+  epochs: 100
+
+# GINN (GARCH-Informed Neural Network)
+ginn:
+  garch_p: 1
+  garch_q: 1
+  lstm_units: 64
+  learning_rate: 0.0005
+  batch_size: 32
+  epochs: 80
+
+# SVM
+svm:
+  kernel: "rbf"
+  C: [0.1, 1, 10] # Grid search
+  gamma: ["scale", "auto"]
+  class_weight: "balanced"
+
+# Transformer
+transformer:
+  num_layers: 4
+  d_model: 256
+  num_heads: 8
+  d_ff: 1024
+  dropout: 0.1
+  learning_rate: 0.0001
+  batch_size: 32
+  epochs: 100
+
+# LightGBM
+lightgbm:
+  num_leaves: 31
+  learning_rate: 0.05
+  n_estimators: 500
+  max_depth: -1
+  min_child_samples: 20
+  subsample: 0.8
+  colsample_bytree: 0.8
+
+# Meta-Learner (Logistic Regression Stacker)
+meta_learner:
+  solver: "lbfgs"
+  max_iter: 1000
+  C: 1.0
+
+# RL Agent (TD3)
+rl_agent:
+  algorithm: "TD3" # or "SAC"
+  actor_lr: 0.001
+  critic_lr: 0.001
+  gamma: 0.99
+  tau: 0.005
+  policy_noise: 0.2
+  noise_clip: 0.5
+  policy_delay: 2
+  buffer_size: 1000000
+  batch_size: 256
+  warmup_steps: 10000
+  total_timesteps: 1000000
+
+# ONNX Export
+onnx_export:
+  opset_version: 17
+  optimize: true
+  verify: true
+  dynamic_batch: true

@@ -1,0 +1,52 @@
+# Raw market data from TimescaleDB
+raw_tick_data:
+  type: pandas.SQLQueryDataset
+  sql: >
+    SELECT 
+      time, instrument_key, price, volume,
+      bid_price, ask_price, bid_size, ask_size,
+      delta, gamma, vega, theta, iv
+    FROM tick_data
+    WHERE time BETWEEN '{start_date}' AND '{end_date}'
+    ORDER BY time
+  credentials: timescaledb
+  layer: raw
+
+# Processed features
+features:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/features.parquet
+  layer: intermediate
+
+# Training dataset with labels
+training_data:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/training_data.parquet
+  layer: primary
+
+# Trained TimesNet model
+timesnet_model:
+  type: pickle.PickleDataset
+  filepath: data/06_models/timesnet.pkl
+  layer: models
+
+# XGBoost model
+xgboost_model:
+  type: pickle.PickleDataset
+  filepath: data/06_models/xgboost.pkl
+  layer: models
+
+# Meta-learner (stacking)
+meta_learner_model:
+  type: pickle.PickleDataset
+  filepath: data/06_models/meta_learner.pkl
+  layer: models
+
+# Exported ONNX models
+timesnet_onnx:
+  type: onnxruntime.ONNXDataset
+  filepath: onnx/timesnet.onnx
+
+xgboost_onnx:
+  type: onnxruntime.ONNXDataset
+  filepath: onnx/xgboost.onnx

@@ -1,0 +1,87 @@
+version: "3.8"
+
+services:
+  # Databases
+  questdb:
+    image: questdb/questdb:latest
+    ports:
+      - "9000:9000"   # REST API / Web Console
+      - "9009:9009"   # InfluxDB Line Protocol
+      - "8812:8812"   # PostgreSQL Wire Protocol
+    environment:
+      QDB_CAIRO_COMMIT_LAG: 1000
+      QDB_CAIRO_MAX_UNCOMMITTED_ROWS: 100000
+    volumes:
+      - questdb_data:/root/.questdb
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+
+  # Apps
+  market-feeder:
+    build: ./apps/market-feeder
+    environment:
+      REDIS_URL: redis://redis:6379
+      QUESTDB_HOST: questdb
+      QUESTDB_PORT: 9009 # ILP Port for high-speed ingestion
+    depends_on:
+      - redis
+      - questdb
+
+  data-processor:
+    build: ./apps/data-processor
+    environment:
+      QUESTDB_HOST: questdb
+      QUESTDB_PORT: 8812 # PG Wire for SQL queries
+      MONGODB_URI: mongodb://mongodb:27017
+    depends_on:
+      - questdb
+      - mongodb
+
+  algo-worker:
+    build: ./apps/algo-worker
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./models:/app/models # ONNX models
+    depends_on:
+      - mongodb
+      - redis
+
+volumes:
+  questdb_data:
+  mongo_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

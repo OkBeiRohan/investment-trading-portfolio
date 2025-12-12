@@ -1,0 +1,58 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Define public paths that don't require authentication
+  const publicPaths = [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+    "/verify-phone",
+    "/magic-link",
+    "/passkey",
+    "/api/auth", // Allow auth API calls
+    ".well-known/*",
+  ];
+
+  // Check if the path is public
+  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
+
+  // Check for auth session cookie (better-auth default)
+  const sessionToken = request.cookies.get("better-auth.session_token")?.value;
+
+  // If the user is not authenticated and trying to access a protected route
+  if (!sessionToken && !isPublicPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("callbackUrl", pathname); // Optional: preserve redirect
+    return NextResponse.redirect(url);
+  }
+
+  // If the user is authenticated and trying to access auth pages (login/register)
+  // Redirect them to the dashboard
+  if (sessionToken && (pathname === "/login" || pathname === "/register")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (handled above, but good to exclude from heavy processing if possible, though we need to allow it)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder files (images, etc)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
