@@ -30,7 +30,7 @@ arch = "^7.1.0"  # For GARCH
 
 # Technical Analysis
 ta = "^0.11.0"
-ta-lib = "^0.4.32"
+ta-lib = "^0.6.8"
 
 # ONNX
 onnx = "^1.16.0"
