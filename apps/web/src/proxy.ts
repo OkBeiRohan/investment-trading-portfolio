@@ -28,39 +28,25 @@ export async function proxy(request: NextRequest) {
   if (!sessionToken && !isPublicPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/authentication/login";
-    url.searchParams.set("callbackUrl", pathname); // Optional: preserve redirect
-
-    // Read existing app settings cookie and persist callbackUrl in it
-    const existing = request.cookies.get("app.settings")?.value;
-    let settings: {
-      theme?: "light" | "dark" | "system";
-      language?: string;
-      currency?: string;
-      callbackUrl?: string | null;
-    } = {};
-    try {
-      settings = existing ? JSON.parse(existing) : {};
-    } catch {
-      settings = {};
-    }
-
-    // Validate callbackUrl to prevent open redirect attacks
-    const validationResult = CallbackUrlSchema.safeParse(pathname);
-    if (validationResult.success) {
-      settings.callbackUrl = pathname;
-    } else {
-      // Invalid URL, don't set callbackUrl (will default to /)
-      console.warn("Invalid callback URL attempted:", pathname);
-      settings.callbackUrl = null;
-    }
 
     const response = NextResponse.redirect(url);
-    response.cookies.set("app.settings", JSON.stringify(settings), {
-      path: "/",
-      sameSite: "lax",
-      httpOnly: false,
-      maxAge: 60 * 10, // 10 minutes window to complete login
-    });
+
+    // Store callbackUrl in separate httpOnly cookie
+    // Server function will merge this into settings cookie after login
+    const validationResult = CallbackUrlSchema.safeParse(pathname);
+    if (validationResult.success) {
+      response.cookies.set("app.callbackUrl", pathname, {
+        path: "/",
+        sameSite: "lax",
+        httpOnly: true, // Security: Prevent client-side access
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 10, // 10 minutes window to complete login
+      });
+    } else {
+      // Invalid URL, don't set callback
+      console.warn("Invalid callback URL attempted:", pathname);
+    }
+
     return response;
   }
 

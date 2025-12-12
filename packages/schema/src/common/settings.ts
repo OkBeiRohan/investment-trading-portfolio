@@ -62,13 +62,15 @@ export const CallbackUrlSchema = z
 
 /**
  * Application settings schema with comprehensive validation
+ *
+ * Note: callbackUrl is stored in separate httpOnly cookie (app.callbackUrl)
+ * set by proxy middleware during auth redirects
  */
 export const AppSettingsSchema = z.object({
   theme: ThemeOptionSchema.default("light"),
   isSystemTheme: z.boolean().default(true),
   language: LanguageCodeSchema.default("en"),
   currency: CurrencyCodeSchema.default("INR"),
-  callbackUrl: CallbackUrlSchema.default(null),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
@@ -95,10 +97,6 @@ export const SetCurrencyInputSchema = z.object({
   currency: CurrencyCodeSchema,
 });
 
-export const SetCallbackUrlInputSchema = z.object({
-  callbackUrl: CallbackUrlSchema,
-});
-
 /**
  * Default settings factory
  */
@@ -108,6 +106,5 @@ export function getDefaultAppSettings(): AppSettings {
     isSystemTheme: true,
     language: "en",
     currency: "INR",
-    callbackUrl: null,
   };
 }

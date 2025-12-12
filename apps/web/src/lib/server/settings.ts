@@ -11,6 +11,7 @@ import {
 } from "@repo/schema";
 
 const SETTINGS_COOKIE = "app.settings";
+const CALLBACK_COOKIE = "app.callbackUrl"; // Separate httpOnly cookie from proxy
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180; // 180 days
 
 /**
@@ -36,6 +37,8 @@ function parseAndValidateSettings(raw: string): AppSettings {
 /**
  * Get application settings from cookie with validation
  * Always returns valid settings (defaults if cookie invalid/missing)
+ *
+ * Note: callbackUrl is stored separately, use getCallbackUrl() to retrieve it
  */
 export async function getAppSettings(): Promise<AppSettings> {
   const jar = await cookies();
@@ -107,21 +110,21 @@ export async function setCurrency(currency: CurrencyCode): Promise<void> {
 }
 
 /**
- * Set callback URL for post-login redirect
- * Validates URL to prevent open redirect attacks
+ * Get callback URL from proxy cookie
+ * Returns null if not set or expired
  */
-export async function setCallbackUrl(
-  callbackUrl: string | null
-): Promise<void> {
-  const current = await getAppSettings();
-  await writeSettings({ ...current, callbackUrl });
+export async function getCallbackUrl(): Promise<string | null> {
+  const jar = await cookies();
+  return jar.get(CALLBACK_COOKIE)?.value ?? null;
 }
 
 /**
  * Clear callback URL (typically after successful redirect)
+ * Deletes proxy cookie set during auth redirect
  */
 export async function clearCallbackUrl(): Promise<void> {
-  await setCallbackUrl(null);
+  const jar = await cookies();
+  jar.delete(CALLBACK_COOKIE);
 }
 
 /**

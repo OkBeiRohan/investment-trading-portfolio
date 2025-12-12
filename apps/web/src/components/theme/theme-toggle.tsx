@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { actionSetTheme } from "@/lib/actions/settings";
+import { getThemeSettings } from "@/lib/server/settings";
 import styles from "./theme-toggle.module.css";
 
 type ThemeOption = "light" | "dark";
@@ -35,12 +36,7 @@ export function ThemeToggle({ iconOnly = false }: ThemeToggleProps) {
 
   // Fetch initial state from server on mount
   useEffect(() => {
-    const fetchThemeSettings = async () => {
-      const { getThemeSettings } = await import("@/lib/server/settings");
-      const settings = await getThemeSettings();
-      setState(settings);
-    };
-    fetchThemeSettings();
+    getThemeSettings().then(setState);
   }, []);
 
   // Derive display option (what button to highlight)
