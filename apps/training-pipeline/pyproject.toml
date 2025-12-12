@@ -26,7 +26,7 @@ gymnasium = "^1.0.0"
 
 # Time-Series
 statsmodels = "^0.14.0"
-arch = "^7.1.0"  # For GARCH
+arch = "^8.0.0"  # For GARCH
 
 # Technical Analysis
 ta = "^0.11.0"
