@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
 import { Mail, KeyRound, Loader2, Fingerprint } from "lucide-react";
 import GoogleIcon from "@/components/icons/brands/Google";
-import styles from "@/app/(auth)/login/login.module.css";
-import GitHubIcon from "../icons/brands/GitHub";
+import GitHubIcon from "../../icons/brands/GitHub";
+import styles from "./login-form.module.css";
 
 export function LoginForm() {
   const router = useRouter();
@@ -27,6 +27,8 @@ export function LoginForm() {
         password,
       });
 
+      console.log(data);
+
       if (error) {
         setError(error.message || "Invalid credentials");
       } else {
@@ -34,6 +36,7 @@ export function LoginForm() {
       }
     } catch (err) {
       setError("An unexpected error occurred");
+      console.log(err);
     } finally {
       setLoading(false);
     }
@@ -49,16 +52,12 @@ export function LoginForm() {
     } catch (err) {
       setError(`Failed to login with ${provider}`);
       setLoading(false);
+      console.log(err);
     }
   };
 
   return (
-    <div className={styles.loginBox}>
-      <h1 className={styles.title}>Sign In</h1>
-      <p className={styles.subtitle}>Access your Project Quantum dashboard</p>
-
-      {error && <div className={styles.error}>{error}</div>}
-
+    <div className={styles.form}>
       <form className={styles.form} onSubmit={handleCredentialsLogin}>
         <div className={styles.inputGroup}>
           <label htmlFor="email" className={styles.label}>
@@ -97,7 +96,7 @@ export function LoginForm() {
         </div>
 
         <div className={styles.links}>
-          <Link href="/forgot-password" className={styles.link}>
+          <Link href="/authentication/forgot-password" className={styles.link}>
             Forgot password?
           </Link>
         </div>
@@ -106,6 +105,8 @@ export function LoginForm() {
           {loading && <Loader2 className={`${styles.icon} animate-spin`} />}
           Sign in
         </button>
+
+        {error && <div className={styles.error}>{error}</div>}
       </form>
 
       <div className={styles.divider}>
@@ -135,14 +136,14 @@ export function LoginForm() {
 
       <div className={styles.altLogins}>
         <Link
-          href="/magic-link"
+          href="/authentication/magic-link"
           className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
         >
           <Mail className={styles.icon} />
           Magic Link
         </Link>
         <Link
-          href="/passkey"
+          href="/authentication/passkey"
           className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
         >
           <Fingerprint className={styles.icon} />
@@ -152,7 +153,7 @@ export function LoginForm() {
 
       <p className={styles.signupText}>
         Not a member?{" "}
-        <Link href="/register" className={styles.link}>
+        <Link href="/authentication/register" className={styles.link}>
           Create an account
         </Link>
       </p>

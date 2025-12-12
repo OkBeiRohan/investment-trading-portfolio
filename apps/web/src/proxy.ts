@@ -26,14 +26,18 @@ export async function proxy(request: NextRequest) {
   // If the user is not authenticated and trying to access a protected route
   if (!sessionToken && !isPublicPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/authentication/login";
     url.searchParams.set("callbackUrl", pathname); // Optional: preserve redirect
     return NextResponse.redirect(url);
   }
 
   // If the user is authenticated and trying to access auth pages (login/register)
   // Redirect them to the dashboard
-  if (sessionToken && (pathname === "/login" || pathname === "/register")) {
+  if (
+    sessionToken &&
+    (pathname === "/authentication/login" ||
+      pathname === "/authentication/register")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
