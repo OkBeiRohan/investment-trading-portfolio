@@ -1,3 +1,7 @@
+@import "../styles/variables.css";
+@import "../styles/themes/light.css";
+@import "../styles/themes/dark.css";
+
 html,
 body {
   max-width: 100vw;
@@ -7,6 +11,11 @@ body {
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
 }
 
 * {

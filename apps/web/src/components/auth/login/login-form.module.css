@@ -1,44 +1,51 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .error {
-  background-color: #fef2f2;
-  color: #b91c1c;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
   text-align: center;
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
 }
 
 .inputGroup {
   display: flex;
   flex-direction: column;
   min-width: 350px;
-  gap: 6px;
+  gap: var(--spacing-sm);
 }
 
 .label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  transition: color var(--transition-base);
 }
 
 .inputWrapper {
   display: flex;
   align-items: center;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px 12px;
-  background: #fafbfc;
-  transition: border-color 0.2s;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-input-bg);
+  transition:
+    border-color var(--transition-base),
+    background-color var(--transition-base),
+    box-shadow var(--transition-base);
 }
 
 .inputWrapper:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  border-color: var(--color-input-border-focus);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
 .input {
@@ -46,36 +53,42 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 1rem;
-  color: #1f2937;
+  font-size: var(--font-size-base);
+  color: var(--color-input-text);
+  transition: color var(--transition-base);
+}
+
+.input::placeholder {
+  color: var(--color-input-placeholder);
 }
 
 .icon {
   width: 20px;
   height: 20px;
-  color: #9ca3af;
-  margin-right: 8px;
+  color: var(--color-text-tertiary);
+  margin-right: var(--spacing-sm);
+  transition: color var(--transition-base);
 }
 
 .loginButton {
   width: 100%;
   padding: 10px 0;
-  border-radius: 8px;
-  background: #6366f1;
-  color: #fff;
-  font-weight: 600;
-  font-size: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
   border: none;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background-color var(--transition-base);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .loginButton:hover {
-  background: #4f46e5;
+  background: var(--color-button-primary-hover);
 }
 
 .loginButton:disabled {
@@ -85,28 +98,32 @@
 
 .links {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   justify-content: center;
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  transition: color var(--transition-base);
 }
 
 .link {
-  color: #6366f1;
+  color: var(--color-link);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-base);
 }
 
 .link:hover {
   text-decoration: underline;
+  color: var(--color-link-hover);
 }
 
 .divider {
   display: flex;
   align-items: center;
-  margin: 16px 0;
-  color: #9ca3af;
-  font-size: 0.875rem;
+  margin: var(--spacing-md) 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-base);
 }
 
 .divider::before,
@@ -114,65 +131,72 @@
   content: "";
   flex: 1;
   height: 1px;
-  background: #e5e7eb;
+  background: var(--color-border-primary);
+  transition: background-color var(--transition-base);
 }
 
 .divider span {
-  padding: 0 12px;
+  padding: 0 var(--spacing-md);
 }
 
 .socialButtons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .socialButton {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-button-secondary-bg);
+  border: 1px solid var(--color-button-secondary-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-  transition: background 0.2s;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-button-secondary-text);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
 }
 
 .socialButton:hover {
-  background: #f9fafb;
+  background: var(--color-button-secondary-hover);
 }
 
 .altLogins {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
 }
 
 .altButton {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-button-secondary-bg);
+  border: 1px solid var(--color-button-secondary-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-button-secondary-text);
   text-decoration: none;
-  transition: background 0.2s;
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
 }
 
 .altButton:hover {
-  background: #f9fafb;
+  background: var(--color-button-secondary-hover);
 }
 
 .disabledLink {
@@ -182,7 +206,8 @@
 
 .signupText {
   text-align: center;
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-top: 24px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-lg);
+  transition: color var(--transition-base);
 }
