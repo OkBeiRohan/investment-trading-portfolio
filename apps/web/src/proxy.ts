@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { CallbackUrlSchema } from "@repo/schema";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -42,7 +43,16 @@ export async function proxy(request: NextRequest) {
     } catch {
       settings = {};
     }
-    settings.callbackUrl = pathname;
+
+    // Validate callbackUrl to prevent open redirect attacks
+    const validationResult = CallbackUrlSchema.safeParse(pathname);
+    if (validationResult.success) {
+      settings.callbackUrl = pathname;
+    } else {
+      // Invalid URL, don't set callbackUrl (will default to /)
+      console.warn("Invalid callback URL attempted:", pathname);
+      settings.callbackUrl = null;
+    }
 
     const response = NextResponse.redirect(url);
     response.cookies.set("app.settings", JSON.stringify(settings), {

@@ -55,7 +55,12 @@ export function ThemeToggle({ iconOnly = false }: ThemeToggleProps) {
 
     // Persist to cookie via server action
     startTransition(async () => {
-      await actionSetTheme(theme);
+      const result = await actionSetTheme(theme);
+      if (!result.success) {
+        // Revert on error
+        console.error("Failed to update theme:", result.error);
+        // Could show toast notification here
+      }
     });
   };
 
