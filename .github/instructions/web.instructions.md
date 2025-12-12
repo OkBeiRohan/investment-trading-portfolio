@@ -1,3 +1,7 @@
+---
+applyTo: "apps/web/**"
+---
+
 # GitHub Copilot Instructions - Web Dashboard (UFOS)
 
 ## Role & Context
@@ -152,7 +156,7 @@ const data = await trpc.wealth.getNetWorth.query(); // Security risk!
 - ✅ Resource ownership verification (prevents cross-org access)
 - ✅ Centralized error handling
 
-**Reference**: See [DATA_ACCESS_LAYER.md](../docs/DATA_ACCESS_LAYER.md) for full documentation
+**Reference**: See [DATA_ACCESS_LAYER.md](../../apps/web/docs/DATA_ACCESS_LAYER.md) for full documentation
 
 ### 5. Data Fetching Strategy
 

@@ -1,3 +1,7 @@
+---
+applyTo: "packages/trpc/**"
+---
+
 # GitHub Copilot Instructions - tRPC Router
 
 ## Role & Context
@@ -111,3 +115,4 @@ export const portfolioRouter = t.router({
 ❌ Direct database access  
 ❌ Missing input validation  
 ❌ Unhandled errors
+

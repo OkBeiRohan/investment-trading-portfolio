@@ -1,3 +1,7 @@
+---
+applyTo: "packages/database/**"
+---
+
 # @repo/database - Coding Instructions
 
 > Centralized database access layer for QuestDB, MongoDB, and Redis.
@@ -295,3 +299,4 @@ describe('SignalRepository (Integration)', () => {
 
 **Last Updated**: November 29, 2025
 **Status**: Production-Ready
+

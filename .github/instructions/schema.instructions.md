@@ -1,3 +1,7 @@
+---
+applyTo: "packages/schema/**"
+---
+
 # @repo/schema - Coding Instructions
 
 > Single source of truth for all TypeScript types and Zod schemas.
@@ -289,3 +293,4 @@ const TickDataSchema = z.object({
 
 **Last Updated**: November 29, 2025
 **Status**: Production-Ready
+

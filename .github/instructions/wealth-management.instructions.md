@@ -1,3 +1,7 @@
+---
+applyTo: "apps/wealth-management/**"
+---
+
 # GitHub Copilot Instructions - Wealth Management Service
 
 ## Role & Context
@@ -152,16 +156,16 @@ await Account.updateOne({ _id: id1 }, { $inc: { balance: 100 } });
 
 ```typescript
 // ✅ CORRECT - Consume algo-worker trade events
-import { OnEvent } from '@nestjs/event-emitter';
+import { OnEvent } from "@nestjs/event-emitter";
 
 @Injectable()
 export class TradeEventConsumer {
   constructor(
     private readonly transactionService: TransactionService,
-    private readonly eventBus: EventBusService,
+    private readonly eventBus: EventBusService
   ) {}
 
-  @OnEvent('TRADE_EXECUTED')
+  @OnEvent("TRADE_EXECUTED")
   async handleTradeExecuted(event: TradeExecutedEvent) {
     // Create wealth transaction from algo trade
     const transaction = await this.transactionService.createFromTrade({
@@ -175,11 +179,11 @@ export class TradeEventConsumer {
     });
 
     // Publish wealth transaction created event
-    await this.eventBus.publish('stream:wealth-events', {
-      event: 'WEALTH_TRANSACTION_CREATED',
+    await this.eventBus.publish("stream:wealth-events", {
+      event: "WEALTH_TRANSACTION_CREATED",
       userId: event.userId,
       transactionId: transaction._id.toString(),
-      category: 'Investment:Options',
+      category: "Investment:Options",
       amount: event.totalAmount,
       timestamp: Date.now(),
     });
@@ -187,9 +191,9 @@ export class TradeEventConsumer {
 }
 
 // ❌ WRONG - Direct HTTP call to algo-worker
-import { HttpService } from '@nestjs/axios';
+import { HttpService } from "@nestjs/axios";
 const response = await this.httpService
-  .get('http://algo-worker:3000/trades')
+  .get("http://algo-worker:3000/trades")
   .toPromise();
 ```
 
@@ -198,14 +202,14 @@ const response = await this.httpService
 ```typescript
 // Consume from Redis Streams
 const messages = await this.redis.xreadgroup(
-  'GROUP',
-  'wealth-management',
-  'worker-1',
-  'BLOCK',
+  "GROUP",
+  "wealth-management",
+  "worker-1",
+  "BLOCK",
   5000,
-  'STREAMS',
-  'stream:trade-events',
-  '>',
+  "STREAMS",
+  "stream:trade-events",
+  ">"
 );
 
 // Process events
@@ -214,24 +218,24 @@ for (const [stream, streamMessages] of messages) {
     const event = JSON.parse(fields[1]); // fields[0] is 'event', fields[1] is JSON
     await this.handleEvent(event);
     await this.redis.xack(
-      'stream:trade-events',
-      'wealth-management',
-      messageId,
+      "stream:trade-events",
+      "wealth-management",
+      messageId
     );
   }
 }
 
 // Publish to Redis Streams
 await this.redis.xadd(
-  'stream:wealth-events',
-  '*',
-  'event',
+  "stream:wealth-events",
+  "*",
+  "event",
   JSON.stringify({
-    event: 'WEALTH_TRANSACTION_CREATED',
-    userId: 'user123',
+    event: "WEALTH_TRANSACTION_CREATED",
+    userId: "user123",
     transactionId: transaction._id.toString(),
     timestamp: Date.now(),
-  }),
+  })
 );
 ```
 
@@ -395,9 +399,9 @@ const tax = (income - 250000) * 0.05; // Outdated slabs
 {
   postings: [
     {
-      accountId: ObjectId('...'),
-      accountCode: '1100-HDFC-SA', // Denormalized for fast queries
-      accountName: 'HDFC Savings Account', // Denormalized for display
+      accountId: ObjectId("..."),
+      accountCode: "1100-HDFC-SA", // Denormalized for fast queries
+      accountName: "HDFC Savings Account", // Denormalized for display
       debit: 150000,
       credit: 0,
     },
@@ -406,12 +410,12 @@ const tax = (income - 250000) * 0.05; // Outdated slabs
 
 // Query transactions by account code (no JOIN)
 const transactions = await Transaction.find({
-  'postings.accountCode': '1100-HDFC-SA',
+  "postings.accountCode": "1100-HDFC-SA",
 });
 
 // ❌ WRONG - Normalized structure requiring JOINs
 {
-  postings: [{ accountId: ObjectId('...'), debit: 150000 }];
+  postings: [{ accountId: ObjectId("..."), debit: 150000 }];
 }
 // Requires lookup to get account name for display
 ```
@@ -426,7 +430,7 @@ export class DatabaseSetupService implements OnModuleInit {
     // accounts collection
     await this.accountModel.collection.createIndex(
       { userId: 1, accountCode: 1 },
-      { unique: true },
+      { unique: true }
     );
     await this.accountModel.collection.createIndex({
       userId: 1,
@@ -445,11 +449,11 @@ export class DatabaseSetupService implements OnModuleInit {
       category: 1,
     });
     await this.transactionModel.collection.createIndex({
-      'postings.accountId': 1,
+      "postings.accountId": 1,
     });
     await this.transactionModel.collection.createIndex({
-      description: 'text',
-      category: 'text',
+      description: "text",
+      category: "text",
     });
 
     // snapshots collection
@@ -636,7 +640,7 @@ async getTransactions(
 ### 1. Unit Tests
 
 ```typescript
-describe('TransactionService', () => {
+describe("TransactionService", () => {
   let service: TransactionService;
   let model: jest.Mocked<Model<Transaction>>;
 
@@ -658,11 +662,11 @@ describe('TransactionService', () => {
     model = module.get(getModelToken(Transaction.name));
   });
 
-  it('should create balanced transaction', async () => {
+  it("should create balanced transaction", async () => {
     const dto = {
       postings: [
-        { accountId: 'acc1', debit: 100, credit: 0 },
-        { accountId: 'acc2', debit: 0, credit: 100 },
+        { accountId: "acc1", debit: 100, credit: 0 },
+        { accountId: "acc2", debit: 0, credit: 100 },
       ],
     };
 
@@ -673,15 +677,15 @@ describe('TransactionService', () => {
     expect(model.create).toHaveBeenCalledWith(dto);
   });
 
-  it('should reject unbalanced transaction', async () => {
+  it("should reject unbalanced transaction", async () => {
     const dto = {
       postings: [
-        { accountId: 'acc1', debit: 100, credit: 0 },
-        { accountId: 'acc2', debit: 0, credit: 90 }, // Unbalanced
+        { accountId: "acc1", debit: 100, credit: 0 },
+        { accountId: "acc2", debit: 0, credit: 90 }, // Unbalanced
       ],
     };
 
-    await expect(service.create(dto)).rejects.toThrow('not balanced');
+    await expect(service.create(dto)).rejects.toThrow("not balanced");
   });
 });
 ```
@@ -716,8 +720,8 @@ Keep these files updated:
 
 ## References
 
-- [Root Architecture](../../../ARCHITECTURE.md) - Project-wide architecture
-- [Root Copilot Instructions](../../../.github/copilot-instructions.md) - Common patterns
+- [Root Architecture](../../ARCHITECTURE.md) - Project-wide architecture
+- [Root Copilot Instructions](../copilot-instructions.md) - Common patterns
 - [MongoDB Double-Entry](https://www.mongodb.com/developer/products/mongodb/double-entry-accounting-example/)
 - [Income Tax Act 2025-26](https://www.incometax.gov.in/)
 - [RBI Account Aggregator Framework](https://rbi.org.in/)

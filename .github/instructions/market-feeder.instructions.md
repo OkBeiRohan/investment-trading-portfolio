@@ -1,3 +1,7 @@
+---
+applyTo: "apps/market-feeder/**"
+---
+
 # GitHub Copilot Instructions - Market Feeder
 
 ## Role & Context
@@ -479,3 +483,4 @@ describe("MarketDataService", () => {
 ❌ No error boundaries  
 ❌ Memory leaks from unbounded buffers  
 ❌ Missing health checks
+

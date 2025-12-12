@@ -1,3 +1,7 @@
+---
+applyTo: "apps/document-processor/**"
+---
+
 # GitHub Copilot Instructions - Document Processor Service
 
 ## Role & Context
@@ -595,3 +599,4 @@ AWS_REGION=ap-south-1
 - [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)
 - [Root Architecture](../../../ARCHITECTURE.md)
 - [AI Model Training Guide](../../../docs/AI_MODEL_TRAINING.md)
+
