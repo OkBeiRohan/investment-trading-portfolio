@@ -28,7 +28,30 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/authentication/login";
     url.searchParams.set("callbackUrl", pathname); // Optional: preserve redirect
-    return NextResponse.redirect(url);
+
+    // Read existing app settings cookie and persist callbackUrl in it
+    const existing = request.cookies.get("app.settings")?.value;
+    let settings: {
+      theme?: "light" | "dark" | "system";
+      language?: string;
+      currency?: string;
+      callbackUrl?: string | null;
+    } = {};
+    try {
+      settings = existing ? JSON.parse(existing) : {};
+    } catch {
+      settings = {};
+    }
+    settings.callbackUrl = pathname;
+
+    const response = NextResponse.redirect(url);
+    response.cookies.set("app.settings", JSON.stringify(settings), {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: false,
+      maxAge: 60 * 10, // 10 minutes window to complete login
+    });
+    return response;
   }
 
   // If the user is authenticated and trying to access auth pages (login/register)
