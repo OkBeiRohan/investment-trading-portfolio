@@ -51,5 +51,6 @@
     padding: var(--spacing-xl);
     border-radius: var(--spacing-xl);
     width: 90%;
+    max-width: unset;
   }
 }
