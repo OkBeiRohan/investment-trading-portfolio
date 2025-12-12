@@ -1,65 +1,67 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { actionSetTheme } from "@/lib/actions/settings";
+import { getThemeSettings } from "@/lib/server/settings";
 
 /**
  * Client-side theme provider that handles system preference detection
- * and theme transitions.
+ * and automatic theme switching when isSystemTheme=true.
  *
- * Resolves "system" theme to actual user preference (light/dark).
- * Listens for system preference changes and updates theme accordingly.
+ * Security: Uses httpOnly cookies accessed only via server functions.
+ * No client-side cookie parsing - prevents XSS attacks.
  *
- * The HTML data-theme attribute is set server-side in layout.tsx.
- * This component refines it on the client side if theme is "system".
+ * Behavior:
+ * - On mount: Fetch theme settings from server
+ *   - If isSystemTheme=true and mismatch with system: Update cookie
+ * - On system preference change: If isSystemTheme=true, update cookie
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [isSystemTheme, setIsSystemTheme] = useState<boolean | null>(null);
+
   useEffect(() => {
     const htmlEl = document.documentElement;
 
-    // Function to apply system preference
-    const applySystemPreference = () => {
-      const currentTheme = htmlEl.getAttribute("data-theme");
-
-      // Only apply if explicitly "system" or not set
-      if (currentTheme !== "system") return;
-
-      // Detect system preference
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      const effectiveTheme = prefersDark ? "dark" : "light";
-
-      htmlEl.setAttribute("data-theme", effectiveTheme);
+    // Detect system preference
+    const getSystemTheme = (): "light" | "dark" => {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
     };
 
-    // Apply on mount
-    applySystemPreference();
+    // Sync theme with system on mount
+    const syncThemeWithSystem = async () => {
+      // Fetch settings from server (httpOnly cookie)
+      const settings = await getThemeSettings();
+      setIsSystemTheme(settings.isSystemTheme);
+
+      if (!settings.isSystemTheme) return;
+
+      const systemTheme = getSystemTheme();
+      const currentTheme = settings.theme;
+
+      // Only update if mismatch
+      if (systemTheme !== currentTheme) {
+        htmlEl.setAttribute("data-theme", systemTheme);
+        await actionSetTheme(systemTheme, true);
+      }
+    };
+
+    syncThemeWithSystem();
 
     // Listen for system preference changes
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (e: MediaQueryListEvent) => {
-      const currentTheme = htmlEl.getAttribute("data-theme");
+    const handleChange = async (e: MediaQueryListEvent) => {
+      // Only react if user follows system preference
+      if (isSystemTheme === false) return;
 
-      // Check if user has explicit preference (stored in cookie)
-      // If data-theme is "light" or "dark" explicitly, respect it
-      // Only react to system changes if theme is still "system"
-      const cookie = document.cookie.match(/app\.settings=([^;]+)/)?.[1];
-      if (cookie) {
-        try {
-          const settings = JSON.parse(decodeURIComponent(cookie));
-          if (settings.theme === "system") {
-            htmlEl.setAttribute("data-theme", e.matches ? "dark" : "light");
-          }
-        } catch {
-          // If cookie parsing fails, fallback to current theme
-          if (currentTheme === "system" || !currentTheme) {
-            htmlEl.setAttribute("data-theme", e.matches ? "dark" : "light");
-          }
-        }
-      } else {
-        // No cookie, assume system preference
-        htmlEl.setAttribute("data-theme", e.matches ? "dark" : "light");
-      }
+      // Re-fetch to ensure we have latest state
+      const settings = await getThemeSettings();
+      if (!settings.isSystemTheme) return;
+
+      const newTheme = e.matches ? "dark" : "light";
+      htmlEl.setAttribute("data-theme", newTheme);
+      await actionSetTheme(newTheme, true);
     };
 
     mediaQuery.addEventListener("change", handleChange);
@@ -67,7 +69,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mediaQuery.removeEventListener("change", handleChange);
     };
-  }, []);
+  }, [isSystemTheme]);
 
   return <>{children}</>;
 }

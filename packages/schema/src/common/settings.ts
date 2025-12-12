@@ -2,8 +2,9 @@ import { z } from "zod";
 
 /**
  * Theme options for the application
+ * Always resolves to actual theme (light or dark)
  */
-export const ThemeOptionSchema = z.enum(["light", "dark", "system"]);
+export const ThemeOptionSchema = z.enum(["light", "dark"]);
 export type ThemeOption = z.infer<typeof ThemeOptionSchema>;
 
 /**
@@ -63,7 +64,8 @@ export const CallbackUrlSchema = z
  * Application settings schema with comprehensive validation
  */
 export const AppSettingsSchema = z.object({
-  theme: ThemeOptionSchema.default("system"),
+  theme: ThemeOptionSchema.default("light"),
+  isSystemTheme: z.boolean().default(true),
   language: LanguageCodeSchema.default("en"),
   currency: CurrencyCodeSchema.default("INR"),
   callbackUrl: CallbackUrlSchema.default(null),
@@ -82,6 +84,7 @@ export type PartialAppSettings = z.infer<typeof PartialAppSettingsSchema>;
  */
 export const SetThemeInputSchema = z.object({
   theme: ThemeOptionSchema,
+  isSystemTheme: z.boolean(),
 });
 
 export const SetLanguageInputSchema = z.object({
@@ -101,7 +104,8 @@ export const SetCallbackUrlInputSchema = z.object({
  */
 export function getDefaultAppSettings(): AppSettings {
   return {
-    theme: "system",
+    theme: "light",
+    isSystemTheme: true,
     language: "en",
     currency: "INR",
     callbackUrl: null,

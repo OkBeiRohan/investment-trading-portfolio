@@ -61,7 +61,7 @@ async function writeSettings(settings: AppSettings): Promise<void> {
   jar.set(SETTINGS_COOKIE, JSON.stringify(validated), {
     path: "/",
     sameSite: "lax",
-    httpOnly: false, // Allow client-side reads for theme detection
+    httpOnly: true, // Security: Prevent client-side access
     secure: process.env.NODE_ENV === "production", // HTTPS only in production
     maxAge: COOKIE_MAX_AGE,
   });
@@ -70,10 +70,22 @@ async function writeSettings(settings: AppSettings): Promise<void> {
 /**
  * Update theme preference
  * Validates input and updates cookie
+ *
+ * When user explicitly selects light/dark:
+ * - Sets theme to that value
+ * - Sets isSystemTheme to false
+ *
+ * When user enables "follow system":
+ * - Sets theme to current system preference (detected by client)
+ * - Sets isSystemTheme to true
+ * - Client will update theme when system preference changes
  */
-export async function setTheme(theme: ThemeOption): Promise<void> {
+export async function setTheme(
+  theme: ThemeOption,
+  isSystemTheme: boolean = false
+): Promise<void> {
   const current = await getAppSettings();
-  await writeSettings({ ...current, theme });
+  await writeSettings({ ...current, theme, isSystemTheme });
 }
 
 /**
@@ -113,15 +125,27 @@ export async function clearCallbackUrl(): Promise<void> {
 }
 
 /**
- * Resolve "system" theme to actual theme on server-side
- * Returns "light" as default (client refines with media query)
+ * Resolve effective theme for SSR
+ * Theme is always actual value (light or dark), so just return it
  */
-export async function resolveEffectiveTheme(
-  theme: ThemeOption
-): Promise<"light" | "dark"> {
-  if (theme !== "system") return theme;
-  // Server-side best-effort: default to light; client refines based on prefers-color-scheme
-  return "light";
+export async function resolveEffectiveTheme(): Promise<"light" | "dark"> {
+  const settings = await getAppSettings();
+  return settings.theme;
+}
+
+/**
+ * Get theme settings for client-side theme detection
+ * Returns only theme-related data (not sensitive settings)
+ */
+export async function getThemeSettings(): Promise<{
+  theme: ThemeOption;
+  isSystemTheme: boolean;
+}> {
+  const settings = await getAppSettings();
+  return {
+    theme: settings.theme,
+    isSystemTheme: settings.isSystemTheme,
+  };
 }
 
 /**

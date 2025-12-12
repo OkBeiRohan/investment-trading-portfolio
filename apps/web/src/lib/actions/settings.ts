@@ -28,14 +28,15 @@ type ActionResult<T = void> =
  * Revalidates layout to apply new theme
  */
 export async function actionSetTheme(
-  theme: ThemeOption
+  theme: ThemeOption,
+  isSystemTheme: boolean = false
 ): Promise<ActionResult> {
   try {
     // Validate input
-    const validated = SetThemeInputSchema.parse({ theme });
+    const validated = SetThemeInputSchema.parse({ theme, isSystemTheme });
 
     // Update settings
-    await setTheme(validated.theme);
+    await setTheme(validated.theme, validated.isSystemTheme);
 
     // Revalidate layout to apply new theme server-side
     revalidatePath("/", "layout");

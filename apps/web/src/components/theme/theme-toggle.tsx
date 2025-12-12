@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { actionSetTheme } from "@/lib/actions/settings";
 import styles from "./theme-toggle.module.css";
 
-type ThemeOption = "light" | "dark" | "system";
+type ThemeOption = "light" | "dark";
+type DisplayOption = "light" | "dark" | "system";
 
 interface ThemeToggleProps {
   /**
@@ -17,51 +18,67 @@ interface ThemeToggleProps {
 /**
  * Theme toggle component with three options: Light, Dark, System
  *
- * Updates both the cookie (server-side persistence) and HTML attribute
- * (immediate visual feedback).
+ * Simplified approach:
+ * - Theme is always actual value (light/dark)
+ * - isSystemTheme flag tracks if user wants to follow system preference
+ * - When "system" is selected, theme is set to current system preference
+ *   and isSystemTheme=true, so ThemeProvider will update on system changes
  */
 export function ThemeToggle({ iconOnly = false }: ThemeToggleProps) {
   const [isPending, startTransition] = useTransition();
 
-  // Read initial theme from cookie (lazy initialization)
-  const [currentTheme, setCurrentTheme] = useState<ThemeOption>(() => {
-    if (typeof window === "undefined") return "system";
+  // Track state locally (server-side cookie is source of truth)
+  const [state, setState] = useState<{
+    theme: ThemeOption;
+    isSystemTheme: boolean;
+  }>({ theme: "light", isSystemTheme: true });
 
-    const cookie = document.cookie.match(/app\.settings=([^;]+)/)?.[1];
-    if (cookie) {
-      try {
-        const settings = JSON.parse(decodeURIComponent(cookie));
-        return settings.theme || "system";
-      } catch {
-        return "system";
-      }
-    }
-    return "system";
-  });
+  // Fetch initial state from server on mount
+  useEffect(() => {
+    const fetchThemeSettings = async () => {
+      const { getThemeSettings } = await import("@/lib/server/settings");
+      const settings = await getThemeSettings();
+      setState(settings);
+    };
+    fetchThemeSettings();
+  }, []);
 
-  const handleThemeChange = (theme: ThemeOption) => {
-    setCurrentTheme(theme);
+  // Derive display option (what button to highlight)
+  const displayOption: DisplayOption = state.isSystemTheme
+    ? "system"
+    : state.theme;
 
-    // Update HTML attribute immediately for instant feedback
+  const handleThemeChange = (option: DisplayOption) => {
     const htmlEl = document.documentElement;
-    if (theme === "system") {
+
+    if (option === "system") {
+      // Follow system preference
       const prefersDark = window.matchMedia(
         "(prefers-color-scheme: dark)"
       ).matches;
-      htmlEl.setAttribute("data-theme", prefersDark ? "dark" : "light");
-    } else {
-      htmlEl.setAttribute("data-theme", theme);
-    }
+      const systemTheme: ThemeOption = prefersDark ? "dark" : "light";
 
-    // Persist to cookie via server action
-    startTransition(async () => {
-      const result = await actionSetTheme(theme);
-      if (!result.success) {
-        // Revert on error
-        console.error("Failed to update theme:", result.error);
-        // Could show toast notification here
-      }
-    });
+      setState({ theme: systemTheme, isSystemTheme: true });
+      htmlEl.setAttribute("data-theme", systemTheme);
+
+      startTransition(async () => {
+        const result = await actionSetTheme(systemTheme, true);
+        if (!result.success) {
+          console.error("Failed to update theme:", result.error);
+        }
+      });
+    } else {
+      // Explicit theme choice
+      setState({ theme: option, isSystemTheme: false });
+      htmlEl.setAttribute("data-theme", option);
+
+      startTransition(async () => {
+        const result = await actionSetTheme(option, false);
+        if (!result.success) {
+          console.error("Failed to update theme:", result.error);
+        }
+      });
+    }
   };
 
   const containerClass = iconOnly
@@ -69,12 +86,12 @@ export function ThemeToggle({ iconOnly = false }: ThemeToggleProps) {
     : styles.themeToggle;
 
   return (
-    <div className={containerClass} data-current-theme={currentTheme}>
+    <div className={containerClass} data-current-theme={displayOption}>
       <button
         onClick={() => handleThemeChange("light")}
         disabled={isPending}
         aria-label="Light theme"
-        className={`${styles.button} ${currentTheme === "light" ? styles.active : ""}`}
+        className={`${styles.button} ${displayOption === "light" ? styles.active : ""}`}
         title="Light theme"
       >
         <span aria-hidden="true">☀️</span>
@@ -84,7 +101,7 @@ export function ThemeToggle({ iconOnly = false }: ThemeToggleProps) {
         onClick={() => handleThemeChange("dark")}
         disabled={isPending}
         aria-label="Dark theme"
-        className={`${styles.button} ${currentTheme === "dark" ? styles.active : ""}`}
+        className={`${styles.button} ${displayOption === "dark" ? styles.active : ""}`}
         title="Dark theme"
       >
         <span aria-hidden="true">🌙</span>
@@ -94,7 +111,7 @@ export function ThemeToggle({ iconOnly = false }: ThemeToggleProps) {
         onClick={() => handleThemeChange("system")}
         disabled={isPending}
         aria-label="System theme"
-        className={`${styles.button} ${currentTheme === "system" ? styles.active : ""}`}
+        className={`${styles.button} ${displayOption === "system" ? styles.active : ""}`}
         title="Follow system preference"
       >
         <span aria-hidden="true">💻</span>

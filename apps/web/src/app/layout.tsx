@@ -15,7 +15,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const settings = await getAppSettings();
-  const effectiveTheme = await resolveEffectiveTheme(settings.theme);
+  const effectiveTheme = await resolveEffectiveTheme();
   const lang = settings.language || "en";
 
   return (
