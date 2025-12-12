@@ -45,10 +45,17 @@ export function LoginForm() {
   const handleSocialLogin = async (provider: "google" | "github") => {
     setLoading(true);
     try {
-      await authClient.signIn.social({
+      const { data, error } = await authClient.signIn.social({
         provider,
         callbackURL: "/",
       });
+
+      if (error) {
+        setError(error.message || `Failed to login with ${provider}`);
+        setLoading(false);
+      }
+
+      console.log(data);
     } catch (err) {
       setError(`Failed to login with ${provider}`);
       setLoading(false);
