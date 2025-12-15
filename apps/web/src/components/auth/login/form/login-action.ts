@@ -2,38 +2,32 @@
 
 import { authClient } from "@/lib/auth/auth-client";
 import { redirect } from "next/navigation";
+import { type LoginFieldErrors, parseLoginFormData } from "@repo/schema";
 
 interface LoginState {
   error: string | null;
-}
-
-interface LoginFormData {
-  email: string;
-  password: string;
-}
-
-function getFormData(formData: FormData): LoginFormData {
-  return {
-    email: formData.get("email")?.toString(),
-    password: formData.get("password") as string,
-  };
+  fieldErrors?: LoginFieldErrors;
 }
 
 export async function loginAction(
   prevState: LoginState,
   formData: FormData
 ): Promise<LoginState> {
-  const { email, password } = getFormData(formData);
+  // Parse and validate form data
+  const result = parseLoginFormData(formData);
 
-  if (!email || !password) {
-    return { error: "Email and password are required" };
+  if (!result.success) {
+    return {
+      error: null,
+      fieldErrors: result.fieldErrors,
+    };
   }
 
+  const credentials = result.data;
+
+  // Authenticate
   try {
-    const { data, error } = await authClient.signIn.email({
-      email,
-      password,
-    });
+    const { data, error } = await authClient.signIn.email(credentials);
 
     if (error) {
       return { error: error.message || "Invalid credentials" };

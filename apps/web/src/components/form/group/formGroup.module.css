@@ -11,3 +11,10 @@
   color: var(--color-text-primary);
   transition: color var(--transition-base);
 }
+
+.error {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  margin-top: calc(var(--spacing-sm) * -0.5);
+  transition: color var(--transition-base);
+}

@@ -5,15 +5,11 @@
 }
 
 .error {
-  background-color: var(--color-error-bg);
   color: var(--color-error-text);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
   font-size: var(--font-size-sm);
   text-align: center;
-  transition:
-    background-color var(--transition-base),
-    color var(--transition-base);
+  transition: color var(--transition-base);
 }
 
 .links {

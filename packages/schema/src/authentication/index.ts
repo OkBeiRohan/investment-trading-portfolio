@@ -3,3 +3,6 @@ export * from "./session.schema";
 export * from "./verification.schema";
 export * from "./two-factor.schema";
 export * from "./passkey.schema";
+
+// DTOs
+export * from "./dto/login.dto";

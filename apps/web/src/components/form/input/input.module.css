@@ -16,6 +16,15 @@
   box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
+.inputWrapper.hasError {
+  border-color: var(--color-error);
+}
+
+.inputWrapper.hasError:focus-within {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 2px var(--color-error-bg);
+}
+
 .input {
   flex: 1;
   border: none;

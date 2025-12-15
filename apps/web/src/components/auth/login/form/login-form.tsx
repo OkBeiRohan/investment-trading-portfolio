@@ -23,6 +23,7 @@ export function LoginForm() {
           icon={<Mail />}
           placeholder="you@example.com"
           autoComplete="email"
+          error={state.fieldErrors?.email}
           required
         />
         <Input
@@ -32,6 +33,7 @@ export function LoginForm() {
           icon={<KeyRound />}
           placeholder="••••••••"
           autoComplete="current-password"
+          error={state.fieldErrors?.password}
           required
         />
         <div className={styles.links}>
