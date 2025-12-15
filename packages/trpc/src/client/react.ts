@@ -6,15 +6,13 @@ import {
 import { QueryClient } from "@tanstack/react-query";
 import { AppRouter } from "../server";
 
-export const trpc: CreateTRPCReact<AppRouter, object> = createTRPCReact<
-  AppRouter,
-  object
->();
+//: CreateTRPCReact<AppRouter, object>
+export const trpc = createTRPCReact<AppRouter, object>();
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 1000,
+      staleTime: 60 * 1000,
       refetchOnWindowFocus: false,
     },
   },
