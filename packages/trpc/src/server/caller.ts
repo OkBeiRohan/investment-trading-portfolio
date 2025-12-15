@@ -1,115 +1,88 @@
-"use server";
+import "server-only"; // Ensure this file cannot be imported from client
 
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { cookies, headers } from "next/headers";
-import type { AppRouter } from "./index";
+import { cache } from "react";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import type { AppRouter } from "./server";
+import { appRouter } from "./server";
+import { getQueryClient } from "../client/query-client";
 
-/**
- * Server-side tRPC client for use in Server Components and Server Actions
- *
- * This client forwards Next.js cookies to the backend API, ensuring proper authentication.
- * Use this when calling tRPC procedures from:
- * - Server Components (async functions in app/...)
- * - Server Actions (exported async functions with "use server")
- * - Route Handlers (app/api/...)
- *
- * @example Server Component
- * ```tsx
- * import { serverTrpc } from '@repo/trpc/server';
- *
- * export default async function ProfilePage() {
- *   const user = await serverTrpc.user.getProfile.query();
- *   return <Profile user={user} />;
- * }
- * ```
- *
- * @example Server Action
- * ```tsx
- * 'use server';
- * import { serverTrpc } from '@repo/trpc/server';
- *
- * export async function updateProfile(data: UpdateProfileInput) {
- *   return serverTrpc.user.updateProfile.mutate(data);
- * }
- * ```
- */
-export const serverTrpc = createTRPCClient<AppRouter>({
-  links: [
-    httpBatchLink({
-      url: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3004"}/api/trpc`,
-      async headers() {
-        // Get all cookies from the current request
-        const cookieStore = await cookies();
-        const allCookies = cookieStore
-          .getAll()
-          .map(
-            (cookie: { name: string; value: string }) =>
-              `${cookie.name}=${cookie.value}`
-          )
-          .join("; ");
+// IMPORTANT: Create a stable getter for the query client that
+// will return the same client during the same request.
+export const getServerQueryClient = cache(getQueryClient);
 
-        // Get all request headers
-        const requestHeaders = await headers();
-        const headerObj: Record<string, string> = {};
-        requestHeaders.forEach((value: string, key: string) => {
-          headerObj[key] = value;
-        });
+// tRPC Options Proxy for Server Components
+//
+// This is the RECOMMENDED way to use tRPC in Server Components per official docs.
+// It integrates with React Query for prefetching and hydration.
+//
+// Use this to:
+// - Prefetch queries in Server Components
+// - Hydrate queries to Client Components (wrap with HydrateClient)
+// - Enable streaming with Suspense
+export const trpc = createTRPCOptionsProxy({
+  // For same-process backend (NestJS in same monorepo)
+  // Pass router and context directly
+  router: appRouter,
+  ctx: async () => {
+    // Create context with cookies from Next.js request
+    const cookieStore = await cookies();
+    const requestHeaders = await headers();
 
-        return {
-          ...headerObj,
-          // Override cookie header with all cookies from the request
-          cookie: allCookies,
-        };
-      },
-      // transformer: superjson, // Uncomment if using superjson
-    }),
-  ],
+    return {
+      cookies: cookieStore,
+      headers: requestHeaders,
+    };
+  },
+  queryClient: getServerQueryClient,
 });
 
-/**
- * Get server-side tRPC client with custom headers
- * Use this when you need to pass additional headers beyond cookies
- *
- * @param customHeaders - Additional headers to include
- * @returns tRPC client configured with custom headers
- *
- * @example
- * ```tsx
- * const trpc = getServerTrpc({
- *   'x-request-id': requestId,
- *   'x-organization-id': orgId,
- * });
- * const data = await trpc.organization.getData.query();
- * ```
- */
-export function getServerTrpc(customHeaders?: Record<string, string>) {
-  return createTRPCClient<AppRouter>({
-    links: [
-      httpBatchLink({
-        url: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3004"}/api/trpc`,
-        async headers() {
-          const cookieStore = await cookies();
-          const allCookies = cookieStore
-            .getAll()
-            .map(
-              (cookie: { name: string; value: string }) =>
-                `${cookie.name}=${cookie.value}`
-            )
-            .join("; ");
+// Server Caller for Direct Data Fetching
+//
+// Use this when you need data in a Server Component and DON'T want to hydrate to client.
+// This is detached from QueryClient and does not cache data.
+//
+// WARNING: Data fetched this way is NOT available in Client Components.
+// If you need data on both server and client, use prefetch() instead.
+export const caller = appRouter.createCaller(async () => {
+  const cookieStore = await cookies();
+  const requestHeaders = await headers();
 
-          const requestHeaders = await headers();
-          const headerObj: Record<string, string> = {};
-          requestHeaders.forEach((value: string, key: string) => {
-            headerObj[key] = value;
-          });
+  return {
+    cookies: cookieStore,
+    headers: requestHeaders,
+  };
+});
 
-          return {
-            ...headerObj,
-            ...customHeaders,
-            cookie: allCookies,
-          };
-        },
-      }),
-    ],
-  });
+// HydrateClient Component
+//
+// Wraps children with HydrationBoundary to hydrate prefetched queries to client.
+export function HydrateClient(props: { children: React.ReactNode }) {
+  const queryClient = getServerQueryClient();
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      {props.children}
+    </HydrationBoundary>
+  );
+}
+
+// Prefetch Helper
+//
+// Prefetches a query in a Server Component and makes it available to Client Components.
+// Use void prefetch() to start fetch without blocking render.
+// Use await prefetch() to wait for data before HTML (slower page load, no loading state).
+export function prefetch<T extends ReturnType<any>>(
+  queryOptions: T,
+): Promise<void> {
+  const queryClient = getServerQueryClient();
+
+  // @ts-expect-error - queryOptions type is complex
+  if (queryOptions.queryKey[1]?.type === "infinite") {
+    // @ts-expect-error - queryOptions type is complex
+    return queryClient.prefetchInfiniteQuery(queryOptions);
+  } else {
+    return queryClient.prefetchQuery(queryOptions);
+  }
 }

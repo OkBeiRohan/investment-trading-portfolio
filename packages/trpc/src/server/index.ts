@@ -1,2 +1,2 @@
 export * from "./server";
-export { serverTrpc, getServerTrpc } from "./caller";
+export { trpc, caller, HydrateClient, prefetch, getServerQueryClient } from "./caller";

@@ -15,7 +15,6 @@ export async function proxy(request: NextRequest) {
     "/authentication/verify-phone",
     "/authentication/magic-link",
     "/authentication/passkey",
-    "/api/auth", // Allow auth API calls
   ];
 
   // Check if the path is public
@@ -69,13 +68,13 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api/auth (handled above, but good to exclude from heavy processing if possible, though we need to allow it)
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - .well-known (ACME challenges, security.txt, etc)
      * - favicon.ico (favicon file)
      * - public folder files (images, etc)
      */
-    "/((?!_next/static|_next/image|.well-known|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|.well-known|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
