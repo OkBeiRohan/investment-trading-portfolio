@@ -3,6 +3,7 @@
 import { parseTwoFactorFormData } from "@repo/schema/authentication";
 import type { AuthFormState } from "@repo/schema/authentication";
 import { authClient } from "@/lib/auth/auth-client";
+import { handleAuthSuccess } from "../index";
 
 export async function twoFactorAction(
   _prevState: AuthFormState,
@@ -28,7 +29,7 @@ export async function twoFactorAction(
     };
   }
 
-  // 2FA verification successful - redirect to home
-  window.location.href = "/";
+  // 2FA verification successful - use centralized handler
+  handleAuthSuccess();
   return { error: null };
 }

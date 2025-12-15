@@ -1,4 +1,4 @@
-"use server";
+"use client";
 
 import { parseForgotPasswordFormData } from "@repo/schema/authentication";
 import type { AuthFormState } from "@repo/schema/authentication";

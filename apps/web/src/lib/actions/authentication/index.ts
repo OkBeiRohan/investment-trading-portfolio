@@ -1,35 +1,29 @@
-"use server";
+"use client";
 
-import { redirect, RedirectType } from "next/navigation";
-import type { Route } from "next";
-import { cookies } from "next/headers";
 import { CallbackUrlSchema } from "@repo/schema";
 
 /**
- * Handle successful authentication
+ * Handle successful authentication (client-side)
  * - Checks if 2FA verification is required
- * - Retrieves callback URL from cookie (set by middleware)
- * - Clears the callback URL cookie
- * - Performs full HTML redirect (causes session refetch in providers)
+ * - Retrieves callback URL from sessionStorage (set by middleware)
+ * - Clears the callback URL from sessionStorage
+ * - Performs full page redirect (causes session refetch in providers)
  * - Falls back to "/" if no valid callback URL exists
  *
  * @param requiresTwoFactor - If true, user needs to complete 2FA verification
  */
-export async function handleAuthSuccess(
-  requiresTwoFactor: boolean = false
-): Promise<never> {
+export function handleAuthSuccess(requiresTwoFactor: boolean = false): void {
   // If 2FA is required, redirect to 2FA verification page
   if (requiresTwoFactor) {
-    redirect("/authentication/2fa");
+    window.location.href = "/authentication/2fa";
+    return;
   }
 
-  const cookieStore = await cookies();
+  // Get callback URL from sessionStorage
+  const callbackUrl = sessionStorage.getItem("auth.callbackUrl");
 
-  // Get callback URL from cookie
-  const callbackUrl = cookieStore.get("app.callbackUrl")?.value;
-
-  // Clear the callback URL cookie
-  cookieStore.delete("app.callbackUrl");
+  // Clear the callback URL
+  sessionStorage.removeItem("auth.callbackUrl");
 
   // Validate and redirect
   if (callbackUrl) {
@@ -37,11 +31,11 @@ export async function handleAuthSuccess(
     if (validationResult.success && validationResult.data) {
       // Full redirect causes browser to refetch everything,
       // including session data in providers
-      // Type assertion needed for Next.js typed routes
-      redirect(validationResult.data as Route, RedirectType.push);
+      window.location.href = validationResult.data;
+      return;
     }
   }
 
   // Default redirect to home
-  redirect("/", RedirectType.push);
+  window.location.href = "/";
 }

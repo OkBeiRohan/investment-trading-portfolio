@@ -1,4 +1,4 @@
-"use server";
+"use client";
 
 import { parseResetPasswordFormData } from "@repo/schema/authentication";
 import type { AuthFormState } from "@repo/schema/authentication";
@@ -30,9 +30,7 @@ export async function resetPasswordAction(
     };
   }
 
-  // Password reset successful, redirect to login or dashboard
-  await handleAuthSuccess();
-
-  // TypeScript needs this, but it's never reached (handleAuthSuccess always throws)
+  // Password reset successful - use centralized handler
+  handleAuthSuccess();
   return { error: null };
 }

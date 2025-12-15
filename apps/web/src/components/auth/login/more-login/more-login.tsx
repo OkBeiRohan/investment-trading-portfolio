@@ -25,7 +25,7 @@ export default function MoreLoginOptions() {
         setError(error.message || `Failed to login with ${provider}`);
         setLoading(false);
       } else {
-        await handleAuthSuccess();
+        handleAuthSuccess();
       }
 
       console.log(data);
@@ -45,7 +45,7 @@ export default function MoreLoginOptions() {
         setError(error.message || "Failed to login anonymously");
         setLoading(false);
       } else {
-        await handleAuthSuccess();
+        handleAuthSuccess();
       }
       console.log(data);
     } catch (err) {

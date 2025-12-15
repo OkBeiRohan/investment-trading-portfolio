@@ -3,6 +3,7 @@
 import { parsePhoneOtpFormData } from "@repo/schema/authentication";
 import type { AuthFormState } from "@repo/schema/authentication";
 import { authClient } from "@/lib/auth/auth-client";
+import { handleAuthSuccess } from "../index";
 
 export async function verifyPhoneOtpAction(
   _prevState: AuthFormState,
@@ -29,7 +30,7 @@ export async function verifyPhoneOtpAction(
     };
   }
 
-  // Phone OTP verification successful - redirect to home
-  window.location.href = "/";
+  // Phone OTP verification successful - use centralized handler
+  handleAuthSuccess();
   return { error: null };
 }

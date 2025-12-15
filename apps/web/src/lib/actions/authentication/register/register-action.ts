@@ -3,6 +3,7 @@
 import { parseRegisterFormData } from "@repo/schema/authentication";
 import type { AuthFormState } from "@repo/schema/authentication";
 import { authClient } from "@/lib/auth/auth-client";
+import { handleAuthSuccess } from "../index";
 
 export async function registerAction(
   _prevState: AuthFormState,
@@ -36,7 +37,7 @@ export async function registerAction(
     return { error: null };
   }
 
-  // If no email verification required, proceed with login
-  window.location.href = "/";
+  // If no email verification required, use centralized handler
+  handleAuthSuccess();
   return { error: null };
 }

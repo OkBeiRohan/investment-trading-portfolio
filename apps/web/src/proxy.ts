@@ -28,25 +28,18 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/authentication/login";
 
-    const response = NextResponse.redirect(url);
-
-    // Store callbackUrl in separate httpOnly cookie
-    // Server function will merge this into settings cookie after login
+    // Validate callback URL
     const validationResult = CallbackUrlSchema.safeParse(pathname);
+
     if (validationResult.success) {
-      response.cookies.set("app.callbackUrl", pathname, {
-        path: "/",
-        sameSite: "lax",
-        httpOnly: true, // Security: Prevent client-side access
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 10, // 10 minutes window to complete login
-      });
+      // Add callback URL as query parameter (will be stored in sessionStorage by login page)
+      url.searchParams.set("callbackUrl", pathname);
     } else {
       // Invalid URL, don't set callback
       console.warn("Invalid callback URL attempted:", pathname);
     }
 
-    return response;
+    return NextResponse.redirect(url);
   }
 
   // If the user is authenticated and trying to access auth pages (login/register)
