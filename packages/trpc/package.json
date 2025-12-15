@@ -13,6 +13,7 @@
     "./server": "./src/server/index.ts"
   },
   "dependencies": {
+    "@repo/authentication": "workspace:*",
     "@repo/schema": "workspace:*",
     "@tanstack/react-query": "^5.90.12",
     "@trpc/client": "^11.8.0",
@@ -31,6 +32,7 @@
     "typescript": "5.9.3"
   },
   "peerDependencies": {
-    "react": "^19.0.0"
+    "next": "^16.0.10",
+    "react": "^19.2.3"
   }
 }

@@ -13,7 +13,41 @@ Shared tRPC router for type-safe API communication between frontend and backend.
 - ✅ Input validation with Zod
 - ✅ Shared between `api` server and `web` client
 - ✅ Subscription support for real-time updates
-- ✅ Middleware for authentication
+- ✅ **Automatic authentication** with credential forwarding
+- ✅ **Auto-retry on 401** (refresh session + retry request)
+- ✅ **Graceful logout** if session cannot be refreshed
+
+## Authentication
+
+**All tRPC requests are automatically authenticated** with cookies forwarded to the backend.
+
+### Client-Side (Automatic)
+
+```tsx
+// Cookies are automatically included
+const { data: user } = trpc.user.getProfile.useQuery();
+```
+
+**What Happens**:
+
+1. Request sent with `credentials: "include"` (cookies forwarded)
+2. If backend returns 401 → Auth link refreshes session
+3. If refresh succeeds → Original request retried automatically
+4. If refresh fails → User redirected to login
+
+### Server-Side (Server Components)
+
+```tsx
+import { serverTrpc } from "@repo/trpc/server";
+
+export default async function ProfilePage() {
+  // Cookies from Next.js request are automatically forwarded
+  const user = await serverTrpc.user.getProfile.query();
+  return <div>Welcome, {user.name}</div>;
+}
+```
+
+**See [AUTHENTICATION.md](./AUTHENTICATION.md) for detailed flow diagrams.**
 
 ## Installation
 
