@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
 import { Mail, KeyRound, Loader2 } from "lucide-react";
 import styles from "./login-form.module.css";
+import Input from "@/components/form/input";
 
 export function LoginForm() {
   const router = useRouter();
@@ -43,42 +44,28 @@ export function LoginForm() {
   return (
     <div className={styles.form}>
       <form className={styles.form} onSubmit={handleCredentialsLogin}>
-        <div className={styles.inputGroup}>
-          <label htmlFor="email" className={styles.label}>
-            Email address
-          </label>
-          <div className={styles.inputWrapper}>
-            <Mail className={styles.icon} />
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={styles.input}
-              placeholder="you@example.com"
-            />
-          </div>
-        </div>
-
-        <div className={styles.inputGroup}>
-          <label htmlFor="password" className={styles.label}>
-            Password
-          </label>
-          <div className={styles.inputWrapper}>
-            <KeyRound className={styles.icon} />
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={styles.input}
-              placeholder="••••••••"
-            />
-          </div>
-        </div>
-
+        <Input
+          type="email"
+          name="email"
+          label="Email Address"
+          icon={<Mail />}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+        />
+        <Input
+          type="password"
+          name="password"
+          label="Password"
+          icon={<KeyRound />}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+          autoComplete="current-password"
+          required
+        />
         <div className={styles.links}>
           <Link href="/authentication/forgot-password" className={styles.link}>
             Forgot password?

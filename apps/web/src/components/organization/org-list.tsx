@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useOrganization } from "@/hooks/organization/use-organization";
 import { authClient } from "@/lib/auth/auth-client";
 import { Plus, Loader2, ArrowRight, Building2 } from "lucide-react";
 import Link from "next/link";
-import styles from "@/app/(dashboard)/organizations/organizations.module.css";
+import styles from "@/app/organization/organizations.module.css";
+import { useOrganization } from "@/hooks/auth/use-organization";
 
 export function OrgList() {
-  const { createOrganization } = useOrganization();
+  const {  } = useOrganization();
   const [orgs, setOrgs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);

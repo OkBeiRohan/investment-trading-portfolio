@@ -1,0 +1,13 @@
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 350px;
+  gap: var(--spacing-sm);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  transition: color var(--transition-base);
+}
