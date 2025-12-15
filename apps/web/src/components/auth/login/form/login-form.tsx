@@ -1,57 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth/auth-client";
 import { Mail, KeyRound } from "lucide-react";
 import styles from "./login-form.module.css";
 import Input from "@/components/form/input";
 import PrimaryButton from "@/components/form/button";
+import { loginAction } from "./login-action";
 
 export function LoginForm() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleCredentialsLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error } = await authClient.signIn.email({
-        email,
-        password,
-      });
-
-      console.log(data);
-
-      if (error) {
-        setError(error.message || "Invalid credentials");
-      } else {
-        router.push("/");
-      }
-    } catch (err) {
-      setError("An unexpected error occurred");
-      console.log(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [state, formAction, isPending] = useActionState(loginAction, {
+    error: null,
+  });
 
   return (
     <div className={styles.form}>
-      <form className={styles.form} onSubmit={handleCredentialsLogin}>
+      <form className={styles.form} action={formAction}>
         <Input
           type="email"
           name="email"
           label="Email Address"
           icon={<Mail />}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           autoComplete="email"
           required
@@ -61,8 +30,6 @@ export function LoginForm() {
           name="password"
           label="Password"
           icon={<KeyRound />}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
           autoComplete="current-password"
           required
@@ -73,9 +40,9 @@ export function LoginForm() {
           </Link>
         </div>
 
-        <PrimaryButton type="submit" loading={loading} text="Sign In" />
+        <PrimaryButton type="submit" loading={isPending} text="Sign In" />
 
-        {error && <div className={styles.error}>{error}</div>}
+        {state.error && <div className={styles.error}>{state.error}</div>}
       </form>
     </div>
   );
