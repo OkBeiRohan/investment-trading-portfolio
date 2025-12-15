@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
 import { Mail, KeyRound, Loader2 } from "lucide-react";
 import styles from "./login-form.module.css";
-import { trpc, trpcClient } from "@repo/trpc";
 
 export function LoginForm() {
   const router = useRouter();
@@ -43,22 +42,6 @@ export function LoginForm() {
 
   return (
     <div className={styles.form}>
-      <button
-        onClick={async () => {
-          const data = trpc.api.getVersion.useQuery();
-          console.log(data);
-        }}
-      >
-        Use TRPC
-      </button>
-      <button
-        onClick={async () => {
-          const data = await trpcClient.api.getVersion.query();
-          console.log(data);
-        }}
-      >
-        Use TRPC Client
-      </button>
       <form className={styles.form} onSubmit={handleCredentialsLogin}>
         <div className={styles.inputGroup}>
           <label htmlFor="email" className={styles.label}>

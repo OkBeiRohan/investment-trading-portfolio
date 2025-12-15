@@ -8,7 +8,10 @@ import z from 'zod';
 export class AppRouter {
   constructor(private readonly appService: AppService) {}
 
-  @Query({ input: z.null().optional(), output: z.string() })
+  @Query({
+    input: z.null().optional(),
+    output: z.object({ version: z.string() }),
+  })
   getVersion() {
     return this.appService.getVersion();
   }
