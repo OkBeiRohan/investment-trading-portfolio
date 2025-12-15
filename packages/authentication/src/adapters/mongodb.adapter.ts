@@ -197,7 +197,19 @@ export const mongoAdapter = (
           const existing = await repository.findOne(filter);
           if (!existing) return null;
 
-          const id = existing._id?.toString() || existing.id;
+          // Extract ID - handle both MongoDB document (_id) and plain object (id)
+          let id: string;
+          if (existing._id) {
+            id = existing._id.toString();
+          } else if (existing.id) {
+            id =
+              typeof existing.id === "string"
+                ? existing.id
+                : existing.id.toString();
+          } else {
+            throw new Error(`Unable to extract ID from ${model} document`);
+          }
+
           const methodName = getRepositoryMethod(model, "update");
           const result = await repository[methodName](id, update);
 
@@ -247,7 +259,19 @@ export const mongoAdapter = (
           const existing = await repository.findOne(filter);
           if (!existing) return null;
 
-          const id = existing._id?.toString() || existing.id;
+          // Extract ID - handle both MongoDB document (_id) and plain object (id)
+          let id: string;
+          if (existing._id) {
+            id = existing._id.toString();
+          } else if (existing.id) {
+            id =
+              typeof existing.id === "string"
+                ? existing.id
+                : existing.id.toString();
+          } else {
+            throw new Error(`Unable to extract ID from ${model} document`);
+          }
+
           const methodName = getRepositoryMethod(model, "delete");
           await repository[methodName](id);
 
