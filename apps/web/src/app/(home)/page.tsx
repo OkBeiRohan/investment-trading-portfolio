@@ -41,7 +41,7 @@ function DashboardContent() {
           <ArrowRight className={styles.arrow} size={20} />
         </Link>
 
-        <Link href="/portfolio" className={styles.card}>
+        <Link href="/" className={styles.card}>
           <div className={styles.cardIcon}>
             <Wallet size={24} />
           </div>
@@ -54,7 +54,7 @@ function DashboardContent() {
           <ArrowRight className={styles.arrow} size={20} />
         </Link>
 
-        <Link href="/strategies" className={styles.card}>
+        <Link href="/" className={styles.card}>
           <div className={styles.cardIcon}>
             <LineChart size={24} />
           </div>
@@ -67,7 +67,7 @@ function DashboardContent() {
           <ArrowRight className={styles.arrow} size={20} />
         </Link>
 
-        <Link href="/signals" className={styles.card}>
+        <Link href="/" className={styles.card}>
           <div className={styles.cardIcon}>
             <LayoutDashboard size={24} />
           </div>
