@@ -2,11 +2,12 @@
 /**
  * Generate JSON Schema from Zod schemas for Python type generation
  * Run this after modifying any .schema.ts files in packages/schema
+ *
+ * NOTE: This uses a custom converter for Zod 4.x compatibility
  */
 
 import { writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Import all trading schemas
 import {
@@ -46,100 +47,189 @@ import { greeksSchema, costBreakdownSchema } from "../src/trading/base";
 
 const OUTPUT_DIR = join(__dirname, "../generated");
 
-console.log("🔧 Generating JSON Schemas from Zod...\n");
+console.log("🔧 Generating JSON Schemas from Zod 4.x...\n");
 
 // Ensure output directory exists
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
+/**
+ * Helper function to extract JSON Schema from Zod 4.x schema
+ * Zod 4.x has a different internal structure than 3.x
+ */
+function extractJsonSchema(zodSchema: any, name: string): any {
+  const convert = (schema: any, depth = 0): any => {
+    if (!schema || !schema.def) {
+      return { type: "any" };
+    }
+
+    const def = schema.def;
+    const type = def.type;
+
+    // Handle Zod 4.x specific types
+    switch (type) {
+      case "string":
+        const stringSchema: any = { type: "string" };
+        // Add string-specific validations if they exist
+        if (def.checks) {
+          for (const check of def.checks) {
+            if (check.kind === "email") stringSchema.format = "email";
+            if (check.kind === "uuid") stringSchema.format = "uuid";
+            if (check.kind === "url") stringSchema.format = "uri";
+            if (check.kind === "min") stringSchema.minLength = check.value;
+            if (check.kind === "max") stringSchema.maxLength = check.value;
+          }
+        }
+        return stringSchema;
+
+      case "number":
+        const numberSchema: any = { type: "number" };
+        if (def.checks) {
+          for (const check of def.checks) {
+            if (check.kind === "min") numberSchema.minimum = check.value;
+            if (check.kind === "max") numberSchema.maximum = check.value;
+            if (check.kind === "int") numberSchema.type = "integer";
+          }
+        }
+        return numberSchema;
+
+      case "boolean":
+        return { type: "boolean" };
+
+      case "date":
+        return { type: "string", format: "date-time" };
+
+      case "optional":
+        return convert(def.innerType, depth + 1);
+
+      case "nullable":
+        const nullableInner = convert(def.innerType, depth + 1);
+        return { oneOf: [nullableInner, { type: "null" }] };
+
+      case "array":
+        return {
+          type: "array",
+          items: convert(def.type, depth + 1),
+        };
+
+      case "object":
+        const properties: any = {};
+        const required: string[] = [];
+
+        if (def.shape) {
+          for (const [key, value] of Object.entries(def.shape as any)) {
+            properties[key] = convert(value, depth + 1);
+
+            // Check if field is required (not optional/nullable)
+            const fieldDef = (value as any).def;
+            if (
+              fieldDef &&
+              fieldDef.type !== "optional" &&
+              fieldDef.type !== "nullable"
+            ) {
+              required.push(key);
+            }
+          }
+        }
+
+        const objSchema: any = {
+          type: "object",
+          properties,
+        };
+
+        if (required.length > 0) {
+          objSchema.required = required;
+        }
+
+        return objSchema;
+
+      case "enum":
+        // Zod 4.x enum structure
+        if (def.values) {
+          if (typeof def.values === "object" && !Array.isArray(def.values)) {
+            // Object enum: { KEY: "value" }
+            return { enum: Object.values(def.values) };
+          } else if (Array.isArray(def.values)) {
+            return { enum: def.values };
+          }
+        }
+        return { type: "string" };
+
+      case "union":
+        if (def.options && Array.isArray(def.options)) {
+          return {
+            oneOf: def.options.map((opt: any) => convert(opt, depth + 1)),
+          };
+        }
+        return { type: "any" };
+
+      case "record":
+        return {
+          type: "object",
+          additionalProperties: def.valueType
+            ? convert(def.valueType, depth + 1)
+            : true,
+        };
+
+      case "literal":
+        return { const: def.value };
+
+      case "any":
+        return {};
+
+      case "unknown":
+        return {};
+
+      default:
+        console.warn(`  ⚠️  Unsupported Zod type: ${type} in ${name}`);
+        return { type: "any", description: `Unsupported Zod type: ${type}` };
+    }
+  };
+
+  return {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title: name,
+    ...convert(zodSchema, 0),
+  };
+}
+
 // Define all schemas to export
-const schemas = {
+const schemas: Record<string, any> = {
   // Feature schemas
-  FeatureSnapshot: zodToJsonSchema(featureSnapshotSchema as any, {
-    name: "FeatureSnapshot",
-    $refStrategy: "none",
-  }),
-  Features: zodToJsonSchema(featuresSchema as any, {
-    name: "Features",
-    $refStrategy: "none",
-  }),
-  MACD: zodToJsonSchema(macdSchema as any, {
-    name: "MACD",
-    $refStrategy: "none",
-  }),
-  FeatureMetadata: zodToJsonSchema(featureMetadataSchema as any, {
-    name: "FeatureMetadata",
-    $refStrategy: "none",
-  }),
+  FeatureSnapshot: extractJsonSchema(featureSnapshotSchema, "FeatureSnapshot"),
+  Features: extractJsonSchema(featuresSchema, "Features"),
+  MACD: extractJsonSchema(macdSchema, "MACD"),
+  FeatureMetadata: extractJsonSchema(featureMetadataSchema, "FeatureMetadata"),
 
   // Signal schemas
-  TradingSignal: zodToJsonSchema(tradingSignalSchema as any, {
-    name: "TradingSignal",
-    $refStrategy: "none",
-  }),
-  ModelContributions: zodToJsonSchema(modelContributionsSchema as any, {
-    name: "ModelContributions",
-    $refStrategy: "none",
-  }),
-  SignalMetadata: zodToJsonSchema(signalMetadataSchema as any, {
-    name: "SignalMetadata",
-    $refStrategy: "none",
-  }),
+  TradingSignal: extractJsonSchema(tradingSignalSchema, "TradingSignal"),
+  ModelContributions: extractJsonSchema(
+    modelContributionsSchema,
+    "ModelContributions"
+  ),
+  SignalMetadata: extractJsonSchema(signalMetadataSchema, "SignalMetadata"),
 
   // Order schemas
-  Order: zodToJsonSchema(orderSchema as any, {
-    name: "Order",
-    $refStrategy: "none",
-  }),
-  OrderLeg: zodToJsonSchema(orderLegSchema as any, {
-    name: "OrderLeg",
-    $refStrategy: "none",
-  }),
-  OrderPlacement: zodToJsonSchema(orderPlacementSchema as any, {
-    name: "OrderPlacement",
-    $refStrategy: "none",
-  }),
-  MultiLegOrderRequest: zodToJsonSchema(multiLegOrderRequestSchema as any, {
-    name: "MultiLegOrderRequest",
-    $refStrategy: "none",
-  }),
+  Order: extractJsonSchema(orderSchema, "Order"),
+  OrderLeg: extractJsonSchema(orderLegSchema, "OrderLeg"),
+  OrderPlacement: extractJsonSchema(orderPlacementSchema, "OrderPlacement"),
+  MultiLegOrderRequest: extractJsonSchema(
+    multiLegOrderRequestSchema,
+    "MultiLegOrderRequest"
+  ),
 
   // Position schemas
-  Position: zodToJsonSchema(positionSchema as any, {
-    name: "Position",
-    $refStrategy: "none",
-  }),
-  PositionLeg: zodToJsonSchema(positionLegSchema as any, {
-    name: "PositionLeg",
-    $refStrategy: "none",
-  }),
-  Greeks: zodToJsonSchema(greeksSchema as any, {
-    name: "Greeks",
-    $refStrategy: "none",
-  }),
-  CostBreakdown: zodToJsonSchema(costBreakdownSchema as any, {
-    name: "CostBreakdown",
-    $refStrategy: "none",
-  }),
+  Position: extractJsonSchema(positionSchema, "Position"),
+  PositionLeg: extractJsonSchema(positionLegSchema, "PositionLeg"),
+  Greeks: extractJsonSchema(greeksSchema, "Greeks"),
+  CostBreakdown: extractJsonSchema(costBreakdownSchema, "CostBreakdown"),
 
   // Strategy schemas
-  Strategy: zodToJsonSchema(strategySchema as any, {
-    name: "Strategy",
-    $refStrategy: "none",
-  }),
+  Strategy: extractJsonSchema(strategySchema, "Strategy"),
 
   // RL Agent schemas
-  RLAgentState: zodToJsonSchema(rlAgentStateSchema as any, {
-    name: "RLAgentState",
-    $refStrategy: "none",
-  }),
-  RLStateSnapshot: zodToJsonSchema(rlStateSnapshotSchema as any, {
-    name: "RLStateSnapshot",
-    $refStrategy: "none",
-  }),
-  RLPerformance: zodToJsonSchema(rlPerformanceSchema as any, {
-    name: "RLPerformance",
-    $refStrategy: "none",
-  }),
+  RLAgentState: extractJsonSchema(rlAgentStateSchema, "RLAgentState"),
+  RLStateSnapshot: extractJsonSchema(rlStateSnapshotSchema, "RLStateSnapshot"),
+  RLPerformance: extractJsonSchema(rlPerformanceSchema, "RLPerformance"),
 };
 
 // Write individual schema files
@@ -158,6 +248,8 @@ console.log("\n🎉 JSON Schema generation complete!");
 console.log(`📁 Output directory: ${OUTPUT_DIR}\n`);
 console.log("Next steps:");
 console.log(
-  "  1. Run Python type generator: cd apps/algo-worker/ml && python scripts/generate_types.py"
+  "  1. Run Python type generator: cd apps/training-pipeline && python scripts/generate_types.py"
 );
-console.log("  2. Verify generated types: import types.feature_types\n");
+console.log(
+  "  2. Use generated schemas in Python with pydantic or dataclass-wizard\n"
+);
