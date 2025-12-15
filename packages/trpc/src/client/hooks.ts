@@ -1,5 +1,11 @@
-import { createTRPCContext } from "@trpc/tanstack-react-query";
-import type { AppRouter } from "../server/server";
+/**
+ * This file is deprecated - hooks are now exported directly from react.ts
+ *
+ * Usage:
+ * import { trpc } from '@repo/trpc/client';
+ *
+ * const posts = trpc.router.procedure.useQuery();
+ * const createPost = trpc.router.procedure.useMutation();
+ */
 
-export const { TRPCProvider, useTRPC, useTRPCClient } =
-  createTRPCContext<AppRouter>();
+export {};

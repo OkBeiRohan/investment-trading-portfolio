@@ -34,18 +34,40 @@ export class AppModule {}
 
 ### Client-Side (Next.js)
 
-```typescript
-// apps/web/src/utils/trpc.ts
-import { createTRPCNext } from "@trpc/next";
-import type { AppRouter } from "@repo/trpc";
+```tsx
+// apps/web/src/app/providers.tsx
+import { TrpcProvider } from "@repo/trpc";
 
-export const trpc = createTRPCNext<AppRouter>({
-  config() {
-    return {
-      url: process.env.NEXT_PUBLIC_API_URL + "/trpc",
-    };
-  },
-});
+export function Providers({ children }: { children: React.ReactNode }) {
+  return <TrpcProvider>{children}</TrpcProvider>;
+}
+
+// apps/web/src/components/posts.tsx
+import { trpc } from "@repo/trpc";
+
+export function PostsList() {
+  // Simple, clean API - no need for useQuery()!
+  const { data: posts, isLoading } = trpc.postsRouter.findAll.useQuery();
+
+  const createPost = trpc.postsRouter.create.useMutation();
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {posts?.map((post) => (
+        <div key={post.id}>{post.caption}</div>
+      ))}
+      <button
+        onClick={() =>
+          createPost.mutate({ image: "img.jpg", caption: "Hello!" })
+        }
+      >
+        Create Post
+      </button>
+    </div>
+  );
+}
 ```
 
 ## Router Structure
