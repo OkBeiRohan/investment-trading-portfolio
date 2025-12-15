@@ -1,11 +1,5 @@
-import {
-  SkeletonFormGroup,
-  SkeletonButton,
-  SkeletonLink,
-  SkeletonDivider,
-  SkeletonSocialButton,
-  SkeletonText,
-} from "@/components/loading/skeleton";
+import { Skeleton } from "@/components/loading/skeleton";
+import { SkeletonInput } from "@/components/form/input/skeleton";
 import styles from "./login.module.css";
 
 export default function LoginLoading() {
@@ -14,29 +8,52 @@ export default function LoginLoading() {
       <div className={styles.loginContainer}>
         {/* Login Header Skeleton */}
         <div className={styles.loginHeader}>
-          <SkeletonText lines={1} width="200px" />
-          <SkeletonText lines={1} width="280px" />
+          <Skeleton width="200px" height={32} />
+          <Skeleton width="280px" height={20} />
         </div>
 
         {/* Login Form Skeleton */}
         <div className={styles.form}>
           {/* Email Input Skeleton */}
-          <SkeletonFormGroup hasLabel hasIcon />
+          <SkeletonInput label icon />
 
           {/* Password Input Skeleton */}
-          <SkeletonFormGroup hasLabel hasIcon />
+          <SkeletonInput label icon />
 
           {/* Forgot Password Link Skeleton */}
           <div className={styles.links}>
-            <SkeletonLink />
+            <Skeleton width={120} height={16} />
           </div>
 
           {/* Login Button Skeleton */}
-          <SkeletonButton fullWidth />
+          <Skeleton variant="rounded" width="100%" height={44} />
         </div>
 
         {/* Divider Skeleton */}
-        <SkeletonDivider />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--spacing-md)",
+            margin: "var(--spacing-lg) 0",
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              height: 1,
+              background: "var(--color-border-primary)",
+            }}
+          />
+          <Skeleton width={140} height={14} />
+          <div
+            style={{
+              flex: 1,
+              height: 1,
+              background: "var(--color-border-primary)",
+            }}
+          />
+        </div>
 
         {/* Social Login Options Skeleton */}
         <div>
@@ -48,8 +65,25 @@ export default function LoginLoading() {
               gap: "var(--spacing-md)",
             }}
           >
-            <SkeletonSocialButton />
-            <SkeletonSocialButton />
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "var(--spacing-sm)",
+                  border: "1px solid var(--color-input-border)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "var(--spacing-sm) var(--spacing-md)",
+                  minHeight: 44,
+                  background: "var(--color-input-bg)",
+                }}
+              >
+                <Skeleton variant="circular" width={20} height={20} />
+                <Skeleton width={80} height={16} />
+              </div>
+            ))}
           </div>
 
           {/* Alternative Login Methods */}
@@ -61,14 +95,31 @@ export default function LoginLoading() {
               marginTop: "var(--spacing-md)",
             }}
           >
-            <SkeletonSocialButton />
-            <SkeletonSocialButton />
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "var(--spacing-sm)",
+                  border: "1px solid var(--color-input-border)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "var(--spacing-sm) var(--spacing-md)",
+                  minHeight: 44,
+                  background: "var(--color-input-bg)",
+                }}
+              >
+                <Skeleton variant="circular" width={20} height={20} />
+                <Skeleton width={80} height={16} />
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Sign Up Link Skeleton */}
         <div style={{ textAlign: "center", marginTop: "var(--spacing-lg)" }}>
-          <SkeletonText lines={1} width="250px" />
+          <Skeleton width={250} height={16} />
         </div>
       </div>
     </main>
