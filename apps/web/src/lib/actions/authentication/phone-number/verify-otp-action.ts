@@ -17,9 +17,9 @@ export async function verifyPhoneOtpAction(
     };
   }
 
-  const { error } = await authClient.phoneNumber.verifyOtp({
+  const { error } = await authClient.phoneNumber.verify({
     phoneNumber: result.data.phoneNumber,
-    otp: result.data.code,
+    code: result.data.code,
   });
 
   if (error) {

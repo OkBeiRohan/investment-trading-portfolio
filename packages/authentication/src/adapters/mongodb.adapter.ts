@@ -134,6 +134,12 @@ export const mongoAdapter = (
           },
         };
 
+        if (!methodMap[model]) {
+          console.warn(
+            `No custom method mapping for model "${model}", using default method "${method}"`
+          );
+        }
+
         return methodMap[model]?.[method] || method;
       };
 
