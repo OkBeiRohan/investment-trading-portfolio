@@ -6,10 +6,11 @@ import { Plus, Loader2, ArrowRight, Building2 } from "lucide-react";
 import Link from "next/link";
 import styles from "@/app/organization/organizations.module.css";
 import { useOrganization } from "@/hooks/auth/use-organization";
+import { IOrganization } from "@repo/schema";
 
 export function OrgList() {
-  const {  } = useOrganization();
-  const [orgs, setOrgs] = useState<any[]>([]);
+  const {} = useOrganization();
+  const [orgs, setOrgs] = useState<IOrganization[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
@@ -33,7 +34,10 @@ export function OrgList() {
     e.preventDefault();
     setCreating(true);
     try {
-      await createOrganization({ name: newOrgName, slug: newOrgSlug });
+      await authClient.organization.create({
+        name: newOrgName,
+        slug: newOrgSlug,
+      });
       // The hook handles redirection
     } catch (err) {
       console.error(err);
@@ -69,7 +73,7 @@ export function OrgList() {
               {orgs.map((org) => (
                 <Link
                   key={org.id}
-                  href={`/organizations/${org.id}`}
+                  href={`/organization/${org.id}`}
                   className={styles.orgCard}
                 >
                   <div className={styles.orgInfo}>

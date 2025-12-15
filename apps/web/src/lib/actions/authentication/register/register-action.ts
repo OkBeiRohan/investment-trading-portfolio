@@ -32,12 +32,13 @@ export async function registerAction(
   }
 
   // Check if email verification is required
-  if (data?.emailVerificationRequired) {
-    window.location.href = "/authentication/verify-email";
-    return { error: null };
-  }
+  //   if (data?.emailVerificationRequired) {
+  //     window.location.href = "/authentication/verify-email";
+  //     return { error: null };
+  //   }
 
   // If no email verification required, use centralized handler
   handleAuthSuccess();
+  console.log(data);
   return { error: null };
 }

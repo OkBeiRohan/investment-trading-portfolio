@@ -1,5 +1,5 @@
 import FormGroup from "@/components/form/group";
-import SkeletonInput from "@/components/form/input/skeleton";
+import { SkeletonInput } from "@/components/form/input/skeleton";
 
 export default function RegisterFormSkeleton() {
   return (
