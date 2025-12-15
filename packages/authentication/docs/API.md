@@ -1143,7 +1143,7 @@ All endpoints may return error responses:
 
 ```typescript
 'use client';
-import { useAuth } from '@repo/authentication/client';
+import { useAuth } from '@repo/auth-client';
 
 export default function LoginForm() {
   const { signIn, signUp, signOut, user } = useAuth();

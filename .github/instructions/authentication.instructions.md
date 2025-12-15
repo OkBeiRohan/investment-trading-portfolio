@@ -429,7 +429,7 @@ async getSession(@CurrentSession() session: Session) {
 
 ```typescript
 // app/providers.tsx
-import { AuthProvider } from '@repo/authentication/client';
+import { AuthProvider } from '@repo/auth-client';
 
 export function Providers({ children }) {
   return (
@@ -441,7 +441,7 @@ export function Providers({ children }) {
 
 // app/dashboard/page.tsx
 'use client';
-import { useAuth } from '@repo/authentication/client';
+import { useAuth } from '@repo/auth-client';
 
 export default function Dashboard() {
   const { user, isLoading, login, logout } = useAuth();
@@ -462,7 +462,7 @@ export default function Dashboard() {
 
 ```typescript
 'use client';
-import { useOrganization } from '@repo/authentication/client';
+import { useOrganization } from '@repo/auth-client';
 
 export default function OrgSettings() {
   const { organization, role, isAdmin, switchOrganization } = useOrganization();

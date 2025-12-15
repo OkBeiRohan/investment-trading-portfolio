@@ -13,7 +13,7 @@
     "./server": "./src/server/index.ts"
   },
   "dependencies": {
-    "@repo/authentication": "workspace:*",
+    "@repo/auth-client": "workspace:*",
     "@repo/schema": "workspace:*",
     "@tanstack/react-query": "^5.90.12",
     "@trpc/client": "^11.8.0",
