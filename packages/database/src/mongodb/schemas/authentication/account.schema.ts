@@ -37,7 +37,7 @@ export class Account extends Document implements IAccount {
   scope?: string;
 
   @Prop({ required: false })
-  idTaken?: string;
+  idToken?: string;
 
   @Prop({ required: false })
   password?: string;

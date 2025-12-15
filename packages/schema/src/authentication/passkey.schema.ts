@@ -7,7 +7,7 @@ export const passkeySchema = z.object({
   publicKey: z.string(),
   credentialID: z.string(),
   counter: z.number().default(0),
-  deviceType: z.string().optional(),
+  deviceType: z.string(),
   backedUp: z.boolean().default(false),
   transports: z.string().optional(),
   createdAt: z.date(),
