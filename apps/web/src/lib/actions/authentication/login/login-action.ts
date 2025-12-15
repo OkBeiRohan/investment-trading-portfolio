@@ -2,7 +2,7 @@
 
 import { authClient } from "@/lib/auth/auth-client";
 import { type LoginFieldErrors, parseLoginFormData } from "@repo/schema";
-import { handleAuthSuccess } from "@/lib/actions/auth";
+import { handleAuthSuccess } from "@/lib/actions/authentication";
 
 interface LoginState {
   error: string | null;

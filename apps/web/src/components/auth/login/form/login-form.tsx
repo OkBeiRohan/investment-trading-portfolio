@@ -6,7 +6,7 @@ import { Mail, KeyRound } from "lucide-react";
 import styles from "./login-form.module.css";
 import Input from "@/components/form/input";
 import PrimaryButton from "@/components/form/button";
-import { loginAction } from "./login-action";
+import { loginAction } from "../../../../lib/actions/authentication/login/login-action";
 
 export function LoginForm() {
   const [state, formAction, isPending] = useActionState(loginAction, {
