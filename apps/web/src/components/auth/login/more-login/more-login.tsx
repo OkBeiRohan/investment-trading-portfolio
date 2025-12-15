@@ -3,7 +3,7 @@
 import GitHubIcon from "@/components/icons/brands/GitHub";
 import GoogleIcon from "@/components/icons/brands/Google";
 import { authClient } from "@/lib/auth/auth-client";
-import { Mail, Fingerprint, User } from "lucide-react";
+import { Mail, Fingerprint, User, Phone } from "lucide-react";
 import { useState } from "react";
 import styles from "./more-login.module.css";
 import Link from "next/link";
@@ -56,13 +56,22 @@ export default function MoreLoginOptions() {
 
   return (
     <div className={styles.moreContainer}>
-      <Link
-        href="/authentication/magic-link"
-        className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
-      >
-        <Mail className={styles.icon} />
-        Login with OTP
-      </Link>
+      <div className={styles.altLogins}>
+        <Link
+          href="/authentication/magic-link"
+          className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
+        >
+          <Mail className={styles.icon} />
+          Login with Email OTP
+        </Link>
+        <Link
+          href="/authentication/verify-phone"
+          className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
+        >
+          <Phone className={styles.icon} />
+          Login with Phone OTP
+        </Link>
+      </div>
       <div className={styles.socialButtons}>
         <button
           type="button"

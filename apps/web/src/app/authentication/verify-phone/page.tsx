@@ -1,21 +1,23 @@
+import { PhoneNumberForm } from "@/components/auth/phone-number/form/phone-number-form";
 import styles from "./verify-phone.module.css";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function VerifyPhonePage() {
   return (
-    <main className={styles.verifyMain}>
-      <div className={styles.verifyBox}>
-        <h1 className={styles.title}>Verify Phone</h1>
-        <form className={styles.form}>
-          <input
-            type="text"
-            placeholder="Enter OTP"
-            className={styles.input}
-            required
-          />
-          <button type="submit" className={styles.verifyButton}>
-            Verify
-          </button>
-        </form>
+    <main className={styles.verifyPhoneMain}>
+      <div className={styles.verifyPhoneContainer}>
+        <div className={styles.verifyPhoneHeader}>
+          <h1 className={styles.title}>Sign In with Phone Number</h1>
+          <p className={styles.subtitle}>
+            We&apos;ll send you a one-time password to verify your identity
+          </p>
+        </div>
+        <PhoneNumberForm />
+        <Link href="/authentication/login" className={styles.backLink}>
+          <ArrowLeft className={styles.backIcon} />
+          Back to Sign In
+        </Link>
       </div>
     </main>
   );

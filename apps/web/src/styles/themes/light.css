@@ -25,6 +25,7 @@
   --color-text-inverse: #ffffff;
 
   /* Border Colors */
+  --color-border: #e5e7eb;
   --color-border-primary: #e5e7eb;
   --color-border-secondary: #d1d5db;
   --color-border-focus: #6366f1;

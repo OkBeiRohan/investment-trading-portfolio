@@ -1,6 +1,15 @@
 import { z } from "zod";
 
 /**
+ * Generic form state type for authentication actions
+ */
+export interface AuthFormState {
+  error: string | null;
+  fieldErrors?: any;
+  success?: string;
+}
+
+/**
  * Forgot Password DTO Schema
  */
 export const ForgotPasswordDtoSchema = z.object({

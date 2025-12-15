@@ -19,6 +19,10 @@
       "types": "./dist/user/index.d.ts",
       "default": "./dist/user/index.js"
     },
+    "./authentication": {
+      "types": "./dist/authentication/index.d.ts",
+      "default": "./dist/authentication/index.js"
+    },
     "./*": {
       "types": "./dist/*.d.ts",
       "default": "./dist/*.js"

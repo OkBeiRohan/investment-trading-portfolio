@@ -6,3 +6,6 @@ export * from "./passkey.schema";
 
 // DTOs
 export * from "./dto/login.dto";
+export * from "./dto/register.dto";
+export * from "./dto/auth-flows.dto";
+export * from "./dto/phone-number.dto";
