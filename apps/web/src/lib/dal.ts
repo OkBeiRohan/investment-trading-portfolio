@@ -39,7 +39,7 @@ export const verifySession = cache(async () => {
   });
 
   if (!session?.data) {
-    redirect("/login");
+    redirect("/authentication/login");
   }
 
   return {

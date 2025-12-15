@@ -1,0 +1,7 @@
+{
+  "$ref": "#/definitions/RLAgentState",
+  "definitions": {
+    "RLAgentState": {}
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

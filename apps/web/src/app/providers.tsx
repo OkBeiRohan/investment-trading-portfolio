@@ -1,15 +1,18 @@
 "use client";
 
-import { TrpcProvider } from "@/lib/trpc/provider";
+import { TrpcProvider } from "@repo/trpc";
 import { AuthProvider } from "@/contexts/auth-context";
 import { OrganizationProvider } from "@/contexts/organization-context";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <TrpcProvider url={`${process.env.NEXT_PUBLIC_API_URL}/trpc`}>
+    <ThemeProvider>
       <AuthProvider>
-        <OrganizationProvider>{children}</OrganizationProvider>
+        <OrganizationProvider>
+          <TrpcProvider>{children}</TrpcProvider>
+        </OrganizationProvider>
       </AuthProvider>
-    </TrpcProvider>
+    </ThemeProvider>
   );
 }

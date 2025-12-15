@@ -24,12 +24,29 @@ export class AccountRepository {
     return this.accountModel.findOne(filter).exec();
   }
 
-  async findMany(filter: QueryFilter<Account>): Promise<Account[]> {
-    return this.accountModel.find(filter).exec();
+  async findMany(
+    filter: QueryFilter<Account>,
+    options?: { limit?: number; skip?: number; sort?: any }
+  ): Promise<Account[]> {
+    const query = this.accountModel.find(filter);
+
+    if (options?.limit) query.limit(options.limit);
+    if (options?.skip) query.skip(options.skip);
+    if (options?.sort) query.sort(options.sort);
+
+    return query.exec();
   }
 
   async update(id: string, data: Partial<Account>): Promise<Account | null> {
     return this.accountModel.findByIdAndUpdate(id, data, { new: true }).exec();
+  }
+
+  async updateMany(
+    filter: QueryFilter<Account>,
+    data: Partial<Account>
+  ): Promise<number> {
+    const result = await this.accountModel.updateMany(filter, data).exec();
+    return result.modifiedCount;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -40,5 +57,9 @@ export class AccountRepository {
   async deleteMany(filter: QueryFilter<Account>): Promise<number> {
     const result = await this.accountModel.deleteMany(filter).exec();
     return result.deletedCount;
+  }
+
+  async count(filter: QueryFilter<Account>): Promise<number> {
+    return this.accountModel.countDocuments(filter).exec();
   }
 }

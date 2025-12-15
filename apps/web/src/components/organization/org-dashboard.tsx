@@ -1,22 +1,25 @@
 "use client";
 
 import { useEffect } from "react";
-import { useOrganization } from "@/hooks/organization/use-organization";
 import { useParams } from "next/navigation";
 import { Loader2, Users, TrendingUp, Activity } from "lucide-react";
-import styles from "@/app/(dashboard)/organizations/[id]/dashboard.module.css";
+import styles from "@/app/organization/[id]/dashboard.module.css";
+import { useOrganization } from "@/hooks/auth/use-organization";
+import { authClient } from "@/lib/auth/auth-client";
 
 export function OrgDashboard() {
   const params = useParams();
-  const { activeOrganization, switchOrganization, isLoading } = useOrganization();
+  const { activeOrganizationId, organization, isLoading } = useOrganization();
 
   useEffect(() => {
-    if (params?.id && activeOrganization?.id !== params.id) {
-      switchOrganization(params.id as string);
+    if (params?.id && activeOrganizationId !== params.id) {
+      authClient.organization.setActive({
+        organizationId: params.id as string,
+      });
     }
-  }, [params?.id, activeOrganization?.id, switchOrganization]);
+  }, [params?.id, activeOrganizationId]);
 
-  if (isLoading || activeOrganization?.id !== params?.id) {
+  if (isLoading || activeOrganizationId !== params?.id) {
     return (
       <div className={styles.loaderContainer}>
         <Loader2 className={styles.loader} size={32} />
@@ -27,7 +30,7 @@ export function OrgDashboard() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>{activeOrganization?.name}</h1>
+        <h1 className={styles.title}>{organization?.name}</h1>
         <p className={styles.subtitle}>Organization Dashboard</p>
       </div>
 
@@ -40,7 +43,7 @@ export function OrgDashboard() {
             <div>
               <p className={styles.cardLabel}>Members</p>
               <h3 className={styles.cardValue}>
-                {activeOrganization?.members?.length || 0}
+                {/* {activeOrganization?.members?.length || 0} */}
               </h3>
             </div>
           </div>
@@ -64,7 +67,7 @@ export function OrgDashboard() {
               <Activity size={24} />
             </div>
             <div>
-              <p className={styles.cardLabel}>Today's P&L</p>
+              <p className={styles.cardLabel}>Today&apos;s P&L</p>
               <h3 className={`${styles.cardValue} ${styles.positive}`}>
                 +₹12,450
               </h3>

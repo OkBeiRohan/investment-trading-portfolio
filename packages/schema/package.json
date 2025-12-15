@@ -19,6 +19,10 @@
       "types": "./dist/user/index.d.ts",
       "default": "./dist/user/index.js"
     },
+    "./authentication": {
+      "types": "./dist/authentication/index.d.ts",
+      "default": "./dist/authentication/index.js"
+    },
     "./*": {
       "types": "./dist/*.d.ts",
       "default": "./dist/*.js"
@@ -34,16 +38,16 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "zod": "^4.1.13"
+    "zod": "^4.2.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@types/node": "^25.0.1",
+    "@types/node": "^25.0.2",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "tsx": "^4.21.0",
     "zod-to-json-schema": "^3.25.0"
   }

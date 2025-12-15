@@ -1,0 +1,23 @@
+.authRoot {
+  min-height: 100vh;
+  display: flex;
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-auth-gradient-start) 0%,
+    var(--color-auth-gradient-end) 100%
+  );
+  gap: var(--spacing-md);
+  transition: background-image var(--transition-slow);
+}
+
+.authRoot main {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .authRoot {
+    flex-direction: column-reverse;
+    align-items: center;
+    padding: var(--spacing-xl) 0;
+  }
+}

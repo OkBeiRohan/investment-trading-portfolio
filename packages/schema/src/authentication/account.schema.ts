@@ -10,7 +10,7 @@ export const accountSchema = z.object({
   accessTokenExpiresAt: z.date().optional(),
   refreshTokenExpiresAt: z.date().optional(),
   scope: z.string().optional(),
-  idTaken: z.string().optional(),
+  idToken: z.string().optional(),
   password: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

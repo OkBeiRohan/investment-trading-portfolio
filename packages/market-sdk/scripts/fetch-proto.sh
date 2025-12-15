@@ -108,17 +108,30 @@ if [ $curl_exit_code -eq 0 ]; then
             echo -e "${GREEN}✅ Success: Proto file updated at $OUTPUT_FILE${NC}"
             echo "Package Verified: $(grep "package com.upstox" "$OUTPUT_FILE")"
         else
+            # Invalid proto file - this IS a build-blocking error
             echo -e "${RED}❌ Error: Downloaded file appears invalid (Not a proto file).${NC}"
             head -20 "$OUTPUT_FILE" # Show first lines for debugging
             exit 1
         fi
     else
+        # Empty file - this IS a build-blocking error  
         echo -e "${RED}❌ Error: Downloaded file is empty.${NC}"
         exit 1
     fi
 else
-    echo -e "${RED}❌ Error: Failed to download proto file. curl exit code: $curl_exit_code${NC}"
-    exit 1
+    # Network error - check if we have an existing proto file
+    if [ -f "$OUTPUT_FILE" ] && grep -q "package com.upstox" "$OUTPUT_FILE"; then
+        echo -e "${GREEN}⚠️  Warning: Failed to download proto file (curl exit code: $curl_exit_code)${NC}"
+        echo -e "${GREEN}   Using existing proto file. Build will continue.${NC}"
+        echo -e "${GREEN}   This is expected in environments with restricted internet access.${NC}"
+        exit 0
+    else
+        # No existing valid proto file - this IS a build-blocking error
+        echo -e "${RED}❌ Error: Failed to download proto file AND no valid existing file found.${NC}"
+        echo -e "${RED}   curl exit code: $curl_exit_code${NC}"
+        echo -e "${RED}   Cannot proceed without proto definition.${NC}"
+        exit 1
+    fi
 fi
 
 echo "--------------------------------------------------"

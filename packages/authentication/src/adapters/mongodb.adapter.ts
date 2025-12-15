@@ -129,9 +129,13 @@ export const mongoAdapter = (
             delete: "deleteInvitation",
             findMany: "findInvitations",
           },
-          twoFactor: {
-            findOne: "findByUserId",
-          },
+          // No custom mappings needed for these - they use standard method names
+          // verification: { create, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // account: { create, findById, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // session: { create, findById, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // user: { create, findById, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // passkey: { create, findById, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // twoFactor: { create, findOne, findMany, update, updateMany, delete, deleteMany, count }
         };
 
         return methodMap[model]?.[method] || method;
@@ -191,26 +195,63 @@ export const mongoAdapter = (
 
           // Find the document first
           const existing = await repository.findOne(filter);
-          if (!existing) return null;
-
-          const id = existing._id?.toString() || existing.id;
-          const methodName = getRepositoryMethod(model, "update");
-          const result = await repository[methodName](id, update);
-
-          if (!result) return null;
-
-          const plainResult = result.toObject ? result.toObject() : result;
-
-          if (plainResult._id) {
-            plainResult.id = plainResult._id.toString();
-            delete plainResult._id;
+          if (!existing) {
+            console.warn(
+              `[MongoDB Adapter] No ${model} found with filter:`,
+              filter
+            );
+            return null;
           }
 
-          if (plainResult.__v !== undefined) {
-            delete plainResult.__v;
+          // Extract ID - handle both MongoDB document (_id) and plain object (id)
+          let id: string;
+          if (existing._id) {
+            id = existing._id.toString();
+          } else if (existing.id) {
+            id =
+              typeof existing.id === "string"
+                ? existing.id
+                : existing.id.toString();
+          } else {
+            console.error(
+              `[MongoDB Adapter] Unable to extract ID from ${model}:`,
+              existing
+            );
+            throw new Error(`Unable to extract ID from ${model} document`);
           }
 
-          return plainResult;
+          try {
+            const methodName = getRepositoryMethod(model, "update");
+            const result = await repository[methodName](id, update);
+
+            if (!result) {
+              console.warn(
+                `[MongoDB Adapter] Update returned null for ${model} with id:`,
+                id
+              );
+              return null;
+            }
+
+            const plainResult = result.toObject ? result.toObject() : result;
+
+            if (plainResult._id) {
+              plainResult.id = plainResult._id.toString();
+              delete plainResult._id;
+            }
+
+            if (plainResult.__v !== undefined) {
+              delete plainResult.__v;
+            }
+
+            return plainResult;
+          } catch (error) {
+            console.error(`[MongoDB Adapter] Error updating ${model}:`, {
+              id,
+              update,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
+          }
         },
 
         // Update many operation
@@ -243,7 +284,19 @@ export const mongoAdapter = (
           const existing = await repository.findOne(filter);
           if (!existing) return null;
 
-          const id = existing._id?.toString() || existing.id;
+          // Extract ID - handle both MongoDB document (_id) and plain object (id)
+          let id: string;
+          if (existing._id) {
+            id = existing._id.toString();
+          } else if (existing.id) {
+            id =
+              typeof existing.id === "string"
+                ? existing.id
+                : existing.id.toString();
+          } else {
+            throw new Error(`Unable to extract ID from ${model} document`);
+          }
+
           const methodName = getRepositoryMethod(model, "delete");
           await repository[methodName](id);
 

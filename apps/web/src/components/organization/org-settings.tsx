@@ -1,18 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useOrganization } from "@/hooks/organization/use-organization";
-import { Loader2, Trash2, Shield, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import type { OrganizationRole } from "@repo/schema";
-import styles from "@/app/(dashboard)/organizations/[id]/settings/settings.module.css";
+import styles from "@/app/organization/[id]/settings/settings.module.css";
+import { useOrganization } from "@/hooks/auth/use-organization";
+import { authClient } from "@/lib/auth/auth-client";
 
 export function OrgSettings() {
-  const {
-    activeOrganization,
-    isLoading,
-    inviteMember,
-    removeMember,
-  } = useOrganization();
+  const { activeOrganizationId, isLoading } = useOrganization();
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<OrganizationRole>("member");
@@ -20,12 +16,12 @@ export function OrgSettings() {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeOrganization?.id) return;
+    if (!activeOrganizationId) return;
 
     setInviting(true);
     try {
-      await inviteMember({
-        organizationId: activeOrganization.id,
+      await authClient.organization.inviteMember({
+        organizationId: activeOrganizationId,
         email: inviteEmail,
         role: inviteRole,
       });
@@ -104,7 +100,7 @@ export function OrgSettings() {
           </h2>
         </div>
         <div className={styles.membersList}>
-          {activeOrganization?.members?.map((member: any) => (
+          {/* {organization?.members?.map((member: any) => (
             <div key={member.id} className={styles.memberRow}>
               <div className={styles.memberInfo}>
                 <div className={styles.avatar}>
@@ -143,7 +139,7 @@ export function OrgSettings() {
                 </button>
               </div>
             </div>
-          ))}
+          ))} */}
         </div>
       </div>
     </div>
