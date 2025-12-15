@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/loading/skeleton";
-import { SkeletonInput } from "@/components/form/input/skeleton";
 import styles from "./login.module.css";
+import SkeletonLoginForm from "@/components/auth/login/form/skeleton";
 
 export default function LoginLoading() {
   return (
@@ -14,11 +14,7 @@ export default function LoginLoading() {
 
         {/* Login Form Skeleton */}
         <div className={styles.form}>
-          {/* Email Input Skeleton */}
-          <SkeletonInput label icon />
-
-          {/* Password Input Skeleton */}
-          <SkeletonInput label icon />
+          <SkeletonLoginForm />
 
           {/* Forgot Password Link Skeleton */}
           <div className={styles.links}>

@@ -14,8 +14,15 @@ export function SkeletonInput({
   return (
     <SkeletonFormGroup label={label}>
       <div className={styles.inputWrapper}>
-        {icon && <Skeleton variant="circular" width={20} height={20} />}
-        <div style={{ flex: 1 }}>
+        {icon && (
+          <Skeleton
+            variant="circular"
+            width={20}
+            height={20}
+            className={styles.iconSkeleton}
+          />
+        )}
+        <div className={styles.input}>
           <Skeleton width="100%" height={16} />
         </div>
       </div>

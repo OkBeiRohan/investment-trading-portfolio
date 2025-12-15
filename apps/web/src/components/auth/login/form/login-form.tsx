@@ -4,9 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
-import { Mail, KeyRound, Loader2 } from "lucide-react";
+import { Mail, KeyRound } from "lucide-react";
 import styles from "./login-form.module.css";
 import Input from "@/components/form/input";
+import PrimaryButton from "@/components/form/button";
 
 export function LoginForm() {
   const router = useRouter();
@@ -72,10 +73,7 @@ export function LoginForm() {
           </Link>
         </div>
 
-        <button type="submit" disabled={loading} className={styles.loginButton}>
-          {loading && <Loader2 className={`${styles.icon} animate-spin`} />}
-          Sign in
-        </button>
+        <PrimaryButton type="submit" loading={loading} text="Sign In" />
 
         {error && <div className={styles.error}>{error}</div>}
       </form>
