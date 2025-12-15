@@ -4,7 +4,7 @@ import styles from "./formGroup.module.css";
 interface IFormGroupProps extends PropsWithChildren {
   label?: string;
   id?: string;
-  error?: string | string[];
+  error?: string;
 }
 
 export default function FormGroup({
@@ -13,8 +13,6 @@ export default function FormGroup({
   id,
   error,
 }: IFormGroupProps) {
-  const errorMessage = Array.isArray(error) ? error[0] : error;
-
   return (
     <div className={styles.formGroup}>
       {label && (
@@ -23,7 +21,7 @@ export default function FormGroup({
         </label>
       )}
       {children}
-      {errorMessage && <span className={styles.error}>{errorMessage}</span>}
+      {error && <span className={styles.error}>{error}</span>}
     </div>
   );
 }

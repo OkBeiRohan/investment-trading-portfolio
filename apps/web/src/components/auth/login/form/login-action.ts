@@ -1,8 +1,8 @@
 "use client";
 
 import { authClient } from "@/lib/auth/auth-client";
-import { redirect } from "next/navigation";
 import { type LoginFieldErrors, parseLoginFormData } from "@repo/schema";
+import { handleAuthSuccess } from "@/lib/actions/auth";
 
 interface LoginState {
   error: string | null;
@@ -37,8 +37,12 @@ export async function loginAction(
       return { error: "Authentication failed" };
     }
 
-    // Successful login - redirect will happen after this returns
-    redirect("/");
+    // Successful login - handle callback URL redirect and session refresh
+    // This throws a redirect error, so execution stops here
+    await handleAuthSuccess();
+
+    // TypeScript needs this, but it's never reached (handleAuthSuccess always throws)
+    return { error: null };
   } catch (err) {
     // If redirect throws (expected behavior), re-throw it
     if (err instanceof Error && err.message === "NEXT_REDIRECT") {

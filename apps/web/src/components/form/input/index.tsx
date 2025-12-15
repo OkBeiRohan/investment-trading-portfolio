@@ -7,7 +7,7 @@ interface IInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   id?: string;
   name: string;
   icon?: ReactNode;
-  error?: string | string[];
+  error?: string | string[] | { errors: string[] };
 }
 
 export default function Input({
@@ -18,10 +18,22 @@ export default function Input({
   error,
   ...props
 }: IInputProps) {
-  const hasError = Array.isArray(error) ? error.length > 0 : !!error;
+  let hasError = false,
+    errorMessage: string | undefined;
+
+  if (typeof error === "string") {
+    hasError = !!error;
+    errorMessage = error;
+  } else if (Array.isArray(error)) {
+    hasError = error.length > 0;
+    errorMessage = error.join(", ");
+  } else if (error && "errors" in error) {
+    hasError = error.errors.length > 0;
+    errorMessage = error.errors.join(", ");
+  }
 
   return (
-    <FormGroup label={label} id={id} error={error}>
+    <FormGroup label={label} id={id} error={errorMessage}>
       <div
         className={`${styles.inputWrapper} ${hasError ? styles.hasError : ""}`}
       >

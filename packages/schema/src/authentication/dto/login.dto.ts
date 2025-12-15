@@ -17,11 +17,9 @@ export const LoginDtoSchema = z.object({
 export type ILoginDto = z.infer<typeof LoginDtoSchema>;
 
 /**
- * Field errors type matching Zod's flatten structure
+ * Treeified error type from Zod
  */
-export type LoginFieldErrors = {
-  [K in keyof ILoginDto]?: string[];
-};
+export type LoginFieldErrors = z.core.$ZodErrorTree<ILoginDto>;
 
 /**
  * Result type for form validation
@@ -32,7 +30,7 @@ export type LoginFormResult =
 
 /**
  * Helper to parse and validate FormData into LoginDto
- * Returns Zod's default validation error format
+ * Returns Zod's treeified error format
  */
 export function parseLoginFormData(formData: FormData): LoginFormResult {
   const rawData = {
@@ -45,7 +43,7 @@ export function parseLoginFormData(formData: FormData): LoginFormResult {
   if (!result.success) {
     return {
       success: false,
-      fieldErrors: result.error.flatten().fieldErrors,
+      fieldErrors: z.treeifyError(result.error),
     };
   }
 
