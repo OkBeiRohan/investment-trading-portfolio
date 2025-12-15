@@ -32,4 +32,7 @@ export async function resetPasswordAction(
 
   // Password reset successful, redirect to login or dashboard
   await handleAuthSuccess();
+
+  // TypeScript needs this, but it's never reached (handleAuthSuccess always throws)
+  return { error: null };
 }

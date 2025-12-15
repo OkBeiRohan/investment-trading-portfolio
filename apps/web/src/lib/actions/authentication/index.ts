@@ -20,7 +20,7 @@ export async function handleAuthSuccess(
 ): Promise<never> {
   // If 2FA is required, redirect to 2FA verification page
   if (requiresTwoFactor) {
-    redirect("/authentication/2fa" as Route);
+    redirect("/authentication/2fa");
   }
 
   const cookieStore = await cookies();

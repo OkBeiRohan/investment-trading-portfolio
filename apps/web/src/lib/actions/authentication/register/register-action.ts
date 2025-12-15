@@ -1,15 +1,13 @@
-"use server";
+"use client";
 
-import { redirect, type Route } from "next/navigation";
 import { parseRegisterFormData } from "@repo/schema/authentication";
-import type { LoginFormState } from "@repo/schema/authentication";
+import type { AuthFormState } from "@repo/schema/authentication";
 import { authClient } from "@/lib/auth/auth-client";
-import { handleAuthSuccess } from "../index";
 
 export async function registerAction(
-  _prevState: LoginFormState,
+  _prevState: AuthFormState,
   formData: FormData
-): Promise<LoginFormState> {
+): Promise<AuthFormState> {
   const result = parseRegisterFormData(formData);
 
   if (!result.success) {
@@ -34,9 +32,11 @@ export async function registerAction(
 
   // Check if email verification is required
   if (data?.emailVerificationRequired) {
-    redirect("/authentication/verify-email" as Route);
+    window.location.href = "/authentication/verify-email";
+    return { error: null };
   }
 
   // If no email verification required, proceed with login
-  await handleAuthSuccess();
+  window.location.href = "/";
+  return { error: null };
 }

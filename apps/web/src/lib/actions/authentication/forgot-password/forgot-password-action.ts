@@ -19,7 +19,6 @@ export async function forgotPasswordAction(
 
   const { error } = await authClient.forgetPassword.emailOtp({
     email: result.data.email,
-    redirectTo: "/authentication/reset-password",
   });
 
   if (error) {

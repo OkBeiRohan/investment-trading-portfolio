@@ -64,13 +64,6 @@ export default function MoreLoginOptions() {
           <Mail className={styles.icon} />
           Login with Email OTP
         </Link>
-        <Link
-          href="/authentication/verify-phone"
-          className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
-        >
-          <Phone className={styles.icon} />
-          Login with Phone OTP
-        </Link>
       </div>
       <div className={styles.socialButtons}>
         <button
@@ -100,6 +93,13 @@ export default function MoreLoginOptions() {
         >
           <Fingerprint className={styles.icon} />
           Passkey
+        </Link>
+        <Link
+          href="/authentication/verify-phone"
+          className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
+        >
+          <Phone className={styles.icon} />
+          Mobile Number
         </Link>
       </div>
 

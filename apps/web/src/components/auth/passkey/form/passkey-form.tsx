@@ -39,7 +39,8 @@ export function PasskeyForm() {
       <div className={styles.info}>
         <Fingerprint className={styles.infoIcon} />
         <p className={styles.infoText}>
-          Use your device&apos;s biometric sensor or security key to sign in securely
+          Use your device&apos;s biometric sensor or security key to sign in
+          securely
         </p>
       </div>
 

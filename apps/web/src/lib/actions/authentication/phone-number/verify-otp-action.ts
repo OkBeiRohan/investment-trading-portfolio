@@ -1,14 +1,13 @@
-"use server";
+"use client";
 
 import { parsePhoneOtpFormData } from "@repo/schema/authentication";
-import type { LoginFormState } from "@repo/schema/authentication";
+import type { AuthFormState } from "@repo/schema/authentication";
 import { authClient } from "@/lib/auth/auth-client";
-import { handleAuthSuccess } from "../index";
 
 export async function verifyPhoneOtpAction(
-  _prevState: LoginFormState,
+  _prevState: AuthFormState,
   formData: FormData
-): Promise<LoginFormState> {
+): Promise<AuthFormState> {
   const result = parsePhoneOtpFormData(formData);
 
   if (!result.success) {
@@ -30,6 +29,7 @@ export async function verifyPhoneOtpAction(
     };
   }
 
-  // Phone OTP verification successful
-  await handleAuthSuccess();
+  // Phone OTP verification successful - redirect to home
+  window.location.href = "/";
+  return { error: null };
 }

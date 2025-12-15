@@ -6,6 +6,7 @@ import {
 } from "better-auth";
 import { DBAdapter } from "@better-auth/core/db/adapter";
 import {
+  anonymous,
   organization,
   phoneNumber,
   twoFactor,
@@ -85,6 +86,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
 
     // Plugins
     plugins: [
+      anonymous(),
       // Phone number verification plugin
       phoneNumber({
         async sendOTP(data) {

@@ -2,7 +2,6 @@
 
 import { authClient } from "@/lib/auth/auth-client";
 import { type LoginFieldErrors, parseLoginFormData } from "@repo/schema";
-import { handleAuthSuccess } from "@/lib/actions/authentication";
 
 interface LoginState {
   error: string | null;
@@ -38,18 +37,16 @@ export async function loginAction(
     // Check if 2FA verification is required
     const requiresTwoFactor = (data as any)?.twoFactorRedirect === true;
 
-    // Successful login - handle callback URL redirect and session refresh
-    // This throws a redirect error, so execution stops here
-    await handleAuthSuccess(requiresTwoFactor);
-
-    // TypeScript needs this, but it's never reached (handleAuthSuccess always throws)
-    return { error: null };
-  } catch (err) {
-    // If redirect throws (expected behavior), re-throw it
-    if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-      throw err;
+    if (requiresTwoFactor) {
+      window.location.href = "/authentication/2fa";
+      return { error: null };
     }
 
+    // Successful login - redirect to home or callback URL
+    // Use window.location.href for full page reload (refreshes session)
+    window.location.href = "/";
+    return { error: null };
+  } catch (err) {
     console.error("Login error:", err);
     return { error: "An unexpected error occurred" };
   }

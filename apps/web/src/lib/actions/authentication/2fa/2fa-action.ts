@@ -1,14 +1,13 @@
-"use server";
+"use client";
 
 import { parseTwoFactorFormData } from "@repo/schema/authentication";
-import type { LoginFormState } from "@repo/schema/authentication";
+import type { AuthFormState } from "@repo/schema/authentication";
 import { authClient } from "@/lib/auth/auth-client";
-import { handleAuthSuccess } from "../index";
 
 export async function twoFactorAction(
-  _prevState: LoginFormState,
+  _prevState: AuthFormState,
   formData: FormData
-): Promise<LoginFormState> {
+): Promise<AuthFormState> {
   const result = parseTwoFactorFormData(formData);
 
   if (!result.success) {
@@ -29,6 +28,7 @@ export async function twoFactorAction(
     };
   }
 
-  // 2FA verification successful
-  await handleAuthSuccess(false);
+  // 2FA verification successful - redirect to home
+  window.location.href = "/";
+  return { error: null };
 }

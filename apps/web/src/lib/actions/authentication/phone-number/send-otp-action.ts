@@ -1,13 +1,13 @@
-"use server";
+"use client";
 
 import { parsePhoneNumberFormData } from "@repo/schema/authentication";
-import type { LoginFormState } from "@repo/schema/authentication";
+import type { AuthFormState } from "@repo/schema/authentication";
 import { authClient } from "@/lib/auth/auth-client";
 
 export async function sendPhoneOtpAction(
-  _prevState: LoginFormState,
+  _prevState: AuthFormState,
   formData: FormData
-): Promise<LoginFormState> {
+): Promise<AuthFormState> {
   const result = parsePhoneNumberFormData(formData);
 
   if (!result.success) {
