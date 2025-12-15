@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 import { cookies } from "next/headers";
 import { CallbackUrlSchema } from "@repo/schema";
 
@@ -26,7 +27,8 @@ export async function handleAuthSuccess(): Promise<never> {
     if (validationResult.success && validationResult.data) {
       // Full redirect causes browser to refetch everything,
       // including session data in providers
-      redirect(validationResult.data);
+      // Type assertion needed for Next.js typed routes
+      redirect(validationResult.data as Route);
     }
   }
 
