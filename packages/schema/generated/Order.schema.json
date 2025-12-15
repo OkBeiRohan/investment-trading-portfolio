@@ -1,7 +1,55 @@
 {
-  "$ref": "#/definitions/Order",
-  "definitions": {
-    "Order": {}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Order",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "userId": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "signalId": {
+      "type": "string"
+    },
+    "strategy": {
+      "type": "string"
+    },
+    "legs": {
+      "type": "array",
+      "items": {
+        "type": "any"
+      }
+    },
+    "status": {
+      "type": "string"
+    },
+    "totalCost": {
+      "type": "number"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": [
+    "userId",
+    "provider",
+    "orderId",
+    "legs",
+    "status",
+    "totalCost",
+    "createdAt",
+    "updatedAt"
+  ]
 }

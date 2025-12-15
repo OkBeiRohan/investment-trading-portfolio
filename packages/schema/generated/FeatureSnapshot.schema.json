@@ -1,7 +1,102 @@
 {
-  "$ref": "#/definitions/FeatureSnapshot",
-  "definitions": {
-    "FeatureSnapshot": {}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureSnapshot",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "instrument": {
+      "type": "string"
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "realizedVol5d": {
+          "type": "number"
+        },
+        "realizedVol10d": {
+          "type": "number"
+        },
+        "realizedVol20d": {
+          "type": "number"
+        },
+        "rsi14": {
+          "type": "number"
+        },
+        "macd": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "signal": {
+              "type": "number"
+            },
+            "histogram": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "value",
+            "signal",
+            "histogram"
+          ]
+        },
+        "indiaVix": {
+          "type": "number"
+        },
+        "indiaVixMA5": {
+          "type": "number"
+        },
+        "pcrVolume": {
+          "type": "number"
+        },
+        "pcrOI": {
+          "type": "number"
+        },
+        "maxPain": {
+          "type": "number"
+        },
+        "atmIV": {
+          "type": "number"
+        },
+        "volSkew": {
+          "type": "number"
+        },
+        "termStructure": {
+          "type": "number"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "dataQuality": {
+          "type": "string"
+        },
+        "missingFields": {
+          "type": "array",
+          "items": {
+            "type": "any"
+          }
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "dataQuality",
+        "missingFields",
+        "version"
+      ]
+    }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": [
+    "timestamp",
+    "instrument",
+    "features",
+    "metadata"
+  ]
 }

@@ -1,135 +1,962 @@
 {
   "FeatureSnapshot": {
-    "$ref": "#/definitions/FeatureSnapshot",
-    "definitions": {
-      "FeatureSnapshot": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "FeatureSnapshot",
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "instrument": {
+        "type": "string"
+      },
+      "features": {
+        "type": "object",
+        "properties": {
+          "realizedVol5d": {
+            "type": "number"
+          },
+          "realizedVol10d": {
+            "type": "number"
+          },
+          "realizedVol20d": {
+            "type": "number"
+          },
+          "rsi14": {
+            "type": "number"
+          },
+          "macd": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "signal": {
+                "type": "number"
+              },
+              "histogram": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "value",
+              "signal",
+              "histogram"
+            ]
+          },
+          "indiaVix": {
+            "type": "number"
+          },
+          "indiaVixMA5": {
+            "type": "number"
+          },
+          "pcrVolume": {
+            "type": "number"
+          },
+          "pcrOI": {
+            "type": "number"
+          },
+          "maxPain": {
+            "type": "number"
+          },
+          "atmIV": {
+            "type": "number"
+          },
+          "volSkew": {
+            "type": "number"
+          },
+          "termStructure": {
+            "type": "number"
+          }
+        }
+      },
+      "metadata": {
+        "type": "object",
+        "properties": {
+          "dataQuality": {
+            "type": "string"
+          },
+          "missingFields": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataQuality",
+          "missingFields",
+          "version"
+        ]
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "timestamp",
+      "instrument",
+      "features",
+      "metadata"
+    ]
   },
   "Features": {
-    "$ref": "#/definitions/Features",
-    "definitions": {
-      "Features": {}
-    },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Features",
+    "type": "object",
+    "properties": {
+      "realizedVol5d": {
+        "type": "number"
+      },
+      "realizedVol10d": {
+        "type": "number"
+      },
+      "realizedVol20d": {
+        "type": "number"
+      },
+      "rsi14": {
+        "type": "number"
+      },
+      "macd": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "signal": {
+            "type": "number"
+          },
+          "histogram": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "signal",
+          "histogram"
+        ]
+      },
+      "indiaVix": {
+        "type": "number"
+      },
+      "indiaVixMA5": {
+        "type": "number"
+      },
+      "pcrVolume": {
+        "type": "number"
+      },
+      "pcrOI": {
+        "type": "number"
+      },
+      "maxPain": {
+        "type": "number"
+      },
+      "atmIV": {
+        "type": "number"
+      },
+      "volSkew": {
+        "type": "number"
+      },
+      "termStructure": {
+        "type": "number"
+      }
+    }
   },
   "MACD": {
-    "$ref": "#/definitions/MACD",
-    "definitions": {
-      "MACD": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MACD",
+    "type": "object",
+    "properties": {
+      "value": {
+        "type": "number"
+      },
+      "signal": {
+        "type": "number"
+      },
+      "histogram": {
+        "type": "number"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "value",
+      "signal",
+      "histogram"
+    ]
   },
   "FeatureMetadata": {
-    "$ref": "#/definitions/FeatureMetadata",
-    "definitions": {
-      "FeatureMetadata": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "FeatureMetadata",
+    "type": "object",
+    "properties": {
+      "dataQuality": {
+        "type": "string"
+      },
+      "missingFields": {
+        "type": "array",
+        "items": {
+          "type": "any"
+        }
+      },
+      "version": {
+        "type": "string"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "dataQuality",
+      "missingFields",
+      "version"
+    ]
   },
   "TradingSignal": {
-    "$ref": "#/definitions/TradingSignal",
-    "definitions": {
-      "TradingSignal": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "TradingSignal",
+    "type": "object",
+    "properties": {
+      "_id": {
+        "type": "string"
+      },
+      "userId": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "prediction": {
+        "type": "string"
+      },
+      "confidence": {
+        "type": "number"
+      },
+      "probability": {
+        "type": "number"
+      },
+      "modelContributions": {
+        "type": "object",
+        "properties": {
+          "xgboost": {
+            "type": "number"
+          },
+          "cnnLstm": {
+            "type": "number"
+          },
+          "ginn": {
+            "type": "number"
+          },
+          "svm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "xgboost",
+          "cnnLstm",
+          "ginn",
+          "svm"
+        ]
+      },
+      "features": {
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "metadata": {
+        "type": "object",
+        "properties": {
+          "modelVersions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "latencyMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "modelVersions",
+          "latencyMs"
+        ]
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "userId",
+      "timestamp",
+      "prediction",
+      "confidence",
+      "probability",
+      "modelContributions",
+      "features",
+      "createdAt",
+      "updatedAt"
+    ]
   },
   "ModelContributions": {
-    "$ref": "#/definitions/ModelContributions",
-    "definitions": {
-      "ModelContributions": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ModelContributions",
+    "type": "object",
+    "properties": {
+      "xgboost": {
+        "type": "number"
+      },
+      "cnnLstm": {
+        "type": "number"
+      },
+      "ginn": {
+        "type": "number"
+      },
+      "svm": {
+        "type": "number"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "xgboost",
+      "cnnLstm",
+      "ginn",
+      "svm"
+    ]
   },
   "SignalMetadata": {
-    "$ref": "#/definitions/SignalMetadata",
-    "definitions": {
-      "SignalMetadata": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SignalMetadata",
+    "type": "object",
+    "properties": {
+      "modelVersions": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "latencyMs": {
+        "type": "number"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "modelVersions",
+      "latencyMs"
+    ]
   },
   "Order": {
-    "$ref": "#/definitions/Order",
-    "definitions": {
-      "Order": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Order",
+    "type": "object",
+    "properties": {
+      "_id": {
+        "type": "string"
+      },
+      "userId": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "orderId": {
+        "type": "string"
+      },
+      "signalId": {
+        "type": "string"
+      },
+      "strategy": {
+        "type": "string"
+      },
+      "legs": {
+        "type": "array",
+        "items": {
+          "type": "any"
+        }
+      },
+      "status": {
+        "type": "string"
+      },
+      "totalCost": {
+        "type": "number"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "userId",
+      "provider",
+      "orderId",
+      "legs",
+      "status",
+      "totalCost",
+      "createdAt",
+      "updatedAt"
+    ]
   },
   "OrderLeg": {
-    "$ref": "#/definitions/OrderLeg",
-    "definitions": {
-      "OrderLeg": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "OrderLeg",
+    "type": "object",
+    "properties": {
+      "instrument": {
+        "type": "string"
+      },
+      "instrumentKey": {
+        "type": "string"
+      },
+      "instrumentType": {
+        "type": "string"
+      },
+      "side": {
+        "type": "string"
+      },
+      "quantity": {
+        "type": "number"
+      },
+      "orderType": {
+        "type": "string"
+      },
+      "price": {
+        "type": "number"
+      },
+      "triggerPrice": {
+        "type": "number"
+      },
+      "status": {
+        "type": "string"
+      },
+      "filledQuantity": {
+        "type": "number"
+      },
+      "averagePrice": {
+        "type": "number"
+      },
+      "filledAt": {
+        "type": "string",
+        "format": "date-time"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "instrument",
+      "instrumentKey",
+      "side",
+      "quantity",
+      "orderType",
+      "status",
+      "filledQuantity"
+    ]
   },
   "OrderPlacement": {
-    "$ref": "#/definitions/OrderPlacement",
-    "definitions": {
-      "OrderPlacement": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "OrderPlacement",
+    "type": "object",
+    "properties": {
+      "instrumentKey": {
+        "type": "string"
+      },
+      "transactionType": {
+        "type": "string"
+      },
+      "quantity": {
+        "type": "number"
+      },
+      "orderType": {
+        "type": "string"
+      },
+      "price": {
+        "type": "number"
+      },
+      "triggerPrice": {
+        "type": "number"
+      },
+      "disclosedQuantity": {
+        "type": "number"
+      },
+      "instrument": {
+        "type": "string"
+      },
+      "validity": {
+        "type": "string"
+      },
+      "productType": {
+        "type": "string"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "instrumentKey",
+      "transactionType",
+      "quantity",
+      "orderType",
+      "instrument"
+    ]
   },
   "MultiLegOrderRequest": {
-    "$ref": "#/definitions/MultiLegOrderRequest",
-    "definitions": {
-      "MultiLegOrderRequest": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MultiLegOrderRequest",
+    "type": "object",
+    "properties": {
+      "strategy": {
+        "type": "string"
+      },
+      "legs": {
+        "type": "array",
+        "items": {
+          "type": "any"
+        }
+      },
+      "executionPolicy": {
+        "type": "string"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "strategy",
+      "legs"
+    ]
   },
   "Position": {
-    "$ref": "#/definitions/Position",
-    "definitions": {
-      "Position": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Position",
+    "type": "object",
+    "properties": {
+      "_id": {
+        "type": "string"
+      },
+      "userId": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "instrument": {
+        "type": "string"
+      },
+      "instrumentKey": {
+        "type": "string"
+      },
+      "instrumentType": {
+        "type": "string"
+      },
+      "exchange": {
+        "type": "string"
+      },
+      "strategy": {
+        "type": "string"
+      },
+      "legs": {
+        "type": "array",
+        "items": {
+          "type": "any"
+        }
+      },
+      "greeks": {
+        "type": "object",
+        "properties": {
+          "delta": {
+            "type": "number"
+          },
+          "gamma": {
+            "type": "number"
+          },
+          "vega": {
+            "type": "number"
+          },
+          "theta": {
+            "type": "number"
+          },
+          "rho": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "delta",
+          "gamma",
+          "vega",
+          "theta"
+        ]
+      },
+      "entryDate": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "exitDate": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "status": {
+        "type": "string"
+      },
+      "realizedPnL": {
+        "type": "number"
+      },
+      "unrealizedPnL": {
+        "type": "number"
+      },
+      "costs": {
+        "type": "object",
+        "properties": {
+          "brokerage": {
+            "type": "number"
+          },
+          "stt": {
+            "type": "number"
+          },
+          "slippage": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "brokerage",
+          "stt",
+          "slippage",
+          "total"
+        ]
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "userId",
+      "provider",
+      "instrument",
+      "instrumentKey",
+      "exchange",
+      "legs",
+      "entryDate",
+      "status",
+      "unrealizedPnL",
+      "costs",
+      "createdAt",
+      "updatedAt"
+    ]
   },
   "PositionLeg": {
-    "$ref": "#/definitions/PositionLeg",
-    "definitions": {
-      "PositionLeg": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "PositionLeg",
+    "type": "object",
+    "properties": {
+      "instrument": {
+        "type": "string"
+      },
+      "side": {
+        "type": "string"
+      },
+      "quantity": {
+        "type": "number"
+      },
+      "entryPrice": {
+        "type": "number"
+      },
+      "currentPrice": {
+        "type": "number"
+      },
+      "pnl": {
+        "type": "number"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "instrument",
+      "side",
+      "quantity",
+      "entryPrice",
+      "currentPrice",
+      "pnl"
+    ]
   },
   "Greeks": {
-    "$ref": "#/definitions/Greeks",
-    "definitions": {
-      "Greeks": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Greeks",
+    "type": "object",
+    "properties": {
+      "delta": {
+        "type": "number"
+      },
+      "gamma": {
+        "type": "number"
+      },
+      "vega": {
+        "type": "number"
+      },
+      "theta": {
+        "type": "number"
+      },
+      "rho": {
+        "type": "number"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "delta",
+      "gamma",
+      "vega",
+      "theta"
+    ]
   },
   "CostBreakdown": {
-    "$ref": "#/definitions/CostBreakdown",
-    "definitions": {
-      "CostBreakdown": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CostBreakdown",
+    "type": "object",
+    "properties": {
+      "brokerage": {
+        "type": "number"
+      },
+      "stt": {
+        "type": "number"
+      },
+      "slippage": {
+        "type": "number"
+      },
+      "total": {
+        "type": "number"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "brokerage",
+      "stt",
+      "slippage",
+      "total"
+    ]
   },
   "Strategy": {
-    "$ref": "#/definitions/Strategy",
-    "definitions": {
-      "Strategy": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Strategy",
+    "type": "object",
+    "properties": {
+      "_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "legs": {
+        "type": "array",
+        "items": {
+          "type": "any"
+        }
+      },
+      "riskProfile": {
+        "type": "object",
+        "properties": {
+          "maxProfit": {
+            "type": "number"
+          },
+          "maxLoss": {
+            "type": "number"
+          },
+          "breakeven": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "probabilityOfProfit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "maxProfit",
+          "maxLoss",
+          "breakeven"
+        ]
+      },
+      "entryConditions": {
+        "type": "object",
+        "properties": {
+          "minConfidence": {
+            "type": "number"
+          },
+          "maxVIX": {
+            "type": "number"
+          },
+          "minVIX": {
+            "type": "number"
+          },
+          "prediction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "minConfidence"
+        ]
+      },
+      "exitConditions": {
+        "type": "object",
+        "properties": {
+          "profitTarget": {
+            "type": "number"
+          },
+          "stopLoss": {
+            "type": "number"
+          },
+          "timeBasedExit": {
+            "type": "number"
+          }
+        }
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "name",
+      "type",
+      "legs",
+      "riskProfile",
+      "createdAt",
+      "updatedAt"
+    ]
   },
   "RLAgentState": {
-    "$ref": "#/definitions/RLAgentState",
-    "definitions": {
-      "RLAgentState": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "RLAgentState",
+    "type": "object",
+    "properties": {
+      "_id": {
+        "type": "string"
+      },
+      "userId": {
+        "type": "string"
+      },
+      "agentType": {
+        "type": "string"
+      },
+      "modelVersion": {
+        "type": "string"
+      },
+      "stateSnapshot": {
+        "type": "object",
+        "properties": {
+          "weights": {},
+          "qTable": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "experienceBuffer": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "episodeCount": {
+            "type": "number"
+          },
+          "epsilon": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "episodeCount",
+          "epsilon"
+        ]
+      },
+      "performance": {
+        "type": "object",
+        "properties": {
+          "avgReward": {
+            "type": "number"
+          },
+          "successRate": {
+            "type": "number"
+          },
+          "lastEpisodeReward": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "avgReward",
+          "successRate",
+          "lastEpisodeReward"
+        ]
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "userId",
+      "agentType",
+      "modelVersion",
+      "stateSnapshot",
+      "performance",
+      "createdAt",
+      "updatedAt"
+    ]
   },
   "RLStateSnapshot": {
-    "$ref": "#/definitions/RLStateSnapshot",
-    "definitions": {
-      "RLStateSnapshot": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "RLStateSnapshot",
+    "type": "object",
+    "properties": {
+      "weights": {},
+      "qTable": {
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "experienceBuffer": {
+        "type": "array",
+        "items": {
+          "type": "any"
+        }
+      },
+      "episodeCount": {
+        "type": "number"
+      },
+      "epsilon": {
+        "type": "number"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "episodeCount",
+      "epsilon"
+    ]
   },
   "RLPerformance": {
-    "$ref": "#/definitions/RLPerformance",
-    "definitions": {
-      "RLPerformance": {}
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "RLPerformance",
+    "type": "object",
+    "properties": {
+      "avgReward": {
+        "type": "number"
+      },
+      "successRate": {
+        "type": "number"
+      },
+      "lastEpisodeReward": {
+        "type": "number"
+      }
     },
-    "$schema": "http://json-schema.org/draft-07/schema#"
+    "required": [
+      "avgReward",
+      "successRate",
+      "lastEpisodeReward"
+    ]
   }
 }

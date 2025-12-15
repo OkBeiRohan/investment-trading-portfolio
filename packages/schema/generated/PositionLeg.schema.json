@@ -1,7 +1,33 @@
 {
-  "$ref": "#/definitions/PositionLeg",
-  "definitions": {
-    "PositionLeg": {}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PositionLeg",
+  "type": "object",
+  "properties": {
+    "instrument": {
+      "type": "string"
+    },
+    "side": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number"
+    },
+    "entryPrice": {
+      "type": "number"
+    },
+    "currentPrice": {
+      "type": "number"
+    },
+    "pnl": {
+      "type": "number"
+    }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": [
+    "instrument",
+    "side",
+    "quantity",
+    "entryPrice",
+    "currentPrice",
+    "pnl"
+  ]
 }

@@ -1,7 +1,21 @@
 {
-  "$ref": "#/definitions/RLPerformance",
-  "definitions": {
-    "RLPerformance": {}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RLPerformance",
+  "type": "object",
+  "properties": {
+    "avgReward": {
+      "type": "number"
+    },
+    "successRate": {
+      "type": "number"
+    },
+    "lastEpisodeReward": {
+      "type": "number"
+    }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": [
+    "avgReward",
+    "successRate",
+    "lastEpisodeReward"
+  ]
 }
