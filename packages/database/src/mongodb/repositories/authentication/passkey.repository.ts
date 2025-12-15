@@ -24,12 +24,34 @@ export class PasskeyRepository {
     return this.passkeyModel.findOne({ credentialID }).exec();
   }
 
+  async findOne(filter: any): Promise<Passkey | null> {
+    return this.passkeyModel.findOne(filter).exec();
+  }
+
   async findByUserId(userId: string): Promise<Passkey[]> {
     return this.passkeyModel.find({ userId }).exec();
   }
 
+  async findMany(
+    filter: any,
+    options?: { limit?: number; skip?: number; sort?: any }
+  ): Promise<Passkey[]> {
+    const query = this.passkeyModel.find(filter);
+
+    if (options?.limit) query.limit(options.limit);
+    if (options?.skip) query.skip(options.skip);
+    if (options?.sort) query.sort(options.sort);
+
+    return query.exec();
+  }
+
   async update(id: string, data: Partial<Passkey>): Promise<Passkey | null> {
     return this.passkeyModel.findByIdAndUpdate(id, data, { new: true }).exec();
+  }
+
+  async updateMany(filter: any, data: Partial<Passkey>): Promise<number> {
+    const result = await this.passkeyModel.updateMany(filter, data).exec();
+    return result.modifiedCount;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -37,8 +59,17 @@ export class PasskeyRepository {
     return !!result;
   }
 
+  async deleteMany(filter: any): Promise<number> {
+    const result = await this.passkeyModel.deleteMany(filter).exec();
+    return result.deletedCount;
+  }
+
   async deleteByUserId(userId: string): Promise<number> {
     const result = await this.passkeyModel.deleteMany({ userId }).exec();
     return result.deletedCount;
+  }
+
+  async count(filter: any): Promise<number> {
+    return this.passkeyModel.countDocuments(filter).exec();
   }
 }

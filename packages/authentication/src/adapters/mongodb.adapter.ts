@@ -129,16 +129,14 @@ export const mongoAdapter = (
             delete: "deleteInvitation",
             findMany: "findInvitations",
           },
-          twoFactor: {
-            findOne: "findByUserId",
-          },
+          // No custom mappings needed for these - they use standard method names
+          // verification: { create, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // account: { create, findById, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // session: { create, findById, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // user: { create, findById, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // passkey: { create, findById, findOne, findMany, update, updateMany, delete, deleteMany, count }
+          // twoFactor: { create, findOne, findMany, update, updateMany, delete, deleteMany, count }
         };
-
-        if (!methodMap[model]) {
-          console.warn(
-            `No custom method mapping for model "${model}", using default method "${method}"`
-          );
-        }
 
         return methodMap[model]?.[method] || method;
       };
