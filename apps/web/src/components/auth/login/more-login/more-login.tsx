@@ -3,10 +3,11 @@
 import GitHubIcon from "@/components/icons/brands/GitHub";
 import GoogleIcon from "@/components/icons/brands/Google";
 import { authClient } from "@/lib/auth/auth-client";
-import { Mail, Fingerprint } from "lucide-react";
+import { Mail, Fingerprint, User } from "lucide-react";
 import { useState } from "react";
 import styles from "./more-login.module.css";
 import Link from "next/link";
+import { handleAuthSuccess } from "@/lib/actions/authentication";
 
 export default function MoreLoginOptions() {
   const [loading, setLoading] = useState(false);
@@ -23,6 +24,8 @@ export default function MoreLoginOptions() {
       if (error) {
         setError(error.message || `Failed to login with ${provider}`);
         setLoading(false);
+      } else {
+        await handleAuthSuccess();
       }
 
       console.log(data);
@@ -33,8 +36,33 @@ export default function MoreLoginOptions() {
     }
   };
 
+  const handleAnonymousLogin = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await authClient.signIn.anonymous();
+      if (error) {
+        setError(error.message || "Failed to login anonymously");
+        setLoading(false);
+      } else {
+        await handleAuthSuccess();
+      }
+      console.log(data);
+    } catch (err) {
+      setError("Failed to login anonymously");
+      setLoading(false);
+      console.log(err);
+    }
+  };
+
   return (
-    <div>
+    <div className={styles.moreContainer}>
+      <Link
+        href="/authentication/magic-link"
+        className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
+      >
+        <Mail className={styles.icon} />
+        Login with OTP
+      </Link>
       <div className={styles.socialButtons}>
         <button
           type="button"
@@ -58,13 +86,6 @@ export default function MoreLoginOptions() {
 
       <div className={styles.altLogins}>
         <Link
-          href="/authentication/magic-link"
-          className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
-        >
-          <Mail className={styles.icon} />
-          Magic Link
-        </Link>
-        <Link
           href="/authentication/passkey"
           className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
         >
@@ -72,6 +93,16 @@ export default function MoreLoginOptions() {
           Passkey
         </Link>
       </div>
+
+      <button
+        type="button"
+        onClick={handleAnonymousLogin}
+        disabled={loading}
+        className={styles.altButton}
+      >
+        <User className={styles.icon} />
+        Continue as Guest
+      </button>
 
       {error && <div className={styles.error}>{error}</div>}
     </div>

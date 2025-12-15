@@ -5,13 +5,15 @@ import { z } from "zod";
  * Used for email/password authentication
  */
 export const LoginDtoSchema = z.object({
-  email: z
-    .string({ message: "Email is required" })
-    .min(1, "Email is required")
-    .email("Invalid email address"),
+  email: z.email({ message: "Email is required" }).min(1, "Email is required"),
   password: z
     .string({ message: "Password is required" })
     .min(1, "Password is required"),
+  rememberMe: z
+    .string()
+    .optional()
+    .default("off")
+    .transform((val) => val === "on"),
 });
 
 export type ILoginDto = z.infer<typeof LoginDtoSchema>;
@@ -36,6 +38,7 @@ export function parseLoginFormData(formData: FormData): LoginFormResult {
   const rawData = {
     email: formData.get("email"),
     password: formData.get("password"),
+    rememberMe: formData.get("rememberMe"),
   };
 
   const result = LoginDtoSchema.safeParse(rawData);

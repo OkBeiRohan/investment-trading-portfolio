@@ -1,5 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 import {
+  anonymousClient,
   deviceAuthorizationClient,
   emailOTPClient,
   inferAdditionalFields,
@@ -21,6 +22,7 @@ export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
       ...config.fetchOptions,
     },
     plugins: [
+      anonymousClient(),
       phoneNumberClient(),
       twoFactorClient(),
       passkeyClient(),

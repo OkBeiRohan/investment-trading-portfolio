@@ -1,3 +1,9 @@
+.moreContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
 .socialButtons {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -31,7 +37,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
 }
 
 .altButton {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Mail, KeyRound } from "lucide-react";
 import styles from "./login-form.module.css";
 import Input from "@/components/form/input";
+import Checkbox from "@/components/form/input/checkbox";
 import PrimaryButton from "@/components/form/button";
 import { loginAction } from "../../../../lib/actions/authentication/login/login-action";
 
@@ -36,6 +37,9 @@ export function LoginForm() {
           error={state.fieldErrors?.properties?.password}
           required
         />
+
+        <Checkbox name="rememberMe" label="Remember me for 30 days" />
+
         <div className={styles.links}>
           <Link href="/authentication/forgot-password" className={styles.link}>
             Forgot password?

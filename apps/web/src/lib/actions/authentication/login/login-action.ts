@@ -23,11 +23,9 @@ export async function loginAction(
     };
   }
 
-  const credentials = result.data;
-
   // Authenticate
   try {
-    const { data, error } = await authClient.signIn.email(credentials);
+    const { data, error } = await authClient.signIn.email(result.data);
 
     if (error) {
       return { error: error.message || "Invalid credentials" };
