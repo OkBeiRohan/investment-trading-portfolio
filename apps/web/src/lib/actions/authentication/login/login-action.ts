@@ -35,9 +35,12 @@ export async function loginAction(
       return { error: "Authentication failed" };
     }
 
+    // Check if 2FA verification is required
+    const requiresTwoFactor = (data as any)?.twoFactorRedirect === true;
+
     // Successful login - handle callback URL redirect and session refresh
     // This throws a redirect error, so execution stops here
-    await handleAuthSuccess();
+    await handleAuthSuccess(requiresTwoFactor);
 
     // TypeScript needs this, but it's never reached (handleAuthSuccess always throws)
     return { error: null };

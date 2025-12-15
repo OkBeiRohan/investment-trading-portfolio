@@ -38,28 +38,6 @@
   transition: color var(--transition-base);
 }
 
-.divider {
-  display: flex;
-  align-items: center;
-  margin: var(--spacing-md) 0;
-  color: var(--color-text-tertiary);
-  font-size: var(--font-size-sm);
-  transition: color var(--transition-base);
-}
-
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--color-border-primary);
-  transition: background-color var(--transition-base);
-}
-
-.divider span {
-  padding: 0 var(--spacing-md);
-}
-
 .link {
   color: var(--color-link);
   text-decoration: none;

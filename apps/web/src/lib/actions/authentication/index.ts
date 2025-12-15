@@ -7,12 +7,22 @@ import { CallbackUrlSchema } from "@repo/schema";
 
 /**
  * Handle successful authentication
+ * - Checks if 2FA verification is required
  * - Retrieves callback URL from cookie (set by middleware)
  * - Clears the callback URL cookie
  * - Performs full HTML redirect (causes session refetch in providers)
  * - Falls back to "/" if no valid callback URL exists
+ *
+ * @param requiresTwoFactor - If true, user needs to complete 2FA verification
  */
-export async function handleAuthSuccess(): Promise<never> {
+export async function handleAuthSuccess(
+  requiresTwoFactor: boolean = false
+): Promise<never> {
+  // If 2FA is required, redirect to 2FA verification page
+  if (requiresTwoFactor) {
+    redirect("/authentication/2fa" as Route);
+  }
+
   const cookieStore = await cookies();
 
   // Get callback URL from cookie

@@ -49,15 +49,19 @@
   --color-success: #34d399;
   --color-success-bg: #064e3b;
   --color-success-text: #a7f3d0;
+  --color-success-border: #059669;
   --color-error: #f87171;
   --color-error-bg: #7f1d1d;
   --color-error-text: #fecaca;
+  --color-error-border: #dc2626;
   --color-warning: #fbbf24;
   --color-warning-bg: #78350f;
   --color-warning-text: #fde68a;
+  --color-warning-border: #f59e0b;
   --color-info: #60a5fa;
   --color-info-bg: #1e3a8a;
   --color-info-text: #bfdbfe;
+  --color-info-border: #3b82f6;
 
   /* Link Colors */
   --color-link: #818cf8;

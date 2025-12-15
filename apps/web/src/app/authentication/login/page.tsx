@@ -2,6 +2,7 @@ import { LoginForm } from "@/components/auth/login/form/login-form";
 import styles from "./login.module.css";
 import Link from "next/link";
 import MoreLoginOptions from "@/components/auth/login/more-login/more-login";
+import Divider from "@/components/form/divider";
 
 export default function LoginPage() {
   return (
@@ -14,9 +15,7 @@ export default function LoginPage() {
           </p>
         </div>
         <LoginForm />
-        <div className={styles.divider}>
-          <span>Or continue with</span>
-        </div>
+        <Divider text="Or continue with" />
         <MoreLoginOptions />
         <p className={styles.signupText}>
           Not a member?{" "}
