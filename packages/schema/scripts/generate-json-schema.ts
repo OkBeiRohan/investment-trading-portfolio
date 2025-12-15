@@ -22,7 +22,12 @@ import {
   signalMetadataSchema,
 } from "../src/trading/signal.schema";
 
-import { orderSchema, orderLegSchema } from "../src/trading/order.schema";
+import {
+  orderSchema,
+  orderLegSchema,
+  orderPlacementSchema,
+  multiLegOrderRequestSchema,
+} from "../src/trading/order.schema";
 
 import {
   positionSchema,
@@ -37,6 +42,8 @@ import {
   rlPerformanceSchema,
 } from "../src/trading/rl-agent.schema";
 
+import { greeksSchema, costBreakdownSchema } from "../src/trading/base";
+
 const OUTPUT_DIR = join(__dirname, "../generated");
 
 console.log("🔧 Generating JSON Schemas from Zod...\n");
@@ -47,85 +54,89 @@ mkdirSync(OUTPUT_DIR, { recursive: true });
 // Define all schemas to export
 const schemas = {
   // Feature schemas
-  FeatureSnapshot: zodToJsonSchema(featureSnapshotSchema, {
+  FeatureSnapshot: zodToJsonSchema(featureSnapshotSchema as any, {
     name: "FeatureSnapshot",
     $refStrategy: "none",
   }),
-  Features: zodToJsonSchema(featuresSchema, {
+  Features: zodToJsonSchema(featuresSchema as any, {
     name: "Features",
     $refStrategy: "none",
   }),
-  MACD: zodToJsonSchema(macdSchema, {
+  MACD: zodToJsonSchema(macdSchema as any, {
     name: "MACD",
     $refStrategy: "none",
   }),
-  FeatureMetadata: zodToJsonSchema(featureMetadataSchema, {
+  FeatureMetadata: zodToJsonSchema(featureMetadataSchema as any, {
     name: "FeatureMetadata",
     $refStrategy: "none",
   }),
 
   // Signal schemas
-  TradingSignal: zodToJsonSchema(tradingSignalSchema, {
+  TradingSignal: zodToJsonSchema(tradingSignalSchema as any, {
     name: "TradingSignal",
     $refStrategy: "none",
   }),
-  ModelContributions: zodToJsonSchema(modelContributionsSchema, {
+  ModelContributions: zodToJsonSchema(modelContributionsSchema as any, {
     name: "ModelContributions",
     $refStrategy: "none",
   }),
-  SignalMetadata: zodToJsonSchema(signalMetadataSchema, {
+  SignalMetadata: zodToJsonSchema(signalMetadataSchema as any, {
     name: "SignalMetadata",
     $refStrategy: "none",
   }),
 
   // Order schemas
-  Order: zodToJsonSchema(orderSchema, {
+  Order: zodToJsonSchema(orderSchema as any, {
     name: "Order",
     $refStrategy: "none",
   }),
-  OrderLeg: zodToJsonSchema(orderLegSchema, {
+  OrderLeg: zodToJsonSchema(orderLegSchema as any, {
     name: "OrderLeg",
     $refStrategy: "none",
   }),
-  OrderCreateInput: zodToJsonSchema(orderCreateInputSchema, {
-    name: "OrderCreateInput",
+  OrderPlacement: zodToJsonSchema(orderPlacementSchema as any, {
+    name: "OrderPlacement",
+    $refStrategy: "none",
+  }),
+  MultiLegOrderRequest: zodToJsonSchema(multiLegOrderRequestSchema as any, {
+    name: "MultiLegOrderRequest",
     $refStrategy: "none",
   }),
 
   // Position schemas
-  Position: zodToJsonSchema(positionSchema, {
+  Position: zodToJsonSchema(positionSchema as any, {
     name: "Position",
     $refStrategy: "none",
   }),
-  PositionLeg: zodToJsonSchema(positionLegSchema, {
+  PositionLeg: zodToJsonSchema(positionLegSchema as any, {
     name: "PositionLeg",
     $refStrategy: "none",
   }),
-  Greeks: zodToJsonSchema(greeksSchema, {
+  Greeks: zodToJsonSchema(greeksSchema as any, {
     name: "Greeks",
     $refStrategy: "none",
   }),
-  Costs: zodToJsonSchema(costsSchema, {
-    name: "Costs",
+  CostBreakdown: zodToJsonSchema(costBreakdownSchema as any, {
+    name: "CostBreakdown",
     $refStrategy: "none",
   }),
 
   // Strategy schemas
-  Strategy: zodToJsonSchema(strategySchema, {
+  Strategy: zodToJsonSchema(strategySchema as any, {
     name: "Strategy",
     $refStrategy: "none",
   }),
 
   // RL Agent schemas
-  RLAgentState: zodToJsonSchema(rlAgentStateSchema, {
+  RLAgentState: zodToJsonSchema(rlAgentStateSchema as any, {
     name: "RLAgentState",
     $refStrategy: "none",
   }),
-  RLStateSnapshot: zodToJsonSchema(rlStateSnapshotSchema, {
+  RLStateSnapshot: zodToJsonSchema(rlStateSnapshotSchema as any, {
     name: "RLStateSnapshot",
     $refStrategy: "none",
   }),
-  RLPerformance: zodToJsonSchema(rlPerformanceSchema, {
+  RLPerformance: zodToJsonSchema(rlPerformanceSchema as any, {
     name: "RLPerformance",
     $refStrategy: "none",
   }),

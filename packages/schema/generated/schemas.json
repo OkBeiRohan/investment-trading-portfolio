@@ -1,0 +1,135 @@
+{
+  "FeatureSnapshot": {
+    "$ref": "#/definitions/FeatureSnapshot",
+    "definitions": {
+      "FeatureSnapshot": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "Features": {
+    "$ref": "#/definitions/Features",
+    "definitions": {
+      "Features": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "MACD": {
+    "$ref": "#/definitions/MACD",
+    "definitions": {
+      "MACD": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "FeatureMetadata": {
+    "$ref": "#/definitions/FeatureMetadata",
+    "definitions": {
+      "FeatureMetadata": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "TradingSignal": {
+    "$ref": "#/definitions/TradingSignal",
+    "definitions": {
+      "TradingSignal": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ModelContributions": {
+    "$ref": "#/definitions/ModelContributions",
+    "definitions": {
+      "ModelContributions": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "SignalMetadata": {
+    "$ref": "#/definitions/SignalMetadata",
+    "definitions": {
+      "SignalMetadata": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "Order": {
+    "$ref": "#/definitions/Order",
+    "definitions": {
+      "Order": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "OrderLeg": {
+    "$ref": "#/definitions/OrderLeg",
+    "definitions": {
+      "OrderLeg": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "OrderPlacement": {
+    "$ref": "#/definitions/OrderPlacement",
+    "definitions": {
+      "OrderPlacement": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "MultiLegOrderRequest": {
+    "$ref": "#/definitions/MultiLegOrderRequest",
+    "definitions": {
+      "MultiLegOrderRequest": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "Position": {
+    "$ref": "#/definitions/Position",
+    "definitions": {
+      "Position": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "PositionLeg": {
+    "$ref": "#/definitions/PositionLeg",
+    "definitions": {
+      "PositionLeg": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "Greeks": {
+    "$ref": "#/definitions/Greeks",
+    "definitions": {
+      "Greeks": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "CostBreakdown": {
+    "$ref": "#/definitions/CostBreakdown",
+    "definitions": {
+      "CostBreakdown": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "Strategy": {
+    "$ref": "#/definitions/Strategy",
+    "definitions": {
+      "Strategy": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "RLAgentState": {
+    "$ref": "#/definitions/RLAgentState",
+    "definitions": {
+      "RLAgentState": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "RLStateSnapshot": {
+    "$ref": "#/definitions/RLStateSnapshot",
+    "definitions": {
+      "RLStateSnapshot": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "RLPerformance": {
+    "$ref": "#/definitions/RLPerformance",
+    "definitions": {
+      "RLPerformance": {}
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+}
