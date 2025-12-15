@@ -1,3 +1,3 @@
-export { default as TrpcProvider, trpcClient as trpc } from "./provider";
-export * from "./hooks";
+export { default as TrpcProvider } from "./provider";
+export { useTRPC, useTRPCClient } from "./hooks";
 export { observable } from "@trpc/server/observable";
