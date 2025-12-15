@@ -35,7 +35,7 @@ export async function loginAction(
     }
 
     // Check if 2FA verification is required
-    const requiresTwoFactor = (data as any)?.twoFactorRedirect === true;
+    const requiresTwoFactor = data?.redirect === true;
 
     if (requiresTwoFactor) {
       window.location.href = "/authentication/2fa";

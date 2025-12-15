@@ -40,6 +40,7 @@ export default function MoreLoginOptions() {
     setLoading(true);
     try {
       const { data, error } = await authClient.signIn.anonymous();
+
       if (error) {
         setError(error.message || "Failed to login anonymously");
         setLoading(false);

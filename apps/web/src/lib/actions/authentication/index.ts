@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import type { Route } from "next";
 import { cookies } from "next/headers";
 import { CallbackUrlSchema } from "@repo/schema";
@@ -38,10 +38,10 @@ export async function handleAuthSuccess(
       // Full redirect causes browser to refetch everything,
       // including session data in providers
       // Type assertion needed for Next.js typed routes
-      redirect(validationResult.data as Route);
+      redirect(validationResult.data as Route, RedirectType.push);
     }
   }
 
   // Default redirect to home
-  redirect("/");
+  redirect("/", RedirectType.push);
 }

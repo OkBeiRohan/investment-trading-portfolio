@@ -195,7 +195,13 @@ export const mongoAdapter = (
 
           // Find the document first
           const existing = await repository.findOne(filter);
-          if (!existing) return null;
+          if (!existing) {
+            console.warn(
+              `[MongoDB Adapter] No ${model} found with filter:`,
+              filter
+            );
+            return null;
+          }
 
           // Extract ID - handle both MongoDB document (_id) and plain object (id)
           let id: string;
@@ -207,26 +213,45 @@ export const mongoAdapter = (
                 ? existing.id
                 : existing.id.toString();
           } else {
+            console.error(
+              `[MongoDB Adapter] Unable to extract ID from ${model}:`,
+              existing
+            );
             throw new Error(`Unable to extract ID from ${model} document`);
           }
 
-          const methodName = getRepositoryMethod(model, "update");
-          const result = await repository[methodName](id, update);
+          try {
+            const methodName = getRepositoryMethod(model, "update");
+            const result = await repository[methodName](id, update);
 
-          if (!result) return null;
+            if (!result) {
+              console.warn(
+                `[MongoDB Adapter] Update returned null for ${model} with id:`,
+                id
+              );
+              return null;
+            }
 
-          const plainResult = result.toObject ? result.toObject() : result;
+            const plainResult = result.toObject ? result.toObject() : result;
 
-          if (plainResult._id) {
-            plainResult.id = plainResult._id.toString();
-            delete plainResult._id;
+            if (plainResult._id) {
+              plainResult.id = plainResult._id.toString();
+              delete plainResult._id;
+            }
+
+            if (plainResult.__v !== undefined) {
+              delete plainResult.__v;
+            }
+
+            return plainResult;
+          } catch (error) {
+            console.error(`[MongoDB Adapter] Error updating ${model}:`, {
+              id,
+              update,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
           }
-
-          if (plainResult.__v !== undefined) {
-            delete plainResult.__v;
-          }
-
-          return plainResult;
         },
 
         // Update many operation
