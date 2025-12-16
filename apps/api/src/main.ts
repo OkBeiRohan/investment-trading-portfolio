@@ -11,6 +11,23 @@ async function bootstrap() {
     abortOnError: process.env.DEVTOOLS !== 'true',
   });
 
+  // Enable CORS for cross-origin requests from frontend
+  app.enableCors({
+    origin: process.env.TRUSTED_ORIGINS?.split(',') || [
+      'http://localhost:3000',
+      'https://quantum-investment-trading.vercel.app',
+    ],
+    credentials: true, // Allow cookies to be sent
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
+  });
+
   // Render and other cloud platforms require binding to 0.0.0.0
   const port = parseInt(process.env.PORT ?? '3004', 10);
   const host = process.env.HOST ?? '0.0.0.0';

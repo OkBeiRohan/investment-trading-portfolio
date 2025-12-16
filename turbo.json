@@ -30,6 +30,7 @@
         "MONGODB_URI",
         "PORT",
         "REDIS_URL",
+        "TRUSTED_ORIGINS",
         "QUESTDB_URL"
       ]
     },
