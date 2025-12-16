@@ -5,7 +5,7 @@ services:
     region: singapore # Change to your preferred region: oregon, frankfurt, singapore, etc.
     plan: free
     buildCommand: pnpm install && pnpm build --filter=api...
-    startCommand: cd apps/api && node dist/src/main.js
+    startCommand: cd apps/api && node --max-old-space-size=460 dist/src/main.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -17,6 +17,8 @@ services:
       - key: DEVTOOLS
         value: "false" # Disable devtools in production
       # Add these in Render dashboard (don't commit secrets):
+      # Required:
+      # - APP_NAME (e.g., "Investment Trading Portfolio")
       # - MONGODB_URI (e.g., mongodb+srv://user:pass@cluster.mongodb.net/trading?retryWrites=true&w=majority)
       # - MONGODB_DATABASE (e.g., trading)
       # - AUTH_SECRET (minimum 32 characters, generate with: openssl rand -base64 32)

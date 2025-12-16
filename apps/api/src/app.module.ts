@@ -5,8 +5,8 @@ import { TRPCModule } from 'nestjs-trpc-v2';
 import { AuthModule } from '@repo/authentication';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-// import { HealthModule } from './health/health.module';
-// import { UserModule } from './user/user.module';
+import { HealthModule } from './health/health.module';
+import { UserModule } from './user/user.module';
 import { AppContext } from './app.context';
 import { AppRouter } from './app.router';
 import registerConfiguration from './environment/configuration';
@@ -21,16 +21,18 @@ import registerConfiguration from './environment/configuration';
       'DEVTOOLS',
     ),
     TRPCModule.forRoot({
+      // Disable schema auto-generation in production to save memory
+      // Schema should be pre-generated during build
       autoSchemaFile:
-        process.env.DEVTOOLS === 'true'
+        process.env.NODE_ENV === 'production' || process.env.DEVTOOLS === 'true'
           ? undefined
           : '../../packages/trpc/src/server',
       context: AppContext,
       basePath: '/api/trpc',
     }),
     AuthModule,
-    // HealthModule,
-    // UserModule,
+    HealthModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppContext, AppRouter],
