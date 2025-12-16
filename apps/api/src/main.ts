@@ -15,8 +15,6 @@ async function bootstrap() {
   const port = parseInt(process.env.PORT ?? '3004', 10);
   const host = process.env.HOST ?? '0.0.0.0';
 
-  console.log(`Application will initialize in http://${host}:${port}`);
-
   // Log memory usage before listening
   const memBefore = process.memoryUsage();
   console.log(

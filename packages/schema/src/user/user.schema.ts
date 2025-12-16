@@ -10,6 +10,7 @@ export interface IUser {
   email: string;
   emailVerified: boolean;
   name: string;
+  isAnonymous: boolean;
   phoneNumber?: string | null;
   phoneNumberVerified?: boolean | null;
   image?: string | null;
@@ -29,6 +30,7 @@ export const userSchema: z.ZodType<IUser> = z.object({
   email: z.email().toLowerCase(),
   emailVerified: z.boolean().default(false),
   name: z.string().min(1).max(200),
+  isAnonymous: z.boolean().default(false),
   phoneNumber: z
     .string()
     .regex(/^\+?[1-9]\d{1,14}$/)
