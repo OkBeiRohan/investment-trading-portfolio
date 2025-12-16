@@ -1,7 +1,6 @@
 import z from "zod";
 
 export const twoFactorSchema = z.object({
-  id: z.uuid(),
   userId: z.uuid(),
   secret: z.string(),
   backupCodes: z.string(),

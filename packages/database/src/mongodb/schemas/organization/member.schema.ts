@@ -12,8 +12,6 @@ import { User } from "../user/user.schema";
   timestamps: true,
 })
 export class Member extends Document implements IMember {
-  id: string;
-
   @Prop({
     type: Types.ObjectId,
     ref: Organization.name,

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Session } from "../../schemas/authentication";
-import { Model, QueryFilter } from "mongoose";
+import { Model, FilterQuery } from "mongoose";
 import DatabaseConnections from "../../connections/connections";
 
 @Injectable()
@@ -20,12 +20,12 @@ export class SessionRepository {
     return this.sessionModel.findById(id).populate("userId").exec();
   }
 
-  async findOne(filter: QueryFilter<Session>): Promise<Session | null> {
+  async findOne(filter: FilterQuery<Session>): Promise<Session | null> {
     return this.sessionModel.findOne(filter).populate("userId").exec();
   }
 
   async findMany(
-    filter: QueryFilter<Session>,
+    filter: FilterQuery<Session>,
     options?: { limit?: number; skip?: number; sort?: any }
   ): Promise<Session[]> {
     const query = this.sessionModel.find(filter).populate("userId");
@@ -49,12 +49,12 @@ export class SessionRepository {
     return !!result;
   }
 
-  async deleteMany(filter: QueryFilter<Session>): Promise<number> {
+  async deleteMany(filter: FilterQuery<Session>): Promise<number> {
     const result = await this.sessionModel.deleteMany(filter).exec();
     return result.deletedCount;
   }
 
-  async count(filter: QueryFilter<Session>): Promise<number> {
+  async count(filter: FilterQuery<Session>): Promise<number> {
     return this.sessionModel.countDocuments(filter).exec();
   }
 
