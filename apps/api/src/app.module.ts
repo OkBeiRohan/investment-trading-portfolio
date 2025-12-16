@@ -21,8 +21,10 @@ import registerConfiguration from './environment/configuration';
       'DEVTOOLS',
     ),
     TRPCModule.forRoot({
+      // Disable schema auto-generation in production to save memory
+      // Schema should be pre-generated during build
       autoSchemaFile:
-        process.env.DEVTOOLS === 'true'
+        process.env.NODE_ENV === 'production' || process.env.DEVTOOLS === 'true'
           ? undefined
           : '../../packages/trpc/src/server',
       context: AppContext,

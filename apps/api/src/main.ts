@@ -17,7 +17,19 @@ async function bootstrap() {
 
   console.log(`Application will initialize in http://${host}:${port}`);
 
+  // Log memory usage before listening
+  const memBefore = process.memoryUsage();
+  console.log(
+    `Memory before listen: ${Math.round(memBefore.heapUsed / 1024 / 1024)}MB / ${Math.round(memBefore.heapTotal / 1024 / 1024)}MB`,
+  );
+
   await app.listen(port, host);
+
+  // Log memory usage after startup
+  const memAfter = process.memoryUsage();
+  console.log(
+    `Memory after listen: ${Math.round(memAfter.heapUsed / 1024 / 1024)}MB / ${Math.round(memAfter.heapTotal / 1024 / 1024)}MB`,
+  );
 
   console.log(`🚀 Application is running on: http://${host}:${port}`);
   console.log(`📊 Health check: http://${host}:${port}/health`);
