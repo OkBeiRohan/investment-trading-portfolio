@@ -18,7 +18,8 @@ export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
   return createAuthClient({
     baseURL: config.baseURL,
     fetchOptions: {
-      credentials: "include",
+      credentials: "include", // Required for cross-origin cookies
+      mode: "cors", // Explicit CORS mode
       ...config.fetchOptions,
     },
     plugins: [

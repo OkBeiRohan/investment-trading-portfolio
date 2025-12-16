@@ -20,8 +20,6 @@
       ],
       "env": [
         "API_URL",
-        "NEXT_PUBLIC_API_URL",
-        "NEXT_PUBLIC_APP_URL",
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
         "DATABASE_URL",
@@ -30,6 +28,7 @@
         "MONGODB_URI",
         "PORT",
         "REDIS_URL",
+        "TRUSTED_ORIGINS",
         "QUESTDB_URL"
       ]
     },

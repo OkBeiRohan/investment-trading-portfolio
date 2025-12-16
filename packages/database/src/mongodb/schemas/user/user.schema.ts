@@ -20,6 +20,9 @@ export class User
   @Prop({ required: true })
   name: string;
 
+  @Prop({ required: true, default: false })
+  isAnonymous?: boolean | null;
+
   @Prop({ required: false, unique: true, sparse: true })
   phoneNumber?: string;
 

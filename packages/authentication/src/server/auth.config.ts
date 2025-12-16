@@ -58,6 +58,14 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
     database: config.adapter,
     ...config.options,
 
+    // Advanced options for cross-origin support
+    advanced: {
+      crossSubDomainCookies: {
+        enabled: true,
+      },
+      useSecureCookies: process.env.NODE_ENV === "production",
+    },
+
     // Email and password authentication
     emailAndPassword: {
       enabled: true,

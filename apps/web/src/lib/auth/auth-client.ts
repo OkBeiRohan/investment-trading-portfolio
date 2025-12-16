@@ -8,7 +8,6 @@
  * - Server-side DAL (verifySession)
  *
  * The client is configured in @repo/auth-client with:
- * - baseURL: NEXT_PUBLIC_APP_URL or http://localhost:3000
  * - basePath: /api/auth
  * - All better-auth plugins enabled
  */

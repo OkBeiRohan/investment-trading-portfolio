@@ -11,11 +11,39 @@ async function bootstrap() {
     abortOnError: process.env.DEVTOOLS !== 'true',
   });
 
+  // Enable CORS for cross-origin requests from frontend
+  let corsOrigins: string[] | undefined;
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.TRUSTED_ORIGINS) {
+      throw new Error(
+        'TRUSTED_ORIGINS environment variable must be set in production for CORS security.',
+      );
+    }
+    corsOrigins = process.env.TRUSTED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+  } else {
+    corsOrigins =
+      process.env.TRUSTED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ||
+      [
+        'http://localhost:3000',
+        'https://quantum-investment-trading.vercel.app',
+      ];
+  }
+  app.enableCors({
+    origin: corsOrigins,
+    credentials: true, // Allow cookies to be sent
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
+  });
+
   // Render and other cloud platforms require binding to 0.0.0.0
   const port = parseInt(process.env.PORT ?? '3004', 10);
   const host = process.env.HOST ?? '0.0.0.0';
-
-  console.log(`Application will initialize in http://${host}:${port}`);
 
   // Log memory usage before listening
   const memBefore = process.memoryUsage();
