@@ -5,6 +5,7 @@ import { BetterAuthAdapterFactory } from "../adapters/adapter.factory";
 import { EmailService } from "./email.service";
 import { createAuthConfig } from "../config/auth.config";
 import { CONFIG_TOKEN, IEnvironment } from "@repo/schema";
+import type { betterAuth } from "better-auth";
 
 @Injectable()
 export class AuthService {
@@ -14,7 +15,7 @@ export class AuthService {
     private readonly configService: ConfigService
   ) {}
 
-  getAuthInstance() {
+  getAuthInstance(): ReturnType<typeof betterAuth> {
     const config = this.configService.getOrThrow<IEnvironment>(CONFIG_TOKEN);
 
     return createBetterAuthInstance({
