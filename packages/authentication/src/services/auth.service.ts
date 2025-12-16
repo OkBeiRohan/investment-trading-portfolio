@@ -19,9 +19,14 @@ export class AuthService {
     const config = this.configService.getOrThrow<IEnvironment>(CONFIG_TOKEN);
 
     return createBetterAuthInstance({
-      adapter: mongodbAdapter(this.mongoDBService.getDatabase() as any, {
-        // client: this.mongoDBService.getClient() as any,
-      }),
+      adapter: mongodbAdapter(
+        this.mongoDBService.getDatabase() as any,
+        config.auth.transactions
+          ? {
+              client: this.mongoDBService.getClient() as any,
+            }
+          : undefined
+      ),
       options: createAuthConfig({
         appName: config.auth.appName,
         appUrl: config.auth.appUrl,

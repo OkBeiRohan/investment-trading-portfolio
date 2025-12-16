@@ -26,6 +26,7 @@ export const environmentSchema = z
     AUTH_SECRET: z.string().min(32),
     TRUSTED_ORIGINS: z.string().default("http://localhost:3000"),
     FRONTEND_URL: z.string().default("http://localhost:3000"),
+    TRANSACTIONS: z.string().default("false"),
 
     // Social Providers (optional)
     GOOGLE_CLIENT_ID: z.string().optional(),
@@ -55,6 +56,7 @@ export const environmentSchema = z
       secret: data.AUTH_SECRET,
       trustedOrigins: data.TRUSTED_ORIGINS.split(",").map((o) => o.trim()),
       frontendUrl: data.FRONTEND_URL,
+      transactions: data.TRANSACTIONS === "true",
 
       socialProviders: {
         google: data.GOOGLE_CLIENT_ID

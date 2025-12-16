@@ -41,11 +41,13 @@ import { MongoDBService } from "./mongodb.service";
       process.env.MONGODB_URI || "mongodb://localhost:27017",
       {
         connectionName: DatabaseConnections.User,
-        dbName: DatabaseConnections.User,
+        dbName: DatabaseConnections.User, // Database name: 'user'
         retryWrites: true,
         retryAttempts: 5,
         retryDelay: 3000,
         writeConcern: { w: "majority" },
+        // For replica set with transactions, ensure MONGODB_URI includes ?replicaSet=rs0
+        // Example: mongodb://localhost:27017/?replicaSet=rs0
       }
     ),
     MongooseModule.forFeature(
