@@ -670,9 +670,6 @@ importers:
       '@types/node':
         specifier: ^25.0.2
         version: 25.0.2
-      '@types/react':
-        specifier: ^19.2.7
-        version: 19.2.7
       typescript:
         specifier: 5.9.3
         version: 5.9.3
