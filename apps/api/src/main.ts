@@ -19,14 +19,16 @@ async function bootstrap() {
         'TRUSTED_ORIGINS environment variable must be set in production for CORS security.',
       );
     }
-    corsOrigins = process.env.TRUSTED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+    corsOrigins = process.env.TRUSTED_ORIGINS.split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
   } else {
-    corsOrigins =
-      process.env.TRUSTED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ||
-      [
-        'http://localhost:3000',
-        'https://quantum-investment-trading.vercel.app',
-      ];
+    corsOrigins = process.env.TRUSTED_ORIGINS?.split(',')
+      .map((o) => o.trim())
+      .filter(Boolean) || [
+      'http://localhost:3000',
+      'https://quantum-investment-trading.vercel.app',
+    ];
   }
   app.enableCors({
     origin: corsOrigins,
