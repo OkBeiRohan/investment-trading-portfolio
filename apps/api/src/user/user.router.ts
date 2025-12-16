@@ -12,7 +12,6 @@ export class UserRouter {
   })
   getUser(@Input('id') id: string): IUser {
     return {
-      id: id,
       email: '',
       emailVerified: false,
       name: '',

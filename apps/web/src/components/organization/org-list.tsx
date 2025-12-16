@@ -72,8 +72,8 @@ export function OrgList() {
             <div className={styles.orgList}>
               {orgs.map((org) => (
                 <Link
-                  key={org.id}
-                  href={`/organization/${org.id}`}
+                  key={org.slug}
+                  href={`/organization/${org.slug}`}
                   className={styles.orgCard}
                 >
                   <div className={styles.orgInfo}>
