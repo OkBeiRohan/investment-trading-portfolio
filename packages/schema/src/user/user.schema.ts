@@ -10,7 +10,7 @@ export interface IUser {
   email: string;
   emailVerified: boolean;
   name: string;
-  isAnonymous: boolean;
+  isAnonymous?: boolean | null;
   phoneNumber?: string | null;
   phoneNumberVerified?: boolean | null;
   image?: string | null;
