@@ -32,6 +32,7 @@ import {
   OrganizationSchema,
 } from "./schemas/organization";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
+import { MongoDBService } from "./mongodb.service";
 
 @Global()
 @Module({
@@ -71,6 +72,7 @@ import { AuthRepositoryFactory } from "./adapter/adapter.factory";
     TwoFactorRepository,
     PasskeyRepository,
     AuthRepositoryFactory,
+    MongoDBService,
   ],
   exports: [
     UserRepository,
@@ -81,6 +83,7 @@ import { AuthRepositoryFactory } from "./adapter/adapter.factory";
     TwoFactorRepository,
     PasskeyRepository,
     AuthRepositoryFactory,
+    MongoDBService,
   ],
 })
 export class MongoDBModule {}
