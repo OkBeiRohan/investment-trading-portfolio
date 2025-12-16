@@ -67,5 +67,4 @@ export class User
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.index({ phoneNumber: 1 });
 UserSchema.index({ createdAt: -1 });

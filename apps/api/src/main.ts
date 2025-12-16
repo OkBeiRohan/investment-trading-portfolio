@@ -10,7 +10,15 @@ async function bootstrap() {
       process.env.DEVTOOLS === 'true' && process.env.NODE_ENV !== 'production',
     abortOnError: process.env.DEVTOOLS !== 'true',
   });
-  await app.listen(process.env.PORT ?? 3004);
+
+  // Render and other cloud platforms require binding to 0.0.0.0
+  const port = parseInt(process.env.PORT ?? '3004', 10);
+  const host = process.env.HOST ?? '0.0.0.0';
+
+  await app.listen(port, host);
+
+  console.log(`🚀 Application is running on: http://${host}:${port}`);
+  console.log(`📊 Health check: http://${host}:${port}/health`);
 }
 
 void bootstrap().catch((error) => {
