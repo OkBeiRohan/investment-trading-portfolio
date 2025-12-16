@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: investment-trading-api
+    runtime: node
+    region: singapore  # Change to your preferred region: oregon, frankfurt, singapore, etc.
+    plan: free
+    buildCommand: pnpm install && pnpm build --filter=api...
+    startCommand: cd apps/api && node dist/src/main.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000  # Render's default port
+      # Add these in Render dashboard (don't commit secrets):
+      # - MONGODB_URI
+      # - AUTH_SECRET
+      # - AUTH_APP_URL (your render.com URL)
+      # - REDIS_URL (if using external Redis)
