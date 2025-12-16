@@ -1,7 +1,100 @@
 {
-  "$ref": "#/definitions/Strategy",
-  "definitions": {
-    "Strategy": {}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Strategy",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "legs": {
+      "type": "array",
+      "items": {
+        "type": "any"
+      }
+    },
+    "riskProfile": {
+      "type": "object",
+      "properties": {
+        "maxProfit": {
+          "type": "number"
+        },
+        "maxLoss": {
+          "type": "number"
+        },
+        "breakeven": {
+          "type": "array",
+          "items": {
+            "type": "any"
+          }
+        },
+        "probabilityOfProfit": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "maxProfit",
+        "maxLoss",
+        "breakeven"
+      ]
+    },
+    "entryConditions": {
+      "type": "object",
+      "properties": {
+        "minConfidence": {
+          "type": "number"
+        },
+        "maxVIX": {
+          "type": "number"
+        },
+        "minVIX": {
+          "type": "number"
+        },
+        "prediction": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "minConfidence"
+      ]
+    },
+    "exitConditions": {
+      "type": "object",
+      "properties": {
+        "profitTarget": {
+          "type": "number"
+        },
+        "stopLoss": {
+          "type": "number"
+        },
+        "timeBasedExit": {
+          "type": "number"
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": [
+    "name",
+    "type",
+    "legs",
+    "riskProfile",
+    "createdAt",
+    "updatedAt"
+  ]
 }

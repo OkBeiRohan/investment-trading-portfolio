@@ -5,10 +5,11 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    "./client": "./src/client/index.ts",
     ".": {
       "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
@@ -27,15 +28,12 @@
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "@thallesp/nestjs-better-auth": "^2.2.0",
-    "better-auth": "^1.4.7",
-    "next": "16.0.10",
-    "react": "^19.2.3"
+    "better-auth": "^1.4.7"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^25.0.2",
-    "@types/react": "^19.2.7",
     "typescript": "5.9.3"
   }
 }

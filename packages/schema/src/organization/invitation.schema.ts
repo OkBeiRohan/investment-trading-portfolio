@@ -11,7 +11,6 @@ export const invitationStatusEnum = z.enum([
 export type InvitationStatus = z.infer<typeof invitationStatusEnum>;
 
 export const invitationSchema = z.object({
-  id: z.uuid(),
   organizationId: z.uuid(),
   email: z.email(),
   role: organisationRoleEnum,

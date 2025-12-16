@@ -1,6 +1,6 @@
 import { TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
-import type { AuthClient } from "@repo/authentication/client";
+import type { AuthClient } from "@repo/auth-client";
 import type { AppRouter } from "../server";
 
 /**

@@ -5,9 +5,9 @@ services:
   questdb:
     image: questdb/questdb:latest
     ports:
-      - "9000:9000"   # REST API / Web Console
-      - "9009:9009"   # InfluxDB Line Protocol
-      - "8812:8812"   # PostgreSQL Wire Protocol
+      - "9000:9000" # REST API / Web Console
+      - "9009:9009" # InfluxDB Line Protocol
+      - "8812:8812" # PostgreSQL Wire Protocol
     environment:
       QDB_CAIRO_COMMIT_LAG: 1000
       QDB_CAIRO_MAX_UNCOMMITTED_ROWS: 100000
@@ -18,8 +18,23 @@ services:
     image: mongo:7
     ports:
       - "27017:27017"
+    environment:
+      # For standalone mode (development)
+      # Comment out for production replica set
+      MONGO_INITDB_DATABASE: investment-trading
+      # For replica set mode (production with transactions)
+      # Uncomment below and run: docker exec mongodb mongosh --eval "rs.initiate()"
+      # MONGO_REPLICA_SET_NAME: rs0
+    # For replica set, add this command:
+    # command: ["--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: |
+        mongosh --quiet --eval 'try { db.adminCommand({ ping: 1 }) } catch (e) { quit(1) }'
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine

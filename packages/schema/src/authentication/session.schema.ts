@@ -1,7 +1,6 @@
 import z from "zod";
 
 export const sessionSchema = z.object({
-  id: z.uuid(),
   userId: z.string(),
   token: z.string(),
   expiresAt: z.date(),

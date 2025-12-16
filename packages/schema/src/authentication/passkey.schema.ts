@@ -1,7 +1,6 @@
 import z from "zod";
 
 export const passkeySchema = z.object({
-  id: z.uuid(),
   userId: z.uuid(),
   name: z.string().optional(),
   publicKey: z.string(),

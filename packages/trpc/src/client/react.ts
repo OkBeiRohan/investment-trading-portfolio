@@ -2,7 +2,7 @@ import { createTRPCReact, httpBatchLink } from "@trpc/react-query";
 import { AppRouter } from "../server";
 import { getQueryClient } from "./query-client";
 import { authLink } from "./auth-link";
-import { authClient } from "@repo/authentication/client";
+import { authClient } from "@repo/auth-client";
 
 /**
  * tRPC React client with classic API.

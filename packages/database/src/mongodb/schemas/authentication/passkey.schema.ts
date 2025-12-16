@@ -5,8 +5,6 @@ import { User } from "../user/user.schema";
 
 @Schema({ timestamps: true })
 export class Passkey extends Document implements IPasskey {
-  id: string;
-
   @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
   userId: string;
 

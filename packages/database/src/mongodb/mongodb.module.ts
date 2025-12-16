@@ -32,6 +32,7 @@ import {
   OrganizationSchema,
 } from "./schemas/organization";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
+import { MongoDBService } from "./mongodb.service";
 
 @Global()
 @Module({
@@ -40,24 +41,42 @@ import { AuthRepositoryFactory } from "./adapter/adapter.factory";
       process.env.MONGODB_URI || "mongodb://localhost:27017",
       {
         connectionName: DatabaseConnections.User,
-        dbName: DatabaseConnections.User,
+        dbName: DatabaseConnections.User, // Database name: 'user'
         retryWrites: true,
         retryAttempts: 5,
         retryDelay: 3000,
         writeConcern: { w: "majority" },
+        // For replica set with transactions, ensure MONGODB_URI includes ?replicaSet=rs0
+        // Example: mongodb://localhost:27017/?replicaSet=rs0
       }
     ),
     MongooseModule.forFeature(
       [
-        { name: User.name, schema: UserSchema },
-        { name: Account.name, schema: AccountSchema },
-        { name: Session.name, schema: SessionSchema },
-        { name: Verification.name, schema: VerificationSchema },
-        { name: TwoFactor.name, schema: TwoFactorSchema },
-        { name: Passkey.name, schema: PasskeySchema },
-        { name: Organization.name, schema: OrganizationSchema },
-        { name: Member.name, schema: MemberSchema },
-        { name: Invitation.name, schema: InvitationSchema },
+        { name: User.name, schema: UserSchema, collection: "user" },
+        { name: Account.name, schema: AccountSchema, collection: "account" },
+        { name: Session.name, schema: SessionSchema, collection: "session" },
+        {
+          name: Verification.name,
+          schema: VerificationSchema,
+          collection: "verification",
+        },
+        {
+          name: TwoFactor.name,
+          schema: TwoFactorSchema,
+          collection: "twoFactor",
+        },
+        { name: Passkey.name, schema: PasskeySchema, collection: "passkey" },
+        {
+          name: Organization.name,
+          schema: OrganizationSchema,
+          collection: "organization",
+        },
+        { name: Member.name, schema: MemberSchema, collection: "member" },
+        {
+          name: Invitation.name,
+          schema: InvitationSchema,
+          collection: "invitation",
+        },
       ],
       DatabaseConnections.User
     ),
@@ -71,6 +90,7 @@ import { AuthRepositoryFactory } from "./adapter/adapter.factory";
     TwoFactorRepository,
     PasskeyRepository,
     AuthRepositoryFactory,
+    MongoDBService,
   ],
   exports: [
     UserRepository,
@@ -81,6 +101,7 @@ import { AuthRepositoryFactory } from "./adapter/adapter.factory";
     TwoFactorRepository,
     PasskeyRepository,
     AuthRepositoryFactory,
+    MongoDBService,
   ],
 })
 export class MongoDBModule {}

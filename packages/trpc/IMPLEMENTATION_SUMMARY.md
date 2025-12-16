@@ -407,7 +407,7 @@ import { authClient } from "@/lib/auth/auth-client";
 
 ```typescript
 // NEW: Singleton from @repo/authentication
-import { authClient } from "@repo/authentication/client";
+import { authClient } from "@repo/auth-client";
 ```
 
 **Server Components**:

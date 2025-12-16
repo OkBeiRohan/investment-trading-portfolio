@@ -1,7 +1,6 @@
 import z from "zod";
 
 export const organizationSchema = z.object({
-  id: z.uuid(),
   name: z.string(),
   slug: z.string(),
   logo: z.url().optional().nullable(),

@@ -1,25 +1,31 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createBetterAuthInstance } from "../server/auth.config";
-import { BetterAuthAdapterFactory } from "../adapters/adapter.factory";
 import { EmailService } from "./email.service";
 import { createAuthConfig } from "../config/auth.config";
 import { CONFIG_TOKEN, IEnvironment } from "@repo/schema";
+import { MongoDBService } from "@repo/database";
+import { mongodbAdapter } from "better-auth/adapters/mongodb";
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly adapterFactory: BetterAuthAdapterFactory,
     private readonly emailService: EmailService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly mongoDBService: MongoDBService
   ) {}
 
   getAuthInstance() {
     const config = this.configService.getOrThrow<IEnvironment>(CONFIG_TOKEN);
 
     return createBetterAuthInstance({
-      adapter: this.adapterFactory.createAdapter(
-        config.environment === "development"
+      adapter: mongodbAdapter(
+        this.mongoDBService.getDatabase() as any,
+        config.auth.transactions
+          ? {
+              client: this.mongoDBService.getClient() as any,
+            }
+          : undefined
       ),
       options: createAuthConfig({
         appName: config.auth.appName,

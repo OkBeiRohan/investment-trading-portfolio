@@ -7,7 +7,6 @@ export const USER_ROLES = ["Investor", "Trader", "Admin"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export interface IUser {
-  id: string;
   email: string;
   emailVerified: boolean;
   name: string;
@@ -27,7 +26,6 @@ export interface IUser {
 }
 
 export const userSchema: z.ZodType<IUser> = z.object({
-  id: z.uuid(),
   email: z.email().toLowerCase(),
   emailVerified: z.boolean().default(false),
   name: z.string().min(1).max(200),

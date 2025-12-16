@@ -1,7 +1,25 @@
 {
-  "$ref": "#/definitions/ModelContributions",
-  "definitions": {
-    "ModelContributions": {}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ModelContributions",
+  "type": "object",
+  "properties": {
+    "xgboost": {
+      "type": "number"
+    },
+    "cnnLstm": {
+      "type": "number"
+    },
+    "ginn": {
+      "type": "number"
+    },
+    "svm": {
+      "type": "number"
+    }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": [
+    "xgboost",
+    "cnnLstm",
+    "ginn",
+    "svm"
+  ]
 }

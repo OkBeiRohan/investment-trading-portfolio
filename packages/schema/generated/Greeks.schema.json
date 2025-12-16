@@ -1,7 +1,28 @@
 {
-  "$ref": "#/definitions/Greeks",
-  "definitions": {
-    "Greeks": {}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Greeks",
+  "type": "object",
+  "properties": {
+    "delta": {
+      "type": "number"
+    },
+    "gamma": {
+      "type": "number"
+    },
+    "vega": {
+      "type": "number"
+    },
+    "theta": {
+      "type": "number"
+    },
+    "rho": {
+      "type": "number"
+    }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": [
+    "delta",
+    "gamma",
+    "vega",
+    "theta"
+  ]
 }

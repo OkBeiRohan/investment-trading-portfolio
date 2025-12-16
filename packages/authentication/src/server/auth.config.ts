@@ -85,6 +85,8 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
       },
     },
 
+    hooks: {},
+
     // Plugins
     plugins: [
       anonymous(),

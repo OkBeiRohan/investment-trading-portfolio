@@ -10,9 +10,8 @@ export const RegisterDtoSchema = z.object({
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name must be less than 50 characters"),
   email: z
-    .string({ message: "Email is required" })
-    .min(1, "Email is required")
-    .email("Invalid email address"),
+    .email({ message: "Email is required" })
+    .min(1, "Email is required"),
   password: z
     .string({ message: "Password is required" })
     .min(8, "Password must be at least 8 characters")

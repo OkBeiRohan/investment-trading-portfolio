@@ -9,7 +9,7 @@ import { Document } from "mongoose";
 })
 export class User
   extends Document
-  implements Omit<IUser, "id" | "createdAt" | "updatedAt">
+  implements Omit<IUser, "createdAt" | "updatedAt">
 {
   @Prop({ required: true, unique: true, lowercase: true, index: true })
   email: string;

@@ -13,10 +13,7 @@ export interface AuthFormState {
  * Forgot Password DTO Schema
  */
 export const ForgotPasswordDtoSchema = z.object({
-  email: z
-    .string({ message: "Email is required" })
-    .min(1, "Email is required")
-    .email("Invalid email address"),
+  email: z.email({ message: "Email is required" }).min(1, "Email is required"),
 });
 
 export type IForgotPasswordDto = z.infer<typeof ForgotPasswordDtoSchema>;
@@ -136,9 +133,8 @@ export function parseTwoFactorFormData(
  */
 export const MagicLinkDtoSchema = z.object({
   email: z
-    .string({ message: "Email is required" })
-    .min(1, "Email is required")
-    .email("Invalid email address"),
+    .email({ message: "Email is required" })
+    .min(1, "Email is required"),
 });
 
 export type IMagicLinkDto = z.infer<typeof MagicLinkDtoSchema>;

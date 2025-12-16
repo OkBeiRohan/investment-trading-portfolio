@@ -26,6 +26,8 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
     secret: options.secret,
     trustedOrigins: options.trustedOrigins,
 
+    experimental: { joins: true },
+
     user: {
       additionalFields: {
         dateOfBirth: {
