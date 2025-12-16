@@ -5,8 +5,8 @@ import { TRPCModule } from 'nestjs-trpc-v2';
 import { AuthModule } from '@repo/authentication';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-// import { HealthModule } from './health/health.module';
-// import { UserModule } from './user/user.module';
+import { HealthModule } from './health/health.module';
+import { UserModule } from './user/user.module';
 import { AppContext } from './app.context';
 import { AppRouter } from './app.router';
 import registerConfiguration from './environment/configuration';
@@ -29,8 +29,8 @@ import registerConfiguration from './environment/configuration';
       basePath: '/api/trpc',
     }),
     AuthModule,
-    // HealthModule,
-    // UserModule,
+    HealthModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppContext, AppRouter],
