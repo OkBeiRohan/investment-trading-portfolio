@@ -15,6 +15,8 @@ async function bootstrap() {
   const port = parseInt(process.env.PORT ?? '3004', 10);
   const host = process.env.HOST ?? '0.0.0.0';
 
+  console.log(`Application will initialize in http://${host}:${port}`);
+
   await app.listen(port, host);
 
   console.log(`🚀 Application is running on: http://${host}:${port}`);
@@ -22,6 +24,7 @@ async function bootstrap() {
 }
 
 void bootstrap().catch((error) => {
+  console.error('Error during application bootstrap:', error);
   writeFileSync('graph.json', PartialGraphHost.toString() ?? '');
   process.exit(1);
 });
