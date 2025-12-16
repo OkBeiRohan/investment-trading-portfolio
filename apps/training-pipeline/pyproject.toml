@@ -12,7 +12,7 @@ scikit-learn = "^1.4.0"
 
 # Deep Learning
 torch = "^2.5.0"
-torchvision = "^0.20.0"
+torchvision = "^0.22.1"
 lightning = "^2.4.0"
 
 # ML Libraries
@@ -26,7 +26,7 @@ gymnasium = "^1.0.0"
 
 # Time-Series
 statsmodels = "^0.14.0"
-arch = "^7.1.0"  # For GARCH
+arch = "^8.0.0"  # For GARCH
 
 # Technical Analysis
 ta = "^0.11.0"
@@ -38,7 +38,7 @@ onnxruntime-gpu = "^1.19.0"
 skl2onnx = "^1.17.0"
 
 # Experiment Tracking
-mlflow = "^2.17.0"
+mlflow = "^3.7.0"
 optuna = "^4.1.0"
 
 # Database
