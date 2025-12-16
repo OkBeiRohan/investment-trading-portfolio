@@ -118,7 +118,7 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
       useSecureCookies: options.environment === "production",
       cookiePrefix: "better-auth",
       crossSubDomainCookies: {
-        enabled: true,
+        enabled: false, // CRITICAL: Disable to prevent Domain attribute
       },
       defaultCookieAttributes: {
         // CRITICAL: Use "none" for cross-origin (Vercel <-> Render)
@@ -127,6 +127,7 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         path: "/",
         httpOnly: true,
         secure: options.environment === "production", // Required with sameSite=none
+        // Do NOT set domain - let browser use current origin (Vercel)
       },
       database: {
         useNumberId: false,
