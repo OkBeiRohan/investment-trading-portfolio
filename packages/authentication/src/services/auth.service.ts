@@ -20,7 +20,7 @@ export class AuthService {
 
     return createBetterAuthInstance({
       adapter: mongodbAdapter(this.mongoDBService.getDatabase() as any, {
-        client: this.mongoDBService.getClient() as any,
+        // client: this.mongoDBService.getClient() as any,
       }),
       options: createAuthConfig({
         appName: config.auth.appName,

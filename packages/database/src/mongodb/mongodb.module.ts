@@ -50,15 +50,31 @@ import { MongoDBService } from "./mongodb.service";
     ),
     MongooseModule.forFeature(
       [
-        { name: User.name, schema: UserSchema },
-        { name: Account.name, schema: AccountSchema },
-        { name: Session.name, schema: SessionSchema },
-        { name: Verification.name, schema: VerificationSchema },
-        { name: TwoFactor.name, schema: TwoFactorSchema },
-        { name: Passkey.name, schema: PasskeySchema },
-        { name: Organization.name, schema: OrganizationSchema },
-        { name: Member.name, schema: MemberSchema },
-        { name: Invitation.name, schema: InvitationSchema },
+        { name: User.name, schema: UserSchema, collection: "user" },
+        { name: Account.name, schema: AccountSchema, collection: "account" },
+        { name: Session.name, schema: SessionSchema, collection: "session" },
+        {
+          name: Verification.name,
+          schema: VerificationSchema,
+          collection: "verification",
+        },
+        {
+          name: TwoFactor.name,
+          schema: TwoFactorSchema,
+          collection: "twoFactor",
+        },
+        { name: Passkey.name, schema: PasskeySchema, collection: "passkey" },
+        {
+          name: Organization.name,
+          schema: OrganizationSchema,
+          collection: "organization",
+        },
+        { name: Member.name, schema: MemberSchema, collection: "member" },
+        {
+          name: Invitation.name,
+          schema: InvitationSchema,
+          collection: "invitation",
+        },
       ],
       DatabaseConnections.User
     ),
