@@ -15,6 +15,5 @@ export { toNextJsHandler } from "better-auth/next-js";
 import { createAuthClientInstance } from "./auth-client.config";
 
 export const authClient = createAuthClientInstance({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   basePath: "/api/auth",
 });
