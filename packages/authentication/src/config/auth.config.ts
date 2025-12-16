@@ -112,6 +112,8 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         : undefined,
     },
 
+    hooks: {},
+
     advanced: {
       useSecureCookies: options.environment === "production",
       cookiePrefix: "better-auth",
@@ -119,9 +121,12 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         enabled: true,
       },
       defaultCookieAttributes: {
-        sameSite: "lax" as const,
+        // CRITICAL: Use "none" for cross-origin (Vercel <-> Render)
+        // "lax" only works for same-site requests
+        sameSite: options.environment === "production" ? "none" : "lax",
         path: "/",
         httpOnly: true,
+        secure: options.environment === "production", // Required with sameSite=none
       },
       database: {
         useNumberId: false,
