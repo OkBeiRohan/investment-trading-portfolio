@@ -13,10 +13,12 @@
 ## Deployment Steps
 
 ### 1. Create Render Account
+
 - Go to https://render.com
 - Sign up with GitHub (no credit card required)
 
 ### 2. Connect Repository
+
 - Click "New +" → "Web Service"
 - Connect your GitHub account
 - Select `investment-trading-portfolio` repository
@@ -24,20 +26,22 @@
 ### 3. Configure Service
 
 **Basic Settings:**
+
 - **Name**: `investment-trading-api` (or your preferred name)
 - **Region**: Singapore (closest to Mumbai for low latency)
 - **Branch**: `main` (or your default branch)
 - **Runtime**: Node
-- **Build Command**: 
+- **Build Command**:
   ```bash
   pnpm install && pnpm build --filter=api...
   ```
-- **Start Command**: 
+- **Start Command**:
   ```bash
   cd apps/api && node dist/src/main.js
   ```
 
 **Advanced Settings:**
+
 - **Plan**: Free
 - **Health Check Path**: `/health`
 - **Auto-Deploy**: Yes (deploys on every push)
@@ -66,6 +70,7 @@ QUESTDB_URL=http://localhost:9000
 ```
 
 **Generate AUTH_SECRET:**
+
 ```bash
 # On Windows PowerShell:
 [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
@@ -88,6 +93,7 @@ openssl rand -base64 32
 ### 6. Get Your URL
 
 After deployment succeeds:
+
 - Your API will be live at: `https://your-app-name.onrender.com`
 - Update `AUTH_APP_URL` environment variable with this URL
 - Redeploy (click "Manual Deploy" → "Deploy latest commit")
@@ -105,21 +111,25 @@ curl https://your-app-name.onrender.com/health
 ## Important Notes
 
 ### ❄️ Cold Starts
+
 - **Free tier spins down after 15 minutes of inactivity**
 - First request after sleep: 30-60 seconds to wake up
 - Acceptable for personal/development use
 - To avoid: Upgrade to paid plan ($7/month) or use a cron job to ping every 14 minutes
 
 ### 📦 Build Performance
+
 - Render provides 512 MB RAM for builds on free tier
 - Turbo cache works but slower than Railway
 - Average build time: 3-5 minutes
 
 ### 🔄 Auto-Deploy
+
 - Pushes to `main` branch trigger automatic deployments
 - Can disable in service settings if needed
 
 ### 📊 Monitoring
+
 - View logs in real-time from Render dashboard
 - Click "Logs" tab to see server output
 - Health checks run every 30 seconds
@@ -127,7 +137,7 @@ curl https://your-app-name.onrender.com/health
 ## MongoDB Atlas Setup
 
 1. Create free M0 cluster
-2. **Network Access**: 
+2. **Network Access**:
    - Add IP: `0.0.0.0/0` (allow from anywhere)
    - Render uses dynamic IPs on free tier
 3. **Database Access**:
@@ -141,6 +151,7 @@ curl https://your-app-name.onrender.com/health
 ## Troubleshooting
 
 ### Build Fails
+
 ```bash
 # Check build logs in Render dashboard
 # Common issues:
@@ -150,6 +161,7 @@ curl https://your-app-name.onrender.com/health
 ```
 
 ### App Crashes on Start
+
 ```bash
 # Check runtime logs
 # Common issues:
@@ -159,6 +171,7 @@ curl https://your-app-name.onrender.com/health
 ```
 
 ### ES Module Errors (better-auth)
+
 - ✅ **Render supports ES modules natively** (unlike Vercel serverless)
 - Your current CommonJS + dynamic import setup works perfectly
 - No additional configuration needed
@@ -166,6 +179,7 @@ curl https://your-app-name.onrender.com/health
 ## Cost Optimization
 
 **Free Tier Limits:**
+
 - ✅ 512 MB RAM
 - ✅ 0.1 CPU
 - ✅ 100 GB bandwidth/month (plenty for 2 users)
@@ -173,6 +187,7 @@ curl https://your-app-name.onrender.com/health
 - ⚠️ Spins down after 15 min inactivity
 
 **To Prevent Spin Down (Free Methods):**
+
 1. **UptimeRobot** (free service):
    - Monitor `https://your-app.onrender.com/health`
    - Ping every 5 minutes (max 50 monitors free)
@@ -215,6 +230,7 @@ curl https://your-app-name.onrender.com/health
 ## Alternative: Railway (If Budget Allows)
 
 If you can afford $1/month after 30-day trial:
+
 - **No cold starts** (always on)
 - **Better performance** (faster builds)
 - **Can deploy MongoDB** (no external Atlas needed)
