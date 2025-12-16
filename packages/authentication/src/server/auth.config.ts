@@ -53,9 +53,7 @@ export interface BetterAuthServerConfig {
   };
 }
 
-export function createBetterAuthInstance(
-  config: BetterAuthServerConfig
-): ReturnType<typeof betterAuth> {
+export function createBetterAuthInstance(config: BetterAuthServerConfig) {
   return betterAuth({
     database: config.adapter,
     ...config.options,
