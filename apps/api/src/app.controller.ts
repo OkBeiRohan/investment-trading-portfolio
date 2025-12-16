@@ -9,7 +9,7 @@ export class AppController {
 
   @Get()
   @Header('Content-Type', 'text/html')
-  async getHome() {
+  getHome() {
     const html = this.appService.getHome();
     return html;
   }
