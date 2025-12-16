@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { CallbackUrlSchema } from "@repo/schema";
+import { isAuthenticatedAction } from "./lib/auth/actions";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -20,8 +21,9 @@ export async function proxy(request: NextRequest) {
   // Check if the path is public
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
 
-  // Check for auth session cookie (better-auth default)
-  const sessionToken = request.cookies.get("better-auth.session_token")?.value;
+  // Check for auth session cookie (better-auth)
+  // In production with useSecureCookies: true, cookie name is prefixed with __Secure-
+  const sessionToken = await isAuthenticatedAction(request.cookies);
 
   // If the user is not authenticated and trying to access a protected route
   if (!sessionToken && !isPublicPath) {
