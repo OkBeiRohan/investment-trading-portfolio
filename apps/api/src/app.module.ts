@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConditionalModule, ConfigModule } from '@nestjs/config';
 import { DevtoolsModule } from '@nestjs/devtools-integration';
-import { TRPCModule } from 'nestjs-trpc-v2';
+import { TRPCModule } from '@mguay/nestjs-trpc';
 import { AuthModule } from '@repo/authentication';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';

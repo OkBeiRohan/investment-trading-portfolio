@@ -116,7 +116,7 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
 
     advanced: {
       useSecureCookies: options.environment === "production",
-      cookiePrefix: "better-auth",
+      cookiePrefix: options.appName || "better-auth",
       crossSubDomainCookies: {
         enabled: false, // CRITICAL: Disable to prevent Domain attribute
       },

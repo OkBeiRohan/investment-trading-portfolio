@@ -10,12 +10,13 @@ import { redirect } from "next/navigation";
  */
 export async function signOutAction() {
   const cookieStore = await cookies();
+  const cookiePrefix = process.env.APP_NAME || "better-auth";
 
   // Delete all possible cookie names (both token and data)
-  cookieStore.delete("__Secure-better-auth.session_token");
-  cookieStore.delete("better-auth.session_token");
-  cookieStore.delete("__Secure-better-auth.session_data");
-  cookieStore.delete("better-auth.session_data");
+  cookieStore.delete(`__Secure-${cookiePrefix}.session_token`);
+  cookieStore.delete(`${cookiePrefix}.session_token`);
+  cookieStore.delete(`__Secure-${cookiePrefix}.session_data`);
+  cookieStore.delete(`${cookiePrefix}.session_data`);
 
   redirect("/authentication/login");
 }
@@ -26,10 +27,11 @@ export async function signOutAction() {
  */
 export async function isAuthenticatedAction(reqCookies?: RequestCookies) {
   const cookieStore = reqCookies ?? (await cookies());
+  const cookiePrefix = process.env.APP_NAME || "better-auth";
 
   // Check for session_token (primary indicator)
-  const secureToken = cookieStore.get("__Secure-better-auth.session_token");
-  const regularToken = cookieStore.get("better-auth.session_token");
+  const secureToken = cookieStore.get(`__Secure-${cookiePrefix}.session_token`);
+  const regularToken = cookieStore.get(`${cookiePrefix}.session_token`);
   const token = secureToken?.value || regularToken?.value;
 
   if (!token) {
