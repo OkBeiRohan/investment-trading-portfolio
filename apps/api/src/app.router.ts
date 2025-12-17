@@ -1,5 +1,5 @@
 import { AllowAnonymous } from '@repo/authentication';
-import { Query, Router } from 'nestjs-trpc-v2';
+import { Query, Router } from '@mguay/nestjs-trpc';
 import { AppService } from './app.service';
 import z from 'zod';
 
