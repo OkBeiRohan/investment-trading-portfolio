@@ -1,6 +1,4 @@
 import { RegisterForm } from "@/components/auth/register/form/register-form";
-import MoreRegisterOptions from "@/components/auth/register/more-register-options/more-register-options";
-import Divider from "@/components/form/divider";
 import styles from "./register.module.css";
 import Link from "next/link";
 
@@ -15,9 +13,7 @@ export default function RegisterPage() {
           </p>
         </div>
         <RegisterForm />
-        <Divider text="Or sign up with" />
-        <MoreRegisterOptions />
-        <p className={styles.signupText}>
+        <p className={styles.loginText}>
           Already have an account?{" "}
           <Link href="/authentication/login" className={styles.link}>
             Sign in

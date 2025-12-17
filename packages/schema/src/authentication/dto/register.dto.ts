@@ -9,9 +9,7 @@ export const RegisterDtoSchema = z.object({
     .string({ message: "Name is required" })
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name must be less than 50 characters"),
-  email: z
-    .email({ message: "Email is required" })
-    .min(1, "Email is required"),
+  email: z.email({ message: "Email is required" }).min(1, "Email is required"),
   password: z
     .string({ message: "Password is required" })
     .min(8, "Password must be at least 8 characters")
@@ -19,6 +17,11 @@ export const RegisterDtoSchema = z.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
       "Password must contain uppercase, lowercase, and number"
     ),
+  rememberMe: z
+    .string()
+    .optional()
+    .default("off")
+    .transform((val) => val === "on"),
 });
 
 export type IRegisterDto = z.infer<typeof RegisterDtoSchema>;
@@ -44,6 +47,7 @@ export function parseRegisterFormData(formData: FormData): RegisterFormResult {
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    rememberMe: formData.get("rememberMe"),
   };
 
   const result = RegisterDtoSchema.safeParse(rawData);

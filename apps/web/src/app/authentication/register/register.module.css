@@ -1,6 +1,4 @@
 .registerMain {
-  height: 100vh;
-  max-height: 100vh;
   padding: clamp(1rem, 3vw, 2rem);
   display: flex;
   flex-direction: column;
@@ -9,7 +7,7 @@
   overflow-y: auto;
 }
 
-.registerBox {
+.registerContainer {
   width: 100%;
   max-width: 440px;
   display: flex;
