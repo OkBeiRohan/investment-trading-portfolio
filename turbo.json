@@ -6,7 +6,8 @@
     "generate-schemas": {
       "dependsOn": [],
       "inputs": ["src/**/*.schema.ts"],
-      "outputs": ["generated/**", "types/**"]
+      "outputs": ["generated/**", "types/**"],
+      "env": ["API_URL", "APP_NAME"]
     },
     "build": {
       "dependsOn": ["^build", "^generate-schemas"],
@@ -20,6 +21,7 @@
       ],
       "env": [
         "API_URL",
+        "APP_NAME",
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
         "DATABASE_URL",
