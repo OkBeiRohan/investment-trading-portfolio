@@ -1,29 +1,49 @@
 .magicMain {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  padding: clamp(1rem, 3vw, 2rem);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e3eafe 0%, #f5f7fa 100%);
+  overflow-y: auto;
 }
 
 .magicBox {
   width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
-  padding: 32px;
+  max-width: 440px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--spacing-lg);
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .title {
-  font-size: 2rem;
-  font-weight: bold;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
   text-align: center;
-  margin-bottom: 8px;
-  color: #1f2937;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-primary);
+  transition: color var(--transition-base);
+  background: linear-gradient(
+    135deg,
+    var(--color-text-primary),
+    var(--color-primary)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .subtitle {
@@ -44,12 +64,15 @@
 }
 
 .success {
-  background-color: #ecfdf5;
-  color: #047857;
-  padding: 16px;
-  border-radius: 8px;
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  padding: 1rem;
+  border-radius: 12px;
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-sm);
+  border: 1px solid var(--color-success);
+  backdrop-filter: blur(10px);
+  align-items: center;
 }
 
 .form {
