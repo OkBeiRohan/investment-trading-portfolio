@@ -7,6 +7,7 @@ import Input from "@/components/form/input";
 import PrimaryButton from "@/components/form/button";
 import { registerAction } from "@/lib/actions/authentication/register/register-action";
 import Message from "@/components/form/message";
+import Checkbox from "@/components/form/input/checkbox";
 
 export function RegisterForm() {
   const [state, formAction, isPending] = useActionState(registerAction, {
@@ -46,6 +47,7 @@ export function RegisterForm() {
           error={state.fieldErrors?.properties?.password}
           required
         />
+        <Checkbox name="rememberMe" label="Remember me for 30 days" />
 
         <PrimaryButton
           type="submit"

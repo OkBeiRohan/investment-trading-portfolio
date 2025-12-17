@@ -18,11 +18,7 @@ export async function registerAction(
     };
   }
 
-  const { data, error } = await authClient.signUp.email({
-    email: result.data.email,
-    password: result.data.password,
-    name: result.data.name,
-  });
+  const { data, error } = await authClient.signUp.email(result.data);
 
   if (error) {
     return {

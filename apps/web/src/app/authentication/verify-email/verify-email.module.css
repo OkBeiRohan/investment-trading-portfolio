@@ -1,28 +1,51 @@
 .verifyMain {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  padding: clamp(1rem, 3vw, 2rem);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e3eafe 0%, #f5f7fa 100%);
+  overflow-y: auto;
 }
 
 .verifyBox {
   width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
-  padding: 32px;
+  max-width: 440px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--spacing-lg);
   text-align: center;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .iconContainer {
   display: flex;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 1rem;
+  animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .icon {
@@ -43,10 +66,10 @@
 }
 
 .title {
-  font-size: 1.5rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 8px 0;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
 .message {
@@ -58,19 +81,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #6366f1;
+  background: linear-gradient(135deg, var(--color-primary), #7c3aed);
   color: white;
-  padding: 10px 16px;
-  border-radius: 6px;
+  padding: 0.875rem 1.5rem;
+  border-radius: 12px;
   font-weight: 600;
   text-decoration: none;
-  font-size: 0.875rem;
-  margin-top: 24px;
-  transition: background-color 0.2s;
+  font-size: var(--font-size-base);
+  margin-top: var(--spacing-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(129, 140, 248, 0.3);
 }
 
 .actionButton:hover {
-  background-color: #4f46e5;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(129, 140, 248, 0.35);
 }
 
 .backLink {
