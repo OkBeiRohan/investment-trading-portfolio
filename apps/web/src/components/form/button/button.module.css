@@ -1,25 +1,60 @@
 .loginButton {
   width: 100%;
-  padding: 10px 0;
-  border-radius: var(--radius-md);
-  background: var(--color-button-primary-bg);
+  padding: 0.875rem 1.5rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--color-button-primary-bg), #7c3aed);
   color: var(--color-button-primary-text);
-  font-weight: var(--font-weight-semibold);
+  font-weight: 600;
   font-size: var(--font-size-base);
   border: none;
   cursor: pointer;
-  transition: background-color var(--transition-base);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
+  box-shadow: 0 4px 12px rgba(129, 140, 248, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.loginButton::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.loginButton:hover::before {
+  left: 100%;
 }
 
 .loginButton:hover {
-  background: var(--color-button-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(129, 140, 248, 0.35);
+  background: linear-gradient(
+    135deg,
+    var(--color-button-primary-hover),
+    #6d28d9
+  );
+}
+
+.loginButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(129, 140, 248, 0.25);
 }
 
 .loginButton:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
