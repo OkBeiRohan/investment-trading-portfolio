@@ -17,7 +17,10 @@ export default function InformationPanel({
   isLoginPage,
 }: InformationPanelProps) {
   return (
-    <div className={styles.informationPanel}>
+    <div
+      className={styles.informationPanel}
+      data-form-visible={showForm ? "true" : "false"}
+    >
       {/* Logo */}
       <div className={styles.logo}>
         <div className={styles.logoIcon}>

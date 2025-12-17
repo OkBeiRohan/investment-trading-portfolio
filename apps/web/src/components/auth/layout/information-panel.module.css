@@ -17,7 +17,7 @@
   gap: 0.75rem;
   font-size: 1.5rem;
   font-weight: 700;
-  color: hsl(var(--foreground));
+  color: var(--color-text-primary);
   animation: fadeInDown 0.8s ease-out;
 }
 
@@ -25,21 +25,24 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  background: linear-gradient(135deg, var(--color-primary), #ec4899);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 4px 20px rgba(129, 140, 248, 0.4);
 }
 
 @keyframes pulse {
   0%,
   100% {
     transform: scale(1);
+    box-shadow: 0 4px 20px rgba(129, 140, 248, 0.4);
   }
   50% {
     transform: scale(1.05);
+    box-shadow: 0 8px 30px rgba(129, 140, 248, 0.6);
   }
 }
 
@@ -56,11 +59,18 @@
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
-  color: hsl(var(--foreground));
+  color: var(--color-text-primary);
 }
 
 .gradient {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  margin: 0 1rem;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    #ec4899 50%,
+    #8b5cf6 100%
+  );
+  background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -71,49 +81,99 @@
 @keyframes gradientShift {
   0%,
   100% {
-    filter: hue-rotate(0deg);
+    background-position: 0% 50%;
   }
   50% {
-    filter: hue-rotate(20deg);
+    background-position: 100% 50%;
   }
 }
 
 .heroDescription {
   font-size: clamp(1rem, 2vw, 1.25rem);
   line-height: 1.6;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-text-secondary);
   max-width: 500px;
 }
 
 /* CTA Button */
 .ctaContainer {
   margin-top: 1rem;
+  position: relative;
+}
+
+.ctaContainer::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  background: linear-gradient(135deg, var(--color-primary), #ec4899);
+  border-radius: 20px;
+  opacity: 0.6;
+  filter: blur(20px);
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
 }
 
 .ctaButton {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 2rem;
-  font-size: 1rem;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.25rem 2.5rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  background: linear-gradient(135deg, var(--color-primary), #ec4899);
   border: none;
-  border-radius: 12px;
+  border-radius: 16px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
+  box-shadow: 0 8px 24px rgba(129, 140, 248, 0.5);
   text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.ctaButton::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  transition: left 0.6s;
+}
+
+.ctaButton:hover::before {
+  left: 100%;
 }
 
 .ctaButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.6);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 12px 40px rgba(129, 140, 248, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .ctaButton:active {
-  transform: translateY(0);
+  transform: translateY(-1px) scale(1);
+  box-shadow: 0 4px 20px rgba(129, 140, 248, 0.5);
 }
 
 /* Feature Cards */
@@ -256,7 +316,7 @@
   }
 }
 
-/* Mobile: Hide CTA button when form is visible */
+/* Mobile: Show/hide elements based on form visibility */
 @media (max-width: 768px) {
   .informationPanel {
     min-height: auto;
@@ -265,15 +325,46 @@
 
   .ctaButton {
     width: 100%;
-    justify-content: center;
+    padding: 1.5rem 2rem;
+    font-size: 1.25rem;
   }
 
   .features {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
-  /* Hide features on mobile to save space */
-  .features {
+  /* Compact feature cards on mobile */
+  .featureCard {
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .featureIcon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .featureCard h3 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .featureCard p {
+    font-size: 0.8rem;
+  }
+
+  /* Hide CTA when form is visible */
+  .informationPanel[data-form-visible="true"] .ctaContainer {
+    display: none;
+  }
+
+  /* Hide features when form is visible to save space */
+  .informationPanel[data-form-visible="true"] .features {
     display: none;
   }
 }
