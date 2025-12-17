@@ -2,21 +2,12 @@
 
 import { AlertCircle } from "lucide-react";
 import Link from "next/link";
+import styles from "./verify-email.module.css";
 
 export default function VerifyEmailError() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "1.5rem",
-        textAlign: "center",
-        maxWidth: "440px",
-        margin: "0 auto",
-        animation: "slideUp 0.5s ease-out",
-      }}
-    >
+    <main className={styles.verifyMain}>
+      <div className={styles.verifyBox}>
       <div
         style={{
           width: "64px",
@@ -67,6 +58,6 @@ export default function VerifyEmailError() {
       >
         Back to Login
       </Link>
-    </div>
-  );
+      </div>
+    </main>
 }

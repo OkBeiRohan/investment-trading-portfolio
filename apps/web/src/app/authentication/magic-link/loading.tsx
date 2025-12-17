@@ -1,32 +1,30 @@
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/loading/skeleton";
+import styles from "./magic-link.module.css";
 
 export default function MagicLinkLoading() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "1rem",
-        maxWidth: "440px",
-        margin: "0 auto",
-      }}
-    >
-      <Loader2
-        size={48}
-        color="var(--color-primary)"
-        style={{
-          animation: "spin 1s linear infinite",
-        }}
-      />
-      <p
-        style={{
-          color: "var(--color-text-secondary)",
-          fontSize: "1rem",
-        }}
-      >
-        Loading magic link...
-      </p>
-    </div>
+    <main className={styles.magicMain}>
+      <div className={styles.magicBox}>
+        {/* Header Skeleton */}
+        <div>
+          <Skeleton width="100%" height={40} style={{ marginBottom: "1rem" }} />
+          <Skeleton width="85%" height={20} style={{ margin: "0 auto" }} />
+        </div>
+
+        {/* Form Skeleton */}
+        <div className={styles.form}>
+          <div className={styles.inputGroup}>
+            <Skeleton width={100} height={20} />
+            <Skeleton width="100%" height={44} />
+          </div>
+          <Skeleton variant="rounded" width="100%" height={44} />
+        </div>
+
+        {/* Footer Skeleton */}
+        <div style={{ textAlign: "center" }}>
+          <Skeleton width={220} height={16} style={{ margin: "0 auto" }} />
+        </div>
+      </div>
+    </main>
   );
 }

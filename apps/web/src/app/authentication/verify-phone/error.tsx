@@ -2,21 +2,12 @@
 
 import { AlertCircle } from "lucide-react";
 import Link from "next/link";
+import styles from "./verify-phone.module.css";
 
 export default function VerifyPhoneError() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "1.5rem",
-        textAlign: "center",
-        maxWidth: "440px",
-        margin: "0 auto",
-        animation: "slideUp 0.5s ease-out",
-      }}
-    >
+    <main className={styles.verifyPhoneMain}>
+      <div className={styles.verifyPhoneContainer}>
       <div
         style={{
           width: "64px",
@@ -67,6 +58,6 @@ export default function VerifyPhoneError() {
       >
         Back to Login
       </Link>
-    </div>
-  );
+      </div>
+    </main>
 }

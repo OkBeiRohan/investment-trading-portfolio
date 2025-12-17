@@ -2,21 +2,21 @@
 
 import { AlertCircle } from "lucide-react";
 import Link from "next/link";
+import styles from "./magic-link.module.css";
 
 export default function MagicLinkError() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "1.5rem",
-        textAlign: "center",
-        maxWidth: "440px",
-        margin: "0 auto",
-        animation: "slideUp 0.5s ease-out",
-      }}
-    >
+    <main className={styles.magicMain}>
+      <div className={styles.magicBox}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1.5rem",
+            textAlign: "center",
+          }}
+        >
       <div
         style={{
           width: "64px",
@@ -67,6 +67,7 @@ export default function MagicLinkError() {
       >
         Try Again
       </Link>
-    </div>
-  );
+        </div>
+      </div>
+    </main>
 }
