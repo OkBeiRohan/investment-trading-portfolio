@@ -7,7 +7,7 @@ import styles from "./register.module.css";
 export default function RegisterError() {
   return (
     <main className={styles.registerMain}>
-      <div className={styles.registerBox}>
+      <div className={styles.registerContainer}>
         <div
           style={{
             display: "flex",
