@@ -109,7 +109,7 @@
 
 .ctaButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px hsl(var(--primary) / 0.4);
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.6);
 }
 
 .ctaButton:active {
@@ -126,17 +126,35 @@
 
 .featureCard {
   padding: 1.5rem;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.featureCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--color-primary-light), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.featureCard:hover::before {
+  opacity: 1;
 }
 
 .featureCard:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 12px 24px rgba(99, 102, 241, 0.2);
+  border-color: var(--color-primary);
 }
 
 .featureIcon {
@@ -145,27 +163,33 @@
   border-radius: 12px;
   background: linear-gradient(
     135deg,
-    hsl(var(--primary) / 0.1),
-    hsl(var(--accent) / 0.1)
+    var(--color-primary-light),
+    rgba(236, 72, 153, 0.1)
   );
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--primary));
+  color: var(--color-primary);
   margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .featureCard h3 {
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: hsl(var(--foreground));
+  color: var(--color-text-primary);
+  position: relative;
+  z-index: 1;
 }
 
 .featureCard p {
   font-size: 0.875rem;
   line-height: 1.5;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-text-secondary);
+  position: relative;
+  z-index: 1;
 }
 
 /* Decorative Elements */
@@ -174,24 +198,25 @@
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  opacity: 0.1;
+  opacity: 0.15;
+  filter: blur(60px);
 }
 
 .decorativeCircle1 {
-  width: 300px;
-  height: 300px;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--color-primary), transparent);
   top: 10%;
-  right: -100px;
+  right: -150px;
   animation: float 15s ease-in-out infinite;
 }
 
 .decorativeCircle2 {
-  width: 200px;
-  height: 200px;
-  background: linear-gradient(225deg, hsl(var(--accent)), hsl(var(--primary)));
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #ec4899, transparent);
   bottom: 20%;
-  left: -80px;
+  left: -100px;
   animation: float 18s ease-in-out infinite reverse;
 }
 

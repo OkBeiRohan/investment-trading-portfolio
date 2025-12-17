@@ -5,9 +5,8 @@
   overflow: hidden;
   background: linear-gradient(
     135deg,
-    hsl(var(--primary) / 0.05) 0%,
-    hsl(var(--accent) / 0.02) 50%,
-    hsl(var(--primary) / 0.08) 100%
+    var(--color-auth-gradient-start) 0%,
+    var(--color-auth-gradient-end) 100%
   );
 }
 
@@ -17,27 +16,27 @@
   content: "";
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.3;
+  filter: blur(100px);
+  opacity: 0.4;
   animation: float 20s ease-in-out infinite;
   pointer-events: none;
 }
 
 .authRoot::before {
-  width: 500px;
-  height: 500px;
-  background: hsl(var(--primary) / 0.3);
-  top: -250px;
-  left: -250px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--color-primary) 0%, transparent 70%);
+  top: -300px;
+  left: -300px;
   animation-delay: 0s;
 }
 
 .authRoot::after {
-  width: 400px;
-  height: 400px;
-  background: hsl(var(--accent) / 0.25);
-  bottom: -200px;
-  right: -200px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #ec4899 0%, transparent 70%);
+  bottom: -250px;
+  right: -250px;
   animation-delay: 10s;
 }
 
@@ -89,7 +88,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: hsl(var(--background));
+    background: var(--color-bg-primary);
     opacity: 0;
     transform: translateY(100%);
     pointer-events: none;
