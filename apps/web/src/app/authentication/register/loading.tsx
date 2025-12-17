@@ -4,7 +4,7 @@ import styles from "./register.module.css";
 export default function RegisterLoading() {
   return (
     <main className={styles.registerMain}>
-      <div className={styles.registerBox}>
+      <div className={styles.registerContainer}>
         {/* Header Skeleton */}
         <div>
           <Skeleton width="100%" height={40} style={{ marginBottom: "1rem" }} />
