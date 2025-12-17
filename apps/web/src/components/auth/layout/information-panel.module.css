@@ -1,56 +1,261 @@
 .informationPanel {
-  margin: var(--spacing-xl);
-  padding: var(--spacing-3xl);
-  border-radius: var(--spacing-3xl);
-  max-width: 40vw;
   flex: 1;
-  background-image: linear-gradient(
-    to top,
-    var(--color-panel-gradient-start) 0%,
-    var(--color-panel-gradient-end) 100%
-  );
-  box-shadow: var(--shadow-md);
-  transition:
-    background-image var(--transition-slow),
-    box-shadow var(--transition-slow);
-
   display: flex;
   flex-direction: column;
+  padding: clamp(2rem, 5vw, 4rem);
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
   justify-content: center;
-  gap: var(--spacing-lg);
+  gap: clamp(2rem, 4vw, 3rem);
 }
 
-.informationPanel h1 {
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-bold);
-  margin-bottom: var(--spacing-md);
-  text-align: center;
-  color: var(--color-text-primary);
-  transition: color var(--transition-base);
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  animation: fadeInDown 0.8s ease-out;
 }
 
-.informationPanel h2 {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
-  margin-top: var(--spacing-lg);
-  margin-bottom: var(--spacing-sm);
-  color: var(--color-text-primary);
-  transition: color var(--transition-base);
+.logoIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  animation: pulse 2s ease-in-out infinite;
 }
 
-.informationPanel p {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-relaxed);
-  color: var(--color-text-secondary);
-  transition: color var(--transition-base);
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
+/* Hero Section */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: fadeInUp 0.8s ease-out 0.2s backwards;
+}
+
+.heroTitle {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+}
+
+.gradient {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+  animation: gradientShift 3s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+  0%,
+  100% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(20deg);
+  }
+}
+
+.heroDescription {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+  max-width: 500px;
+}
+
+/* CTA Button */
+.ctaContainer {
+  margin-top: 1rem;
+}
+
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
+  text-decoration: none;
+}
+
+.ctaButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px hsl(var(--primary) / 0.4);
+}
+
+.ctaButton:active {
+  transform: translateY(0);
+}
+
+/* Feature Cards */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  animation: fadeInUp 0.8s ease-out 0.4s backwards;
+}
+
+.featureCard {
+  padding: 1.5rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.featureCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.featureIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.1),
+    hsl(var(--accent) / 0.1)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--primary));
+  margin-bottom: 1rem;
+}
+
+.featureCard h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: hsl(var(--foreground));
+}
+
+.featureCard p {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Decorative Elements */
+.decorativeCircle1,
+.decorativeCircle2 {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.1;
+}
+
+.decorativeCircle1 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  top: 10%;
+  right: -100px;
+  animation: float 15s ease-in-out infinite;
+}
+
+.decorativeCircle2 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(225deg, hsl(var(--accent)), hsl(var(--primary)));
+  bottom: 20%;
+  left: -80px;
+  animation: float 18s ease-in-out infinite reverse;
+}
+
+/* Animations */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+/* Mobile: Hide CTA button when form is visible */
 @media (max-width: 768px) {
   .informationPanel {
-    margin: var(--spacing-md);
-    padding: var(--spacing-xl);
-    border-radius: var(--spacing-xl);
-    width: 90%;
-    max-width: unset;
+    min-height: auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .ctaButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .features {
+    grid-template-columns: 1fr;
+  }
+
+  /* Hide features on mobile to save space */
+  .features {
+    display: none;
+  }
+}
+
+/* Desktop: Always show content */
+@media (min-width: 769px) {
+  .ctaContainer {
+    display: none; /* CTA only needed on mobile */
   }
 }
