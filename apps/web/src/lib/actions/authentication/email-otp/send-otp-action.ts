@@ -17,7 +17,7 @@ export async function sendEmailOtpAction(
     };
   }
 
-  const { error } = await authClient.emailOTP.sendVerificationCode({
+  const { error } = await authClient.emailOtp.sendVerificationOtp({
     email: result.data.email,
     type: "sign-in", // or "email-verification" depending on context, for login it's usually sign-in
   });
