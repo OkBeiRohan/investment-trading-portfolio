@@ -1,0 +1,150 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 16px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin-top: 4px;
+}
+
+.card {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.sectionHeader {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.iconContainer {
+  padding: 10px;
+  background-color: var(--color-bg-secondary);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  height: fit-content;
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 4px 0;
+}
+
+.sectionDesc {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.newPasswordGroup {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .newPasswordGroup {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tfaContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background-color: var(--color-bg-secondary);
+  border-radius: 8px;
+}
+
+.tfaStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tfaInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tfaLabel {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.enabled {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.disabled {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.tfaDetail {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.enableButton {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.enableButton:hover {
+  background-color: var(--color-primary-hover);
+}

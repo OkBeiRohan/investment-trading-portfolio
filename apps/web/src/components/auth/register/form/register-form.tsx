@@ -25,6 +25,7 @@ export function RegisterForm() {
           placeholder="John Doe"
           autoComplete="name"
           error={state.fieldErrors?.properties?.name}
+          defaultValue={state.fieldValues?.name}
           required
         />
         <Input
@@ -35,6 +36,7 @@ export function RegisterForm() {
           placeholder="you@example.com"
           autoComplete="email"
           error={state.fieldErrors?.properties?.email}
+          defaultValue={state.fieldValues?.email}
           required
         />
         <Input
@@ -45,6 +47,7 @@ export function RegisterForm() {
           placeholder="••••••••"
           autoComplete="new-password"
           error={state.fieldErrors?.properties?.password}
+          defaultValue={state.fieldValues?.password}
           required
         />
         <Checkbox name="rememberMe" label="Remember me for 30 days" />

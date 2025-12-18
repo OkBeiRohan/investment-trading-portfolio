@@ -24,6 +24,7 @@ export function ResetPasswordForm() {
           placeholder="••••••••"
           autoComplete="new-password"
           error={state.fieldErrors?.properties?.password}
+          defaultValue={state.fieldValues?.password}
           required
         />
         <Input
@@ -34,6 +35,7 @@ export function ResetPasswordForm() {
           placeholder="••••••••"
           autoComplete="new-password"
           error={state.fieldErrors?.properties?.confirmPassword}
+          defaultValue={state.fieldValues?.confirmPassword}
           required
         />
 

@@ -1,0 +1,50 @@
+{
+  "project": {
+    "name": "investment-trading-portfolio",
+    "type": "monorepo",
+    "tooling": {
+      "monorepoManager": "turborepo",
+      "packageManager": "pnpm",
+      "linter": "eslint",
+      "formatter": "prettier"
+    }
+  },
+  "stack": {
+    "languages": ["typescript", "python"],
+    "frontend": {
+      "framework": "next.js",
+      "library": "react",
+      "path": "apps/web"
+    },
+    "backend": {
+      "framework": "nestjs",
+      "communication": "trpc",
+      "services": [
+        { "name": "api", "path": "apps/api", "type": "gateway" },
+        { "name": "algo-worker", "path": "apps/algo-worker", "type": "worker" },
+        { "name": "data-processor", "path": "apps/data-processor", "type": "processor" },
+        { "name": "document-processor", "path": "apps/document-processor", "type": "processor" },
+        { "name": "market-feeder", "path": "apps/market-feeder", "type": "service" },
+        { "name": "wealth-analyzer", "path": "apps/wealth-analyzer", "type": "service" },
+        { "name": "wealth-management", "path": "apps/wealth-management", "type": "service" }
+      ]
+    },
+    "dataScience": {
+      "framework": "kedro",
+      "manager": "poetry",
+      "path": "apps/training-pipeline"
+    },
+    "databases": [
+      { "type": "document", "name": "mongodb" },
+      { "type": "time-series", "name": "questdb" },
+      { "type": "key-value", "name": "redis" }
+    ]
+  },
+  "testing": {
+    "framework": "jest"
+  },
+  "conventions": {
+    "sharedPackagesPath": "packages/",
+    "appsPath": "apps/"
+  }
+}

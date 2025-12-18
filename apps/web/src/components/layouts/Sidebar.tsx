@@ -81,7 +81,7 @@ export function MainSidebar() {
     { label: "Trades", href: "/", icon: LayoutDashboard },
     { label: "Strategies", href: "/", icon: LayoutDashboard },
     { label: "Organizations", href: "/organization", icon: Users },
-    { label: "Account", href: "/", icon: User },
+    { label: "Account", href: "/account", icon: User },
   ];
 
   return <Sidebar items={items} title="Project Quantum" />;
@@ -123,9 +123,10 @@ export function OrgSidebar({
 
 export function AccountSidebar() {
   const items: SidebarItem[] = [
-    { label: "Profile", href: "/", icon: User },
-    { label: "Security", href: "/", icon: Settings },
-    { label: "Preferences", href: "/", icon: Settings },
+    { label: "Profile", href: "/account", icon: User },
+    { label: "Security", href: "/account/security", icon: Settings },
+    { label: "Linked Accounts", href: "/account/linked-accounts", icon: Users },
+    { label: "Preferences", href: "/account/preferences", icon: Settings },
   ];
 
   return (

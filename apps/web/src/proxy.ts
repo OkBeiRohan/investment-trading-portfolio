@@ -16,6 +16,8 @@ export async function proxy(request: NextRequest) {
     "/authentication/verify-phone",
     "/authentication/magic-link",
     "/authentication/passkey",
+    "/authentication/2fa",
+    "/authentication/email-otp",
   ];
 
   // Check if the path is public

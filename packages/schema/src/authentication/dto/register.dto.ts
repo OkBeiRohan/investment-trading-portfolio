@@ -36,11 +36,15 @@ export type RegisterFieldErrors = z.core.$ZodErrorTree<IRegisterDto>;
  */
 export type RegisterFormResult =
   | { success: true; data: IRegisterDto }
-  | { success: false; fieldErrors: RegisterFieldErrors };
+  | {
+      success: false;
+      fieldErrors: RegisterFieldErrors;
+      fieldValues: Record<string, any>;
+    };
 
 /**
  * Helper to parse and validate FormData into RegisterDto
- * Returns Zod's treeified error format
+ * Returns Zod's treeified error format and preserves field values on error
  */
 export function parseRegisterFormData(formData: FormData): RegisterFormResult {
   const rawData = {
@@ -56,6 +60,7 @@ export function parseRegisterFormData(formData: FormData): RegisterFormResult {
     return {
       success: false,
       fieldErrors: z.treeifyError(result.error),
+      fieldValues: rawData,
     };
   }
 

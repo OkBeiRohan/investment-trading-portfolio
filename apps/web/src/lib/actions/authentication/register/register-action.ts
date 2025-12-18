@@ -15,6 +15,7 @@ export async function registerAction(
     return {
       error: null,
       fieldErrors: result.fieldErrors,
+      fieldValues: result.fieldValues,
     };
   }
 
@@ -24,6 +25,11 @@ export async function registerAction(
     return {
       error: error.message || "Failed to create account. Please try again.",
       fieldErrors: null,
+      fieldValues: {
+        name: formData.get("name") as string,
+        email: formData.get("email") as string,
+        password: formData.get("password") as string,
+      },
     };
   }
 

@@ -14,6 +14,7 @@ export async function forgotPasswordAction(
     return {
       error: null,
       fieldErrors: result.fieldErrors,
+      fieldValues: result.fieldValues,
     };
   }
 
@@ -25,6 +26,9 @@ export async function forgotPasswordAction(
     return {
       error: error.message || "Failed to send reset email. Please try again.",
       fieldErrors: null,
+      fieldValues: {
+        email: formData.get("email") as string,
+      },
     };
   }
 

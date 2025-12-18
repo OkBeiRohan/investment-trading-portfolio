@@ -7,6 +7,7 @@ import { handleAuthSuccess } from "../index";
 interface LoginState {
   error: string | null;
   fieldErrors?: LoginFieldErrors;
+  fieldValues?: { email?: string; password?: string };
 }
 
 export async function loginAction(
@@ -20,6 +21,7 @@ export async function loginAction(
     return {
       error: null,
       fieldErrors: result.fieldErrors,
+      fieldValues: result.fieldValues,
     };
   }
 
@@ -28,11 +30,23 @@ export async function loginAction(
     const { data, error } = await authClient.signIn.email(result.data);
 
     if (error) {
-      return { error: error.message || "Invalid credentials" };
+      return {
+        error: error.message || "Invalid credentials",
+        fieldValues: {
+          email: formData.get("email") as string,
+          password: formData.get("password") as string,
+        },
+      };
     }
 
     if (!data) {
-      return { error: "Authentication failed" };
+      return {
+        error: "Authentication failed",
+        fieldValues: {
+          email: formData.get("email") as string,
+          password: formData.get("password") as string,
+        },
+      };
     }
 
     // Check if 2FA verification is required
@@ -43,6 +57,12 @@ export async function loginAction(
     return { error: null };
   } catch (err) {
     console.error("Login error:", err);
-    return { error: "An unexpected error occurred" };
+    return {
+      error: "An unexpected error occurred",
+      fieldValues: {
+        email: formData.get("email") as string,
+        password: formData.get("password") as string,
+      },
+    };
   }
 }
