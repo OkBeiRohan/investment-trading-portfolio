@@ -25,6 +25,7 @@ export function LoginForm() {
           placeholder="you@example.com"
           autoComplete="email"
           error={state.fieldErrors?.properties?.email}
+          defaultValue={state.fieldValues?.email}
           required
         />
         <Input
@@ -35,6 +36,7 @@ export function LoginForm() {
           placeholder="••••••••"
           autoComplete="current-password"
           error={state.fieldErrors?.properties?.password}
+          defaultValue={state.fieldValues?.password}
           required
         />
 

@@ -123,9 +123,9 @@ export function OrgSidebar({
 
 export function AccountSidebar() {
   const items: SidebarItem[] = [
-    { label: "Profile", href: "/", icon: User },
-    { label: "Security", href: "/", icon: Settings },
-    { label: "Preferences", href: "/", icon: Settings },
+    { label: "Profile", href: "/account", icon: User },
+    { label: "Security", href: "/account/security", icon: Settings },
+    { label: "Preferences", href: "/account/preferences", icon: Settings },
   ];
 
   return (

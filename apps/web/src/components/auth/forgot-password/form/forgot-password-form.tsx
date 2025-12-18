@@ -27,6 +27,7 @@ export function ForgotPasswordForm() {
             placeholder="you@example.com"
             autoComplete="email"
             error={state.fieldErrors?.properties?.email}
+            defaultValue={state.fieldValues?.email}
             required
           />
 

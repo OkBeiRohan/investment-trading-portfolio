@@ -15,6 +15,7 @@ export async function resetPasswordAction(
     return {
       error: null,
       fieldErrors: result.fieldErrors,
+      fieldValues: result.fieldValues,
     };
   }
 
@@ -27,6 +28,10 @@ export async function resetPasswordAction(
       error:
         error.message || "Failed to reset password. The link may have expired.",
       fieldErrors: null,
+      fieldValues: {
+        password: formData.get("password") as string,
+        confirmPassword: formData.get("confirmPassword") as string,
+      },
     };
   }
 

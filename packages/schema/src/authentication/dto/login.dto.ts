@@ -28,11 +28,15 @@ export type LoginFieldErrors = z.core.$ZodErrorTree<ILoginDto>;
  */
 export type LoginFormResult =
   | { success: true; data: ILoginDto }
-  | { success: false; fieldErrors: LoginFieldErrors };
+  | {
+      success: false;
+      fieldErrors: LoginFieldErrors;
+      fieldValues: Record<string, any>;
+    };
 
 /**
  * Helper to parse and validate FormData into LoginDto
- * Returns Zod's treeified error format
+ * Returns Zod's treeified error format and preserves field values on error
  */
 export function parseLoginFormData(formData: FormData): LoginFormResult {
   const rawData = {
@@ -47,6 +51,7 @@ export function parseLoginFormData(formData: FormData): LoginFormResult {
     return {
       success: false,
       fieldErrors: z.treeifyError(result.error),
+      fieldValues: rawData,
     };
   }
 

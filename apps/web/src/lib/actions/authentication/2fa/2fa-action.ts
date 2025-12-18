@@ -15,6 +15,7 @@ export async function twoFactorAction(
     return {
       error: null,
       fieldErrors: result.fieldErrors,
+      fieldValues: result.fieldValues,
     };
   }
 
@@ -26,6 +27,9 @@ export async function twoFactorAction(
     return {
       error: error.message || "Invalid verification code. Please try again.",
       fieldErrors: null,
+      fieldValues: {
+        code: formData.get("code") as string,
+      },
     };
   }
 

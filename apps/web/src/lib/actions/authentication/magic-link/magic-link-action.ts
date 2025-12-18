@@ -14,6 +14,7 @@ export async function magicLinkAction(
     return {
       error: null,
       fieldErrors: result.fieldErrors,
+      fieldValues: result.fieldValues,
     };
   }
 
@@ -26,6 +27,9 @@ export async function magicLinkAction(
     return {
       error: error.message || "Failed to send magic link. Please try again.",
       fieldErrors: null,
+      fieldValues: {
+        email: formData.get("email") as string,
+      },
     };
   }
 

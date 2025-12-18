@@ -15,6 +15,7 @@ export async function verifyEmailOtpAction(
     return {
       error: null,
       fieldErrors: result.fieldErrors,
+      fieldValues: result.fieldValues,
     };
   }
 
@@ -27,6 +28,9 @@ export async function verifyEmailOtpAction(
     return {
       error: error.message || "Invalid OTP. Please try again.",
       fieldErrors: null,
+      fieldValues: {
+        code: formData.get("code") as string,
+      },
     };
   }
 

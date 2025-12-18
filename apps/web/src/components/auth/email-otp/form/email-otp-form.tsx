@@ -55,6 +55,7 @@ export function EmailOtpForm() {
               placeholder="you@example.com"
               autoComplete="email"
               error={sendState.fieldErrors?.properties?.email}
+              defaultValue={sendState.fieldValues?.email}
               required
             />
 
@@ -76,6 +77,7 @@ export function EmailOtpForm() {
             placeholder="123456"
             autoComplete="one-time-code"
             error={verifyState.fieldErrors?.properties?.code}
+            defaultValue={verifyState.fieldValues?.code}
             maxLength={6}
             pattern="[0-9]*"
             inputMode="numeric"

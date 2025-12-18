@@ -14,6 +14,7 @@ export async function sendEmailOtpAction(
     return {
       error: null,
       fieldErrors: result.fieldErrors,
+      fieldValues: result.fieldValues,
     };
   }
 
@@ -26,6 +27,9 @@ export async function sendEmailOtpAction(
     return {
       error: error.message || "Failed to send OTP. Please try again.",
       fieldErrors: null,
+      fieldValues: {
+        email: formData.get("email") as string,
+      },
     };
   }
 

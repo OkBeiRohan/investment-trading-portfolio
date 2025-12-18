@@ -6,6 +6,7 @@ import { z } from "zod";
 export interface AuthFormState {
   error: string | null;
   fieldErrors?: any;
+  fieldValues?: Record<string, string>;
   success?: string;
 }
 
@@ -22,19 +23,26 @@ export type ForgotPasswordFieldErrors =
 
 export type ForgotPasswordFormResult =
   | { success: true; data: IForgotPasswordDto }
-  | { success: false; fieldErrors: ForgotPasswordFieldErrors };
+  | {
+      success: false;
+      fieldErrors: ForgotPasswordFieldErrors;
+      fieldValues: Record<string, any>;
+    };
 
 export function parseForgotPasswordFormData(
   formData: FormData
 ): ForgotPasswordFormResult {
-  const result = ForgotPasswordDtoSchema.safeParse({
+  const rawData = {
     email: formData.get("email"),
-  });
+  };
+
+  const result = ForgotPasswordDtoSchema.safeParse(rawData);
 
   if (!result.success) {
     return {
       success: false,
       fieldErrors: z.treeifyError(result.error),
+      fieldValues: rawData,
     };
   }
 
@@ -68,20 +76,27 @@ export type ResetPasswordFieldErrors = z.core.$ZodErrorTree<IResetPasswordDto>;
 
 export type ResetPasswordFormResult =
   | { success: true; data: IResetPasswordDto }
-  | { success: false; fieldErrors: ResetPasswordFieldErrors };
+  | {
+      success: false;
+      fieldErrors: ResetPasswordFieldErrors;
+      fieldValues: Record<string, any>;
+    };
 
 export function parseResetPasswordFormData(
   formData: FormData
 ): ResetPasswordFormResult {
-  const result = ResetPasswordDtoSchema.safeParse({
+  const rawData = {
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
-  });
+  };
+
+  const result = ResetPasswordDtoSchema.safeParse(rawData);
 
   if (!result.success) {
     return {
       success: false,
       fieldErrors: z.treeifyError(result.error),
+      fieldValues: rawData,
     };
   }
 
@@ -106,19 +121,26 @@ export type TwoFactorFieldErrors = z.core.$ZodErrorTree<ITwoFactorDto>;
 
 export type TwoFactorFormResult =
   | { success: true; data: ITwoFactorDto }
-  | { success: false; fieldErrors: TwoFactorFieldErrors };
+  | {
+      success: false;
+      fieldErrors: TwoFactorFieldErrors;
+      fieldValues: Record<string, any>;
+    };
 
 export function parseTwoFactorFormData(
   formData: FormData
 ): TwoFactorFormResult {
-  const result = TwoFactorDtoSchema.safeParse({
+  const rawData = {
     code: formData.get("code"),
-  });
+  };
+
+  const result = TwoFactorDtoSchema.safeParse(rawData);
 
   if (!result.success) {
     return {
       success: false,
       fieldErrors: z.treeifyError(result.error),
+      fieldValues: rawData,
     };
   }
 
@@ -132,9 +154,7 @@ export function parseTwoFactorFormData(
  * Magic Link DTO Schema
  */
 export const MagicLinkDtoSchema = z.object({
-  email: z
-    .email({ message: "Email is required" })
-    .min(1, "Email is required"),
+  email: z.email({ message: "Email is required" }).min(1, "Email is required"),
 });
 
 export type IMagicLinkDto = z.infer<typeof MagicLinkDtoSchema>;
@@ -142,19 +162,26 @@ export type MagicLinkFieldErrors = z.core.$ZodErrorTree<IMagicLinkDto>;
 
 export type MagicLinkFormResult =
   | { success: true; data: IMagicLinkDto }
-  | { success: false; fieldErrors: MagicLinkFieldErrors };
+  | {
+      success: false;
+      fieldErrors: MagicLinkFieldErrors;
+      fieldValues: Record<string, any>;
+    };
 
 export function parseMagicLinkFormData(
   formData: FormData
 ): MagicLinkFormResult {
-  const result = MagicLinkDtoSchema.safeParse({
+  const rawData = {
     email: formData.get("email"),
-  });
+  };
+
+  const result = MagicLinkDtoSchema.safeParse(rawData);
 
   if (!result.success) {
     return {
       success: false,
       fieldErrors: z.treeifyError(result.error),
+      fieldValues: rawData,
     };
   }
 
@@ -176,19 +203,24 @@ export type EmailOtpFieldErrors = z.core.$ZodErrorTree<IEmailOtpDto>;
 
 export type EmailOtpFormResult =
   | { success: true; data: IEmailOtpDto }
-  | { success: false; fieldErrors: EmailOtpFieldErrors };
+  | {
+      success: false;
+      fieldErrors: EmailOtpFieldErrors;
+      fieldValues: Record<string, any>;
+    };
 
-export function parseEmailOtpFormData(
-  formData: FormData
-): EmailOtpFormResult {
-  const result = EmailOtpDtoSchema.safeParse({
+export function parseEmailOtpFormData(formData: FormData): EmailOtpFormResult {
+  const rawData = {
     email: formData.get("email"),
-  });
+  };
+
+  const result = EmailOtpDtoSchema.safeParse(rawData);
 
   if (!result.success) {
     return {
       success: false,
       fieldErrors: z.treeifyError(result.error),
+      fieldValues: rawData,
     };
   }
 
@@ -210,24 +242,32 @@ export const EmailOtpVerifyDtoSchema = z.object({
 });
 
 export type IEmailOtpVerifyDto = z.infer<typeof EmailOtpVerifyDtoSchema>;
-export type EmailOtpVerifyFieldErrors = z.core.$ZodErrorTree<IEmailOtpVerifyDto>;
+export type EmailOtpVerifyFieldErrors =
+  z.core.$ZodErrorTree<IEmailOtpVerifyDto>;
 
 export type EmailOtpVerifyFormResult =
   | { success: true; data: IEmailOtpVerifyDto }
-  | { success: false; fieldErrors: EmailOtpVerifyFieldErrors };
+  | {
+      success: false;
+      fieldErrors: EmailOtpVerifyFieldErrors;
+      fieldValues: Record<string, any>;
+    };
 
 export function parseEmailOtpVerifyFormData(
   formData: FormData
 ): EmailOtpVerifyFormResult {
-  const result = EmailOtpVerifyDtoSchema.safeParse({
+  const rawData = {
     email: formData.get("email"),
     code: formData.get("code"),
-  });
+  };
+
+  const result = EmailOtpVerifyDtoSchema.safeParse(rawData);
 
   if (!result.success) {
     return {
       success: false,
       fieldErrors: z.treeifyError(result.error),
+      fieldValues: rawData,
     };
   }
 

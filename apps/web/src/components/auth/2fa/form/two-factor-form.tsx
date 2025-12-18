@@ -24,6 +24,7 @@ export function TwoFactorForm() {
           placeholder="123456"
           autoComplete="one-time-code"
           error={state.fieldErrors?.properties?.code}
+          defaultValue={state.fieldValues?.code}
           maxLength={6}
           pattern="[0-9]*"
           inputMode="numeric"
