@@ -59,7 +59,7 @@ export default function MoreLoginOptions() {
     <div className={styles.moreContainer}>
       <div className={styles.altLogins}>
         <Link
-          href="/authentication/magic-link"
+          href="/authentication/email-otp"
           className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
         >
           <Mail className={styles.icon} />

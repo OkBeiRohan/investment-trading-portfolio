@@ -163,3 +163,76 @@ export function parseMagicLinkFormData(
     data: result.data,
   };
 }
+
+/**
+ * Email OTP DTO Schema
+ */
+export const EmailOtpDtoSchema = z.object({
+  email: z.email({ message: "Email is required" }).min(1, "Email is required"),
+});
+
+export type IEmailOtpDto = z.infer<typeof EmailOtpDtoSchema>;
+export type EmailOtpFieldErrors = z.core.$ZodErrorTree<IEmailOtpDto>;
+
+export type EmailOtpFormResult =
+  | { success: true; data: IEmailOtpDto }
+  | { success: false; fieldErrors: EmailOtpFieldErrors };
+
+export function parseEmailOtpFormData(
+  formData: FormData
+): EmailOtpFormResult {
+  const result = EmailOtpDtoSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: z.treeifyError(result.error),
+    };
+  }
+
+  return {
+    success: true,
+    data: result.data,
+  };
+}
+
+/**
+ * Email OTP Verification DTO Schema
+ */
+export const EmailOtpVerifyDtoSchema = z.object({
+  email: z.email({ message: "Email is required" }),
+  code: z
+    .string({ message: "Verification code is required" })
+    .length(6, "Code must be 6 digits")
+    .regex(/^\d{6}$/, "Code must be 6 digits"),
+});
+
+export type IEmailOtpVerifyDto = z.infer<typeof EmailOtpVerifyDtoSchema>;
+export type EmailOtpVerifyFieldErrors = z.core.$ZodErrorTree<IEmailOtpVerifyDto>;
+
+export type EmailOtpVerifyFormResult =
+  | { success: true; data: IEmailOtpVerifyDto }
+  | { success: false; fieldErrors: EmailOtpVerifyFieldErrors };
+
+export function parseEmailOtpVerifyFormData(
+  formData: FormData
+): EmailOtpVerifyFormResult {
+  const result = EmailOtpVerifyDtoSchema.safeParse({
+    email: formData.get("email"),
+    code: formData.get("code"),
+  });
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: z.treeifyError(result.error),
+    };
+  }
+
+  return {
+    success: true,
+    data: result.data,
+  };
+}

@@ -40,9 +40,11 @@
 **Key Pattern**: After `signIn.email`, check response for `twoFactorRedirect` property
 
 ```typescript
-const { data, error } = await authClient.signIn.email({ email, password });
+const response = await authClient.signIn.email({ email, password });
+const { data, error } = response;
 
-if (data?.twoFactorRedirect) {
+// Check for 2FA redirect on the response object
+if (response.redirect) {
   // User has 2FA enabled, redirect to 2FA verification
   router.push("/authentication/2fa");
   return;
@@ -1495,11 +1497,11 @@ Better Auth uses CSRF tokens automatically for all mutations.
 ## Notes
 
 1. **Better Auth Server Config**: Ensure email sending is configured in `@repo/authentication` for:
+
    - Email verification
    - Magic links
    - Password reset
    - 2FA backup codes (optional)
-
 2. **Environment Variables**: Required for production:
 
    ```env
@@ -1514,13 +1516,10 @@ Better Auth uses CSRF tokens automatically for all mutations.
    SMTP_USER=
    SMTP_PASS=
    ```
-
 3. **Database Migrations**: Run migrations after adding Better Auth plugins:
 
    ```bash
    npx @better-auth/cli migrate
    ```
-
 4. **Testing Better Auth**: Use test email service (e.g., Ethereal Email) for development.
-
 5. **Passkey Testing**: Use Chrome DevTools WebAuthn emulator for local testing.
