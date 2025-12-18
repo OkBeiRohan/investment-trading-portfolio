@@ -39,7 +39,7 @@ export type RegisterFormResult =
   | {
       success: false;
       fieldErrors: RegisterFieldErrors;
-      fieldValues: Record<string, any>;
+      fieldValues: Record<string, FormDataEntryValue | null>;
     };
 
 /**
