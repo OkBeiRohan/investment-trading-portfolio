@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect } from "react";
+import type { Route } from "next";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -6,15 +10,18 @@ import {
   Wallet,
   ArrowRight,
 } from "lucide-react";
+import { useNavigation } from "@/hooks/use-navigation";
 import styles from "./home.module.css";
 
 export default function DashboardPage() {
-  // Ideally we fetch user data here or use a hook
-  // const { data: session } = authClient.useSession();
-  // But for a server component or simple client component, we can just render.
-  // Since we need interactivity or hooks, let's make it use client if needed,
-  // but for the dashboard links it can be static.
-  // actually authClient.useSession is a hook, so "use client"
+  const { setNavigation } = useNavigation();
+
+  useEffect(() => {
+    setNavigation({
+      title: "Dashboard",
+      breadcrumbs: [{ label: "Home" }],
+    });
+  }, [setNavigation]);
 
   return <DashboardContent />;
 }

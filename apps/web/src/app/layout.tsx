@@ -3,6 +3,7 @@ import { Providers } from "./providers";
 import mainFont from "@/lib/fonts";
 import "./globals.css";
 import { getAppSettings } from "@/lib/server/settings";
+import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 
 export const metadata: Metadata = {
   title: "Investment Trading Portfolio",
@@ -26,7 +27,9 @@ export default async function RootLayout({
       className={mainFont.className}
     >
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <DashboardLayout>{children}</DashboardLayout>
+        </Providers>
       </body>
     </html>
   );

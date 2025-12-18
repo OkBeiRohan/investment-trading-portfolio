@@ -125,6 +125,7 @@ export function AccountSidebar() {
   const items: SidebarItem[] = [
     { label: "Profile", href: "/account", icon: User },
     { label: "Security", href: "/account/security", icon: Settings },
+    { label: "Linked Accounts", href: "/account/linked-accounts", icon: Users },
     { label: "Preferences", href: "/account/preferences", icon: Settings },
   ];
 
