@@ -8,6 +8,7 @@ import Input from "@/components/form/input";
 import Checkbox from "@/components/form/input/checkbox";
 import PrimaryButton from "@/components/form/button";
 import { loginAction } from "../../../../lib/actions/authentication/login/login-action";
+import Form from "next/form";
 
 export function LoginForm() {
   const [state, formAction, isPending] = useActionState(loginAction, {
@@ -16,7 +17,7 @@ export function LoginForm() {
 
   return (
     <div className={styles.form}>
-      <form className={styles.form} action={formAction}>
+      <Form className={styles.form} action={formAction}>
         <Input
           type="email"
           name="email"
@@ -51,7 +52,7 @@ export function LoginForm() {
         <PrimaryButton type="submit" loading={isPending} text="Sign In" />
 
         {state.error && <div className={styles.error}>{state.error}</div>}
-      </form>
+      </Form>
     </div>
   );
 }
