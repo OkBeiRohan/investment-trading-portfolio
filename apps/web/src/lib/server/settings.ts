@@ -141,8 +141,3 @@ export async function getThemeSettings(): Promise<{
     isSystemTheme: settings.isSystemTheme,
   };
 }
-
-/**
- * Re-export types for convenience
- */
-export type { AppSettings, ThemeOption, LanguageCode, CurrencyCode };
