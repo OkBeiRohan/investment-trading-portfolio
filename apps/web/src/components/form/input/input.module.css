@@ -36,7 +36,8 @@
   background: transparent;
   font-size: var(--font-size-base);
   color: var(--color-input-text);
-  padding: 0.875rem 1rem 0.875rem calc(var(--spacing-md) + 24px);
+  padding: 0.875rem 1rem 0.875rem
+    calc(var(--spacing-md) + 20px + var(--spacing-sm));
   transition: color var(--transition-base);
   font-weight: 500;
 }

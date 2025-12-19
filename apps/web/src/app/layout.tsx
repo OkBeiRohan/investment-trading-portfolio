@@ -28,12 +28,12 @@ export default async function RootLayout({
       data-theme={theme}
       className={mainFont.className}
     >
-      <SpeedInsights />
-      <Analytics />
       <body>
         <Providers>
           <DashboardLayout>{children}</DashboardLayout>
         </Providers>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
