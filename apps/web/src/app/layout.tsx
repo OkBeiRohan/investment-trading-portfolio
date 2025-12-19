@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Providers } from "./providers";
-import mainFont from "@/lib/fonts";
-import "./globals.css";
 import { getAppSettings } from "@/lib/server/settings";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
+import mainFont from "@/lib/fonts";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Investment Trading Portfolio",
@@ -26,6 +28,8 @@ export default async function RootLayout({
       data-theme={theme}
       className={mainFont.className}
     >
+      <SpeedInsights />
+      <Analytics />
       <body>
         <Providers>
           <DashboardLayout>{children}</DashboardLayout>
