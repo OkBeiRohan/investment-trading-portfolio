@@ -1,5 +1,5 @@
 import { type IUser, userSchema } from '@repo/schema/user';
-import { Input, Mutation, Query, Router } from '@mguay/nestjs-trpc';
+import { Input, Mutation, Query, Router } from 'nestjs-trpc-v2';
 import { z } from 'zod';
 
 @Router({ alias: 'user' })
