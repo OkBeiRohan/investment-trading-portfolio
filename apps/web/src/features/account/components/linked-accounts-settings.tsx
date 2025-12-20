@@ -1,20 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { Link2, Trash2, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link2, Trash2 } from "lucide-react";
 import styles from "./linked-accounts-settings.module.css";
 import GoogleIcon from "@/components/icons/brands/Google";
 import GitHubIcon from "@/components/icons/brands/GitHub";
 import { authClient } from "@/lib/auth/auth-client";
 import Message from "@/components/form/message";
+import { IAccount } from "@repo/schema";
 
 export function LinkedAccountsSettings() {
+  const [linkedAccounts, setLinkedAccounts] = useState<IAccount[] | undefined>(
+    undefined
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // In a real implementation, we would fetch the list of linked accounts from the server
-  // const { data: linkedAccounts } = authClient.useListAccounts();
-  // For now, we'll just show the UI for linking/unlinking
+  useEffect(() => {
+    // Fetch linked accounts on component mount
+    authClient
+      .listAccounts()
+      .then(({ data, error }) => {
+        if (error) {
+          setError(error.message || "Failed to load linked accounts");
+        } else {
+          setLinkedAccounts(data);
+        }
+      })
+      .catch((err) => {
+        setError(err?.message || "Failed to load linked accounts");
+      });
+  }, []);
+
+  // Helper to check if account is linked
+  const isLinked = (providerId: string) => {
+    return linkedAccounts?.some((acc) => acc.providerId === providerId);
+  };
+
+  // Get linked account info
+  const getAccountInfo = (providerId: string) => {
+    return linkedAccounts?.find((acc) => acc.providerId === providerId);
+  };
 
   const handleLinkAccount = async (provider: "google" | "github") => {
     setLoading(true);
@@ -22,7 +48,7 @@ export function LinkedAccountsSettings() {
     try {
       const { data, error } = await authClient.linkSocial({
         provider,
-        callbackURL: "/account/linked-accounts",
+        callbackURL: "/account/linked",
       });
 
       if (error) {
@@ -39,13 +65,21 @@ export function LinkedAccountsSettings() {
     }
   };
 
-  const handleUnlinkAccount = async (providerId: "google" | "github") => {
+  const handleUnlinkAccount = async (providerId: string) => {
     setLoading(true);
     setError(null);
     try {
       const { error } = await authClient.unlinkAccount({ providerId });
       if (error) {
         setError(error.message || `Failed to unlink ${providerId}`);
+      } else {
+        // Refetch accounts to update UI
+        const { data, error: fetchError } = await authClient.listAccounts();
+        if (fetchError) {
+          setError(fetchError.message || "Failed to reload accounts");
+        } else {
+          setLinkedAccounts(data);
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -61,8 +95,8 @@ export function LinkedAccountsSettings() {
     try {
       const { data, error } = await authClient.oauth2.link({
         providerId: "upstox",
-        callbackURL: "/account/linked-accounts",
-        errorCallbackURL: "/account/linked-accounts",
+        callbackURL: "/account/linked",
+        errorCallbackURL: "/account/linked",
       });
       if (error) {
         setError(error.message || `Failed to link Upstox`);
@@ -78,12 +112,56 @@ export function LinkedAccountsSettings() {
     }
   };
 
+  const getProviderIcon = (providerId: string) => {
+    switch (providerId) {
+      case "google":
+        return <GoogleIcon />;
+      case "github":
+        return <GitHubIcon />;
+      case "upstox":
+        return (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              fontSize: "12px",
+              fontWeight: "bold",
+            }}
+          >
+            UP
+          </div>
+        );
+      case "credential":
+        return (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              fontSize: "12px",
+              fontWeight: "bold",
+            }}
+          >
+            PW
+          </div>
+        );
+
+      default:
+        return providerId.substring(0, 2).toUpperCase();
+    }
+  };
+
+  const getProviderName = (providerId: string) => {
+    if (providerId === "credential") return "Password";
+
+    return providerId.charAt(0).toUpperCase() + providerId.slice(1);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h2 className={styles.title}>Linked Accounts</h2>
         <p className={styles.subtitle}>
-          Manage your connected social accounts for easier login.
+          Manage your connected social accounts and broker accounts.
         </p>
       </div>
 
@@ -106,68 +184,154 @@ export function LinkedAccountsSettings() {
           </Message>
         )}
 
-        <div className={styles.accountsList}>
-          {/* Example of a linked account state - usually we'd map over actual linked accounts */}
-          {/* This is a placeholder UI since we can't easily fetch linked accounts state client-side without a specific endpoint yet */}
-
-          <div className={styles.accountItem}>
-            <div className={styles.accountInfo}>
-              <div className={styles.providerIcon}>
-                <GoogleIcon />
+        {loading ? (
+          <div className={styles.loading}>Loading accounts...</div>
+        ) : (
+          <div className={styles.accountsList}>
+            {/* Google */}
+            <div className={styles.accountItem}>
+              <div className={styles.accountInfo}>
+                <div className={styles.providerIcon}>
+                  <GoogleIcon />
+                </div>
+                <div>
+                  <p className={styles.providerName}>Google</p>
+                  <p className={styles.accountEmail}>
+                    {isLinked("google")
+                      ? getAccountInfo("google")?.userId || "Linked"
+                      : "Not linked"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className={styles.providerName}>Google</p>
-                <p className={styles.accountEmail}>Not linked</p>
-              </div>
+              {isLinked("google") ? (
+                <button
+                  className={styles.unlinkButton}
+                  onClick={() => handleUnlinkAccount("google")}
+                  disabled={loading}
+                >
+                  <Trash2 size={16} /> Unlink
+                </button>
+              ) : (
+                <button
+                  className={styles.linkButton}
+                  onClick={() => handleLinkAccount("google")}
+                  disabled={loading}
+                >
+                  Connect
+                </button>
+              )}
             </div>
-            <button
-              className={styles.linkButton}
-              onClick={() => handleLinkAccount("google")}
-              disabled={loading}
-            >
-              Connect
-            </button>
-          </div>
 
-          <div className={styles.accountItem}>
-            <div className={styles.accountInfo}>
-              <div className={styles.providerIcon}>
-                <GitHubIcon />
+            {/* GitHub */}
+            <div className={styles.accountItem}>
+              <div className={styles.accountInfo}>
+                <div className={styles.providerIcon}>
+                  <GitHubIcon />
+                </div>
+                <div>
+                  <p className={styles.providerName}>GitHub</p>
+                  <p className={styles.accountEmail}>
+                    {isLinked("github")
+                      ? getAccountInfo("github")?.userId || "Linked"
+                      : "Not linked"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className={styles.providerName}>GitHub</p>
-                <p className={styles.accountEmail}>Not linked</p>
-              </div>
+              {isLinked("github") ? (
+                <button
+                  className={styles.unlinkButton}
+                  onClick={() => handleUnlinkAccount("github")}
+                  disabled={loading}
+                >
+                  <Trash2 size={16} /> Unlink
+                </button>
+              ) : (
+                <button
+                  className={styles.linkButton}
+                  onClick={() => handleLinkAccount("github")}
+                  disabled={loading}
+                >
+                  Connect
+                </button>
+              )}
             </div>
-            <button
-              className={styles.linkButton}
-              onClick={() => handleUnlinkAccount("github")}
-              disabled={loading}
-            >
-              <Trash2 /> Unlink
-            </button>
-          </div>
 
-          <div className={styles.accountItem}>
-            <div className={styles.accountInfo}>
-              <div className={styles.providerIcon}>
-                UP
-                <Plus size={16} />
+            {/* Upstox */}
+            <div className={styles.accountItem}>
+              <div className={styles.accountInfo}>
+                <div className={styles.providerIcon}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    UP
+                  </div>
+                </div>
+                <div>
+                  <p className={styles.providerName}>Upstox</p>
+                  <p className={styles.accountEmail}>
+                    {isLinked("upstox")
+                      ? `Account: ${getAccountInfo("upstox")?.accountId || "Linked"}`
+                      : "Not linked"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className={styles.providerName}>Upstox</p>
-                <p className={styles.accountEmail}>Not linked</p>
-              </div>
+              {isLinked("upstox") ? (
+                <button
+                  className={styles.unlinkButton}
+                  onClick={() => handleUnlinkAccount("upstox")}
+                  disabled={loading}
+                >
+                  <Trash2 size={16} /> Unlink
+                </button>
+              ) : (
+                <button
+                  className={styles.linkButton}
+                  onClick={handleUpstoxAccount}
+                  disabled={loading}
+                >
+                  Connect
+                </button>
+              )}
             </div>
-            <button
-              className={styles.linkButton}
-              onClick={handleUpstoxAccount}
-              disabled={loading}
-            >
-              Connect
-            </button>
+
+            {/* Show other linked accounts if any */}
+            {linkedAccounts
+              ?.filter(
+                (acc) =>
+                  !["google", "github", "upstox"].includes(acc.providerId)
+              )
+              .map((account) => (
+                <div key={account.providerId} className={styles.accountItem}>
+                  <div className={styles.accountInfo}>
+                    <div className={styles.providerIcon}>
+                      {getProviderIcon(account.providerId)}
+                    </div>
+                    <div>
+                      <p className={styles.providerName}>
+                        {getProviderName(account.providerId)}
+                      </p>
+                      <p className={styles.accountEmail}>
+                        Created on{" "}
+                        {new Date(account.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className={styles.unlinkButton}
+                    onClick={() => handleUnlinkAccount(account.providerId)}
+                    disabled={loading}
+                  >
+                    <Trash2 size={16} /> Unlink
+                  </button>
+                </div>
+              ))}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

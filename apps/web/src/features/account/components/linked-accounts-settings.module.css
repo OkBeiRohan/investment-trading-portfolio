@@ -138,6 +138,9 @@
 }
 
 .unlinkButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 16px;
   border-radius: 6px;
   background-color: transparent;
@@ -152,4 +155,15 @@
 .unlinkButton:hover {
   background-color: var(--color-error-bg);
   border-color: var(--color-error);
+}
+
+.unlinkButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading {
+  text-align: center;
+  padding: 24px;
+  color: var(--color-text-secondary);
 }

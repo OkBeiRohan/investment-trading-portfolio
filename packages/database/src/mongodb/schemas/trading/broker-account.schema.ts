@@ -1,0 +1,67 @@
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import { IBrokerAccount } from "@repo/schema";
+import { User } from "../user/user.schema";
+import { Account } from "../authentication/account.schema";
+import {
+  BrokerAccountProfile,
+  BrokerAccountProfileSchema,
+} from "./broker-account-profile.schema";
+import {
+  BrokerAccountFundMargin,
+  BrokerAccountFundMarginSchema,
+} from "./broker-account-fund-margin.schema";
+
+@Schema({ timestamps: true, collection: "broker_accounts" })
+export class BrokerAccount extends Document implements IBrokerAccount {
+  @Prop({
+    type: Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
+  userId: string;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: Account.name,
+    required: true,
+    index: true,
+  })
+  authAccountId: string;
+
+  @Prop({ required: true, default: "upstox" })
+  providerId: string;
+
+  @Prop({
+    type: BrokerAccountProfileSchema,
+    required: true,
+  })
+  profile: BrokerAccountProfile;
+
+  @Prop({ required: true })
+  broker: string;
+
+  @Prop({ type: [String], required: true })
+  products: string[];
+
+  @Prop({ type: [String], required: true })
+  orderTypes: string[];
+
+  @Prop({ type: [String], required: true })
+  exchanges: string[];
+
+  @Prop({ type: BrokerAccountFundMarginSchema, required: true })
+  fundMargin: BrokerAccountFundMargin;
+
+  @Prop({ type: Date, default: Date.now })
+  lastSyncAt: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const BrokerAccountSchema = SchemaFactory.createForClass(BrokerAccount);
+
+// Unique index: one broker account per user per provider
+BrokerAccountSchema.index({ userId: 1, providerId: 1 }, { unique: true });

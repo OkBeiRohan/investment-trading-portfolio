@@ -16,6 +16,10 @@ import {
 import { passkey } from "@better-auth/passkey";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { createAuthConfig } from "src/config/auth.config";
+import IGetProfileUpstoxResponse, {
+  IGetProfileUpstox,
+} from "@repo/schema/api/upstox/profile/get-profile";
+import { isUpstoxSuccess } from "@repo/schema";
 
 export interface BetterAuthServerConfig {
   adapter: (options: BetterAuthOptions) => DBAdapter;
@@ -59,6 +63,8 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
   return betterAuth({
     database: config.adapter,
     ...config.options,
+    // Hook to store Upstox data after account linking
+    hooks: {},
 
     // Email and password authentication
     emailAndPassword: {
@@ -169,6 +175,26 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                     "https://api.upstox.com/v2/login/authorization/dialog",
                   tokenUrl:
                     "https://api.upstox.com/v2/login/authorization/token",
+                  userInfoUrl: "https://api.upstox.com/v2/user/profile",
+                  mapProfileToUser: (profile: IGetProfileUpstoxResponse) => {
+                    console.log(profile);
+
+                    if (isUpstoxSuccess<IGetProfileUpstox>(profile)) {
+                      const upstoxProfile = profile.data;
+
+                      return {
+                        id: upstoxProfile.user_id,
+                        name: upstoxProfile.user_name,
+                        email: upstoxProfile.email,
+                        emailVerified: true, // Upstox emails are verified
+                      };
+                    }
+
+                    throw new Error(
+                      "Invalid profile data received from Upstox",
+                      { cause: profile }
+                    );
+                  },
                   // Upstox OAuth v2 does not expose granular per-request scopes.
                   // The effective permissions of the access token are defined in the
                   // Upstox developer console for this application (e.g. trading +
@@ -179,6 +205,48 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                   pkce: false, // Upstox uses client_secret
                   responseType: "code",
                   authentication: "post", // Standard OAuth2 POST request
+                  // Map Upstox profile response to better-auth user format
+                  // getUserInfo: async (tokens) => {
+                  //   const response = await fetch(
+                  //     "https://api.upstox.com/v2/user/profile",
+                  //     {
+                  //       headers: {
+                  //         Authorization: `Bearer ${tokens.accessToken}`,
+                  //         Accept: "application/json",
+                  //       },
+                  //     }
+                  //   );
+
+                  //   if (!response.ok) {
+                  //     throw new Error(
+                  //       "Failed to fetch user profile from Upstox"
+                  //     );
+                  //   }
+
+                  //   const profileResponse =
+                  //     (await response.json()) as IGetProfileUpstoxResponse;
+
+                  //   if (isUpstoxSuccess<IGetProfileUpstox>(profileResponse)) {
+                  //     const profile = profileResponse.data;
+
+                  //     return {
+                  //       id: profile.user_id,
+                  //       name: profile.user_name,
+                  //       email: profile.email,
+                  //       emailVerified: true, // Upstox emails are verified
+                  //     };
+                  //   }
+
+                  //   console.log(
+                  //     "Invalid Upstox profile response",
+                  //     profileResponse
+                  //   );
+
+                  //   throw new Error(
+                  //     "Invalid profile data received from Upstox",
+                  //     { cause: profileResponse }
+                  //   );
+                  // },
                 },
               ],
             }),
