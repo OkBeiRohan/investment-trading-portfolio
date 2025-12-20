@@ -33,61 +33,27 @@ import {
 } from "@nestjs/common";
 import { Pool, type PoolClient } from "pg";
 import { Sender } from "@questdb/nodejs-client";
+import type {
+  ICandleInsert,
+  IQuoteInsert,
+  IGreeksInsert,
+  IDepthInsert,
+} from "@repo/schema";
 
-export interface ILPConfig {
+export interface QuestDBConfig {
   host: string;
-  port: number; // ILP port (default 9009)
-  auth?: {
-    keyId: string;
-    token: string;
-  };
+  pgPort: number;
+  ilpPort: number;
+  user: string;
+  password: string;
+  database: string;
+  poolSize?: number;
 }
 
-export interface CandleInsert {
-  timestamp: number | Date; // Unix timestamp in ms or Date object
-  instrument_key: string;
-  interval: string; // '1m', '5m', '15m', '1h', '1d', etc.
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  open_interest?: number;
-}
-
-export interface QuoteInsert {
-  timestamp: number | Date;
-  instrument_key: string;
-  ltp: number;
-  bid?: number;
-  ask?: number;
-  bid_qty?: number;
-  ask_qty?: number;
-  volume?: number;
-  open_interest?: number;
-  upper_circuit?: number;
-  lower_circuit?: number;
-}
-
-export interface GreeksInsert {
-  timestamp: number | Date;
-  instrument_key: string;
-  delta: number;
-  gamma: number;
-  theta: number;
-  vega: number;
-  iv: number; // Implied volatility
-  underlying_price: number;
-}
-
-export interface DepthInsert {
-  timestamp: number | Date;
-  instrument_key: string;
-  side: "BUY" | "SELL";
-  level: number; // 0-4 (5 levels)
-  price: number;
-  quantity: number;
-  orders: number;
+export interface DataGap {
+  start: Date;
+  end: Date;
+  missingCount: number;
 }
 
 @Injectable()
@@ -95,56 +61,58 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(QuestDBService.name);
   private pool: Pool; // PostgreSQL wire protocol (queries)
   private sender: Sender | null = null; // ILP protocol (writes)
-  private readonly ilpConfig: ILPConfig;
   private flushInterval: NodeJS.Timeout | null = null;
   private pendingWrites = 0;
+  private readonly config: QuestDBConfig;
 
   constructor() {
-    // PostgreSQL wire protocol configuration (port 8812)
-    this.pool = new Pool({
+    this.config = {
       host: process.env.QUESTDB_HOST || "localhost",
-      port: parseInt(process.env.QUESTDB_PG_PORT || "8812", 10),
+      pgPort: parseInt(process.env.QUESTDB_PG_PORT || "8812", 10),
+      ilpPort: parseInt(process.env.QUESTDB_ILP_PORT || "9009", 10),
       user: process.env.QUESTDB_USER || "admin",
       password: process.env.QUESTDB_PASSWORD || "quest",
       database: "qdb",
-      max: 20, // Maximum pool size
+      poolSize: parseInt(process.env.QUESTDB_POOL_SIZE || "20", 10),
+    };
+
+    // PostgreSQL wire protocol configuration (port 8812)
+    this.pool = new Pool({
+      host: this.config.host,
+      port: this.config.pgPort,
+      user: this.config.user,
+      password: this.config.password,
+      database: this.config.database,
+      max: this.config.poolSize,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     });
-
-    // ILP protocol configuration (port 9009)
-    this.ilpConfig = {
-      host: process.env.QUESTDB_HOST || "localhost",
-      port: parseInt(process.env.QUESTDB_ILP_PORT || "9000", 10),
-      auth: process.env.QUESTDB_ILP_KEY_ID
-        ? {
-            keyId: process.env.QUESTDB_ILP_KEY_ID,
-            token: process.env.QUESTDB_ILP_TOKEN || "",
-          }
-        : undefined,
-    };
 
     this.logger.log("QuestDB connection pool initialized");
   }
 
   async onModuleInit() {
     try {
-      // Create ILP sender connection
-      this.sender = new Sender({
-        protocol: "tcp",
-        host: this.ilpConfig.host,
-        port: this.ilpConfig.port,
-        auth: this.ilpConfig.auth,
-        init_buf_size: 8192, // 8KB buffer
-        auto_flush: false, // Manual flush for batching
-      });
+      // Build ILP connection string
+      // Format: protocol::addr=host:port;option=value;...
+      const connectionStr =
+        [
+          `tcp::addr=${this.config.host}:${this.config.ilpPort}`,
+          "auto_flush=off", // Manual flush for batching control
+          "init_buf_size=8192", // 8KB initial buffer
+          "max_buf_size=104857600", // 100MB max buffer
+          "auto_flush_rows=1000", // Auto-flush at 1000 rows
+          "auto_flush_interval=5000", // Auto-flush every 5 seconds
+        ].join(";") + ";";
 
+      this.sender = await Sender.fromConfig(connectionStr);
       await this.sender.connect();
+
       this.logger.log(
-        `ILP sender connected to ${this.ilpConfig.host}:${this.ilpConfig.port}`
+        `ILP sender connected to ${this.config.host}:${this.config.ilpPort}`
       );
 
-      // Auto-flush every 5 seconds or when buffer reaches 1000 writes
+      // Auto-flush interval (backup to auto_flush_interval config)
       this.flushInterval = setInterval(() => {
         this.autoFlush().catch((err) =>
           this.logger.error("Auto-flush failed", err)
@@ -289,7 +257,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    *
    * @param candles Array of candle data
    */
-  async insertCandles(candles: CandleInsert[]): Promise<void> {
+  async insertCandles(candles: ICandleInsert[]): Promise<void> {
     if (!this.sender) {
       throw new Error("ILP sender not initialized");
     }
@@ -331,7 +299,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
   /**
    * Insert market quotes using ILP
    */
-  async insertQuotes(quotes: QuoteInsert[]): Promise<void> {
+  async insertQuotes(quotes: IQuoteInsert[]): Promise<void> {
     if (!this.sender) {
       throw new Error("ILP sender not initialized");
     }
@@ -374,7 +342,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
   /**
    * Insert option greeks using ILP
    */
-  async insertGreeks(greeks: GreeksInsert[]): Promise<void> {
+  async insertGreeks(greeks: IGreeksInsert[]): Promise<void> {
     if (!this.sender) {
       throw new Error("ILP sender not initialized");
     }
@@ -414,7 +382,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
   /**
    * Insert market depth (order book) using ILP
    */
-  async insertDepth(depths: DepthInsert[]): Promise<void> {
+  async insertDepth(depths: IDepthInsert[]): Promise<void> {
     if (!this.sender) {
       throw new Error("ILP sender not initialized");
     }

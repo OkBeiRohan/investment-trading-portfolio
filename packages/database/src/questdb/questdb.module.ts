@@ -5,7 +5,7 @@
  */
 
 import { Global, Module } from "@nestjs/common";
-import { QuestDBProductionService } from "./questdb-production.service";
+import { QuestDBService } from "./questdb.service";
 import {
   CandlesRepository,
   QuotesRepository,
@@ -16,14 +16,14 @@ import {
 @Global()
 @Module({
   providers: [
-    QuestDBProductionService,
+    QuestDBService,
     CandlesRepository,
     QuotesRepository,
     GreeksRepository,
     DepthRepository,
   ],
   exports: [
-    QuestDBProductionService,
+    QuestDBService,
     CandlesRepository,
     QuotesRepository,
     GreeksRepository,

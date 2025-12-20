@@ -3,7 +3,7 @@
  */
 
 export { QuestDBModule } from "./questdb.module";
-export { QuestDBProductionService } from "./questdb-production.service";
+export { QuestDBService } from "./questdb.service";
 export {
   CandlesRepository,
   QuotesRepository,

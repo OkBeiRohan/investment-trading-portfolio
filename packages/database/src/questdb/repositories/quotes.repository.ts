@@ -4,14 +4,14 @@
  */
 
 import { Injectable, Logger } from "@nestjs/common";
-import { QuestDBProductionService } from "../questdb-production.service";
+import { QuestDBService } from "../questdb.service";
 import type { IMarketQuote, IQuoteQuery, IQuoteInsert } from "@repo/schema";
 
 @Injectable()
 export class QuotesRepository {
   private readonly logger = new Logger(QuotesRepository.name);
 
-  constructor(private readonly questdb: QuestDBProductionService) {}
+  constructor(private readonly questdb: QuestDBService) {}
 
   /**
    * Insert quotes batch

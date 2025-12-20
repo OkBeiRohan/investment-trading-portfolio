@@ -4,7 +4,7 @@
  */
 
 import { Injectable, Logger } from "@nestjs/common";
-import { QuestDBProductionService } from "../questdb-production.service";
+import { QuestDBService } from "../questdb.service";
 import type {
   IMarketDepth,
   IDepthQuery,
@@ -16,7 +16,7 @@ import type {
 export class DepthRepository {
   private readonly logger = new Logger(DepthRepository.name);
 
-  constructor(private readonly questdb: QuestDBProductionService) {}
+  constructor(private readonly questdb: QuestDBService) {}
 
   /**
    * Insert depth batch

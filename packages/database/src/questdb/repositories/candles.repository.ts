@@ -4,14 +4,14 @@
  */
 
 import { Injectable, Logger } from "@nestjs/common";
-import { QuestDBProductionService } from "../questdb-production.service";
+import { QuestDBService } from "../questdb.service";
 import type { IMarketCandle, ICandleQuery, ICandleInsert } from "@repo/schema";
 
 @Injectable()
 export class CandlesRepository {
   private readonly logger = new Logger(CandlesRepository.name);
 
-  constructor(private readonly questdb: QuestDBProductionService) {}
+  constructor(private readonly questdb: QuestDBService) {}
 
   /**
    * Insert candles batch

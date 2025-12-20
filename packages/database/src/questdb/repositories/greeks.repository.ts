@@ -4,14 +4,14 @@
  */
 
 import { Injectable, Logger } from "@nestjs/common";
-import { QuestDBProductionService } from "../questdb-production.service";
+import { QuestDBService } from "../questdb.service";
 import type { IOptionGreeks, IGreeksQuery, IGreeksInsert } from "@repo/schema";
 
 @Injectable()
 export class GreeksRepository {
   private readonly logger = new Logger(GreeksRepository.name);
 
-  constructor(private readonly questdb: QuestDBProductionService) {}
+  constructor(private readonly questdb: QuestDBService) {}
 
   /**
    * Insert greeks batch
