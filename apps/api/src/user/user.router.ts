@@ -1,8 +1,10 @@
 import { type IUser, userSchema } from '@repo/schema/user';
-import { Input, Mutation, Query, Router } from 'nestjs-trpc-v2';
+import { Input, Mutation, Query, Router, UseMiddlewares } from 'nestjs-trpc-v2';
+import { TrpcAuthMiddleware } from 'src/app.middleware';
 import { z } from 'zod';
 
 @Router({ alias: 'user' })
+@UseMiddlewares(TrpcAuthMiddleware)
 export class UserRouter {
   constructor() {}
 

@@ -56,7 +56,10 @@ export const environmentSchema = z
 
     auth: {
       appName: data.APP_NAME,
-      appUrl: data.APP_URL,
+      // CRITICAL: Use FRONTEND_URL as baseURL for OAuth callbacks
+      // This ensures OAuth redirects go to the frontend domain where cookies are set
+      // The Next.js rewrite proxy will forward /api/auth/* to the backend
+      appUrl: data.FRONTEND_URL,
       secret: data.AUTH_SECRET,
       trustedOrigins: data.TRUSTED_ORIGINS.split(",").map((o) => o.trim()),
       frontendUrl: data.FRONTEND_URL,

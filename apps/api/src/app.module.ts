@@ -10,6 +10,7 @@ import { UserModule } from './user/user.module';
 import { AppContext } from './app.context';
 import { AppRouter } from './app.router';
 import registerConfiguration from './environment/configuration';
+import { TrpcAuthMiddleware } from './app.middleware';
 
 @Module({
   imports: [
@@ -35,6 +36,6 @@ import registerConfiguration from './environment/configuration';
     UserModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AppContext, AppRouter],
+  providers: [AppService, AppContext, TrpcAuthMiddleware, AppRouter],
 })
 export class AppModule {}
