@@ -38,16 +38,16 @@ export class TokenRefreshService {
       for (const account of expiringAccounts) {
         try {
           await this.requestNewToken(account.userId, account.profile.userId);
-        } catch (error) {
+        } catch (error: any) {
           this.logger.error(
-            `Failed to request new token for user ${account.userId}: ${error.message}`
+            `Failed to request new token for user ${account.userId}: ${error?.message}`
           );
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
-        `Failed to check expiring tokens: ${error.message}`,
-        error.stack
+        `Failed to check expiring tokens: ${error?.message}`,
+        error?.stack
       );
     }
   }
@@ -117,8 +117,11 @@ export class TokenRefreshService {
         requested: true,
         expiresAt: new Date(Number(data.data.authorization_expiry)),
       };
-    } catch (error) {
-      this.logger.error(`Token request failed: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Token request failed: ${error?.message}`,
+        error?.stack
+      );
       throw error;
     }
   }
