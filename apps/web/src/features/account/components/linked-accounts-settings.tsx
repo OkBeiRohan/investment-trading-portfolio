@@ -11,8 +11,10 @@ import Message from "@/components/form/message";
 export function LinkedAccountsSettings() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const getAccounts = authClient.listAccounts();
 
-  const { data: linkedAccounts } = React.use(authClient.listAccounts());
+  const { data: linkedAccounts, error: linkedAccountsError } =
+    React.use(getAccounts);
 
   // Helper to check if account is linked
   const isLinked = (providerId: string) => {

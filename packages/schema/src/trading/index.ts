@@ -8,6 +8,7 @@
 // ============================================
 
 // Enums (export first - others depend on these)
+export * from "./broker-account.schema";
 export * from "./enums";
 
 // Base schemas (export second - others depend on these)

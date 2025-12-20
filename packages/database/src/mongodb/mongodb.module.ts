@@ -22,6 +22,7 @@ import {
   OrganizationRepository,
   TwoFactorRepository,
   PasskeyRepository,
+  BrokerAccountRepository,
 } from "./repositories";
 import {
   Invitation,
@@ -31,6 +32,7 @@ import {
   Organization,
   OrganizationSchema,
 } from "./schemas/organization";
+import { BrokerAccount, BrokerAccountSchema } from "./schemas/trading";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 import { MongoDBService } from "./mongodb.service";
 
@@ -41,13 +43,24 @@ import { MongoDBService } from "./mongodb.service";
       process.env.MONGODB_URI || "mongodb://localhost:27017",
       {
         connectionName: DatabaseConnections.User,
-        dbName: DatabaseConnections.User, // Database name: 'user'
+        dbName: DatabaseConnections.User, // Database name: 'Account'
         retryWrites: true,
         retryAttempts: 5,
         retryDelay: 3000,
         writeConcern: { w: "majority" },
         // For replica set with transactions, ensure MONGODB_URI includes ?replicaSet=rs0
         // Example: mongodb://localhost:27017/?replicaSet=rs0
+      }
+    ),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || "mongodb://localhost:27017",
+      {
+        connectionName: DatabaseConnections.Trading,
+        dbName: DatabaseConnections.Trading, // Database name: 'Trading'
+        retryWrites: true,
+        retryAttempts: 5,
+        retryDelay: 3000,
+        writeConcern: { w: "majority" },
       }
     ),
     MongooseModule.forFeature(
@@ -80,6 +93,16 @@ import { MongoDBService } from "./mongodb.service";
       ],
       DatabaseConnections.User
     ),
+    MongooseModule.forFeature(
+      [
+        {
+          name: BrokerAccount.name,
+          schema: BrokerAccountSchema,
+          collection: "broker_accounts",
+        },
+      ],
+      DatabaseConnections.Trading
+    ),
   ],
   providers: [
     UserRepository,
@@ -89,6 +112,7 @@ import { MongoDBService } from "./mongodb.service";
     OrganizationRepository,
     TwoFactorRepository,
     PasskeyRepository,
+    BrokerAccountRepository,
     AuthRepositoryFactory,
     MongoDBService,
   ],
@@ -100,6 +124,7 @@ import { MongoDBService } from "./mongodb.service";
     OrganizationRepository,
     TwoFactorRepository,
     PasskeyRepository,
+    BrokerAccountRepository,
     AuthRepositoryFactory,
     MongoDBService,
   ],
