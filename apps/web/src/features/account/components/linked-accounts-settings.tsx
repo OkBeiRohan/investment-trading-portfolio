@@ -2,19 +2,23 @@
 
 import React, { useState } from "react";
 import { Link2, Trash2 } from "lucide-react";
-import styles from "./linked-accounts-settings.module.css";
+import styles from "./linked-settings.module.css";
 import GoogleIcon from "@/components/icons/brands/Google";
 import GitHubIcon from "@/components/icons/brands/GitHub";
 import { authClient } from "@/lib/auth/auth-client";
 import Message from "@/components/form/message";
+import { IAccount } from "@repo/schema";
 
-export function LinkedAccountsSettings() {
+interface LinkedAccountsSettingsProps {
+  initialAccounts: IAccount[];
+}
+
+export function LinkedAccountsSettings({
+  initialAccounts,
+}: LinkedAccountsSettingsProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const getAccounts = authClient.listAccounts();
-
-  const { data: linkedAccounts, error: linkedAccountsError } =
-    React.use(getAccounts);
+  const [linkedAccounts] = useState<IAccount[]>(initialAccounts);
 
   // Helper to check if account is linked
   const isLinked = (providerId: string) => {
@@ -32,7 +36,7 @@ export function LinkedAccountsSettings() {
     try {
       const { data, error } = await authClient.linkSocial({
         provider,
-        callbackURL: "/account/linked-accounts",
+        callbackURL: "/account/linked",
       });
 
       if (error) {
@@ -74,8 +78,8 @@ export function LinkedAccountsSettings() {
     try {
       const { data, error } = await authClient.oauth2.link({
         providerId: "upstox",
-        callbackURL: "/account/linked-accounts",
-        errorCallbackURL: "/account/linked-accounts",
+        callbackURL: "/account/linked",
+        errorCallbackURL: "/account/linked",
       });
       if (error) {
         setError(error.message || `Failed to link Upstox`);

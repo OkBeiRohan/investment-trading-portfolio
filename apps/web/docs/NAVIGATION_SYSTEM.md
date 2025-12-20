@@ -717,7 +717,7 @@ Successful build with all routes:
 Route (app)
 ├ ƒ /                              (home page with navigation)
 ├ ƒ /account                       (account dashboard)
-├ ƒ /account/linked-accounts
+├ ƒ /account/linked
 ├ ƒ /account/preferences
 ├ ƒ /account/security
 ├ ƒ /authentication/login          (no sidebar/header)

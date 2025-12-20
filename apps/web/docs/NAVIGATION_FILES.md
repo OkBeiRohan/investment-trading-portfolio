@@ -569,7 +569,7 @@ pnpm build
 Route (app)
 ├ ƒ /
 ├ ƒ /account
-├ ƒ /account/linked-accounts
+├ ƒ /account/linked
 ├ ƒ /account/preferences
 ├ ƒ /account/security
 ├ ƒ /authentication/2fa
@@ -626,7 +626,7 @@ Route (app)
 ### Immediate (Optional)
 
 1. **Update remaining pages** - Add `setNavigation` calls to:
-   - `account/linked-accounts/page.tsx`
+   - `account/linked/page.tsx`
    - `account/security/page.tsx`
    - `account/preferences/page.tsx`
    - `organization/page.tsx`

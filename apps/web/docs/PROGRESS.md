@@ -112,7 +112,7 @@ This document tracks the implementation status of the Unified Financial Operatin
 - [x] `app/(auth)/reset-password/page.tsx` (Completed)
 - [x] `app/(auth)/verify-email/page.tsx` (Completed)
 - [ ] `app/(dashboards)/account/profile/page.tsx`
-- [ ] `app/(dashboards)/account/linked-accounts/page.tsx`
+- [ ] `app/(dashboards)/account/linked/page.tsx`
 - [ ] `app/(dashboards)/account/security/page.tsx`
 - [ ] `app/(dashboards)/account/preferences/page.tsx`
 
