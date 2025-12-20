@@ -35,6 +35,7 @@ export class AuthService {
         socialProviders: config.auth.socialProviders,
         rateLimit: config.auth.rateLimit,
         environment: config.environment,
+        brokerProviders: config.auth.brokerProviders,
       }),
       emailProvider: {
         sendVerificationEmail: (data) =>
