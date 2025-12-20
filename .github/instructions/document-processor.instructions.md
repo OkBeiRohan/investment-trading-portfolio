@@ -1,5 +1,5 @@
 ---
-applyTo: "apps/document-processor/**"
+applyTo: "services/document-processor/**"
 ---
 
 # GitHub Copilot Instructions - Document Processor Service

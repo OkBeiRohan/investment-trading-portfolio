@@ -1,5 +1,5 @@
 ---
-applyTo: "apps/algo-worker/**"
+applyTo: "services/algo-worker/**"
 ---
 
 # Algo Worker - Coding Instructions

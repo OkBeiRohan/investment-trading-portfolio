@@ -18,9 +18,10 @@ You are working on the **Web Dashboard** - the Next.js frontend implementing the
 
 1. **Wealth Management Dashboard** ("Financial Sanctum") - Net worth tracking, multi-asset aggregation, legacy planning
 2. **Algorithmic Trading Cockpit** ("Combat Cockpit") - Nifty Options analytics, Greeks visualization, strategy micromanagement
-3. **Account Dashboard** - Profile, linked accounts, security, preferences
-4. **Organization Management Dashboard** - Multi-tenancy with teams, roles, RBAC
-5. **Admin "God Mode" Dashboard** - AI model observability, kill switches, compliance monitoring
+3. **Debt & Loan Optimization** (New) - Intelligent arbitrage between investment returns and loan interest rates. AI-powered recommendations for prepaying loans vs investing surplus lumpsum.
+4. **Account Dashboard** - Profile, linked accounts, security, preferences
+5. **Organization Management Dashboard** - Multi-tenancy with teams, roles, RBAC
+6. **Admin "God Mode" Dashboard** - AI model observability, kill switches, compliance monitoring
 
 ## Critical Architecture Rules
 

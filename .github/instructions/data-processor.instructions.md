@@ -1,5 +1,5 @@
 ---
-applyTo: "apps/data-processor/**"
+applyTo: "services/data-processor/**"
 ---
 
 # GitHub Copilot Instructions - Data Processor

@@ -1,5 +1,5 @@
 ---
-applyTo: "apps/api/**"
+applyTo: "services/api/**"
 ---
 
 # GitHub Copilot Instructions - API Server

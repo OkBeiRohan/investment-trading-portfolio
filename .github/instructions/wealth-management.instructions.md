@@ -1,5 +1,5 @@
 ---
-applyTo: "apps/wealth-management/**"
+applyTo: "services/wealth-management/**"
 ---
 
 # GitHub Copilot Instructions - Wealth Management Service

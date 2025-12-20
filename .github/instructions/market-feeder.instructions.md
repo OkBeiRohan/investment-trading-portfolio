@@ -1,5 +1,5 @@
 ---
-applyTo: "apps/market-feeder/**"
+applyTo: "services/market-feeder/**"
 ---
 
 # GitHub Copilot Instructions - Market Feeder
