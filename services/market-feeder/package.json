@@ -21,8 +21,12 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.9",
+    "@nestjs/event-emitter": "^3.0.1",
+    "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^11.1.9",
+    "@nestjs/schedule": "^6.1.0",
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
     "@repo/schema": "workspace:*",

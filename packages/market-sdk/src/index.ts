@@ -17,6 +17,8 @@ export * from "./multiplexer/types";
 // Providers
 export { UpstoxProvider } from "./providers/upstox/upstox.provider";
 export { UpstoxModule } from "./providers/upstox/upstox.module";
+export { UpstoxHistoricalAPI } from "./providers/upstox/api/historical.api";
+export { UpstoxHistoricalService } from "./providers/upstox/historical.service";
 export { YahooProvider } from "./providers/yahoo/yahoo.provider";
 export { BinanceProvider } from "./providers/binance/binance.provider";
 export { TokenRefreshService } from "./auth/token-refresh.service";
