@@ -4,7 +4,7 @@ import { createBetterAuthInstance } from "../server/auth.config";
 import { EmailService } from "./email.service";
 import { createAuthConfig } from "../config/auth.config";
 import { CONFIG_TOKEN, IEnvironment } from "@repo/schema";
-import { MongoDBService, BrokerAccountRepository } from "@repo/database";
+import { MongoDBService } from "@repo/database";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 
 @Injectable()
@@ -12,8 +12,7 @@ export class AuthService {
   constructor(
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
-    private readonly mongoDBService: MongoDBService,
-    private readonly brokerAccountRepository: BrokerAccountRepository
+    private readonly mongoDBService: MongoDBService
   ) {}
 
   getAuthInstance() {
@@ -28,7 +27,6 @@ export class AuthService {
             }
           : undefined
       ),
-      brokerAccountRepository: this.brokerAccountRepository,
       options: createAuthConfig({
         appName: config.auth.appName,
         appUrl: config.auth.appUrl,

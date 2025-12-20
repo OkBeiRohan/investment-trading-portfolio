@@ -19,17 +19,11 @@ import { createAuthConfig } from "src/config/auth.config";
 import IGetProfileUpstoxResponse, {
   IGetProfileUpstox,
 } from "@repo/schema/api/upstox/profile/get-profile";
-import {
-  IGetFundMarginUpstoxResponse,
-  IGetFundMarginUpstox,
-} from "@repo/schema/api/upstox/profile/get-fund-margin";
-import { isUpstoxSuccess, extractUpstoxData } from "@repo/schema";
-import type { BrokerAccountRepository } from "@repo/database";
+import { isUpstoxSuccess } from "@repo/schema";
 
 export interface BetterAuthServerConfig {
   adapter: (options: BetterAuthOptions) => DBAdapter;
   options: ReturnType<typeof createAuthConfig>;
-  brokerAccountRepository?: BrokerAccountRepository;
   emailProvider?: {
     sendVerificationEmail: (data: {
       user: User;
@@ -70,147 +64,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
     database: config.adapter,
     ...config.options,
     // Hook to store Upstox data after account linking
-    hooks: {
-      // after: [
-      // {
-      // matcher: (ctx) => ctx.path === "/link",
-      // handler: async (ctx) => {
-      //   const account = ctx.context.account;
-      //   const user = ctx.context.user;
-      //   if (
-      //     account?.providerId === "upstox" &&
-      //     config.brokerAccountRepository &&
-      //     account.accessToken
-      //   ) {
-      //     try {
-      //       // Fetch profile
-      //       const profileResponse = await fetch(
-      //         "https://api.upstox.com/v2/user/profile",
-      //         {
-      //           headers: {
-      //             Authorization: `Bearer ${account.accessToken}`,
-      //             Accept: "application/json",
-      //           },
-      //         }
-      //       );
-      //       if (!profileResponse.ok) {
-      //         console.error(
-      //           "Failed to fetch Upstox profile after account link"
-      //         );
-      //         return;
-      //       }
-      //       const profileData =
-      //         (await profileResponse.json()) as IGetProfileUpstoxResponse;
-      //       const profile =
-      //         extractUpstoxData<IGetProfileUpstox>(profileData);
-      //       // Fetch fund and margin
-      //       const fundResponse = await fetch(
-      //         "https://api.upstox.com/v2/user/get-funds-and-margin",
-      //         {
-      //           headers: {
-      //             Authorization: `Bearer ${account.accessToken}`,
-      //             Accept: "application/json",
-      //           },
-      //         }
-      //       );
-      //       const fundData = fundResponse.ok
-      //         ? ((await fundResponse.json()) as IGetFundMarginUpstoxResponse)
-      //         : null;
-      //       const fundMargin = fundData
-      //         ? extractUpstoxData<IGetFundMarginUpstox>(fundData)
-      //         : null;
-      //       // Store in Trading database
-      //       await config.brokerAccountRepository.updateByUserIdAndProvider(
-      //         user.id,
-      //         "upstox",
-      //         {
-      //           userId: user.id,
-      //           authAccountId: account.id,
-      //           providerId: "upstox",
-      //           profile: {
-      //             userId: profile.user_id,
-      //             userName: profile.user_name,
-      //             userType: profile.user_type,
-      //             email: profile.email,
-      //             poa: profile.poa,
-      //           },
-      //           broker: profile.broker,
-      //           products: profile.products,
-      //           orderTypes: profile.order_types,
-      //           exchanges: profile.exchanges,
-      //           fundMargin: fundMargin
-      //             ? {
-      //                 equity: {
-      //                   usedMargin: fundMargin.equity.used_margin,
-      //                   payinAmount: fundMargin.equity.payin_amount,
-      //                   spanMargin: fundMargin.equity.span_margin,
-      //                   adhocMargin: fundMargin.equity.adhoc_margin,
-      //                   notionalCash: fundMargin.equity.notional_cash,
-      //                   availableMargin: fundMargin.equity.available_margin,
-      //                   exposureMargin: fundMargin.equity.exposure_margin,
-      //                 },
-      //                 commodity: {
-      //                   usedMargin: fundMargin.commodity.used_margin,
-      //                   payinAmount: fundMargin.commodity.payin_amount,
-      //                   spanMargin: fundMargin.commodity.span_margin,
-      //                   adhocMargin: fundMargin.commodity.adhoc_margin,
-      //                   notionalCash: fundMargin.commodity.notional_cash,
-      //                   availableMargin:
-      //                     fundMargin.commodity.available_margin,
-      //                   exposureMargin:
-      //                     fundMargin.commodity.exposure_margin,
-      //                   optionPremium: fundMargin.commodity.option_premium,
-      //                   assignmentMargin:
-      //                     fundMargin.commodity.assignment_margin,
-      //                   witholdingAmount:
-      //                     fundMargin.commodity.witholding_amount,
-      //                   intraDayPayin: fundMargin.commodity.intra_day_payin,
-      //                 },
-      //               }
-      //             : {
-      //                 equity: {
-      //                   usedMargin: 0,
-      //                   payinAmount: 0,
-      //                   spanMargin: 0,
-      //                   adhocMargin: 0,
-      //                   notionalCash: 0,
-      //                   availableMargin: 0,
-      //                   exposureMargin: 0,
-      //                 },
-      //                 commodity: {
-      //                   usedMargin: 0,
-      //                   payinAmount: 0,
-      //                   spanMargin: 0,
-      //                   adhocMargin: 0,
-      //                   notionalCash: 0,
-      //                   availableMargin: 0,
-      //                   exposureMargin: 0,
-      //                   optionPremium: 0,
-      //                   assignmentMargin: 0,
-      //                   witholdingAmount: 0,
-      //                   intraDayPayin: 0,
-      //                 },
-      //               },
-      //           lastSyncAt: new Date(),
-      //         } as any
-      //       );
-      //       console.log(
-      //         `Upstox profile and fund margin stored for user ${user.id}`
-      //       );
-      //     } catch (error) {
-      //       console.error(
-      //         "Error storing Upstox data in Trading database:",
-      //         error
-      //       );
-      //     }
-      //   }
-      // },
-      // },
-      // ],
-      // async after(inputContext) {
-      //   return [];
-      // },
-    },
+    hooks: {},
 
     // Email and password authentication
     emailAndPassword: {
@@ -350,26 +204,28 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                       );
                     }
 
-                    const responseData =
+                    const profileResponse =
                       (await response.json()) as IGetProfileUpstoxResponse;
 
-                    if (isUpstoxSuccess<IGetProfileUpstox>(responseData)) {
+                    if (isUpstoxSuccess<IGetProfileUpstox>(profileResponse)) {
+                      const profile = profileResponse.data;
+
                       return {
-                        id: responseData.data.user_id,
-                        name: responseData.data.user_name,
-                        email: responseData.data.email,
+                        id: profile.user_id,
+                        name: profile.user_name,
+                        email: profile.email,
                         emailVerified: true, // Upstox emails are verified
                       };
                     }
 
                     console.log(
                       "Invalid Upstox profile response",
-                      responseData
+                      profileResponse
                     );
 
                     throw new Error(
                       "Invalid profile data received from Upstox",
-                      { cause: responseData }
+                      { cause: profileResponse }
                     );
                   },
                 },

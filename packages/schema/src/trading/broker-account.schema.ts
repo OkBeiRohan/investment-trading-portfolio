@@ -1,73 +1,62 @@
-import { z } from "zod";
+import { ISegmentFundMargin } from "../api/upstox/profile/get-fund-margin";
 
 /**
  * Trading Database - Broker Account Collection
  * Stores Upstox profile, fund margin, and account metadata
  */
 
-export const BrokerAccountSchema = z.object({
-  // Link to better-auth User
-  userId: z.string().min(1),
+export interface BrokerAccountProfile {
+  /** Upstox user_id */
+  userId: string;
+  /** Upstox user_name */
+  userName: string;
+  /** User type: "individual" or "corporate" */
+  userType: string;
+  /** User email address */
+  email: string;
+  /** Power of Attorney status */
+  poa: boolean;
+}
 
-  // Link to better-auth Account (OAuth account)
-  authAccountId: z.string().min(1),
+export interface IBrokerAccountFundMargin {
+  equity: ISegmentFundMargin;
+  commodity: ISegmentFundMargin;
+}
 
-  // Provider identification
-  providerId: z.string().default("upstox"),
+export interface IBrokerAccount {
+  /** Link to better-auth User ID */
+  userId: string;
 
-  // User Profile (from /v2/user/profile)
-  profile: z.object({
-    userId: z.string(), // Upstox user_id
-    userName: z.string(), // Upstox user_name
-    userType: z.string(), // "individual", "corporate"
-    email: z.string().email(),
-    poa: z.boolean(), // Power of Attorney
-  }),
+  /** Link to better-auth Account (OAuth account) ID */
+  authAccountId: string;
 
-  // Broker Details
-  broker: z.string(), // "UPSTOX"
+  /** Provider identification (default: "upstox") */
+  providerId: string;
 
-  // Products (e.g., ["D", "I"])
-  products: z.array(z.string()),
+  /** User Profile from /v2/user/profile */
+  profile: BrokerAccountProfile;
 
-  // Order Types (e.g., ["MARKET", "LIMIT", "SL", "SL-M"])
-  orderTypes: z.array(z.string()),
+  /** Broker name (e.g., "UPSTOX") */
+  broker: string;
 
-  // Exchanges (e.g., ["NSE", "BSE", "NFO"])
-  exchanges: z.array(z.string()),
+  /** Products (e.g., ["D", "I"]) */
+  products: string[];
 
-  // Fund and Margin (from /v2/user/get-funds-and-margin)
-  fundMargin: z.object({
-    equity: z.object({
-      usedMargin: z.number(),
-      payinAmount: z.number(),
-      spanMargin: z.number(),
-      adhocMargin: z.number(),
-      notionalCash: z.number(),
-      availableMargin: z.number(),
-      exposureMargin: z.number(),
-    }),
-    commodity: z.object({
-      usedMargin: z.number(),
-      payinAmount: z.number(),
-      spanMargin: z.number(),
-      adhocMargin: z.number(),
-      notionalCash: z.number(),
-      availableMargin: z.number(),
-      exposureMargin: z.number(),
-      optionPremium: z.number(),
-      assignmentMargin: z.number(),
-      witholdingAmount: z.number(),
-      intraDayPayin: z.number(),
-    }),
-  }),
+  /** Order Types (e.g., ["MARKET", "LIMIT", "SL", "SL-M"]) */
+  orderTypes: string[];
 
-  // Timestamps
-  createdAt: z.date().default(() => new Date()),
-  updatedAt: z.date().default(() => new Date()),
+  /** Exchanges (e.g., ["NSE", "BSE", "NFO"]) */
+  exchanges: string[];
 
-  // Last sync timestamp
-  lastSyncAt: z.date().default(() => new Date()),
-});
+  /** Fund and Margin from /v2/user/get-funds-and-margin */
+  fundMargin: IBrokerAccountFundMargin;
 
-export type BrokerAccount = z.infer<typeof BrokerAccountSchema>;
+  /** Record creation timestamp */
+  createdAt: Date;
+
+  /** Record last update timestamp */
+  updatedAt: Date;
+
+  /** Last sync timestamp with broker API */
+  lastSyncAt: Date;
+}
