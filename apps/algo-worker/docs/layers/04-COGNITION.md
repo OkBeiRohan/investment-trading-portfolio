@@ -280,6 +280,26 @@ if (dailyPnL < -portfolioValue * 0.03) {
 }
 ```
 
+### **STT Trap Guard** (Production Safety)
+
+Force close Buy positions that are In-The-Money (ITM) on expiry day to avoid Securities Transaction Tax (STT) on notional value.
+
+```typescript
+if (isExpiryDay && currentTime > '15:15' && position.side === 'BUY' && isITM(position)) {
+  await this.forceClose(position, 'STT_TRAP_GUARD');
+}
+```
+
+### **Dynamic VIX Scaling**
+
+Adjust Stop Loss based on market volatility (India VIX).
+
+```typescript
+const vix = await this.marketData.getIndiaVIX();
+const baseSL = 0.05; // 5%
+const dynamicSL = baseSL * (vix / 15.0); // If VIX=30, SL=10%
+```
+
 ---
 
 ## SEBI Compliance

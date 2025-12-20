@@ -34,7 +34,7 @@
   - [ ] Eliminate locks and context switches on critical path
   - [ ] Benchmark: Achieve <10μs event processing latency
 - [ ] **Market Data Pipeline**
-  - [ ] Upstox WebSocket → Redis Stream (Protobuf decoding)
+  - [ ] Upstox WebSocket V3 (`option_greeks` mode) → Redis Stream
   - [ ] Implement priority-based backpressure handling
   - [ ] Add circuit breaker (stop trading if data stale >5s)
 
@@ -54,6 +54,12 @@
 
 ### 2.2 Compute Optimization
 
+- [ ] **Rust Bindings (NAPI-RS)**
+  - [ ] Implement `RustComputeEngine` for technical indicators (RSI, ATR)
+  - [ ] Benchmark vs JS implementation (Target: 10x speedup)
+- [ ] **Drift-Adaptive Normalization**
+  - [ ] Implement Online Welford’s Algorithm for streaming mean/std update
+  - [ ] Store normalization stats in Redis (`stats:nifty:normalization`)
 - [ ] **CPU Pinning & Isolation**
   - [ ] Pin critical threads to isolated cores (taskset on Linux)
   - [ ] Apply PREEMPT-RT patches for real-time guarantees
@@ -69,9 +75,8 @@
 
 - [ ] **ONNX Runtime + TensorRT EP**
   - [ ] Export all models to ONNX (FP16 quantization)
-  - [ ] Enable TensorRT Execution Provider for NVIDIA GPU
-  - [ ] Fallback to OpenVINO EP for Intel CPU
-  - [ ] Target: <50ms inference latency (p95)
+  - [ ] **Enforce** TensorRT Execution Provider for NVIDIA GPU (no CPU fallback)
+  - [ ] Target: <15ms inference latency (p99)
 - [ ] **Model Caching**
   - [ ] Pre-load models during startup (zero cold-start)
   - [ ] Implement hot-reload with checksum verification
@@ -82,11 +87,11 @@
 
 ### 3.1 Sentiment Analysis
 
-- [ ] **FinBERT-India Deployment**
-  - [ ] Download/train FinBERT-India model (Hugging Face/Custom)
-  - [ ] Export to ONNX with FP16 quantization
-  - [ ] Integrate with `NewsIngestor` (RSS + Twitter APIs)
-  - [ ] Store sentiment scores in QuestDB `sentiment_scores` table
+- [ ] **RAG-based News Impact Scorer**
+  - [ ] Deploy local LLM (Phi-3-mini + ONNX)
+  - [ ] Implement RAG retriever for historical context
+  - [ ] Classify headlines: High/Low Impact + Sentiment (Pos/Neg)
+  - [ ] Filter "Noise" (generic commentary) vs "Signal" (RBI/Fed events)
 - [ ] **News Sources**
   - [ ] Moneycontrol RSS Feed
   - [ ] Economic Times API
@@ -96,7 +101,7 @@
 
 - [x] **Training Pipeline (Kedro)**
   - [x] Export historical data from QuestDB (2+ years)
-  - [x] Train 8-10 Level-0 models (XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer, TimesNet-MLP, WFTNet-MLP, PatchTST, KAN)
+  - [x] Train Level-0 models: **Mamba (SSM), PatchTST, XGBoost, LightGBM, GINN, SVM**
   - [x] Walk-forward validation with CPCV (out-of-sample Sharpe >1.2)
   - [x] Train Level-1 meta-learner (Logistic Regression stacker)
   - [x] Export all models to ONNX with FP16 quantization
@@ -150,16 +155,17 @@
 
 ## Phase 5: Production Hardening (Weeks 13-14)
 
-### 5.1 Disaster Recovery
+### 5.1 Execution & Safety
 
-- [ ] **Automated Backups**
-  - [ ] QuestDB: Daily snapshots to S3/GCS
-  - [ ] MongoDB: Hourly oplog backups
-  - [ ] Redis: RDB snapshots every 15 minutes
-- [ ] **Circuit Breakers**
-  - [ ] Auto-liquidate positions if daily loss > ₹50K
-  - [ ] Halt trading if latency > 500ms sustained for 10s
-  - [ ] Manual resume via admin dashboard
+- [ ] **Atomic Multi-Leg Execution**
+  - [ ] Implement Upstox Multi-Order API wrapper
+  - [ ] Replace TWAP with Atomic Basket Orders for spreads
+- [ ] **Risk Safeguards**
+  - [ ] **STT Trap Guard**: Auto-close ITM Buy options @ 3:15 PM Expiry
+  - [ ] **Dynamic VIX Scaling**: Link Stop Loss to India VIX
+- [ ] **Disaster Recovery**
+  - [ ] Automated Backups (QuestDB S3, Redis RDB)
+  - [ ] Circuit Breakers (Loss > ₹50K, Latency > 500ms)
 
 ### 5.2 Security & Compliance
 

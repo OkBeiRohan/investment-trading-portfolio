@@ -14,7 +14,17 @@ The Execution layer receives order decisions from the Cognition layer and places
 
 ## Components
 
-### **1. OrderPlacementService**
+### **1. AtomicExecutionService** (New)
+
+**File**: `src/execution/atomic-execution.service.ts`
+
+**Responsibilities**:
+
+- **Multi-Leg Orders**: Execute strategies (Iron Condor) as a single atomic basket
+- **Upstox Multi-Order API**: Send 4 legs in one HTTP request
+- **No Legging-In Risk**: Eliminates risk of partial fills on spreads
+
+### **2. OrderPlacementService** (Legacy/Single Leg)
 
 **File**: `src/execution/order-placement.service.ts`
 
@@ -25,7 +35,17 @@ The Execution layer receives order decisions from the Cognition layer and places
 - Generate unique order IDs
 - Emit `OrderPlacedEvent`
 
-### **2. ExecutionMonitorService**
+### **3. SniperExecutor** (IOC Logic)
+
+**File**: `src/execution/sniper-executor.service.ts`
+
+**Responsibilities**:
+
+- **IOC Orders**: Use Immediate-Or-Cancel for entries
+- **No Chasing**: If price moves, cancel immediately rather than waiting
+- **Latency Sensitive**: Optimized for <20ms reaction
+
+### **4. ExecutionMonitorService**
 
 **File**: `src/execution/execution-monitor.service.ts`
 
@@ -35,27 +55,34 @@ The Execution layer receives order decisions from the Cognition layer and places
 - Handle partial fills
 - Emit `OrderFilledEvent`, `OrderRejectedEvent`
 
-### **3. TWAPExecutor**
+---
 
-**File**: `src/execution/twap-executor.service.ts`
+## Atomic Multi-Leg Execution (Production)
 
-**Responsibilities**:
+For strategy orders (e.g., Iron Condor), we strictly use **Atomic Execution**:
 
-- Split large orders into time-weighted slices
-- Example: 1000 lots over 10 minutes = 100 lots every 1 minute
+```typescript
+async executeIronCondor(symbol: string, legs: OrderLeg[]) {
+  // Construct multi-order payload
+  const payload = legs.map(leg => ({
+    instrument_token: leg.token,
+    transaction_type: leg.side,
+    quantity: leg.quantity,
+    order_type: 'MARKET', // or LIMIT
+    product: 'I',
+    validity: 'IOC' // Immediate or Cancel
+  }));
 
-### **4. VWAPExecutor**
-
-**File**: `src/execution/vwap-executor.service.ts`
-
-**Responsibilities**:
-
-- Split orders based on historical volume profile
-- Place more during high-volume periods
+  // Send as single batch
+  await this.upstox.placeMultiOrder(payload);
+}
+```
 
 ---
 
-### **5. PositionManagerService**
+## Smart Order Routing
+
+### **TWAP (Time-Weighted Average Price)** (Deprecated for Spreads)
 
 **File**: `src/execution/position-manager.service.ts`
 
