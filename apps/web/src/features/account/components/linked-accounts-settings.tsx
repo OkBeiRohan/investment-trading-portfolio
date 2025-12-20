@@ -30,7 +30,7 @@ export function LinkedAccountsSettings() {
       .catch((err) => {
         setError(err?.message || "Failed to load linked accounts");
       });
-  }, []); // Empty dependency array - run once on mount
+  }, []);
 
   // Helper to check if account is linked
   const isLinked = (providerId: string) => {
@@ -73,8 +73,13 @@ export function LinkedAccountsSettings() {
       if (error) {
         setError(error.message || `Failed to unlink ${providerId}`);
       } else {
-        // Reload page to refresh accounts
-        window.location.reload();
+        // Refetch accounts to update UI
+        const { data, error: fetchError } = await authClient.listAccounts();
+        if (fetchError) {
+          setError(fetchError.message || "Failed to reload accounts");
+        } else {
+          setLinkedAccounts(data);
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -311,8 +316,8 @@ export function LinkedAccountsSettings() {
                         {getProviderName(account.providerId)}
                       </p>
                       <p className={styles.accountEmail}>
-                        {new Date(account.createdAt).toLocaleDateString() ||
-                          `Account: ${account.accountId}`}
+                        Created on{" "}
+                        {new Date(account.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
