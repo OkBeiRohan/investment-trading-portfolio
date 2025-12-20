@@ -59,7 +59,7 @@ export function LinkedAccountsSettings() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await authClient.oauth2.link({
+      const { data, error } = await authClient.signIn.oauth2({
         providerId: "upstox",
         callbackURL: "/account/linked-accounts",
       });
