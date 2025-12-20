@@ -33,6 +33,12 @@ export class BrokerAccount extends Document implements IBrokerAccount {
   @Prop({ required: true, default: "upstox" })
   providerId: string;
 
+  @Prop({ type: String })
+  accessToken?: string;
+
+  @Prop({ type: Date })
+  accessTokenExpiresAt?: Date;
+
   @Prop({
     type: BrokerAccountProfileSchema,
     required: true,

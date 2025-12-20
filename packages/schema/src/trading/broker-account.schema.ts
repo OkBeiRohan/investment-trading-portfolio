@@ -5,7 +5,7 @@ import { ISegmentFundMargin } from "../api/upstox/profile/get-fund-margin";
  * Stores Upstox profile, fund margin, and account metadata
  */
 
-export interface BrokerAccountProfile {
+export interface IBrokerAccountProfile {
   /** Upstox user_id */
   userId: string;
   /** Upstox user_name */
@@ -34,7 +34,7 @@ export interface IBrokerAccount {
   providerId: string;
 
   /** User Profile from /v2/user/profile */
-  profile: BrokerAccountProfile;
+  profile: IBrokerAccountProfile;
 
   /** Broker name (e.g., "UPSTOX") */
   broker: string;

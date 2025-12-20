@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { BrokerAccountFundMargin as IBrokerAccountFundMargin } from "@repo/schema";
+import { IBrokerAccountFundMargin } from "@repo/schema";
 import {
   SegmentFundMargin,
   SegmentFundMarginSchema,
