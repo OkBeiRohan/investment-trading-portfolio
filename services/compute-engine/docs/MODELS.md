@@ -34,7 +34,8 @@ This document details the mathematical formulas and algorithms used for financia
   $$ \text{Middle Band} = \text{SMA}_{20}(P) $$
   $$ \text{Upper Band} = \text{Middle Band} + (k \times \sigma) $$
   $$ \text{Lower Band} = \text{Middle Band} - (k \times \sigma) $$
-- **Optimization**: $\sigma$ (Standard Deviation) is calculated using Welford's online algorithm for numerical stability and single-pass computation.
+- **Optimization**: $\sigma$ (Standard Deviation) is calculated using Welford's online algorithm for numerical stability and single-pass computation.  
+  **Reference**: B. P. Welford, "Note on a Method for Calculating Corrected Sums of Squares and Products", *Technometrics*, 4(3), 1962; see also [Welford's online algorithm](https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford%27s_online_algorithm) for an accessible specification.
 
 ---
 
