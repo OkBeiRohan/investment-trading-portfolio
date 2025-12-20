@@ -1,6 +1,9 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
-import type { Resource } from '@opentelemetry/resources';
+import {
+  defaultResource,
+  resourceFromAttributes,
+} from '@opentelemetry/resources';
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
@@ -19,12 +22,9 @@ import type { IncomingMessage } from 'http';
  * Initialize OpenTelemetry SDK
  * Auto-instruments NestJS and HTTP calls
  */
-export async function initializeOpenTelemetry(): Promise<NodeSDK> {
-  // Dynamic import to avoid type-only error
-  const { Resource } = await import('@opentelemetry/resources');
-
-  const resource = Resource.default().merge(
-    new Resource({
+export function initializeOpenTelemetry(): NodeSDK {
+  const resource = defaultResource().merge(
+    resourceFromAttributes({
       [ATTR_SERVICE_NAME]: 'market-feeder',
       [ATTR_SERVICE_VERSION]: process.env.APP_VERSION || '1.0.0',
       environment: process.env.NODE_ENV || 'development',
