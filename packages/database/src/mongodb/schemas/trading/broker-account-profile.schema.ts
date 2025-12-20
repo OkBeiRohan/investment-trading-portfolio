@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { BrokerAccountProfile as IBrokerAccountProfile } from "@repo/schema";
+import { IBrokerAccountProfile } from "@repo/schema";
 
 @Schema({ _id: false })
 export class BrokerAccountProfile implements IBrokerAccountProfile {

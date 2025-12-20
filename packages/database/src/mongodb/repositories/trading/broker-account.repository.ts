@@ -73,4 +73,52 @@ export class BrokerAccountRepository {
   async count(filter: FilterQuery<BrokerAccount>): Promise<number> {
     return this.brokerAccountModel.countDocuments(filter).exec();
   }
+
+  /**
+   * Find broker account by Upstox user_id (stored in profile.userId)
+   */
+  async findByUpstoxUserId(
+    upstoxUserId: string
+  ): Promise<BrokerAccount | null> {
+    return this.brokerAccountModel
+      .findOne({ "profile.userId": upstoxUserId })
+      .exec();
+  }
+
+  /**
+   * Update access token and expiry for a broker account
+   */
+  async updateAccessToken(
+    userId: string,
+    accessToken: string,
+    expiresAt: Date
+  ): Promise<BrokerAccount | null> {
+    return this.brokerAccountModel
+      .findOneAndUpdate(
+        { userId, providerId: "upstox" },
+        {
+          accessToken,
+          accessTokenExpiresAt: expiresAt,
+          updatedAt: new Date(),
+          lastSyncAt: new Date(),
+        },
+        { new: true }
+      )
+      .exec();
+  }
+
+  /**
+   * Get all broker accounts with expiring tokens (within next 24 hours)
+   */
+  async findExpiringTokens(): Promise<BrokerAccount[]> {
+    const tomorrow = new Date();
+    tomorrow.setHours(tomorrow.getHours() + 24);
+
+    return this.brokerAccountModel
+      .find({
+        accessTokenExpiresAt: { $lte: tomorrow },
+        providerId: "upstox",
+      })
+      .exec();
+  }
 }

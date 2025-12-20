@@ -164,12 +164,12 @@ export class AuthManagerService {
       const data = (await response.json()) as UpstoxAccessTokenResponse;
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
       throw new UnauthorizedException(
-        `Failed to request Upstox access token: ${error.message}`
+        `Failed to request Upstox access token: ${error?.message}`
       );
     }
   }
@@ -225,12 +225,12 @@ export class AuthManagerService {
       const data = (await response.json()) as UpstoxAccessTokenResponse;
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
       throw new UnauthorizedException(
-        `Failed to refresh Upstox access token: ${error.message}`
+        `Failed to refresh Upstox access token: ${error?.message}`
       );
     }
   }
@@ -271,7 +271,7 @@ export class AuthManagerService {
       }
 
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to logout from Upstox:", error);
       return { success: false };
     }
