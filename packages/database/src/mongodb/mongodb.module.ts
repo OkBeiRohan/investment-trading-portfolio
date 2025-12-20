@@ -43,7 +43,7 @@ import { MongoDBService } from "./mongodb.service";
       process.env.MONGODB_URI || "mongodb://localhost:27017",
       {
         connectionName: DatabaseConnections.User,
-        dbName: DatabaseConnections.User, // Database name: 'Account'
+        dbName: DatabaseConnections.User,
         retryWrites: true,
         retryAttempts: 5,
         retryDelay: 3000,
@@ -56,7 +56,7 @@ import { MongoDBService } from "./mongodb.service";
       process.env.MONGODB_URI || "mongodb://localhost:27017",
       {
         connectionName: DatabaseConnections.Trading,
-        dbName: DatabaseConnections.Trading, // Database name: 'Trading'
+        dbName: DatabaseConnections.Trading,
         retryWrites: true,
         retryAttempts: 5,
         retryDelay: 3000,
