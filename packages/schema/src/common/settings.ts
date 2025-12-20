@@ -53,7 +53,7 @@ export type CurrencyCode = z.infer<typeof CurrencyCodeSchema>;
 export const CallbackUrlSchema = z
   .string()
   .regex(
-    /^\/[^\x00-\x1F]*$/,
+    /^\/[^\u0000-\u001F]*$/,
     "Callback URL must be a relative path starting with /"
   )
   .max(500, "Callback URL too long")
