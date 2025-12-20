@@ -169,8 +169,6 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                     "https://api.upstox.com/v2/login/authorization/dialog",
                   tokenUrl:
                     "https://api.upstox.com/v2/login/authorization/token",
-                  redirectURI:
-                    config.options.brokerProviders.upstox.redirectUri,
                   scopes: [], // Upstox doesn't use scopes
                   pkce: false, // Upstox uses client_secret
                   responseType: "code",

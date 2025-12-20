@@ -2,7 +2,7 @@ import { USER_ROLES } from "@repo/schema";
 import { BetterAuthOptions } from "better-auth";
 
 export interface IBrokerProviders {
-  upstox?: { clientId: string; clientSecret: string; redirectUri: string };
+  upstox?: { clientId: string; clientSecret: string };
 }
 
 export interface AuthConfigOptions {

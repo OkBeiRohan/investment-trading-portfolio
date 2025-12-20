@@ -39,7 +39,6 @@ export const environmentSchema = z
     // Broker Providers (optional)
     UPSTOX_CLIENT_ID: z.string().optional(),
     UPSTOX_CLIENT_SECRET: z.string().optional(),
-    UPSTOX_REDIRECT_URI: z.string().optional(),
 
     // Rate Limiting
     RATE_LIMIT_ENABLED: z.string().default("true"),
@@ -89,9 +88,6 @@ export const environmentSchema = z
           ? {
               clientId: data.UPSTOX_CLIENT_ID,
               clientSecret: data.UPSTOX_CLIENT_SECRET!,
-              redirectUri:
-                data.UPSTOX_REDIRECT_URI ||
-                `${data.APP_URL}/api/auth/oauth2/callback/upstox`,
             }
           : undefined,
       },
