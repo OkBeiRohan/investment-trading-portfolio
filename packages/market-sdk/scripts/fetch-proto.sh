@@ -2,7 +2,7 @@
 
 # ==============================================================================
 # Upstox V3 Proto Fetcher
-# 
+#
 # Description: Downloads the latest Market Data Feed V3 Protobuf definition.
 # Source: https://assets.upstox.com/feed/market-data-feed/v3/MarketDataFeed.proto
 # Usage: Run via npm script 'npm run proto:update'
@@ -114,7 +114,7 @@ if [ $curl_exit_code -eq 0 ]; then
             exit 1
         fi
     else
-        # Empty file - this IS a build-blocking error  
+        # Empty file - this IS a build-blocking error
         echo -e "${RED}❌ Error: Downloaded file is empty.${NC}"
         exit 1
     fi
