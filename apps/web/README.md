@@ -47,7 +47,15 @@ High-density interface for Nifty Options algorithmic trading with real-time Gree
 - **Execution Quality**: Slippage tracking, tick-to-trade latency monitoring
 - **Max Pain & OI Analysis**: Institutional positioning insights
 
-### 3. **Account Dashboard**
+### 3. **Debt & Loan Optimization** (New)
+
+Intelligent arbitrage between investment returns and loan interest rates.
+
+- **Loan vs Investment Engine**: AI-powered recommendations for prepaying loans vs investing surplus lumpsum.
+- **Liability Management**: Debt snowball/avalanche visualizations.
+- **Arbitrage Opportunities**: Real-time alerts when risk-free investment returns exceed loan interest rates.
+
+### 4. **Account Dashboard**
 
 User account management, KYC, linked accounts, API credentials, and preferences.
 
@@ -55,7 +63,7 @@ User account management, KYC, linked accounts, API credentials, and preferences.
 - **Security Center**: 2FA, session management, API token lifecycle
 - **Notification Preferences**: Alert routing, risk threshold notifications
 
-### 4. **Organization Management Dashboard**
+### 5. **Organization Management Dashboard**
 
 Enterprise-grade multi-tenancy with teams, roles, and shared strategy access.
 
@@ -64,7 +72,7 @@ Enterprise-grade multi-tenancy with teams, roles, and shared strategy access.
 - **Role-Based Access Control (RBAC)**: Admin, Manager, Trader, Viewer roles
 - **Member Management**: Invite users, assign roles, manage permissions
 
-### 5. **Admin "God Mode" Dashboard**
+### 6. **Admin "God Mode" Dashboard**
 
 Forensic AI observability and system governance for administrators.
 
@@ -93,6 +101,12 @@ Forensic AI observability and system governance for administrators.
 - ✅ Live strategy parameter tuning (no restart required)
 - ✅ Node-based strategy canvas (no-code configuration)
 - ✅ Slippage and latency monitoring
+
+### Debt & Loan Optimization
+
+- ✅ Loan prepayment calculator (ROI based)
+- ✅ Arbitrage detection (Investment Rate > Loan Rate)
+- ✅ Debt payoff visualizer (Snowball/Avalanche)
 
 ### Organization & Teams
 
@@ -130,72 +144,39 @@ Forensic AI observability and system governance for administrators.
 
 ## Architecture
 
-### Modular Dashboard Architecture
 
-The application uses a **Multi-Dashboard Pattern** where each dashboard is a self-contained module with its own:
 
-- **Layout**: Sidebar navigation, header controls, action panels
-- **Data Layer**: Dedicated tRPC routers and Better Auth contexts
-- **Access Control**: Organization/team-level permissions
-- **State**: Isolated Zustand stores per dashboard
+**Apps** (`apps/` - Core Logic & Gateways):
 
-### Shared Packages
+- `web`: Frontend Dashboard (Next.js 16)
 
-- `@repo/schema` - Zod schemas and TypeScript types (source of truth)
-- `@repo/trpc` - Type-safe API client with auto-generated routers
-- `@repo/authentication` - Better Auth client configuration
-- `@repo/eslint-config` - Linting rules
-- `@repo/typescript-config` - TypeScript config
+- `api`: API Gateway & Auth (NestJS)
 
-### Route Structure
+- `algo-worker`: Trading Engine & Execution (NestJS)
 
-```
-app/
-├── (auth)/
-│   ├── login/
-│   ├── register/
-│   └── verify/
-├── (dashboards)/
-│   ├── wealth/              # Module 1: Wealth Management
-│   │   ├── overview/        # Net Worth Waterfall
-│   │   ├── assets/          # Asset Allocation (Sunburst)
-│   │   ├── [assetId]/       # Deep dive (PF, NPS, Crypto, etc.)
-│   │   ├── legacy/          # Life Beat & Estate Planning
-│   │   └── analytics/       # Time-Machine, Sankey flows
-│   ├── trade/               # Module 2: Algo Trading Cockpit
-│   │   ├── options/         # Nifty Options Analytics
-│   │   │   ├── greeks/      # Greeks Command Center
-│   │   │   ├── volatility/  # 3D Surface, Max Pain
-│   │   │   └── gex/         # Gamma Exposure Dashboard
-│   │   ├── strategies/      # Strategy Management
-│   │   │   ├── active/      # Running strategies with live tuner
-│   │   │   ├── create/      # Node-based canvas (no-code)
-│   │   │   └── [strategyId]/# Strategy detail & backtests
-│   │   ├── execution/       # Order book, fills, slippage
-│   │   └── analytics/       # Performance attribution
-│   ├── account/             # Module 3: Account Dashboard
-│   │   ├── profile/         # User profile & KYC
-│   │   ├── linked-accounts/ # Brokerage/bank/exchange connections
-│   │   ├── security/        # 2FA, API tokens, sessions
-│   │   └── preferences/     # Notifications, display settings
-│   ├── organization/        # Module 4: Organization Management
-│   │   ├── overview/        # Org dashboard home
-│   │   ├── teams/           # Team creation & management
-│   │   ├── members/         # Member list, invitations, roles
-│   │   ├── access-control/  # RBAC configuration
-│   │   └── billing/         # Subscription & usage (future)
-│   └── admin/               # Module 5: God Mode (Admin only)
-│       ├── ai-models/       # Model training telemetry
-│       │   ├── training/    # Loss curves, epoch tracking
-│       │   ├── inference/   # Drift detection, confidence vs. reality
-│       │   └── explainability/ # SHAP plots, feature importance
-│       ├── agents/          # Agentic trace waterfalls
-│       ├── risk/            # Kill switches, circuit breakers
-│       ├── compliance/      # Audit trail, regulatory limits
-│       └── system/          # Infrastructure health
-└── api/
-    └── trpc/[trpc]/         # tRPC API endpoint
-```
+
+
+**Services** (`services/` - Specialized Capabilities):
+
+- `wealth-management`: Core Accounting Ledger
+
+- `wealth-analyzer`: AI Insights & Recommendations
+
+- `compute-engine`: High-Performance Math Kernel (Rust)
+
+- `market-feeder`: Data Ingestion Service
+
+- `notification-service`: System-wide Alerts
+
+- `training-pipeline`: ML Model Training (Kedro)
+
+- `data-processor`: Feature Engineering
+
+- `document-processor`: OCR & Parsing
+
+
+
+## Critical Architecture Rules
 
 ## Environment Variables
 

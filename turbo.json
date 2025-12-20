@@ -17,7 +17,8 @@
         "!.next/cache/**",
         "dist/**",
         "*.onnx",
-        "*.joblib"
+        "*.joblib",
+        "target/release/**"
       ],
       "env": [
         "API_URL",

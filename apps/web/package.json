@@ -15,11 +15,11 @@
     "@repo/auth-client": "workspace:*",
     "@repo/trpc": "workspace:*",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.561.0",
-    "next": "16.0.10",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-hook-form": "^7.68.0",
+    "react-hook-form": "^7.69.0",
     "superjson": "^2.2.6"
   },
   "devDependencies": {
@@ -30,7 +30,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.0.10",
+    "eslint-config-next": "16.1.0",
     "typescript": "^5"
   }
 }

@@ -1,0 +1,12 @@
+{
+  "name": "compute-engine",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "cargo build --release",
+    "test": "cargo test",
+    "lint": "cargo clippy -- -D warnings",
+    "format": "cargo fmt",
+    "dev": "cargo run"
+  }
+}

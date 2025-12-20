@@ -1,5 +1,5 @@
 ---
-applyTo: "apps/training-pipeline/**"
+applyTo: "services/training-pipeline/**"
 ---
 
 # GitHub Copilot Instructions - Training Pipeline
