@@ -1,5 +1,4 @@
 import { Module, Global } from "@nestjs/common";
-import { EventEmitterModule } from "@nestjs/event-emitter";
 // import { MongooseModule } from "@nestjs/mongoose";
 // import { DatabaseModule, UpstoxToken, UpstoxTokenSchema } from "@repo/database";
 
@@ -19,7 +18,7 @@ import { UpstoxHistoricalService } from "./historical.service";
 @Global()
 @Module({
   imports: [
-    EventEmitterModule.forRoot(),
+    // EventEmitterModule should be provided by the consuming app
     // DatabaseModule,
     // MongooseModule.forFeature([
     //   { name: UpstoxToken.name, schema: UpstoxTokenSchema },

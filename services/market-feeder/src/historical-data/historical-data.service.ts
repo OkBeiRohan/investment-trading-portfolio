@@ -8,7 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QuestDBService } from '@repo/database';
 import { UpstoxHistoricalService } from '@repo/market-sdk';
-import type { ICandleInsert } from '@repo/schema';
 
 export interface BackfillRequest {
   instrumentKeys: string[];
@@ -77,7 +76,10 @@ export class HistoricalDataService {
                 from_date: request.fromDate,
                 to_date: request.toDate,
               },
-              this.questdbService.getLastTimestamp.bind(this.questdbService),
+              (
+                table: 'market_candles' | 'market_quotes' | 'option_greeks',
+                instrumentKey: string,
+              ) => this.questdbService.getLastTimestamp(table, instrumentKey),
             );
 
           if (candles.length > 0) {
