@@ -1,5 +1,5 @@
 import { type IUser, userSchema } from '@repo/schema/user';
-import { Input, Mutation, Query, Router } from 'nestjs-trpc-v2';
+import { Input, Mutation, Query, Router } from '@mguay/nestjs-trpc';
 import { z } from 'zod';
 
 @Router({ alias: 'user' })
@@ -12,8 +12,7 @@ export class UserRouter {
   })
   getUser(@Input('id') id: string): IUser {
     return {
-      id: id,
-      email: '',
+      email: id,
       emailVerified: false,
       name: '',
       phoneNumberVerified: false,

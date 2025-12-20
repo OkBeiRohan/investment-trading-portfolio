@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CostBreakdown",
+  "type": "object",
+  "properties": {
+    "brokerage": {
+      "type": "number"
+    },
+    "stt": {
+      "type": "number"
+    },
+    "slippage": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "brokerage",
+    "stt",
+    "slippage",
+    "total"
+  ]
+}

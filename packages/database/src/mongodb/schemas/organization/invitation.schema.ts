@@ -14,8 +14,6 @@ import { User } from "../user/user.schema";
   timestamps: true,
 })
 export class Invitation extends Document implements IInvitation {
-  id: string;
-
   @Prop({
     type: Types.ObjectId,
     ref: Organization.name,

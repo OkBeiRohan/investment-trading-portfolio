@@ -6,6 +6,8 @@ import {
 } from "better-auth";
 import { DBAdapter } from "@better-auth/core/db/adapter";
 import {
+  anonymous,
+  magicLink,
   organization,
   phoneNumber,
   twoFactor,
@@ -85,6 +87,8 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
 
     // Plugins
     plugins: [
+      anonymous(),
+
       // Phone number verification plugin
       phoneNumber({
         async sendOTP(data) {
@@ -137,6 +141,15 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
           requireResidentKey: false,
           residentKey: "preferred",
           userVerification: "preferred",
+        },
+      }),
+
+      magicLink({
+        sendMagicLink: function (
+          data: { email: string; url: string; token: string },
+          ctx?: GenericEndpointContext | undefined
+        ): Promise<void> | void {
+          throw new Error("Function not implemented.");
         },
       }),
     ],

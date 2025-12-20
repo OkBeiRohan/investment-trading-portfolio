@@ -1,0 +1,81 @@
+/* Light Theme - Investment Trading Platform */
+[data-theme="light"] {
+  /* Primary Colors - Indigo/Purple for trading platform */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-primary-active: #4338ca;
+  --color-primary-light: rgba(99, 102, 241, 0.1);
+
+  /* Background Colors */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9fafb;
+  --color-bg-tertiary: #f3f4f6;
+  --color-bg-elevated: #ffffff;
+
+  /* Auth page specific backgrounds */
+  --color-auth-gradient-start: #ffffff;
+  --color-auth-gradient-end: #ffe6ff;
+  --color-panel-gradient-start: #fad0c4;
+  --color-panel-gradient-end: #ffd1ff;
+
+  /* Text Colors */
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+  --color-text-inverse: #ffffff;
+
+  /* Border Colors */
+  --color-border: #e5e7eb;
+  --color-border-primary: #e5e7eb;
+  --color-border-secondary: #d1d5db;
+  --color-border-focus: #6366f1;
+
+  /* Input Colors */
+  --color-input-bg: #fafbfc;
+  --color-input-border: #e5e7eb;
+  --color-input-border-focus: #6366f1;
+  --color-input-text: #1f2937;
+  --color-input-placeholder: #9ca3af;
+
+  /* Button Colors */
+  --color-button-primary-bg: #6366f1;
+  --color-button-primary-hover: #4f46e5;
+  --color-button-primary-text: #ffffff;
+  --color-button-secondary-bg: #ffffff;
+  --color-button-secondary-hover: #f9fafb;
+  --color-button-secondary-border: #e5e7eb;
+  --color-button-secondary-text: #374151;
+
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-success-bg: #d1fae5;
+  --color-success-text: #065f46;
+  --color-success-border: #6ee7b7;
+  --color-error: #ef4444;
+  --color-error-bg: #fef2f2;
+  --color-error-text: #b91c1c;
+  --color-error-border: #fca5a5;
+  --color-warning: #f59e0b;
+  --color-warning-bg: #fef3c7;
+  --color-warning-text: #92400e;
+  --color-warning-border: #fcd34d;
+  --color-info: #3b82f6;
+  --color-info-bg: #dbeafe;
+  --color-info-text: #1e40af;
+  --color-info-border: #93c5fd;
+
+  /* Link Colors */
+  --color-link: #6366f1;
+  --color-link-hover: #4f46e5;
+
+  /* Trading-specific colors */
+  --color-profit: #10b981;
+  --color-loss: #ef4444;
+  --color-neutral: #6b7280;
+
+  /* Shadow colors */
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px 0 var(--shadow-color);
+  --shadow-md: 0 4px 6px -1px var(--shadow-color);
+  --shadow-lg: 0 10px 15px -3px var(--shadow-color);
+}

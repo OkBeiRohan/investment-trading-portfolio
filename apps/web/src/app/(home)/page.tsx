@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect } from "react";
+import type { Route } from "next";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -6,15 +10,18 @@ import {
   Wallet,
   ArrowRight,
 } from "lucide-react";
+import { useNavigation } from "@/hooks/use-navigation";
 import styles from "./home.module.css";
 
 export default function DashboardPage() {
-  // Ideally we fetch user data here or use a hook
-  // const { data: session } = authClient.useSession();
-  // But for a server component or simple client component, we can just render.
-  // Since we need interactivity or hooks, let's make it use client if needed,
-  // but for the dashboard links it can be static.
-  // actually authClient.useSession is a hook, so "use client"
+  const { setNavigation } = useNavigation();
+
+  useEffect(() => {
+    setNavigation({
+      title: "Dashboard",
+      breadcrumbs: [{ label: "Home" }],
+    });
+  }, [setNavigation]);
 
   return <DashboardContent />;
 }
@@ -28,7 +35,7 @@ function DashboardContent() {
       </div>
 
       <div className={styles.grid}>
-        <Link href="/organizations" className={styles.card}>
+        <Link href="/organization" className={styles.card}>
           <div className={styles.cardIcon}>
             <Building2 size={24} />
           </div>
@@ -41,7 +48,7 @@ function DashboardContent() {
           <ArrowRight className={styles.arrow} size={20} />
         </Link>
 
-        <Link href="/portfolio" className={styles.card}>
+        <Link href="/" className={styles.card}>
           <div className={styles.cardIcon}>
             <Wallet size={24} />
           </div>
@@ -54,7 +61,7 @@ function DashboardContent() {
           <ArrowRight className={styles.arrow} size={20} />
         </Link>
 
-        <Link href="/strategies" className={styles.card}>
+        <Link href="/" className={styles.card}>
           <div className={styles.cardIcon}>
             <LineChart size={24} />
           </div>
@@ -67,7 +74,7 @@ function DashboardContent() {
           <ArrowRight className={styles.arrow} size={20} />
         </Link>
 
-        <Link href="/signals" className={styles.card}>
+        <Link href="/" className={styles.card}>
           <div className={styles.cardIcon}>
             <LayoutDashboard size={24} />
           </div>

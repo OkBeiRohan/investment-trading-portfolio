@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RLAgentState",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "userId": {
+      "type": "string"
+    },
+    "agentType": {
+      "type": "string"
+    },
+    "modelVersion": {
+      "type": "string"
+    },
+    "stateSnapshot": {
+      "type": "object",
+      "properties": {
+        "weights": {},
+        "qTable": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "experienceBuffer": {
+          "type": "array",
+          "items": {
+            "type": "any"
+          }
+        },
+        "episodeCount": {
+          "type": "number"
+        },
+        "epsilon": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "episodeCount",
+        "epsilon"
+      ]
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "avgReward": {
+          "type": "number"
+        },
+        "successRate": {
+          "type": "number"
+        },
+        "lastEpisodeReward": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "avgReward",
+        "successRate",
+        "lastEpisodeReward"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "userId",
+    "agentType",
+    "modelVersion",
+    "stateSnapshot",
+    "performance",
+    "createdAt",
+    "updatedAt"
+  ]
+}

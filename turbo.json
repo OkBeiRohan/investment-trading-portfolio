@@ -1,11 +1,13 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
+  "globalEnv": ["NODE_ENV"],
   "tasks": {
     "generate-schemas": {
       "dependsOn": [],
       "inputs": ["src/**/*.schema.ts"],
-      "outputs": ["generated/**", "types/**"]
+      "outputs": ["generated/**", "types/**"],
+      "env": ["API_URL", "APP_NAME"]
     },
     "build": {
       "dependsOn": ["^build", "^generate-schemas"],
@@ -16,6 +18,20 @@
         "dist/**",
         "*.onnx",
         "*.joblib"
+      ],
+      "env": [
+        "API_URL",
+        "APP_NAME",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "DATABASE_URL",
+        "DEVTOOLS",
+        "HOST",
+        "MONGODB_URI",
+        "PORT",
+        "REDIS_URL",
+        "TRUSTED_ORIGINS",
+        "QUESTDB_URL"
       ]
     },
     "build:dev": {

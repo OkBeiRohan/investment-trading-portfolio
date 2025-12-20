@@ -1,0 +1,80 @@
+.loginMain {
+  padding: clamp(1rem, 3vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.loginContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-width: 440px;
+  width: 100%;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loginHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-primary);
+  transition: color var(--transition-base);
+  background: linear-gradient(
+    135deg,
+    var(--color-text-primary),
+    var(--color-primary)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-top: calc(var(--spacing-md) * -1);
+  margin-bottom: var(--spacing-sm);
+  transition: color var(--transition-base);
+}
+
+.link {
+  color: var(--color-link);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-base);
+}
+
+.link:hover {
+  text-decoration: underline;
+  color: var(--color-link-hover);
+}
+
+.signupText {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-lg);
+  transition: color var(--transition-base);
+}

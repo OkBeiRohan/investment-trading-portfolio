@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, QueryFilter } from "mongoose";
+import { Model, FilterQuery } from "mongoose";
 import { Invitation, Member, Organization } from "../schemas/organization";
 import DatabaseConnections from "../connections/connections";
 
@@ -30,7 +30,7 @@ export class OrganizationRepository {
   }
 
   async findOrganizations(
-    filter: QueryFilter<Organization>
+    filter: FilterQuery<Organization>
   ): Promise<Organization[]> {
     return this.orgModel.find(filter).exec();
   }
@@ -53,11 +53,11 @@ export class OrganizationRepository {
     return member.save();
   }
 
-  async findMember(filter: QueryFilter<Member>): Promise<Member | null> {
+  async findMember(filter: FilterQuery<Member>): Promise<Member | null> {
     return this.memberModel.findOne(filter).populate("userId").exec();
   }
 
-  async findMembers(filter: QueryFilter<Member>): Promise<Member[]> {
+  async findMembers(filter: FilterQuery<Member>): Promise<Member[]> {
     return this.memberModel.find(filter).populate("userId").exec();
   }
 
@@ -85,13 +85,13 @@ export class OrganizationRepository {
   }
 
   async findInvitation(
-    filter: QueryFilter<Invitation>
+    filter: FilterQuery<Invitation>
   ): Promise<Invitation | null> {
     return this.invitationModel.findOne(filter).exec();
   }
 
   async findInvitations(
-    filter: QueryFilter<Invitation>
+    filter: FilterQuery<Invitation>
   ): Promise<Invitation[]> {
     return this.invitationModel.find(filter).exec();
   }

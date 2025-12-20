@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SignalMetadata",
+  "type": "object",
+  "properties": {
+    "modelVersions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "latencyMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "modelVersions",
+    "latencyMs"
+  ]
+}

@@ -5,8 +5,6 @@ import { User } from "../user/user.schema";
 
 @Schema({ timestamps: true })
 export class Account extends Document implements IAccount {
-  id: string;
-
   @Prop({
     type: Types.ObjectId,
     ref: User.name,
@@ -37,7 +35,7 @@ export class Account extends Document implements IAccount {
   scope?: string;
 
   @Prop({ required: false })
-  idTaken?: string;
+  idToken?: string;
 
   @Prop({ required: false })
   password?: string;

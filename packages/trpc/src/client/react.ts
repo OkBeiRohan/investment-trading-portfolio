@@ -1,38 +1,32 @@
-import {
-  createTRPCReact,
-  CreateTRPCReact,
-  httpBatchLink,
-} from "@trpc/react-query";
-import { QueryClient } from "@tanstack/react-query";
+import { createTRPCReact, httpBatchLink } from "@trpc/react-query";
 import { AppRouter } from "../server";
+import { getQueryClient } from "./query-client";
+import { authLink } from "./auth-link";
+import { authClient } from "@repo/auth-client";
 
-export const trpc: CreateTRPCReact<AppRouter, object> = createTRPCReact<
-  AppRouter,
-  object
->();
+/**
+ * tRPC React client with classic API.
+ * Provides simpler hooks: trpc.router.procedure.useQuery() instead of useQuery(trpc.router.procedure.queryOptions())
+ */
+export const trpc = createTRPCReact<AppRouter>();
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 1000,
-      refetchOnWindowFocus: false,
-    },
-  },
+export const queryClient = getQueryClient();
+
+export const trpcClient = trpc.createClient({
+  links: [
+    // Auth link: handles 401 errors by refreshing session and retrying
+    authLink(authClient),
+    // HTTP link: handles actual network requests with credentials
+    httpBatchLink({
+      url: "/api/trpc",
+      // Always include credentials (cookies) in requests
+      fetch(url, options) {
+        return fetch(url, {
+          ...options,
+          credentials: "include",
+        });
+      },
+      // transformer: superjson, // Uncomment if using superjson for Date/Map/Set serialization
+    }),
+  ],
 });
-
-export const createTrpcClient = (url: string) => {
-  return trpc.createClient({
-    links: [
-      httpBatchLink({
-        url,
-        // transformer: superjson,
-        // fetch(url, options) {
-        //   return fetch(url, {
-        //     ...options,
-        //     credentials: "include", // Include cookies
-        //   });
-        // },
-      }),
-    ],
-  });
-};

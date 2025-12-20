@@ -1,5 +1,5 @@
 import { AllowAnonymous } from '@repo/authentication';
-import { Query, Router } from 'nestjs-trpc-v2';
+import { Query, Router } from '@mguay/nestjs-trpc';
 import { AppService } from './app.service';
 import z from 'zod';
 
@@ -8,7 +8,10 @@ import z from 'zod';
 export class AppRouter {
   constructor(private readonly appService: AppService) {}
 
-  @Query({ input: z.null().optional(), output: z.string() })
+  @Query({
+    input: z.null().optional(),
+    output: z.object({ version: z.string() }),
+  })
   getVersion() {
     return this.appService.getVersion();
   }

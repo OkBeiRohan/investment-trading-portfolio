@@ -13,17 +13,18 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth/use-auth";
 import styles from "./sidebar.module.css";
+import { Route } from "next";
 
 interface SidebarItem {
   label: string;
-  href: string;
+  href: Route;
   icon: React.ElementType;
 }
 
 interface SidebarProps {
   items: SidebarItem[];
   title: string;
-  backLink?: { label: string; href: string };
+  backLink?: { label: string; href: Route };
   footerSlot?: React.ReactNode;
 }
 
@@ -74,12 +75,12 @@ export function Sidebar({ items, title, backLink, footerSlot }: SidebarProps) {
 }
 
 export function MainSidebar() {
-  const items = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Portfolio", href: "/portfolio", icon: LayoutDashboard },
-    { label: "Trades", href: "/trades", icon: LayoutDashboard },
-    { label: "Strategies", href: "/strategies", icon: LayoutDashboard },
-    { label: "Organizations", href: "/organizations", icon: Users },
+  const items: SidebarItem[] = [
+    { label: "Dashboard", href: "/", icon: LayoutDashboard },
+    { label: "Portfolio", href: "/", icon: LayoutDashboard },
+    { label: "Trades", href: "/", icon: LayoutDashboard },
+    { label: "Strategies", href: "/", icon: LayoutDashboard },
+    { label: "Organizations", href: "/organization", icon: Users },
     { label: "Account", href: "/account", icon: User },
   ];
 
@@ -87,43 +88,44 @@ export function MainSidebar() {
 }
 
 export function OrgSidebar({
-  orgId,
+  // orgId,
   orgName,
 }: {
   orgId: string;
   orgName: string;
 }) {
-  const items = [
-    {
-      label: "Overview",
-      href: `/organizations/${orgId}`,
-      icon: LayoutDashboard,
-    },
-    {
-      label: "Members",
-      href: `/organizations/${orgId}/members`,
-      icon: Users,
-    },
-    {
-      label: "Settings",
-      href: `/organizations/${orgId}/settings`,
-      icon: Settings,
-    },
+  const items: SidebarItem[] = [
+    // {
+    //   label: "Overview",
+    //   href: `/organization/${orgId}`,
+    //   icon: LayoutDashboard,
+    // },
+    // {
+    //   label: "Members",
+    //   href: `/organization/${orgId}/members`,
+    //   icon: Users,
+    // },
+    // {
+    //   label: "Settings",
+    //   href: `/organization/${orgId}/settings`,
+    //   icon: Settings,
+    // },
   ];
 
   return (
     <Sidebar
       items={items}
       title={orgName}
-      backLink={{ label: "Back to Main", href: "/dashboard" }}
+      backLink={{ label: "Back to Main", href: "/" }}
     />
   );
 }
 
 export function AccountSidebar() {
-  const items = [
+  const items: SidebarItem[] = [
     { label: "Profile", href: "/account", icon: User },
     { label: "Security", href: "/account/security", icon: Settings },
+    { label: "Linked Accounts", href: "/account/linked-accounts", icon: Users },
     { label: "Preferences", href: "/account/preferences", icon: Settings },
   ];
 
@@ -131,8 +133,7 @@ export function AccountSidebar() {
     <Sidebar
       items={items}
       title="My Account"
-      backLink={{ label: "Back to Dashboard", href: "/dashboard" }}
+      backLink={{ label: "Back to Dashboard", href: "/" }}
     />
   );
 }
-

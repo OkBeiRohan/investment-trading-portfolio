@@ -26,6 +26,8 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
     secret: options.secret,
     trustedOrigins: options.trustedOrigins,
 
+    experimental: { joins: true },
+
     user: {
       additionalFields: {
         dateOfBirth: {
@@ -110,16 +112,22 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         : undefined,
     },
 
+    hooks: {},
+
     advanced: {
       useSecureCookies: options.environment === "production",
-      cookiePrefix: "better-auth",
+      cookiePrefix: options.appName || "better-auth",
       crossSubDomainCookies: {
-        enabled: true,
+        enabled: false, // CRITICAL: Disable to prevent Domain attribute
       },
       defaultCookieAttributes: {
-        sameSite: "lax" as const,
+        // CRITICAL: Use "none" for cross-origin (Vercel <-> Render)
+        // "lax" only works for same-site requests
+        sameSite: options.environment === "production" ? "none" : "lax",
         path: "/",
         httpOnly: true,
+        secure: options.environment === "production", // Required with sameSite=none
+        // Do NOT set domain - let browser use current origin (Vercel)
       },
       database: {
         useNumberId: false,

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrderLeg",
+  "type": "object",
+  "properties": {
+    "instrument": {
+      "type": "string"
+    },
+    "instrumentKey": {
+      "type": "string"
+    },
+    "instrumentType": {
+      "type": "string"
+    },
+    "side": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number"
+    },
+    "orderType": {
+      "type": "string"
+    },
+    "price": {
+      "type": "number"
+    },
+    "triggerPrice": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string"
+    },
+    "filledQuantity": {
+      "type": "number"
+    },
+    "averagePrice": {
+      "type": "number"
+    },
+    "filledAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "instrument",
+    "instrumentKey",
+    "side",
+    "quantity",
+    "orderType",
+    "status",
+    "filledQuantity"
+  ]
+}

@@ -29,7 +29,7 @@
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
     "@repo/schema": "workspace:*",
-    "bullmq": "^5.66.0",
+    "bullmq": "^5.66.1",
     "ioredis": "^5.8.2",
     "onnxruntime-node": "^1.23.2",
     "reflect-metadata": "^0.2.2",
@@ -37,15 +37,15 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "^9.39.2",
     "@nestjs/cli": "^11.0.14",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.9",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.0.1",
+    "@types/node": "^25.0.3",
     "@types/supertest": "^6.0.3",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "globals": "^16.5.0",
@@ -58,7 +58,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.49.0"
+    "typescript-eslint": "^8.50.0"
   },
   "jest": {
     "moduleFileExtensions": [

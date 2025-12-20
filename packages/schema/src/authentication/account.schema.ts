@@ -1,7 +1,6 @@
 import z from "zod";
 
 export const accountSchema = z.object({
-  id: z.uuid(),
   userId: z.uuid(),
   accountId: z.string(),
   providerId: z.string(),
@@ -10,7 +9,7 @@ export const accountSchema = z.object({
   accessTokenExpiresAt: z.date().optional(),
   refreshTokenExpiresAt: z.date().optional(),
   scope: z.string().optional(),
-  idTaken: z.string().optional(),
+  idToken: z.string().optional(),
   password: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

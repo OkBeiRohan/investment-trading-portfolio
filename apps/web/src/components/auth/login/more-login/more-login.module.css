@@ -1,0 +1,89 @@
+.moreContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.socialButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.socialButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-button-secondary-bg);
+  border: 1px solid var(--color-button-secondary-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-button-secondary-text);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
+}
+
+.socialButton:hover {
+  background: var(--color-button-secondary-hover);
+}
+
+.altLogins {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.altButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-button-secondary-bg);
+  border: 1px solid var(--color-button-secondary-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-button-secondary-text);
+  text-decoration: none;
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
+}
+
+.altButton:hover {
+  background: var(--color-button-secondary-hover);
+}
+
+.disabledLink {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-tertiary);
+  margin-right: var(--spacing-sm);
+  transition: color var(--transition-base);
+}

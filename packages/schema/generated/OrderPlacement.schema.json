@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrderPlacement",
+  "type": "object",
+  "properties": {
+    "instrumentKey": {
+      "type": "string"
+    },
+    "transactionType": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number"
+    },
+    "orderType": {
+      "type": "string"
+    },
+    "price": {
+      "type": "number"
+    },
+    "triggerPrice": {
+      "type": "number"
+    },
+    "disclosedQuantity": {
+      "type": "number"
+    },
+    "instrument": {
+      "type": "string"
+    },
+    "validity": {
+      "type": "string"
+    },
+    "productType": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "instrumentKey",
+    "transactionType",
+    "quantity",
+    "orderType",
+    "instrument"
+  ]
+}

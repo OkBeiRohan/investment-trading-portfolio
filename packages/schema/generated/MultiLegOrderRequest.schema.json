@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MultiLegOrderRequest",
+  "type": "object",
+  "properties": {
+    "strategy": {
+      "type": "string"
+    },
+    "legs": {
+      "type": "array",
+      "items": {
+        "type": "any"
+      }
+    },
+    "executionPolicy": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "strategy",
+    "legs"
+  ]
+}

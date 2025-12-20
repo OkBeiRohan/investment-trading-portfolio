@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureMetadata",
+  "type": "object",
+  "properties": {
+    "dataQuality": {
+      "type": "string"
+    },
+    "missingFields": {
+      "type": "array",
+      "items": {
+        "type": "any"
+      }
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "dataQuality",
+    "missingFields",
+    "version"
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TradingSignal",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "userId": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "prediction": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number"
+    },
+    "probability": {
+      "type": "number"
+    },
+    "modelContributions": {
+      "type": "object",
+      "properties": {
+        "xgboost": {
+          "type": "number"
+        },
+        "cnnLstm": {
+          "type": "number"
+        },
+        "ginn": {
+          "type": "number"
+        },
+        "svm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "xgboost",
+        "cnnLstm",
+        "ginn",
+        "svm"
+      ]
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": {}
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "modelVersions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "latencyMs": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "modelVersions",
+        "latencyMs"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "userId",
+    "timestamp",
+    "prediction",
+    "confidence",
+    "probability",
+    "modelContributions",
+    "features",
+    "createdAt",
+    "updatedAt"
+  ]
+}

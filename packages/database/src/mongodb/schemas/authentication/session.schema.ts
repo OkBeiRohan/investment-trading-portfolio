@@ -6,8 +6,6 @@ import { Organization } from "../organization";
 
 @Schema({ timestamps: true })
 export class Session extends Document implements ISession {
-  id: string;
-
   @Prop({
     type: Types.ObjectId,
     ref: User.name,

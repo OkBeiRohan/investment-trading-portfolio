@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, QueryFilter } from "mongoose";
+import { Model, FilterQuery } from "mongoose";
 import { Verification } from "../../schemas/authentication";
 import DatabaseConnections from "../../connections/connections";
 
@@ -17,9 +17,39 @@ export class VerificationRepository {
   }
 
   async findOne(
-    filter: QueryFilter<Verification>
+    filter: FilterQuery<Verification>
   ): Promise<Verification | null> {
     return this.verificationModel.findOne(filter).exec();
+  }
+
+  async findMany(
+    filter: FilterQuery<Verification>,
+    options?: { limit?: number; skip?: number; sort?: any }
+  ): Promise<Verification[]> {
+    const query = this.verificationModel.find(filter);
+
+    if (options?.limit) query.limit(options.limit);
+    if (options?.skip) query.skip(options.skip);
+    if (options?.sort) query.sort(options.sort);
+
+    return query.exec();
+  }
+
+  async update(
+    id: string,
+    data: Partial<Verification>
+  ): Promise<Verification | null> {
+    return this.verificationModel
+      .findByIdAndUpdate(id, data, { new: true })
+      .exec();
+  }
+
+  async updateMany(
+    filter: FilterQuery<Verification>,
+    data: Partial<Verification>
+  ): Promise<number> {
+    const result = await this.verificationModel.updateMany(filter, data).exec();
+    return result.modifiedCount;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -27,9 +57,13 @@ export class VerificationRepository {
     return !!result;
   }
 
-  async deleteMany(filter: QueryFilter<Verification>): Promise<number> {
+  async deleteMany(filter: FilterQuery<Verification>): Promise<number> {
     const result = await this.verificationModel.deleteMany(filter).exec();
     return result.deletedCount;
+  }
+
+  async count(filter: FilterQuery<Verification>): Promise<number> {
+    return this.verificationModel.countDocuments(filter).exec();
   }
 
   async cleanupExpired(): Promise<number> {

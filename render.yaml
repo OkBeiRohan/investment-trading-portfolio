@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: investment-trading-api
+    runtime: node
+    region: singapore # Change to your preferred region: oregon, frankfurt, singapore, etc.
+    plan: free
+    buildCommand: pnpm install && pnpm build --filter=api...
+    startCommand: cd apps/api && node --max-old-space-size=460 dist/src/main.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000 # Render's default port
+      - key: HOST
+        value: 0.0.0.0 # Required for Render to detect open ports
+      - key: DEVTOOLS
+        value: "false" # Disable devtools in production
+      # Add these in Render dashboard (don't commit secrets):
+      # Required:
+      # - APP_NAME (e.g., "Investment Trading Portfolio")
+      # - MONGODB_URI (e.g., mongodb+srv://user:pass@cluster.mongodb.net/trading?retryWrites=true&w=majority)
+      # - MONGODB_DATABASE (e.g., trading)
+      # - AUTH_SECRET (minimum 32 characters, generate with: openssl rand -base64 32)
+      # - APP_URL (your render.com URL, e.g., https://investment-trading-api.onrender.com)
+      # - FRONTEND_URL (your frontend URL, e.g., https://investment-trading.vercel.app)
+      # - TRUSTED_ORIGINS (comma-separated, e.g., https://investment-trading.vercel.app)
+      # Optional:
+      # - REDIS_HOST, REDIS_PORT, REDIS_PASSWORD (if using external Redis)
+      # - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (for OAuth)
+      # - GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET (for OAuth)

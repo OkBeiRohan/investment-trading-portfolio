@@ -9,7 +9,7 @@ import { Document } from "mongoose";
 })
 export class User
   extends Document
-  implements Omit<IUser, "id" | "createdAt" | "updatedAt">
+  implements Omit<IUser, "createdAt" | "updatedAt">
 {
   @Prop({ required: true, unique: true, lowercase: true, index: true })
   email: string;
@@ -20,7 +20,10 @@ export class User
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: false })
+  @Prop({ default: false })
+  isAnonymous: boolean;
+
+  @Prop({ required: false, unique: true, sparse: true })
   phoneNumber?: string;
 
   @Prop({ default: false })
@@ -67,5 +70,4 @@ export class User
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.index({ phoneNumber: 1 });
 UserSchema.index({ createdAt: -1 });

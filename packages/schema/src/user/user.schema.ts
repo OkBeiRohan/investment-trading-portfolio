@@ -7,10 +7,10 @@ export const USER_ROLES = ["Investor", "Trader", "Admin"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export interface IUser {
-  id: string;
   email: string;
   emailVerified: boolean;
   name: string;
+  isAnonymous?: boolean | null;
   phoneNumber?: string | null;
   phoneNumberVerified?: boolean | null;
   image?: string | null;
@@ -27,10 +27,10 @@ export interface IUser {
 }
 
 export const userSchema: z.ZodType<IUser> = z.object({
-  id: z.uuid(),
   email: z.email().toLowerCase(),
   emailVerified: z.boolean().default(false),
   name: z.string().min(1).max(200),
+  isAnonymous: z.boolean().default(false),
   phoneNumber: z
     .string()
     .regex(/^\+?[1-9]\d{1,14}$/)

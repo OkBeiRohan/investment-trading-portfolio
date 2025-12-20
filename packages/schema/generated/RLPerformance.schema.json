@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RLPerformance",
+  "type": "object",
+  "properties": {
+    "avgReward": {
+      "type": "number"
+    },
+    "successRate": {
+      "type": "number"
+    },
+    "lastEpisodeReward": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "avgReward",
+    "successRate",
+    "lastEpisodeReward"
+  ]
+}

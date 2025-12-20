@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Position",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "userId": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "instrument": {
+      "type": "string"
+    },
+    "instrumentKey": {
+      "type": "string"
+    },
+    "instrumentType": {
+      "type": "string"
+    },
+    "exchange": {
+      "type": "string"
+    },
+    "strategy": {
+      "type": "string"
+    },
+    "legs": {
+      "type": "array",
+      "items": {
+        "type": "any"
+      }
+    },
+    "greeks": {
+      "type": "object",
+      "properties": {
+        "delta": {
+          "type": "number"
+        },
+        "gamma": {
+          "type": "number"
+        },
+        "vega": {
+          "type": "number"
+        },
+        "theta": {
+          "type": "number"
+        },
+        "rho": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "delta",
+        "gamma",
+        "vega",
+        "theta"
+      ]
+    },
+    "entryDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "exitDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string"
+    },
+    "realizedPnL": {
+      "type": "number"
+    },
+    "unrealizedPnL": {
+      "type": "number"
+    },
+    "costs": {
+      "type": "object",
+      "properties": {
+        "brokerage": {
+          "type": "number"
+        },
+        "stt": {
+          "type": "number"
+        },
+        "slippage": {
+          "type": "number"
+        },
+        "total": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "brokerage",
+        "stt",
+        "slippage",
+        "total"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "userId",
+    "provider",
+    "instrument",
+    "instrumentKey",
+    "exchange",
+    "legs",
+    "entryDate",
+    "status",
+    "unrealizedPnL",
+    "costs",
+    "createdAt",
+    "updatedAt"
+  ]
+}

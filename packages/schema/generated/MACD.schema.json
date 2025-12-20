@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MACD",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "number"
+    },
+    "signal": {
+      "type": "number"
+    },
+    "histogram": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "value",
+    "signal",
+    "histogram"
+  ]
+}
