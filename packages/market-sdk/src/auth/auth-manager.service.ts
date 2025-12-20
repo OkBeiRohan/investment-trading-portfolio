@@ -1,24 +1,16 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-import { Account } from "@repo/database";
-import { EncryptionUtil } from "./encryption.util";
-import { UpstoxEnv } from "@repo/schema";
+import { AccountRepository } from "@repo/database";
 
 @Injectable()
 export class AuthManagerService {
-  constructor(
-    @InjectModel(Account.name)
-    private accountModel: Model<Account>,
-    private encryption: EncryptionUtil
-  ) {}
+  constructor(private readonly accountRepository: AccountRepository) {}
 
   /**
    * Get access token for Upstox from better-auth Account collection
    * Upstox accounts are stored with providerId="upstox"
    */
   async getAccessToken(userId: string): Promise<string> {
-    const account = await this.accountModel.findOne({
+    const account = await this.accountRepository.findOne({
       userId,
       providerId: "upstox",
     });
@@ -52,7 +44,7 @@ export class AuthManagerService {
    * Get the Upstox account ID (user_id from Upstox)
    */
   async getUpstoxUserId(userId: string): Promise<string> {
-    const account = await this.accountModel.findOne({
+    const account = await this.accountRepository.findOne({
       userId,
       providerId: "upstox",
     });
@@ -70,7 +62,7 @@ export class AuthManagerService {
    * Check if user has linked Upstox account
    */
   async hasUpstoxAccount(userId: string): Promise<boolean> {
-    const account = await this.accountModel.findOne({
+    const account = await this.accountRepository.findOne({
       userId,
       providerId: "upstox",
     });
@@ -82,25 +74,13 @@ export class AuthManagerService {
    * Revoke Upstox account link
    */
   async revokeUpstoxAccount(userId: string): Promise<void> {
-    await this.accountModel.deleteOne({
+    const account = await this.accountRepository.findOne({
       userId,
       providerId: "upstox",
     });
-  }
-  //       encryptedAccessToken: encrypted,
-  //       iv,
-  //       authTag: tag,
-  //       environment: UpstoxEnv.LIVE,
-  //       expiry: new Date(Date.now() + expires_in * 1000),
-  //     },
-  //     { upsert: true, new: true }
-  //   );
-  // }
 
-  /**
-   * Generate OAuth authorization URL
-   */
-  generateAuthorizationUrl(apiKey: string, redirectUri: string): string {
-    return `https://api.upstox.com/v2/login/authorization/dialog?client_id=${apiKey}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
+    if (account) {
+      await this.accountRepository.delete(account._id.toString());
+    }
   }
 }

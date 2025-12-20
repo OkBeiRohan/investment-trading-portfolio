@@ -53,30 +53,22 @@ Check `packages/authentication/src/server/auth.config.ts`:
 
 ```tsx
 "use client";
-import { createUpstoxOAuthClient } from "@repo/auth-client";
+import { createAuthClient, genericOAuthClient } from "@repo/auth-client";
 
 export default function LinkedAccountsPage() {
-  const upstoxClient = createUpstoxOAuthClient(
-    process.env.NEXT_PUBLIC_API_URL!
-  );
+  const authClient = createAuthClient({
+    baseURL: process.env.NEXT_PUBLIC_API_URL!,
+    plugins: [genericOAuthClient()],
+  });
 
   const handleLinkUpstox = async () => {
     try {
-      await upstoxClient.linkUpstox({
+      await authClient.oauth2.link({
+        providerId: "upstox",
         callbackURL: "/account/linked-accounts",
-        errorCallbackURL: "/account/linked-accounts?error=true",
       });
     } catch (error) {
       console.error("Failed to link Upstox:", error);
-    }
-  };
-
-  const handleUnlinkUpstox = async () => {
-    try {
-      await upstoxClient.unlinkUpstox();
-      alert("Upstox account unlinked successfully");
-    } catch (error) {
-      console.error("Failed to unlink Upstox:", error);
     }
   };
 
@@ -84,7 +76,6 @@ export default function LinkedAccountsPage() {
     <div>
       <h1>Linked Accounts</h1>
       <button onClick={handleLinkUpstox}>Connect Upstox Account</button>
-      <button onClick={handleUnlinkUpstox}>Disconnect Upstox</button>
     </div>
   );
 }
