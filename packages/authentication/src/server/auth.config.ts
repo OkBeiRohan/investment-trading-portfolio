@@ -169,6 +169,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                     "https://api.upstox.com/v2/login/authorization/dialog",
                   tokenUrl:
                     "https://api.upstox.com/v2/login/authorization/token",
+                  userInfoUrl: "https://api.upstox.com/v2/user/profile",
                   // Upstox OAuth v2 does not expose granular per-request scopes.
                   // The effective permissions of the access token are defined in the
                   // Upstox developer console for this application (e.g. trading +
@@ -179,6 +180,33 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                   pkce: false, // Upstox uses client_secret
                   responseType: "code",
                   authentication: "post", // Standard OAuth2 POST request
+                  // Map Upstox profile response to better-auth user format
+                  getUserInfo: async (tokens) => {
+                    const response = await fetch(
+                      "https://api.upstox.com/v2/user/profile",
+                      {
+                        headers: {
+                          Authorization: `Bearer ${tokens.accessToken}`,
+                          Accept: "application/json",
+                        },
+                      }
+                    );
+
+                    if (!response.ok) {
+                      throw new Error(
+                        "Failed to fetch user profile from Upstox"
+                      );
+                    }
+
+                    const { data } = (await response.json()) as { data: any };
+                    // Upstox profile response: { user_id, user_name, email, ... }
+                    return {
+                      id: data.user_id,
+                      name: data.user_name,
+                      email: data.email,
+                      emailVerified: true, // Upstox emails are verified
+                    };
+                  },
                 },
               ],
             }),
