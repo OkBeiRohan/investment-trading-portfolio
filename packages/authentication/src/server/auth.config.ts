@@ -176,6 +176,23 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                   tokenUrl:
                     "https://api.upstox.com/v2/login/authorization/token",
                   userInfoUrl: "https://api.upstox.com/v2/user/profile",
+                  mapProfileToUser: (profile: IGetProfileUpstoxResponse) => {
+                    if (isUpstoxSuccess<IGetProfileUpstox>(profile)) {
+                      const upstoxProfile = profile.data;
+
+                      return {
+                        id: upstoxProfile.user_id,
+                        name: upstoxProfile.user_name,
+                        email: upstoxProfile.email,
+                        emailVerified: true, // Upstox emails are verified
+                      };
+                    }
+
+                    throw new Error(
+                      "Invalid profile data received from Upstox",
+                      { cause: profile }
+                    );
+                  },
                   // Upstox OAuth v2 does not expose granular per-request scopes.
                   // The effective permissions of the access token are defined in the
                   // Upstox developer console for this application (e.g. trading +
@@ -187,47 +204,47 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                   responseType: "code",
                   authentication: "post", // Standard OAuth2 POST request
                   // Map Upstox profile response to better-auth user format
-                  getUserInfo: async (tokens) => {
-                    const response = await fetch(
-                      "https://api.upstox.com/v2/user/profile",
-                      {
-                        headers: {
-                          Authorization: `Bearer ${tokens.accessToken}`,
-                          Accept: "application/json",
-                        },
-                      }
-                    );
+                  // getUserInfo: async (tokens) => {
+                  //   const response = await fetch(
+                  //     "https://api.upstox.com/v2/user/profile",
+                  //     {
+                  //       headers: {
+                  //         Authorization: `Bearer ${tokens.accessToken}`,
+                  //         Accept: "application/json",
+                  //       },
+                  //     }
+                  //   );
 
-                    if (!response.ok) {
-                      throw new Error(
-                        "Failed to fetch user profile from Upstox"
-                      );
-                    }
+                  //   if (!response.ok) {
+                  //     throw new Error(
+                  //       "Failed to fetch user profile from Upstox"
+                  //     );
+                  //   }
 
-                    const profileResponse =
-                      (await response.json()) as IGetProfileUpstoxResponse;
+                  //   const profileResponse =
+                  //     (await response.json()) as IGetProfileUpstoxResponse;
 
-                    if (isUpstoxSuccess<IGetProfileUpstox>(profileResponse)) {
-                      const profile = profileResponse.data;
+                  //   if (isUpstoxSuccess<IGetProfileUpstox>(profileResponse)) {
+                  //     const profile = profileResponse.data;
 
-                      return {
-                        id: profile.user_id,
-                        name: profile.user_name,
-                        email: profile.email,
-                        emailVerified: true, // Upstox emails are verified
-                      };
-                    }
+                  //     return {
+                  //       id: profile.user_id,
+                  //       name: profile.user_name,
+                  //       email: profile.email,
+                  //       emailVerified: true, // Upstox emails are verified
+                  //     };
+                  //   }
 
-                    console.log(
-                      "Invalid Upstox profile response",
-                      profileResponse
-                    );
+                  //   console.log(
+                  //     "Invalid Upstox profile response",
+                  //     profileResponse
+                  //   );
 
-                    throw new Error(
-                      "Invalid profile data received from Upstox",
-                      { cause: profileResponse }
-                    );
-                  },
+                  //   throw new Error(
+                  //     "Invalid profile data received from Upstox",
+                  //     { cause: profileResponse }
+                  //   );
+                  // },
                 },
               ],
             }),
