@@ -112,8 +112,8 @@
 - **Location**: Local Windows PC or ArchLinux (same machine as RTX GPU)
 - **Purpose**:
   - Real-time market data ingestion (Upstox WebSocket)
-  - Feature engineering (50+ technical indicators)
-  - ML inference (ONNX models on RTX GPU)
+  - Feature engineering (Rust NAPI-RS + Drift-Adaptive Normalization)
+  - ML inference (ONNX + TensorRT on RTX GPU)
   - Order execution (direct Upstox API calls)
   - Position tracking and exit management
 - **Why Local**:
@@ -198,11 +198,11 @@
 2. algo-worker Perception layer → Redis Stream (local)
    Latency: <1ms
 
-3. algo-worker Cortex → compute features → Redis Stream (local)
-   Latency: 5-10ms
+3. algo-worker Cortex → compute features (Rust) → Redis Stream (local)
+   Latency: 2-5ms
 
-4. algo-worker Prediction → ONNX inference (RTX GPU) → Redis Stream (local)
-   Latency: 10-30ms (GPU TensorRT)
+4. algo-worker Prediction → ONNX inference (TensorRT GPU) → Redis Stream (local)
+   Latency: 5-15ms (GPU TensorRT)
 
 5. algo-worker Cognition → risk checks → Redis Stream (local)
    Latency: 2-5ms
@@ -455,11 +455,11 @@ ssh -R 9000:localhost:9000 user@cloud-api-server
 
 ## 🎯 What We Ignore from the Report
 
-### **1. C++/Rust Rewrite**
+### **1. Full C++/Rust Rewrite**
 
 - **Report Claim**: Necessary for sub-microsecond HFT
 - **Our Reality**: 2 users, <10 OPS, 100ms latency acceptable
-- **Decision**: ❌ Overkill. Node.js Worker Threads sufficient.
+- **Decision**: ⚠️ Partial Adoption. We use **Rust Bindings (NAPI-RS)** for heavy feature engineering (Cortex layer) to save CPU, but keep core logic in Node.js/TypeScript.
 
 ### **2. LMAX Disruptor Pattern**
 
@@ -515,10 +515,10 @@ ssh -R 9000:localhost:9000 user@cloud-api-server
 - **Impact**: Eliminate overfitting (prevents false backtest Sharpe)
 - **Implementation**: Replace standard TimeSeriesSplit with CPCV in Kedro pipeline
 
-### **5. PatchTST / KAN Models** ✅ MEDIUM
+### **5. Mamba / PatchTST Models** ✅ HIGH
 
 - **Impact**: Better forecasting than LSTM (10-20% Sharpe improvement)
-- **Implementation**: Add to Level-0 ensemble (already have 8 models)
+- **Implementation**: Adopt Mamba (SSM) and PatchTST as core Level-0 models.
 
 ### **6. Zero-Allocation Patterns** ✅ HIGH
 

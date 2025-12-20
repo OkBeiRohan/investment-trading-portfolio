@@ -242,7 +242,7 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 
 **Engine 2: ML Signal Engine**
 
-- [x] Train 8-10 Level-0 models (Core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; Optional: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN) in Python
+- [x] Train 8-10 Level-0 models (Core: XGBoost, LightGBM, Mamba, GINN, SVM, PatchTST; Optional: TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer) in Python
 - [ ] Train Level-1 meta-model (Logistic Regression)
 - [ ] Export all models to ONNX format
 - [ ] Create SignalEngine module in NestJS
@@ -358,13 +358,13 @@ UPSTOX_ACCESS_TOKEN=your_access_token
 BINANCE_API_KEY=your_api_key
 BINANCE_API_SECRET=your_api_secret
 
-# ML Models
-XGBOOST_MODEL_PATH=models/xgboost.pkl
-CNN_LSTM_MODEL_PATH=models/cnn_lstm.h5
-GARCH_MODEL_PATH=models/garch.pkl
-GINN_LSTM_PATH=models/ginn_lstm.h5
-SVM_MODEL_PATH=models/svm.pkl
-STACKING_MODEL_PATH=models/stacking.pkl
+# ML Models (ONNX)
+XGBOOST_MODEL_PATH=models/xgboost.onnx
+MAMBA_MODEL_PATH=models/mamba.onnx
+PATCHTST_MODEL_PATH=models/patchtst.onnx
+GINN_MODEL_PATH=models/ginn.onnx
+SVM_MODEL_PATH=models/svm.onnx
+META_LEARNER_PATH=models/meta_learner.onnx
 
 # Risk Limits
 MAX_DAILY_LOSS=-50000

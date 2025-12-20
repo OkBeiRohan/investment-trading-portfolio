@@ -24,6 +24,7 @@ The Perception layer subscribes to Redis Streams and consumes raw market events 
 
 - Subscribe to Redis Stream: `stream:market-data`
 - Consume tick, candle, and order book events
+- **New**: Consume pre-calculated Greeks (Delta, Gamma) from Upstox V3
 - Validate schema using `@repo/schema`
 - Emit internal event: `MarketDataReceivedEvent`
 
@@ -64,14 +65,15 @@ export class MarketDataConsumer implements OnModuleInit {
 
 ---
 
-### **2. NewsConsumer**
+### **2. NewsImpactScorer** (formerly NewsConsumer)
 
-**File**: `src/perception/news-consumer.service.ts`
+**File**: `src/perception/news-impact-scorer.service.ts`
 
 **Responsibilities**:
 
 - Subscribe to Redis Stream: `stream:news`
-- Consume news articles and announcements
+- **RAG Analysis**: Retrieve historical context for headlines
+- **LLM Scoring**: Use Phi-3 (ONNX) to score Impact (High/Low) and Sentiment
 - Emit internal event: `NewsReceivedEvent`
 
 **Example**:

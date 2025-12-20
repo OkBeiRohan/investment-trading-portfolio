@@ -52,9 +52,9 @@ Critical trading components for managing open positions:
   - **SharedArrayBuffer**: Zero-copy data transfer between threads
   - **Object Pooling**: Eliminates GC pauses (500ms → <10ms)
 - 🧠 **ML Ensemble**: 8-10 Level-0 models (core + optional) + Logistic Regression meta-learner
-  - **Core Models** (6): XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
-  - **Advanced Models** (4): TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
-  - **Architecture**: Channel-independent Transformers (PatchTST) + learnable activation networks (KAN)
+  - **Core Models** (6): XGBoost, LightGBM, Mamba (SSM), GINN, SVM, PatchTST
+  - **Advanced Models** (4): TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer
+  - **Architecture**: State Space Models (Mamba) + Channel-independent Transformers (PatchTST)
 - 📊 **Options Strategies**: LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD, BEAR_CALL_SPREAD
 - 🛡️ **Risk Management**: Portfolio Greeks limits, position sizing, circuit breakers
 - 🚀 **GPU Acceleration**: ONNX Runtime with TensorRT/OpenVINO execution providers
@@ -476,15 +476,15 @@ pnpm test:watch
 
 - **XGBoost** - Gradient boosting classifier (AUC >0.70)
 - **LightGBM** - Fast gradient boosting (AUC >0.69)
-- **CNN-LSTM** - Hybrid deep learning (1D-CNN + LSTM, AUC >0.68)
+- **Mamba (SSM)** - State Space Model for linear-time sequence modeling (AUC >0.74)
+- **PatchTST** - Patch Time Series Transformer for volatility forecasting (AUC >0.75)
 - **GINN** - GARCH-Informed Neural Network (AUC >0.69)
 - **SVM** - Support Vector Machine with RBF kernel (AUC >0.67)
-- **Transformer** - Attention-based encoder (AUC >0.70)
 
 **Optional Level-0 Models** (Feature-Enhanced):
 
 - **TimesNet-MLP** - Multi-scale temporal patterns (AUC >0.69)
-- **WFTNet-MLP** - Wavelet-based features (AUC >0.68)
+- **Vision Transformer** - 2D IV Surface analysis (AUC >0.72)
 
 **Level-1 Meta-Learner**:
 

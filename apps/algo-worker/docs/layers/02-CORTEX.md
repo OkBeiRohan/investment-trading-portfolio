@@ -16,13 +16,25 @@ The Cortex layer transforms raw market data into engineered features suitable fo
 
 ## Components
 
-### **1. FeatureEngineService**
+### **1. RustComputeEngine** (New)
+
+**File**: `src/cortex/rust-compute.service.ts`
+
+**Responsibilities**:
+
+- **NAPI-RS Binding**: Calls Rust code for heavy math
+- Computes RSI, Bollinger Bands, ATR, and Volatility in native code
+- **Zero GC**: No garbage collection overhead for sliding windows
+- Target: 10x speedup vs pure TypeScript implementation
+
+### **2. FeatureEngineService**
 
 **File**: `src/cortex/feature-engine.service.ts`
 
 **Responsibilities**:
 
 - Listen to `MarketDataReceivedEvent`
+- **Orchestration**: Calls `RustComputeEngine` for technicals
 - Compute 50+ features from current + historical data
 - Emit `FeaturesComputedEvent` for Prediction layer
 

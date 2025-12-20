@@ -308,7 +308,17 @@ export class ExplainabilityService {
 
 ---
 
-### **4. AlertingService**
+### **4. eBPFTracer** (New)
+
+**File**: `src/control/ebpf-tracer.service.ts`
+
+**Responsibilities**:
+
+- **Kernel Tracing**: Monitor packet arrival at NIC vs Application read time
+- **Micro-Burst Detection**: Identify OS buffer bloat
+- **Latency Breakdown**: Network Latency vs App Processing Latency
+
+### **5. AlertingService**
 
 **File**: `src/control/alerting.service.ts`
 
