@@ -1,4 +1,5 @@
 import { Module, Global } from "@nestjs/common";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 // import { MongooseModule } from "@nestjs/mongoose";
 // import { DatabaseModule, UpstoxToken, UpstoxTokenSchema } from "@repo/database";
 
@@ -11,11 +12,14 @@ import { SubscriptionManager } from "../../multiplexer/subscription-manager";
 import { UpstoxProvider } from "./upstox.provider";
 // import { MarketDataApi } from "./api/market-data.api";
 import { OrdersApi } from "./api/orders.api";
+import { UpstoxHistoricalAPI } from "./api/historical.api";
+import { UpstoxHistoricalService } from "./historical.service";
 // import { PortfolioApi } from "./api/portfolio.api";
 
 @Global()
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     // DatabaseModule,
     // MongooseModule.forFeature([
     //   { name: UpstoxToken.name, schema: UpstoxTokenSchema },
@@ -36,8 +40,16 @@ import { OrdersApi } from "./api/orders.api";
     UpstoxProvider,
     // MarketDataApi,
     OrdersApi,
+    UpstoxHistoricalAPI,
+    UpstoxHistoricalService,
     // PortfolioApi,
   ],
-  exports: [AuthManagerService, MultiplexerService, UpstoxProvider],
+  exports: [
+    AuthManagerService,
+    MultiplexerService,
+    UpstoxProvider,
+    UpstoxHistoricalAPI,
+    UpstoxHistoricalService,
+  ],
 })
 export class UpstoxModule {}

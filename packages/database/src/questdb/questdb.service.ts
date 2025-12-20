@@ -134,10 +134,11 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * 4. WAL enabled for write-ahead logging (durability)
    * 5. NOCACHE for high-cardinality symbols (>10K unique values)
    * 6. INDEX only on frequently filtered columns
+   * 7. Materialized views for auto-aggregation (reduce query-time computation)
    */
   private async createTables(): Promise<void> {
     const tables = [
-      // Historical candles (OHLCV data)
+      // Historical candles (OHLCV data) - Raw tick-level data
       // Expected: 200K candles/day across all instruments and intervals
       `CREATE TABLE IF NOT EXISTS market_candles (
         timestamp TIMESTAMP,
@@ -152,7 +153,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
       ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
       DEDUP UPSERT KEYS(timestamp, instrument_key, interval);`,
 
-      // Market quotes (bid/ask snapshots)
+      // Market quotes (bid/ask snapshots) - High-frequency tick data
       // Expected: 1M quotes/day (tick-by-tick)
       `CREATE TABLE IF NOT EXISTS market_quotes (
         timestamp TIMESTAMP,
@@ -195,8 +196,59 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
         orders INT
       ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
       DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);`,
+
+      // System audit log for distributed tracing
+      // Expected: 100K events/day (all system actions with trace_id)
+      `CREATE TABLE IF NOT EXISTS system_audit (
+        timestamp TIMESTAMP,
+        trace_id SYMBOL CAPACITY 100000 INDEX,
+        service SYMBOL CAPACITY 20,
+        level SYMBOL CAPACITY 10,
+        action SYMBOL CAPACITY 100,
+        user_id SYMBOL CAPACITY 1000,
+        metadata STRING
+      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL;`,
     ];
 
+    // Materialized Views for auto-aggregation (Blueprint requirement)
+    const materializedViews = [
+      // 1-minute candles (auto-aggregated from market_quotes)
+      // Reduces query-time computation for dashboard charts
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_1m AS
+      SELECT
+        timestamp,
+        instrument_key,
+        '1m' as interval,
+        first(ltp) as open,
+        max(ltp) as high,
+        min(ltp) as low,
+        last(ltp) as close,
+        sum(volume) as volume,
+        last(open_interest) as open_interest
+      FROM market_quotes
+      SAMPLE BY 1m
+      ALIGN TO CALENDAR;`,
+
+      // 30-minute candles (auto-aggregated from 1m candles)
+      // For longer-term analysis and backtesting
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_30m AS
+      SELECT
+        timestamp,
+        instrument_key,
+        '30m' as interval,
+        first(open) as open,
+        max(high) as high,
+        min(low) as low,
+        last(close) as close,
+        sum(volume) as volume,
+        last(open_interest) as open_interest
+      FROM market_candles
+      WHERE interval = '1m'
+      SAMPLE BY 30m
+      ALIGN TO CALENDAR;`,
+    ];
+
+    // Create base tables
     for (const sql of tables) {
       try {
         await this.query(sql);
@@ -204,6 +256,18 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Table created/verified: ${tableName}`);
       } catch (error) {
         this.logger.error(`Failed to create table: ${sql}`, error);
+      }
+    }
+
+    // Create materialized views (after base tables exist)
+    for (const sql of materializedViews) {
+      try {
+        await this.query(sql);
+        const viewName = sql.match(/VIEW IF NOT EXISTS (\w+)/)?.[1];
+        this.logger.log(`Materialized view created/verified: ${viewName}`);
+      } catch (error) {
+        this.logger.warn(`Failed to create materialized view: ${sql}`, error);
+        // Non-fatal: views may already exist or require base data
       }
     }
   }
@@ -601,6 +665,137 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
     `);
 
     return stats.rows;
+  }
+
+  /**
+   * Write audit log entry (distributed tracing)
+   *
+   * @param traceId Unique trace ID for request correlation
+   * @param service Service name (e.g., 'market-feeder', 'trading-engine')
+   * @param level Log level ('INFO', 'WARN', 'ERROR', 'FATAL')
+   * @param action Action performed (e.g., 'FETCH_INIT', 'ORDER_SENT', 'MODEL_LOAD')
+   * @param metadata Additional context (JSON string or object)
+   * @param userId Optional user ID for user-initiated actions
+   */
+  async writeAuditLog(
+    traceId: string,
+    service: string,
+    level: "INFO" | "WARN" | "ERROR" | "FATAL",
+    action: string,
+    metadata: string | Record<string, any>,
+    userId?: string
+  ): Promise<void> {
+    if (!this.sender) {
+      throw new Error("ILP sender not initialized");
+    }
+
+    try {
+      const metadataStr =
+        typeof metadata === "string" ? metadata : JSON.stringify(metadata);
+
+      this.sender
+        .table("system_audit")
+        .symbol("trace_id", traceId)
+        .symbol("service", service)
+        .symbol("level", level)
+        .symbol("action", action)
+        .symbol("user_id", userId || "system")
+        .stringColumn("metadata", metadataStr)
+        .atNow();
+
+      this.pendingWrites++;
+
+      // Flush immediately for ERROR/FATAL (durability)
+      if (level === "ERROR" || level === "FATAL") {
+        await this.flushILP();
+      }
+    } catch (error) {
+      this.logger.error(`Failed to write audit log: ${action}`, error);
+    }
+  }
+
+  /**
+   * Get last known timestamp for an instrument (LATEST ON query)
+   * Critical for gap detection and smart backfill
+   *
+   * @param table Table to query
+   * @param instrumentKey Instrument to check
+   * @returns Last recorded timestamp or null if no data
+   */
+  async getLastTimestamp(
+    table: "market_candles" | "market_quotes" | "option_greeks",
+    instrumentKey: string
+  ): Promise<Date | null> {
+    // LATEST ON optimization: scans backward from most recent partition
+    const sql = `
+      SELECT timestamp
+      FROM ${table}
+      WHERE instrument_key = $1
+      LATEST ON timestamp PARTITION BY instrument_key
+    `;
+
+    const result = await this.query<{ timestamp: string }>(sql, [
+      instrumentKey,
+    ]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return new Date(result.rows[0].timestamp);
+  }
+
+  /**
+   * Get all instruments with their last timestamps (bulk gap detection)
+   * Efficiently identifies which instruments need data refresh
+   *
+   * @param table Table to query
+   * @param minTimestamp Only return instruments with data after this time
+   * @returns Map of instrument_key -> last timestamp
+   */
+  async getAllLastTimestamps(
+    table: "market_candles" | "market_quotes",
+    minTimestamp?: Date
+  ): Promise<Map<string, Date>> {
+    let sql = `
+      SELECT instrument_key, timestamp
+      FROM ${table}
+      LATEST ON timestamp PARTITION BY instrument_key
+    `;
+
+    if (minTimestamp) {
+      sql += ` WHERE timestamp > '${minTimestamp.toISOString()}'`;
+    }
+
+    const result = await this.query<{
+      instrument_key: string;
+      timestamp: string;
+    }>(sql);
+
+    const map = new Map<string, Date>();
+    for (const row of result.rows) {
+      map.set(row.instrument_key, new Date(row.timestamp));
+    }
+
+    return map;
+  }
+
+  /**
+   * Query audit logs by trace ID (full request lifecycle)
+   *
+   * @param traceId Trace ID to search for
+   * @returns All audit log entries for this trace
+   */
+  async getAuditLogsByTraceId(traceId: string): Promise<any[]> {
+    const sql = `
+      SELECT timestamp, service, level, action, user_id, metadata
+      FROM system_audit
+      WHERE trace_id = $1
+      ORDER BY timestamp ASC
+    `;
+
+    const result = await this.query(sql, [traceId]);
+    return result.rows;
   }
 
   async onModuleDestroy() {

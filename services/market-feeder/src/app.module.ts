@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { QuestDBModule } from '@repo/database';
 
 @Module({
-  imports: [],
+  imports: [QuestDBModule],
   controllers: [AppController],
   providers: [AppService],
 })

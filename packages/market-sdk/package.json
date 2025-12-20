@@ -23,15 +23,16 @@
     "test:cov": "jest --coverage"
   },
   "dependencies": {
+    "@binance/connector": "^3.6.1",
     "@nestjs/common": "^11.1.9",
+    "@nestjs/event-emitter": "^3.0.1",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "axios": "^1.13.2",
     "long": "^5.3.2",
     "protobufjs": "^8.0.0",
     "ws": "^8.18.3",
-    "yahoo-finance2": "^3.10.2",
-    "@binance/connector": "^3.6.1"
+    "yahoo-finance2": "^3.10.2"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
