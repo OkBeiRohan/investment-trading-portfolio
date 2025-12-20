@@ -26,7 +26,7 @@ The **Compute Engine** is the specialized component responsible for heavy liftin
 ## Project Structure
 
 ```
-apps/compute-engine/
+services/compute-engine/
 ├── src/
 │   └── main.rs          # Entry point (standalone mode)
 │   └── lib.rs           # Library exports (for NAPI)
