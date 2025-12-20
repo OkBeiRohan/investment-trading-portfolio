@@ -32,7 +32,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { Pool, type PoolClient } from "pg";
-import { Sender } from "@questdb/nodejs-client";
+import { Sender, SenderOptions } from "@questdb/nodejs-client";
 import type {
   ICandleInsert,
   IQuoteInsert,
@@ -93,16 +93,18 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     try {
-      this.sender = new Sender({
-        protocol: "tcp",
-        host: this.config.host,
-        port: this.config.ilpPort,
-        auto_flush: false,
-        auto_flush_rows: 1000,
-        auto_flush_interval: 5000,
-        init_buf_size: 8192,
-        max_buf_size: 104857600,
-      });
+      // Create sender options with configuration string
+      // Format: protocol::addr=host:port;param1=value1;param2=value2
+      let senderOptions = await SenderOptions.fromConfig(
+        `tcp::addr=${this.config.host}:${this.config.ilpPort};auto_flush_rows=1000;auto_flush_interval=5000;init_buf_size=8192;max_buf_size=104857600;`
+      );
+
+      // Resolve protocol version automatically
+      senderOptions = await SenderOptions.resolveAuto(senderOptions);
+
+      // Create sender with resolved options
+      this.sender = new Sender(senderOptions);
+
       await this.sender.connect();
 
       this.logger.log(
