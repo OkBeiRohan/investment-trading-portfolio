@@ -18,6 +18,9 @@ export * from "./common";
 // Trading-related schemas
 export * from "./trading";
 
+// Market data schemas (QuestDB time-series)
+export * from "./market-data";
+
 // API-related schemas
 export * from "./api";
 
