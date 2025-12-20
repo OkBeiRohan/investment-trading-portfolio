@@ -62,6 +62,7 @@ export function LinkedAccountsSettings() {
       const { data, error } = await authClient.oauth2.link({
         providerId: "upstox",
         callbackURL: "/account/linked-accounts",
+        errorCallbackURL: "/account/linked-accounts",
       });
       if (error) {
         setError(error.message || `Failed to link Upstox`);
