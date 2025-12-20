@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { QuestDBModule } from '@repo/database';
 import { UpstoxModule } from '@repo/market-sdk';
 import { HistoricalDataModule } from './historical-data/historical-data.module';
 import configuration from './config/configuration';
+import { TraceContextInterceptor } from './common/interceptors/trace-context.interceptor';
 
 @Module({
   imports: [
@@ -38,6 +40,12 @@ import configuration from './config/configuration';
     HistoricalDataModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TraceContextInterceptor,
+    },
+  ],
 })
 export class AppModule {}

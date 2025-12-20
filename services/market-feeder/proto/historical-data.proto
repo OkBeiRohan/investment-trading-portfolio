@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package historical_data;
+
+// Historical data backfill service
+service HistoricalDataService {
+  // Load historical candles with gap detection
+  rpc LoadHistoricalData(LoadHistoricalDataRequest) returns (LoadHistoricalDataResponse);
+  
+  // Stream backfill progress
+  rpc StreamBackfillProgress(BackfillRequest) returns (stream BackfillProgress);
+}
+
+// Request to load historical candles
+message LoadHistoricalDataRequest {
+  repeated string instrument_keys = 1;  // Instruments to fetch (e.g., ["NSE_INDEX|Nifty 50"])
+  repeated string intervals = 2;        // Intervals (e.g., ["1m", "5m", "1h"])
+  string from_date = 3;                 // YYYY-MM-DD (optional, uses gap detection)
+  string to_date = 4;                   // YYYY-MM-DD (optional, defaults to today)
+}
+
+// Response with total candles inserted
+message LoadHistoricalDataResponse {
+  int32 total_candles = 1;              // Total candles inserted
+  int64 duration_ms = 2;                // Time taken in milliseconds
+  string trace_id = 3;                  // OpenTelemetry trace_id for correlation
+}
+
+// Request for streaming backfill progress
+message BackfillRequest {
+  repeated string instrument_keys = 1;
+  repeated string intervals = 2;
+  string from_date = 3;
+  string to_date = 4;
+}
+
+// Backfill progress event (streamed)
+message BackfillProgress {
+  int32 total_instruments = 1;          // Total instruments to process
+  int32 completed_instruments = 2;      // Instruments completed
+  string current_instrument = 3;        // Currently processing instrument
+  int32 total_candles = 4;              // Total candles inserted so far
+  int64 elapsed_ms = 5;                 // Time elapsed in milliseconds
+}

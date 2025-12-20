@@ -677,42 +677,49 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * @param level Log level ('INFO', 'WARN', 'ERROR', 'FATAL')
    * @param action Action performed (e.g., 'FETCH_INIT', 'ORDER_SENT', 'MODEL_LOAD')
    * @param metadata Additional context (JSON string or object)
-   * @param userId Optional user ID for user-initiated actions
+   * Write to system_audit table with trace_id
+   *
+   * @param params Audit log parameters with trace_id, span_id, service metadata
    */
-  async writeAuditLog(
-    traceId: string,
-    service: string,
-    level: "INFO" | "WARN" | "ERROR" | "FATAL",
-    action: string,
-    metadata: string | Record<string, any>,
-    userId?: string
-  ): Promise<void> {
+  async writeAuditLog(params: {
+    trace_id: string;
+    span_id?: string;
+    service_name: string;
+    layer_name?: string;
+    operation_name: string;
+    status: "success" | "error";
+    error_message?: string | null;
+    metadata?: string;
+    timestamp: number;
+  }): Promise<void> {
     if (!this.sender) {
       throw new Error("ILP sender not initialized");
     }
 
     try {
-      const metadataStr =
-        typeof metadata === "string" ? metadata : JSON.stringify(metadata);
-
       this.sender
         .table("system_audit")
-        .symbol("trace_id", traceId)
-        .symbol("service", service)
-        .symbol("level", level)
-        .symbol("action", action)
-        .symbol("user_id", userId || "system")
-        .stringColumn("metadata", metadataStr)
-        .atNow();
+        .symbol("trace_id", params.trace_id)
+        .symbol("span_id", params.span_id || "")
+        .symbol("service_name", params.service_name)
+        .symbol("layer_name", params.layer_name || "")
+        .symbol("operation_name", params.operation_name)
+        .symbol("status", params.status)
+        .stringColumn("error_message", params.error_message || "")
+        .stringColumn("metadata", params.metadata || "{}")
+        .timestampColumn("timestamp", params.timestamp * 1_000_000); // Convert ms to microseconds
 
       this.pendingWrites++;
 
-      // Flush immediately for ERROR/FATAL (durability)
-      if (level === "ERROR" || level === "FATAL") {
+      // Flush immediately for errors (durability)
+      if (params.status === "error") {
         await this.flushILP();
       }
     } catch (error) {
-      this.logger.error(`Failed to write audit log: ${action}`, error);
+      this.logger.error(
+        `Failed to write audit log: ${params.operation_name}`,
+        error
+      );
     }
   }
 
