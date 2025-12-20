@@ -11,9 +11,10 @@ export interface IGetProfileUpstox {
   user_name: string;
   order_types: Array<"MARKET" | "LIMIT" | "SL" | "SL-M">;
   user_type: "individual";
-  poa: false;
-  ddpi: false;
-  is_active: true;
+  poa: boolean;
+  ddpi: boolean;
+  is_active: boolean;
 }
 
-export default interface IGetProfileUpstoxResponse extends IUpstoxResponse<IGetProfileUpstox> {}
+type IGetProfileUpstoxResponse = IUpstoxResponse<IGetProfileUpstox>;
+export default IGetProfileUpstoxResponse;

@@ -16,6 +16,10 @@ import {
 import { passkey } from "@better-auth/passkey";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { createAuthConfig } from "src/config/auth.config";
+import IGetProfileUpstoxResponse, {
+  IGetProfileUpstox,
+} from "@repo/schema/api/upstox/profile/get-profile";
+import { isUpstoxSuccess } from "@repo/schema";
 
 export interface BetterAuthServerConfig {
   adapter: (options: BetterAuthOptions) => DBAdapter;
@@ -198,14 +202,27 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                       );
                     }
 
-                    const { data } = (await response.json()) as { data: any };
-                    // Upstox profile response: { user_id, user_name, email, ... }
-                    return {
-                      id: data.user_id,
-                      name: data.user_name,
-                      email: data.email,
-                      emailVerified: true, // Upstox emails are verified
-                    };
+                    const responseData =
+                      (await response.json()) as IGetProfileUpstoxResponse;
+
+                    if (isUpstoxSuccess<IGetProfileUpstox>(responseData)) {
+                      return {
+                        id: responseData.data.user_id,
+                        name: responseData.data.user_name,
+                        email: responseData.data.email,
+                        emailVerified: true, // Upstox emails are verified
+                      };
+                    }
+
+                    console.log(
+                      "Invalid Upstox profile response",
+                      responseData
+                    );
+
+                    throw new Error(
+                      "Invalid profile data received from Upstox",
+                      { cause: responseData }
+                    );
                   },
                 },
               ],
