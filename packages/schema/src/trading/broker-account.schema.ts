@@ -1,4 +1,5 @@
 import { ISegmentFundMargin } from "../api/upstox/profile/get-fund-margin";
+import { BrokerExchange, BrokerProduct, BrokerOrderType } from "./broker-enums";
 
 /**
  * Trading Database - Broker Account Collection
@@ -39,14 +40,14 @@ export interface IBrokerAccount {
   /** Broker name (e.g., "UPSTOX") */
   broker: string;
 
-  /** Products (e.g., ["D", "I"]) */
-  products: string[];
+  /** Products - Normalized across all brokers */
+  products: BrokerProduct[];
 
-  /** Order Types (e.g., ["MARKET", "LIMIT", "SL", "SL-M"]) */
-  orderTypes: string[];
+  /** Order Types - Normalized across all brokers */
+  orderTypes: BrokerOrderType[];
 
-  /** Exchanges (e.g., ["NSE", "BSE", "NFO"]) */
-  exchanges: string[];
+  /** Exchanges - Normalized across all brokers */
+  exchanges: BrokerExchange[];
 
   /** Fund and Margin from /v2/user/get-funds-and-margin */
   fundMargin: IBrokerAccountFundMargin;
