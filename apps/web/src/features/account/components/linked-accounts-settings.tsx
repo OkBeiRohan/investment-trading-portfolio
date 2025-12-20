@@ -1,24 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { use, useState } from "react";
 import { Link2, Trash2 } from "lucide-react";
-import styles from "./linked-settings.module.css";
+import styles from "./linked-accounts-settings.module.css";
 import GoogleIcon from "@/components/icons/brands/Google";
 import GitHubIcon from "@/components/icons/brands/GitHub";
 import { authClient } from "@/lib/auth/auth-client";
 import Message from "@/components/form/message";
-import { IAccount } from "@repo/schema";
 
-interface LinkedAccountsSettingsProps {
-  initialAccounts: IAccount[];
-}
-
-export function LinkedAccountsSettings({
-  initialAccounts,
-}: LinkedAccountsSettingsProps) {
+export function LinkedAccountsSettings() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [linkedAccounts] = useState<IAccount[]>(initialAccounts);
+  const { data: linkedAccounts, error: listError } = use(
+    authClient.listAccounts()
+  );
 
   // Helper to check if account is linked
   const isLinked = (providerId: string) => {
@@ -145,9 +140,9 @@ export function LinkedAccountsSettings({
           </div>
         </div>
 
-        {error && (
+        {(error || listError) && (
           <Message type="error" className={styles.message}>
-            {error}
+            {error || listError?.message}
           </Message>
         )}
 

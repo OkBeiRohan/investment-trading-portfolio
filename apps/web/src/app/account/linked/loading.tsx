@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/loading/skeleton";
-import styles from "@/features/account/components/linked-settings.module.css";
+import styles from "@/features/account/components/linked-accounts-settings.module.css";
 
 export default function LinkedAccountsLoading() {
   return (

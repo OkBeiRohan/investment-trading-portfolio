@@ -65,7 +65,7 @@ export default function LinkedAccountsPage() {
     try {
       await authClient.oauth2.link({
         providerId: "upstox",
-        callbackURL: "/account/linked-accounts",
+        callbackURL: "/account/linked",
       });
     } catch (error) {
       console.error("Failed to link Upstox:", error);
@@ -161,7 +161,7 @@ export class TradingService {
      ```
 
 7. **Redirect to success page**
-   - User lands on `/account/linked-accounts`
+   - User lands on `/account/linked`
 
 ## Token Management
 
@@ -215,7 +215,7 @@ Cookie: better-auth.session_token=xxx
 
 {
   "providerId": "upstox",
-  "callbackURL": "/account/linked-accounts"
+  "callbackURL": "/account/linked"
 }
 ```
 
@@ -274,7 +274,7 @@ See `packages/market-sdk/README.md` for SEBI compliance details.
 
 **Cause**: User hasn't connected Upstox account
 
-**Solution**: Direct user to `/account/linked-accounts` to connect
+**Solution**: Direct user to `/account/linked` to connect
 
 ### "Upstox session expired"
 

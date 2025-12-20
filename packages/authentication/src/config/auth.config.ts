@@ -119,8 +119,6 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
 
     brokerProviders: options.brokerProviders,
 
-    hooks: {},
-
     advanced: {
       useSecureCookies: options.environment === "production",
       cookiePrefix: options.appName || "better-auth",
