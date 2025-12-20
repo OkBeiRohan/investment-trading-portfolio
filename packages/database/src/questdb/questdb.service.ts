@@ -69,7 +69,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
     this.config = {
       host: process.env.QUESTDB_HOST || "localhost",
       pgPort: parseInt(process.env.QUESTDB_PG_PORT || "8812", 10),
-      ilpPort: parseInt(process.env.QUESTDB_ILP_PORT || "9009", 10),
+      ilpPort: parseInt(process.env.QUESTDB_ILP_PORT || "9000", 10),
       user: process.env.QUESTDB_USER || "admin",
       password: process.env.QUESTDB_PASSWORD || "quest",
       database: "qdb",
@@ -93,19 +93,16 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     try {
-      // Build ILP connection string
-      // Format: protocol::addr=host:port;option=value;...
-      const connectionStr =
-        [
-          `tcp::addr=${this.config.host}:${this.config.ilpPort}`,
-          "auto_flush=off", // Manual flush for batching control
-          "init_buf_size=8192", // 8KB initial buffer
-          "max_buf_size=104857600", // 100MB max buffer
-          "auto_flush_rows=1000", // Auto-flush at 1000 rows
-          "auto_flush_interval=5000", // Auto-flush every 5 seconds
-        ].join(";") + ";";
-
-      this.sender = await Sender.fromConfig(connectionStr);
+      this.sender = new Sender({
+        protocol: "tcp",
+        host: this.config.host,
+        port: this.config.ilpPort,
+        auto_flush: false,
+        auto_flush_rows: 1000,
+        auto_flush_interval: 5000,
+        init_buf_size: 8192,
+        max_buf_size: 104857600,
+      });
       await this.sender.connect();
 
       this.logger.log(
