@@ -143,7 +143,27 @@ export function LinkedAccountsSettings() {
               onClick={() => handleUnlinkAccount("github")}
               disabled={loading}
             >
-              Unlink
+              <Trash2 /> Unlink
+            </button>
+          </div>
+
+          <div className={styles.accountItem}>
+            <div className={styles.accountInfo}>
+              <div className={styles.providerIcon}>
+                UP
+                <Plus size={16} />
+              </div>
+              <div>
+                <p className={styles.providerName}>Upstox</p>
+                <p className={styles.accountEmail}>Not linked</p>
+              </div>
+            </div>
+            <button
+              className={styles.linkButton}
+              onClick={handleUpstoxAccount}
+              disabled={loading}
+            >
+              Connect
             </button>
           </div>
         </div>
