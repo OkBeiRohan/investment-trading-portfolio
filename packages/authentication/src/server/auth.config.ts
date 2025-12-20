@@ -169,7 +169,13 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                     "https://api.upstox.com/v2/login/authorization/dialog",
                   tokenUrl:
                     "https://api.upstox.com/v2/login/authorization/token",
-                  scopes: [], // Upstox doesn't use scopes
+                  // Upstox OAuth v2 does not expose granular per-request scopes.
+                  // The effective permissions of the access token are defined in the
+                  // Upstox developer console for this application (e.g. trading +
+                  // read-only APIs). Passing `undefined` here ensures no explicit
+                  // `scope` parameter is sent, and makes the implicit default
+                  // permission model explicit for SEBI/audit documentation.
+                  scopes: undefined,
                   pkce: false, // Upstox uses client_secret
                   responseType: "code",
                   authentication: "post", // Standard OAuth2 POST request
