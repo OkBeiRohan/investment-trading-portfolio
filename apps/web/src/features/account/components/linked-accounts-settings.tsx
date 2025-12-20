@@ -1,19 +1,36 @@
 "use client";
 
-import React, { use, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link2, Trash2 } from "lucide-react";
 import styles from "./linked-accounts-settings.module.css";
 import GoogleIcon from "@/components/icons/brands/Google";
 import GitHubIcon from "@/components/icons/brands/GitHub";
 import { authClient } from "@/lib/auth/auth-client";
 import Message from "@/components/form/message";
+import { IAccount } from "@repo/schema";
 
 export function LinkedAccountsSettings() {
+  const [linkedAccounts, setLinkedAccounts] = useState<IAccount[] | undefined>(
+    undefined
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { data: linkedAccounts, error: listError } = use(
-    authClient.listAccounts()
-  );
+
+  useEffect(() => {
+    // Fetch linked accounts on component mount
+    authClient
+      .listAccounts()
+      .then(({ data, error }) => {
+        if (error) {
+          setError(error.message || "Failed to load linked accounts");
+        } else {
+          setLinkedAccounts(data);
+        }
+      })
+      .catch((err) => {
+        setError(err?.message || "Failed to load linked accounts");
+      });
+  }, []); // Empty dependency array - run once on mount
 
   // Helper to check if account is linked
   const isLinked = (providerId: string) => {
@@ -109,12 +126,28 @@ export function LinkedAccountsSettings() {
             UP
           </div>
         );
+      case "credential":
+        return (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              fontSize: "12px",
+              fontWeight: "bold",
+            }}
+          >
+            PW
+          </div>
+        );
+
       default:
         return providerId.substring(0, 2).toUpperCase();
     }
   };
 
   const getProviderName = (providerId: string) => {
+    if (providerId === "credential") return "Password";
+
     return providerId.charAt(0).toUpperCase() + providerId.slice(1);
   };
 
@@ -140,9 +173,9 @@ export function LinkedAccountsSettings() {
           </div>
         </div>
 
-        {(error || listError) && (
+        {error && (
           <Message type="error" className={styles.message}>
-            {error || listError?.message}
+            {error}
           </Message>
         )}
 
@@ -278,7 +311,8 @@ export function LinkedAccountsSettings() {
                         {getProviderName(account.providerId)}
                       </p>
                       <p className={styles.accountEmail}>
-                        {account.userId || `Account: ${account.accountId}`}
+                        {new Date(account.createdAt).toLocaleDateString() ||
+                          `Account: ${account.accountId}`}
                       </p>
                     </div>
                   </div>
