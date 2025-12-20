@@ -8,7 +8,7 @@
 
 ## Purpose
 
-The Prediction layer runs ML model inference on engineered features from the Cortex layer. It manages an ensemble of 8-10 Level-0 models (core 6: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; optional 4: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN) and 1 Level-1 meta-learner (Logistic Regression stacker) using ONNX Runtime with GPU acceleration.
+The Prediction layer runs ML model inference on engineered features from the Cortex layer. It manages an ensemble of 8-10 Level-0 models (core 6: XGBoost, LightGBM, Mamba, GINN, SVM, PatchTST; optional 4: TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer) and 1 Level-1 meta-learner (Logistic Regression stacker) using ONNX Runtime with GPU acceleration.
 
 ---
 
@@ -44,22 +44,22 @@ async handleFeatures(event: FeaturesComputedEvent) {
   const coreResults = await Promise.all([
     this.xgboostModel.predict(event.features),
     this.lightgbmModel.predict(event.features),
-    this.cnnLstmModel.predict(event.features),
+    this.mambaModel.predict(event.features), // Mamba (SSM)
     this.ginnModel.predict(event.features),
     this.svmModel.predict(event.features),
-    this.transformerModel.predict(event.features),
+    this.patchTSTModel.predict(event.features), // PatchTST
   ]);
 
   // Run Level-0 optional models if enabled (up to 4 models)
   const optionalResults = await Promise.all([
     this.config.enableTimesNet ? this.timesNetModel.predict(event.features) : null,
     this.config.enableWFTNet ? this.wftNetModel.predict(event.features) : null,
-    this.config.enablePatchTST ? this.patchTSTModel.predict(event.features) : null,
     this.config.enableKAN ? this.kanModel.predict(event.features) : null,
+    this.config.enableViT ? this.visionTransformerModel.predict(event.features) : null,
   ]);
 
   // Optional: Add feature-enhanced models if deployed
-  const predictions = [xgb, lgb, cnn, ginn, svm, transformer];
+  const predictions = [xgb, lgb, mamba, ginn, svm, patchtst];
   if (this.timesnetMlpModel) predictions.push(await this.timesnetMlpModel.predict(event.features));
   if (this.wftnetMlpModel) predictions.push(await this.wftnetMlpModel.predict(event.features));
 
@@ -85,10 +85,10 @@ async handleFeatures(event: FeaturesComputedEvent) {
 | ----------- | ------------------ | ----------- | ----------------- | ---------- |
 | XGBoost     | `xgboost.onnx`     | (1, 50)     | Probability (0-1) | >0.70      |
 | LightGBM    | `lightgbm.onnx`    | (1, 50)     | Probability (0-1) | >0.69      |
-| CNN-LSTM    | `cnn_lstm.onnx`    | (1, 60, 50) | Probability (0-1) | >0.68      |
+| **Mamba**   | `mamba.onnx`       | (1, 60, 50) | Probability (0-1) | >0.74      |
 | GINN        | `ginn.onnx`        | (1, 50)     | Probability (0-1) | >0.69      |
 | SVM         | `svm.onnx`         | (1, 50)     | Probability (0-1) | >0.67      |
-| Transformer | `transformer.onnx` | (1, 60, 50) | Probability (0-1) | >0.70      |
+| **PatchTST**| `patchtst.onnx`    | (1, 60, 50) | Probability (0-1) | >0.75      |
 
 ### **Level-0 Models** (Optional Feature-Enhanced)
 

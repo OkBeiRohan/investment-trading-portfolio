@@ -123,11 +123,12 @@ ONNX Runtime (Cross-Platform Base)
 
 **Components**:
 
-- `MarketFeeder`: Upstox WebSocket with intelligent multiplexer (priority-based bin packing)
-- `NewsIngestor`: RSS + Twitter Firehose API for FinBERT
+- `MarketFeeder`: Upstox WebSocket V3 in `option_greeks` mode (receives pre-calculated Delta/Gamma)
+- `NewsImpactScorer`: RAG-based impact analyzer using local LLM (Phi-3 + ONNX)
 
 **Latency Optimizations**:
 
+- **Pre-calculated Greeks**: Subscribe to `option_greeks` to eliminate Spot-Option sync latency
 - **Kernel Bypass (DPDK/Solarflare ef_vi)**: Direct NIC → Application data flow, bypassing kernel network stack (-30% latency)[6]
 - **Co-location**: NSE proximity hosting for tick data (<500μs network latency)
 - **Protobuf Decoding**: Zero-copy deserialization from Upstox WebSocket
@@ -145,15 +146,15 @@ ONNX Runtime (Cross-Platform Base)
 
 **Components**:
 
-- `FeatureEngine`: Vectorized technical indicators (SIMD-optimized)
-- `SentimentEngine`: FinBERT-India inference (ONNX Runtime)
+- `RustComputeEngine`: NAPI-RS native module for heavy technical indicators (RSI, ATR, Bollinger)
+- `FeatureEngine`: Drift-adaptive normalization using Online Welford’s Algorithm
 - `QuestDB Writer`: Batch inserts (10K features/sec)
 
 **Features**:
 
 - Technical: RSI, MACD, Realized Vol (5d/10d/20d), Bollinger Bands
-- Sentiment: FinBERT scores (Positive/Negative/Neutral)
-- Greeks: Delta, Gamma, Vega, Theta (from Upstox)
+- Sentiment: LLM-scored News Impact (High/Low/Noise)
+- Greeks: Delta, Gamma, Vega, Theta (streamed from Upstox)
 - Market Microstructure: Order Flow Imbalance, Bid-Ask Spread
 
 ### Layer 3: Prediction (Alpha Generation)
@@ -161,20 +162,25 @@ ONNX Runtime (Cross-Platform Base)
 **Model Stack**:
 
 1. **Level-0 Ensemble (8-10 models)**:
-   - Core (6): XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
-   - Optional (4): TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
+   - Core (6): XGBoost, LightGBM, Mamba (SSM), GINN, SVM, PatchTST
+   - Optional (4): TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer
 2. **Level-1 Meta-Learner**: Logistic Regression stacker
 3. **Target**: Ensemble AUC >0.77 (Level-1)
 
-**Inference Latency Target**: <50ms (GPU), <100ms (CPU)
+**Inference Latency Target**: <15ms (TensorRT), <50ms (CPU)
 
 ### Layer 4: Cognition (Strategy & Risk Management)
 
 **Components**:
 
 - `StrategySelector`: Choose appropriate option strategy based on market regime
-- `RiskManager`: Symbolic rules (MUST override AI if limits breached)
+- `RiskManager`: Symbolic rules with STT Trap protection and Dynamic VIX scaling
 - `RL Agent` (Optional): Reinforcement Learning for optimal execution timing (PPO)
+
+**Risk Rules**:
+
+- **STT Trap Guard**: Force close ITM Buy options on Expiry @ 3:15 PM
+- **Dynamic VIX Scaling**: Adjust Stop Loss = BaseSL * (CurrentVIX / 15)
 
 **Strategies** (Based on 2024 Indian Market Research):
 
@@ -187,13 +193,14 @@ ONNX Runtime (Cross-Platform Base)
 
 **Components**:
 
-- `SmartOrderRouter`: TWAP/VWAP execution algorithms
+- `AtomicExecutionService`: Upstox Multi-Order API for atomic spread execution
+- `SniperExecutor`: IOC (Immediate or Cancel) logic for entries
 - `ExecutionMonitor`: Fill tracking via Upstox Portfolio WebSocket
 
 **Optimizations**:
 
-- **Async Order Placement**: Non-blocking API calls
-- **Order Batching**: Multi-leg orders sent atomically
+- **Atomic Multi-Leg**: Send all 4 legs of Iron Condor in single API call (No legging-in risk)
+- **Sniper Logic**: Use IOC orders to avoid chasing price
 - **Slippage Tracking**: Real-time vs. expected price monitoring
 
 ### Layer 6: Memory (Storage)
@@ -208,6 +215,7 @@ ONNX Runtime (Cross-Platform Base)
 
 **Components**:
 
+- `eBPFTracer`: Network vs App latency breakdown (micro-burst detection)
 - `PrometheusExporter`: Metrics (latency, order fill rate, P&L)
 - `MLflowTracker`: Model performance tracking
 - `GrafanaDashboard`: Real-time UI
@@ -290,12 +298,12 @@ interface SEBICompliantOrder {
 
 | Layer          | Technology                                                    | Rationale                               |
 | -------------- | ------------------------------------------------------------- | --------------------------------------- |
-| **Languages**  | TypeScript (Core), Python (ML Training), Rust (Critical Path) | Rust for ultra-low latency components   |
+| **Languages**  | TypeScript (Core), Python (ML), Rust (NAPI-RS Calculation)    | Rust for ultra-low latency components   |
 | **Frameworks** | NestJS, Next.js 16, PyTorch 2.5                               | Production battle-tested                |
 | **Databases**  | QuestDB, MongoDB, Redis                                       | Research-validated for trading          |
-| **AI/ML**      | ONNX Runtime + TensorRT EP, Hugging Face Transformers         | Hardware-agnostic with GPU acceleration |
+| **AI/ML**      | ONNX (TensorRT), Mamba (SSM), PatchTST                        | Hardware-agnostic with GPU acceleration |
 | **Event Bus**  | Redis Streams, Apache Kafka (future scaling)                  | Proven for HFT                          |
-| **Monitoring** | Prometheus, Grafana, Loki                                     | Industry standard                       |
+| **Monitoring** | Prometheus, Grafana, eBPF                                     | Industry standard                       |
 | **Deployment** | Docker + Kubernetes (optional), PM2                           | Flexibility for ArchLinux server        |
 
 ---

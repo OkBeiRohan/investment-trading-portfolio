@@ -153,38 +153,37 @@ cp onnx/*.onnx ../algo-worker/models/
    - Better handling of categorical features
    - Target: AUC >0.74
 
-3. **CNN-LSTM Hybrid**
-   - 1D-CNN for local pattern detection
-   - LSTM for temporal dependencies
-   - Sequence length: 60 timesteps
-   - Target: AUC >0.72
+3. **Mamba (State Space Model)**
+   - Linear-time sequence modeling (O(L)) vs Quadratic Transformer (O(L^2))
+   - Selectivity mechanism to filter noise
+   - 5x faster inference than LSTM/Transformer
+   - Target: AUC >0.74
 
-4. **GINN (GARCH-Informed Neural Network)**
+4. **PatchTST (Patch Time Series Transformer)**
+   - Segment time-series into patches (sub-series)
+   - Channel-independent processing to prevent overfitting
+   - Best-in-class for volatility forecasting
+   - Target: AUC >0.75
+
+5. **GINN (GARCH-Informed Neural Network)**
    - Two-stage: GARCH(1,1) + LSTM
    - Models volatility clustering + residuals
    - Combines linear & non-linear patterns
    - Target: AUC >0.73
 
-5. **SVM (Support Vector Machine)**
+6. **SVM (Support Vector Machine)**
    - RBF kernel with grid search
    - High economic gains (research-backed)
    - Class weight balancing
    - Target: AUC >0.71
-
-6. **Transformer Encoder**
-   - Multi-head self-attention (8 heads)
-   - 4 layers, d_model=256
-   - Position encodings for sequences
-   - Target: AUC >0.74
 
 7. **TimesNet-Enhanced MLP** (Optional)
    - Pre-trained TimesNet feature extractor
    - MLP classifier on compressed features
    - Target: AUC >0.73
 
-8. **WFTNet-Enhanced MLP** (Optional)
-   - Pre-trained WFTNet feature extractor
-   - MLP classifier on wavelet features
+8. **Vision Transformer (ViT)** (Optional)
+   - IV Surface image analysis
    - Target: AUC >0.72
 
 9. **PatchTST (Patch Time Series Transformer)** (Optional)
@@ -737,14 +736,13 @@ apps/training-pipeline/
 | ------------ | --------- | --------- | -------------- | -------- |
 | XGBoost      | >0.75     | >0.70     | <10ms          | Core     |
 | LightGBM     | >0.74     | >0.69     | <8ms           | Core     |
-| CNN-LSTM     | >0.72     | >0.68     | <30ms          | Core     |
+| **Mamba**    | **>0.76** | **>0.74** | **<12ms**      | **Core** |
+| **PatchTST** | **>0.77** | **>0.75** | **<20ms**      | **Core** |
 | GINN         | >0.73     | >0.69     | <25ms          | Core     |
 | SVM          | >0.71     | >0.67     | <15ms          | Core     |
-| Transformer  | >0.74     | >0.70     | <40ms          | Core     |
 | TimesNet-MLP | >0.73     | >0.69     | <20ms          | Optional |
-| WFTNet-MLP   | >0.72     | >0.68     | <18ms          | Optional |
-| **PatchTST** | **>0.75** | **>0.71** | **<35ms**      | Optional |
-| **KAN**      | **>0.74** | **>0.70** | **<10ms**      | Optional |
+| VisionTrans  | >0.75     | >0.72     | <30ms          | Optional |
+| KAN          | >0.74     | >0.70     | <10ms          | Optional |
 
 ### **Meta-Learner**
 
