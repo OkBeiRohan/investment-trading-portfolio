@@ -36,6 +36,11 @@ export const environmentSchema = z
     DISCORD_CLIENT_ID: z.string().optional(),
     DISCORD_CLIENT_SECRET: z.string().optional(),
 
+    // Broker Providers (optional)
+    UPSTOX_CLIENT_ID: z.string().optional(),
+    UPSTOX_CLIENT_SECRET: z.string().optional(),
+    UPSTOX_REDIRECT_URI: z.string().optional(),
+
     // Rate Limiting
     RATE_LIMIT_ENABLED: z.string().default("true"),
     RATE_LIMIT_WINDOW: z.string().default("60000"),
@@ -75,6 +80,18 @@ export const environmentSchema = z
           ? {
               clientId: data.DISCORD_CLIENT_ID,
               clientSecret: data.DISCORD_CLIENT_SECRET!,
+            }
+          : undefined,
+      },
+
+      brokerProviders: {
+        upstox: data.UPSTOX_CLIENT_ID
+          ? {
+              clientId: data.UPSTOX_CLIENT_ID,
+              clientSecret: data.UPSTOX_CLIENT_SECRET!,
+              redirectUri:
+                data.UPSTOX_REDIRECT_URI ||
+                `${data.APP_URL}/api/auth/oauth2/callback/upstox`,
             }
           : undefined,
       },

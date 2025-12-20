@@ -14,10 +14,12 @@ import {
   UserWithTwoFactor,
 } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
+import { createAuthConfig } from "src/config/auth.config";
 
 export interface BetterAuthServerConfig {
   adapter: (options: BetterAuthOptions) => DBAdapter;
-  options: BetterAuthOptions;
+  options: ReturnType<typeof createAuthConfig>;
   emailProvider?: {
     sendVerificationEmail: (data: {
       user: User;
@@ -152,6 +154,32 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
           throw new Error("Function not implemented.");
         },
       }),
+
+      // Upstox OAuth for broker account linking
+      ...(config.options.brokerProviders?.upstox
+        ? [
+            genericOAuth({
+              config: [
+                {
+                  providerId: "upstox",
+                  clientId: config.options.brokerProviders.upstox.clientId,
+                  clientSecret:
+                    config.options.brokerProviders.upstox.clientSecret,
+                  authorizationUrl:
+                    "https://api.upstox.com/v2/login/authorization/dialog",
+                  tokenUrl:
+                    "https://api.upstox.com/v2/login/authorization/token",
+                  redirectURI:
+                    config.options.brokerProviders.upstox.redirectUri,
+                  scopes: [], // Upstox doesn't use scopes
+                  pkce: false, // Upstox uses client_secret
+                  responseType: "code",
+                  authentication: "post", // Standard OAuth2 POST request
+                },
+              ],
+            }),
+          ]
+        : []),
     ],
   });
 }

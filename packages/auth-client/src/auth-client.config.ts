@@ -3,6 +3,7 @@ import {
   anonymousClient,
   deviceAuthorizationClient,
   emailOTPClient,
+  genericOAuthClient,
   inferAdditionalFields,
   magicLinkClient,
   multiSessionClient,
@@ -23,6 +24,7 @@ export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
       ...config.fetchOptions,
     },
     plugins: [
+      genericOAuthClient(),
       anonymousClient(),
       phoneNumberClient(),
       twoFactorClient(),

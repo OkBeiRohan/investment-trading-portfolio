@@ -11,6 +11,9 @@ export interface AuthConfigOptions {
     github?: { clientId: string; clientSecret: string };
     discord?: { clientId: string; clientSecret: string };
   };
+  brokerProviders?: {
+    upstox?: { clientId: string; clientSecret: string; redirectUri: string };
+  };
   rateLimit?: {
     enabled: boolean;
     window: number;
@@ -68,7 +71,7 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
     account: {
       accountLinking: {
         enabled: true,
-        trustedProviders: ["google", "github"],
+        trustedProviders: ["google", "github", "upstox"],
       },
     },
 
