@@ -177,6 +177,8 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
                     "https://api.upstox.com/v2/login/authorization/token",
                   userInfoUrl: "https://api.upstox.com/v2/user/profile",
                   mapProfileToUser: (profile: IGetProfileUpstoxResponse) => {
+                    console.log(profile);
+
                     if (isUpstoxSuccess<IGetProfileUpstox>(profile)) {
                       const upstoxProfile = profile.data;
 
