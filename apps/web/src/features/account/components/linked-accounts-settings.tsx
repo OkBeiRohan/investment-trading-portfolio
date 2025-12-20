@@ -13,7 +13,7 @@ export function LinkedAccountsSettings() {
   const [loading, setLoading] = useState(false);
 
   // In a real implementation, we would fetch the list of linked accounts from the server
-  // const { data: linkedAccounts } = authClient.useListAccounts(); 
+  // const { data: linkedAccounts } = authClient.useListAccounts();
   // For now, we'll just show the UI for linking/unlinking
 
   const handleLinkAccount = async (provider: "google" | "github") => {
@@ -27,6 +27,44 @@ export function LinkedAccountsSettings() {
 
       if (error) {
         setError(error.message || `Failed to link ${provider}`);
+      } else if (data) {
+        // Redirect will happen
+        console.log("Linking initiated", data);
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnlinkAccount = async (providerId: "google" | "github") => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await authClient.unlinkAccount({ providerId });
+      if (error) {
+        setError(error.message || `Failed to unlink ${providerId}`);
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpstoxAccount = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await authClient.oauth2.link({
+        providerId: "upstox",
+        callbackURL: "/account/linked-accounts",
+      });
+      if (error) {
+        setError(error.message || `Failed to link Upstox`);
       } else if (data) {
         // Redirect will happen
         console.log("Linking initiated", data);
@@ -61,12 +99,16 @@ export function LinkedAccountsSettings() {
           </div>
         </div>
 
-        {error && <Message type="error" className={styles.message}>{error}</Message>}
+        {error && (
+          <Message type="error" className={styles.message}>
+            {error}
+          </Message>
+        )}
 
         <div className={styles.accountsList}>
           {/* Example of a linked account state - usually we'd map over actual linked accounts */}
           {/* This is a placeholder UI since we can't easily fetch linked accounts state client-side without a specific endpoint yet */}
-          
+
           <div className={styles.accountItem}>
             <div className={styles.accountInfo}>
               <div className={styles.providerIcon}>
@@ -77,7 +119,7 @@ export function LinkedAccountsSettings() {
                 <p className={styles.accountEmail}>Not linked</p>
               </div>
             </div>
-            <button 
+            <button
               className={styles.linkButton}
               onClick={() => handleLinkAccount("google")}
               disabled={loading}
@@ -96,9 +138,29 @@ export function LinkedAccountsSettings() {
                 <p className={styles.accountEmail}>Not linked</p>
               </div>
             </div>
-            <button 
+            <button
               className={styles.linkButton}
-              onClick={() => handleLinkAccount("github")}
+              onClick={() => handleUnlinkAccount("github")}
+              disabled={loading}
+            >
+              <Trash2 /> Unlink
+            </button>
+          </div>
+
+          <div className={styles.accountItem}>
+            <div className={styles.accountInfo}>
+              <div className={styles.providerIcon}>
+                UP
+                <Plus size={16} />
+              </div>
+              <div>
+                <p className={styles.providerName}>Upstox</p>
+                <p className={styles.accountEmail}>Not linked</p>
+              </div>
+            </div>
+            <button
+              className={styles.linkButton}
+              onClick={handleUpstoxAccount}
               disabled={loading}
             >
               Connect

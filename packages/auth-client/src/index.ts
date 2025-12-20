@@ -4,6 +4,7 @@ export { createAuthClient } from "better-auth/client";
 export {
   organizationClient,
   twoFactorClient,
+  genericOAuthClient,
 } from "better-auth/client/plugins";
 export { passkeyClient } from "@better-auth/passkey/client";
 export { toNextJsHandler } from "better-auth/next-js";

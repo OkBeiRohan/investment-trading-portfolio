@@ -14,10 +14,12 @@ import {
   UserWithTwoFactor,
 } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
+import { createAuthConfig } from "src/config/auth.config";
 
 export interface BetterAuthServerConfig {
   adapter: (options: BetterAuthOptions) => DBAdapter;
-  options: BetterAuthOptions;
+  options: ReturnType<typeof createAuthConfig>;
   emailProvider?: {
     sendVerificationEmail: (data: {
       user: User;
@@ -152,6 +154,36 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
           throw new Error("Function not implemented.");
         },
       }),
+
+      // Upstox OAuth for broker account linking
+      ...(config.options.brokerProviders?.upstox
+        ? [
+            genericOAuth({
+              config: [
+                {
+                  providerId: "upstox",
+                  clientId: config.options.brokerProviders.upstox.clientId,
+                  clientSecret:
+                    config.options.brokerProviders.upstox.clientSecret,
+                  authorizationUrl:
+                    "https://api.upstox.com/v2/login/authorization/dialog",
+                  tokenUrl:
+                    "https://api.upstox.com/v2/login/authorization/token",
+                  // Upstox OAuth v2 does not expose granular per-request scopes.
+                  // The effective permissions of the access token are defined in the
+                  // Upstox developer console for this application (e.g. trading +
+                  // read-only APIs). Passing `undefined` here ensures no explicit
+                  // `scope` parameter is sent, and makes the implicit default
+                  // permission model explicit for SEBI/audit documentation.
+                  scopes: undefined,
+                  pkce: false, // Upstox uses client_secret
+                  responseType: "code",
+                  authentication: "post", // Standard OAuth2 POST request
+                },
+              ],
+            }),
+          ]
+        : []),
     ],
   });
 }

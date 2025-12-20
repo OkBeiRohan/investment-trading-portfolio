@@ -1,6 +1,10 @@
 import { USER_ROLES } from "@repo/schema";
 import { BetterAuthOptions } from "better-auth";
 
+export interface IBrokerProviders {
+  upstox?: { clientId: string; clientSecret: string };
+}
+
 export interface AuthConfigOptions {
   appName: string;
   appUrl: string;
@@ -11,6 +15,7 @@ export interface AuthConfigOptions {
     github?: { clientId: string; clientSecret: string };
     discord?: { clientId: string; clientSecret: string };
   };
+  brokerProviders?: IBrokerProviders;
   rateLimit?: {
     enabled: boolean;
     window: number;
@@ -68,7 +73,7 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
     account: {
       accountLinking: {
         enabled: true,
-        trustedProviders: ["google", "github"],
+        trustedProviders: ["google", "github", "upstox"],
       },
     },
 
@@ -112,6 +117,8 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         : undefined,
     },
 
+    brokerProviders: options.brokerProviders,
+
     hooks: {},
 
     advanced: {
@@ -134,4 +141,6 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         generateId: false,
       },
     },
-  }) as const satisfies BetterAuthOptions;
+  }) as const satisfies BetterAuthOptions & {
+    brokerProviders?: IBrokerProviders;
+  };
