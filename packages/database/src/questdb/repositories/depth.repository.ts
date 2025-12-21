@@ -5,6 +5,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { QuestDBService } from "../questdb.service";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 import type {
   IMarketDepth,
   IDepthQuery,
@@ -29,23 +30,21 @@ export class DepthRepository {
    * Query depth for a time range
    */
   async findByTimeRange(query: IDepthQuery): Promise<IMarketDepth[]> {
-    const sql = `
-      SELECT 
-        timestamp,
-        instrument_key,
-        side,
-        level,
-        price,
-        quantity,
-        orders
-      FROM market_depth
-      WHERE instrument_key = $1
-        ${query.side ? `AND side = '${query.side}'` : ""}
-        AND timestamp >= $2
-        AND timestamp <= $3
-      ORDER BY timestamp ASC, side ASC, level ASC
-      ${query.limit ? `LIMIT ${query.limit}` : ""}
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    let sql = loadSqlQueryCached("depth/select-by-time-range");
+
+    // Add side filter if specified (dynamic SQL)
+    if (query.side) {
+      sql = sql.replace(
+        "WHERE instrument_key = $1",
+        `WHERE instrument_key = $1\n  AND side = '${query.side}'`
+      );
+    }
+
+    // Add LIMIT clause if specified
+    if (query.limit) {
+      sql = sql.trim().replace(/;$/, "") + ` LIMIT ${query.limit};`;
+    }
 
     const result = await this.questdb.query<IMarketDepth>(sql, [
       query.instrument_key,
@@ -65,26 +64,8 @@ export class DepthRepository {
   async findLatestSnapshot(
     instrumentKey: string
   ): Promise<IDepthSnapshot | null> {
-    const sql = `
-      WITH latest_timestamp AS (
-        SELECT MAX(timestamp) as ts
-        FROM market_depth
-        WHERE instrument_key = $1
-      )
-      SELECT 
-        d.timestamp,
-        d.instrument_key,
-        d.side,
-        d.level,
-        d.price,
-        d.quantity,
-        d.orders
-      FROM market_depth d
-      CROSS JOIN latest_timestamp lt
-      WHERE d.instrument_key = $1
-        AND d.timestamp = lt.ts
-      ORDER BY d.side ASC, d.level ASC
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("depth/select-latest-snapshot");
 
     const result = await this.questdb.query<IMarketDepth>(sql, [instrumentKey]);
 
@@ -117,11 +98,15 @@ export class DepthRepository {
     startTime: Date,
     endTime: Date
   ): Promise<boolean> {
-    return this.questdb.checkDataExists(
-      "market_depth",
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("depth/check-data-exists");
+
+    const result = await this.questdb.query<{ count: number }>(sql, [
       instrumentKey,
-      startTime,
-      endTime
-    );
+      startTime.toISOString(),
+      endTime.toISOString(),
+    ]);
+
+    return (result.rows[0]?.count || 0) > 0;
   }
 }

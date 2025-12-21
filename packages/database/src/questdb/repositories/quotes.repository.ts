@@ -5,6 +5,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { QuestDBService } from "../questdb.service";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 import type { IMarketQuote, IQuoteQuery, IQuoteInsert } from "@repo/schema";
 
 @Injectable()
@@ -24,26 +25,13 @@ export class QuotesRepository {
    * Query quotes for a time range
    */
   async findByTimeRange(query: IQuoteQuery): Promise<IMarketQuote[]> {
-    const sql = `
-      SELECT 
-        timestamp,
-        instrument_key,
-        ltp,
-        bid,
-        ask,
-        bid_qty,
-        ask_qty,
-        volume,
-        open_interest,
-        upper_circuit,
-        lower_circuit
-      FROM market_quotes
-      WHERE instrument_key = $1
-        AND timestamp >= $2
-        AND timestamp <= $3
-      ORDER BY timestamp ASC
-      ${query.limit ? `LIMIT ${query.limit}` : ""}
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    let sql = loadSqlQueryCached("quotes/select-by-time-range");
+
+    // Add LIMIT clause if specified
+    if (query.limit) {
+      sql = sql.trim().replace(/;$/, "") + ` LIMIT ${query.limit};`;
+    }
 
     const result = await this.questdb.query<IMarketQuote>(sql, [
       query.instrument_key,
@@ -61,24 +49,8 @@ export class QuotesRepository {
    * Get latest quote for instrument
    */
   async findLatest(instrumentKey: string): Promise<IMarketQuote | null> {
-    const sql = `
-      SELECT 
-        timestamp,
-        instrument_key,
-        ltp,
-        bid,
-        ask,
-        bid_qty,
-        ask_qty,
-        volume,
-        open_interest,
-        upper_circuit,
-        lower_circuit
-      FROM market_quotes
-      WHERE instrument_key = $1
-      ORDER BY timestamp DESC
-      LIMIT 1
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("quotes/select-latest");
 
     const result = await this.questdb.query<IMarketQuote>(sql, [instrumentKey]);
 
@@ -100,11 +72,15 @@ export class QuotesRepository {
     startTime: Date,
     endTime: Date
   ): Promise<boolean> {
-    return this.questdb.checkDataExists(
-      "market_quotes",
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("quotes/check-data-exists");
+
+    const result = await this.questdb.query<{ count: number }>(sql, [
       instrumentKey,
-      startTime,
-      endTime
-    );
+      startTime.toISOString(),
+      endTime.toISOString(),
+    ]);
+
+    return (result.rows[0]?.count || 0) > 0;
   }
 }

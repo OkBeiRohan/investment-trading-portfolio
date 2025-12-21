@@ -39,6 +39,7 @@ import type {
   IGreeksInsert,
   IDepthInsert,
 } from "@repo/schema";
+import { loadSqlQueryCached } from "./utils/sql-loader";
 
 export interface QuestDBConfig {
   host: string;
@@ -522,14 +523,11 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
     startTime: Date,
     endTime: Date
   ): Promise<boolean> {
-    const sql = `
-      SELECT COUNT(*) as count
-      FROM ${table}
-      WHERE instrument_key = $1
-        AND timestamp >= $2
-        AND timestamp < $3
-      LIMIT 1
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    let sql = loadSqlQueryCached("utils/check-data-exists");
+
+    // Substitute table name (safe - table name is from enum, not user input)
+    sql = sql.replace("{TABLE_NAME}", table);
 
     const result = await this.query<{ count: number }>(sql, [
       instrumentKey,
@@ -735,13 +733,11 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
     table: "market_candles" | "market_quotes" | "option_greeks",
     instrumentKey: string
   ): Promise<Date | null> {
-    // LATEST ON optimization: scans backward from most recent partition
-    const sql = `
-      SELECT timestamp
-      FROM ${table}
-      WHERE instrument_key = $1
-      LATEST ON timestamp PARTITION BY instrument_key
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    let sql = loadSqlQueryCached("utils/get-last-timestamp");
+
+    // Substitute table name (safe - table name is from enum, not user input)
+    sql = sql.replace("{TABLE_NAME}", table);
 
     const result = await this.query<{ timestamp: string }>(sql, [
       instrumentKey,
@@ -766,14 +762,18 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
     table: "market_candles" | "market_quotes",
     minTimestamp?: Date
   ): Promise<Map<string, Date>> {
-    let sql = `
-      SELECT instrument_key, timestamp
-      FROM ${table}
-      LATEST ON timestamp PARTITION BY instrument_key
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    let sql = loadSqlQueryCached("utils/get-all-last-timestamps");
 
+    // Substitute table name (safe - table name is from enum, not user input)
+    sql = sql.replace("{TABLE_NAME}", table);
+
+    // Add optional filter (dynamic SQL for performance)
     if (minTimestamp) {
-      sql += ` WHERE timestamp > '${minTimestamp.toISOString()}'`;
+      sql = sql.replace(
+        "LATEST ON timestamp PARTITION BY instrument_key;",
+        `LATEST ON timestamp PARTITION BY instrument_key\nWHERE timestamp > '${minTimestamp.toISOString()}';`
+      );
     }
 
     const result = await this.query<{

@@ -97,12 +97,8 @@ export class CandlesRepository {
    * Count candles for instrument + interval
    */
   async count(instrumentKey: string, interval: string): Promise<number> {
-    const sql = `
-      SELECT COUNT(*) as count
-      FROM market_candles
-      WHERE instrument_key = $1
-        AND interval = $2
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("candles/count-by-instrument");
 
     const result = await this.questdb.query<{ count: number }>(sql, [
       instrumentKey,

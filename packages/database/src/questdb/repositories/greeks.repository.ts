@@ -5,6 +5,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { QuestDBService } from "../questdb.service";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 import type { IOptionGreeks, IGreeksQuery, IGreeksInsert } from "@repo/schema";
 
 @Injectable()
@@ -24,23 +25,13 @@ export class GreeksRepository {
    * Query greeks for a time range
    */
   async findByTimeRange(query: IGreeksQuery): Promise<IOptionGreeks[]> {
-    const sql = `
-      SELECT 
-        timestamp,
-        instrument_key,
-        delta,
-        gamma,
-        theta,
-        vega,
-        iv,
-        underlying_price
-      FROM option_greeks
-      WHERE instrument_key = $1
-        AND timestamp >= $2
-        AND timestamp <= $3
-      ORDER BY timestamp ASC
-      ${query.limit ? `LIMIT ${query.limit}` : ""}
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    let sql = loadSqlQueryCached("greeks/select-by-time-range");
+
+    // Add LIMIT clause if specified
+    if (query.limit) {
+      sql = sql.trim().replace(/;$/, "") + ` LIMIT ${query.limit};`;
+    }
 
     const result = await this.questdb.query<IOptionGreeks>(sql, [
       query.instrument_key,
@@ -58,21 +49,8 @@ export class GreeksRepository {
    * Get latest greeks for instrument
    */
   async findLatest(instrumentKey: string): Promise<IOptionGreeks | null> {
-    const sql = `
-      SELECT 
-        timestamp,
-        instrument_key,
-        delta,
-        gamma,
-        theta,
-        vega,
-        iv,
-        underlying_price
-      FROM option_greeks
-      WHERE instrument_key = $1
-      ORDER BY timestamp DESC
-      LIMIT 1
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("greeks/select-latest");
 
     const result = await this.questdb.query<IOptionGreeks>(sql, [
       instrumentKey,
@@ -96,11 +74,15 @@ export class GreeksRepository {
     startTime: Date,
     endTime: Date
   ): Promise<boolean> {
-    return this.questdb.checkDataExists(
-      "option_greeks",
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("greeks/check-data-exists");
+
+    const result = await this.questdb.query<{ count: number }>(sql, [
       instrumentKey,
-      startTime,
-      endTime
-    );
+      startTime.toISOString(),
+      endTime.toISOString(),
+    ]);
+
+    return (result.rows[0]?.count || 0) > 0;
   }
 }
