@@ -123,6 +123,30 @@ graph TD
 
 ---
 
+## Traceability & Instrumentation
+
+```mermaid
+flowchart TD
+    subgraph "Services"
+        A[Next.js Frontend] -- OTLP/HTTP --> COL
+        B[NestJS Gateway] -- OTLP/gRPC --> COL
+        C[NestJS Microservices] -- OTLP/gRPC --> COL
+        D[Rust Engine] -- OTLP/gRPC --> COL
+        E[Python Trainer] -- OTLP/gRPC --> COL
+    end
+
+    subgraph "Observability Gateway"
+        COL(OTel Collector)
+    end
+
+    subgraph "LGTM Stack + Sentry"
+        COL --> Tempo(Trace Store)
+        COL --> Mimir(Metric Store)
+        COL --> Loki(Log Store)
+        COL --> Sentry(Error Tracking)
+    end
+```
+
 ## 🚀 Quick Start
 
 ### Prerequisites
