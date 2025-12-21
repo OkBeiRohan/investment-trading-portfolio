@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package data_processor;
+
+service DataProcessorService{
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+}
+
+message HealthCheckResponse {
+    string status = 1; // e.g., "OK"
+}

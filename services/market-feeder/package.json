@@ -35,9 +35,6 @@
     "@repo/market-sdk": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/schema": "workspace:*",
-    "@sentry/cli": "^3.0.1",
-    "@sentry/nestjs": "^10.32.1",
-    "@sentry/profiling-node": "^10.32.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },

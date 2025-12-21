@@ -41,7 +41,7 @@ exporters:
   # Sentry (Self-hosted)
   # Note: For production, replace 'host.docker.internal' with the actual Sentry IP/Hostname
   otlphttp/sentry:
-    endpoint: "http://host.docker.internal:9000/api/1/envelope/" 
+    endpoint: "http://host.docker.internal:9000/api/1/envelope/"
     compression: gzip
     tls:
       insecure: true

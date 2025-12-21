@@ -1,21 +1,14 @@
-import { startTelemetry } from './config/sentry.config';
 import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
-import { initObservability, OtelLogger } from '@repo/observability';
-
-initObservability('market-feeder');
+import { otelSDK, OtelLogger } from '@repo/observability';
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
+  otelSDK.start();
 
   try {
-    // CRITICAL: Start Sentry BEFORE creating NestJS app
-    startTelemetry();
-    logger.log('Sentry instrumentation started');
+    const grpcPort = parseInt(process.env.GRPC_PORT || '50052', 10);
 
-    // Create gRPC microservice (not hybrid HTTP)
     const app = await NestFactory.createMicroservice<MicroserviceOptions>(
       AppModule,
       {
@@ -23,20 +16,22 @@ async function bootstrap() {
         options: {
           package: 'historical_data',
           protoPath: require.resolve('@repo/schema/proto/historical-data'),
-          url: `0.0.0.0:${process.env.GRPC_PORT || 50052}`,
+          host: '0.0.0.0',
+          port: grpcPort,
         },
         bufferLogs: true,
       },
     );
 
-    app.useLogger(new OtelLogger('market-feeder'));
+    const logger = app.get(OtelLogger);
+    app.useLogger(logger);
+
+    app.enableShutdownHooks();
 
     await app.listen();
-    logger.log(
-      `gRPC microservice running on port ${process.env.GRPC_PORT || 50052}`,
-    );
+    logger.log(`gRPC microservice running on port ${grpcPort}`);
   } catch (error) {
-    logger.error('Failed to start Market Feeder', error);
+    console.error('Failed to start Market Feeder', error);
     process.exit(1);
   }
 }

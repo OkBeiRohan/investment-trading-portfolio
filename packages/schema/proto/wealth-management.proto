@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package wealth_management;
+
+// Wealth Management service for health checks
+service WealthManagementService{
+    // Health check endpoint
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+
+// Request for health check
+message HealthCheckRequest {
+}
+
+
+// Response for health check
+message HealthCheckResponse {
+    string status = 1; // e.g., "OK"
+}
