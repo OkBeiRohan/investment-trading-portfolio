@@ -78,4 +78,5 @@ volumes:
 
 networks:
   trading-net:
-    driver: bridge
+    external: true
+    name: trading-net
