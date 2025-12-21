@@ -1,44 +1,25 @@
 /**
  * Historical Data gRPC Controller
  * Exposes backfill operations via gRPC API
+ * Uses generated Protocol Buffer types for strict type safety
  */
 
 import { Controller, Logger } from '@nestjs/common';
-import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
 import { Observable, Subject } from 'rxjs';
 import { HistoricalDataService } from './historical-data.service';
 import { TelemetryService } from '../common/services/telemetry.service';
-
-interface LoadHistoricalDataRequest {
-  instrument_keys: string[];
-  intervals: string[];
-  from_date?: string;
-  to_date?: string;
-}
-
-interface LoadHistoricalDataResponse {
-  total_candles: number;
-  duration_ms: number;
-  trace_id: string;
-}
-
-interface BackfillRequest {
-  instrument_keys: string[];
-  intervals: string[];
-  from_date?: string;
-  to_date?: string;
-}
-
-interface BackfillProgressProto {
-  total_instruments: number;
-  completed_instruments: number;
-  current_instrument: string;
-  total_candles: number;
-  elapsed_ms: number;
-}
+import {
+  LoadHistoricalDataRequest,
+  LoadHistoricalDataResponse,
+  BackfillRequest,
+  BackfillProgress,
+  HistoricalDataServiceController,
+  HistoricalDataServiceControllerMethods,
+} from '../generated/historical-data';
 
 @Controller()
-export class HistoricalDataGrpcController {
+@HistoricalDataServiceControllerMethods()
+export class HistoricalDataGrpcController implements HistoricalDataServiceController {
   private readonly logger = new Logger(HistoricalDataGrpcController.name);
 
   constructor(
@@ -50,7 +31,6 @@ export class HistoricalDataGrpcController {
    * gRPC method: LoadHistoricalData
    * Unary RPC for backfilling historical data
    */
-  @GrpcMethod('HistoricalDataService', 'LoadHistoricalData')
   async loadHistoricalData(
     request: LoadHistoricalDataRequest,
   ): Promise<LoadHistoricalDataResponse> {
@@ -58,24 +38,24 @@ export class HistoricalDataGrpcController {
     const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';
 
     this.logger.log(
-      `gRPC LoadHistoricalData: ${request.instrument_keys.length} instruments (trace_id: ${traceId})`,
+      `gRPC LoadHistoricalData: ${request.instrumentKeys.length} instruments (trace_id: ${traceId})`,
     );
 
     try {
       const totalCandles =
         await this.historicalDataService.backfillHistoricalData({
-          instrumentKeys: request.instrument_keys,
+          instrumentKeys: request.instrumentKeys,
           intervals: request.intervals,
-          fromDate: request.from_date,
-          toDate: request.to_date,
+          fromDate: request.fromDate,
+          toDate: request.toDate,
         });
 
       const durationMs = Date.now() - startTime;
 
       return {
-        total_candles: totalCandles,
-        duration_ms: durationMs,
-        trace_id: traceId,
+        totalCandles,
+        durationMs,
+        traceId,
       };
     } catch (error) {
       this.logger.error('gRPC LoadHistoricalData failed', error);
@@ -87,11 +67,10 @@ export class HistoricalDataGrpcController {
    * gRPC method: StreamBackfillProgress
    * Server-streaming RPC for real-time progress updates
    */
-  @GrpcStreamMethod('HistoricalDataService', 'StreamBackfillProgress')
   streamBackfillProgress(
     request: BackfillRequest,
-  ): Observable<BackfillProgressProto> {
-    const subject = new Subject<BackfillProgressProto>();
+  ): Observable<BackfillProgress> {
+    const subject = new Subject<BackfillProgress>();
     const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';
 
     this.logger.log(
@@ -102,10 +81,10 @@ export class HistoricalDataGrpcController {
     void (async () => {
       try {
         await this.historicalDataService.backfillHistoricalData({
-          instrumentKeys: request.instrument_keys,
+          instrumentKeys: request.instrumentKeys,
           intervals: request.intervals,
-          fromDate: request.from_date,
-          toDate: request.to_date,
+          fromDate: request.fromDate,
+          toDate: request.toDate,
         });
 
         subject.complete();
