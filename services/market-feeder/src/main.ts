@@ -3,6 +3,9 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
+import { initObservability, OtelLogger } from '@repo/observability';
+
+initObservability('market-feeder');
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -22,8 +25,11 @@ async function bootstrap() {
           protoPath: require.resolve('@repo/schema/proto/historical-data'),
           url: `0.0.0.0:${process.env.GRPC_PORT || 50051}`,
         },
+        bufferLogs: true,
       },
     );
+
+    app.useLogger(new OtelLogger('market-feeder'));
 
     await app.listen();
     logger.log(

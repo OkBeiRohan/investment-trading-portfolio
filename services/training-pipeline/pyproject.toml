@@ -49,6 +49,8 @@ sqlalchemy = "^2.0.0"
 matplotlib = "^3.9.0"
 seaborn = "^0.13.0"
 plotly = "^6.5.0"
+opentelemetry-distro = "^0.45b0"
+opentelemetry-exporter-otlp = "^1.24.0"
 
 [build-system]
 requires = ["poetry-core"]

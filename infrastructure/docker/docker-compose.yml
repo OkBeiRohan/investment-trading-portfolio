@@ -22,6 +22,7 @@ services:
     image: mongo:7
     ports:
       - "27017:27017"
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
     environment:
       MONGO_INITDB_DATABASE: investment-trading
     volumes:
@@ -32,6 +33,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - trading-net
+
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      - mongodb
+    command: >
+      bash -c "sleep 10 && mongosh --host mongodb:27017 --eval 'try { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] }) } catch (e) { print(e) }'"
     networks:
       - trading-net
 
@@ -63,6 +73,7 @@ services:
     environment:
       NODE_ENV: development
       API_URL: http://api:3004
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - api
     networks:
@@ -77,6 +88,7 @@ services:
       PORT: 3004
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - mongodb
       - redis
@@ -91,6 +103,7 @@ services:
       NODE_ENV: development
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     volumes:
       - ../../models:/app/models # ONNX models
     depends_on:
@@ -113,6 +126,7 @@ services:
       QUESTDB_HOST: questdb
       QUESTDB_PORT: 9000
       GRPC_PORT: 50051
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - redis
       - questdb
@@ -128,6 +142,7 @@ services:
       QUESTDB_HOST: questdb
       QUESTDB_PORT: 8812
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - questdb
       - mongodb
@@ -144,6 +159,7 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       QUESTDB_HOST: questdb
       REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - mongodb
       - questdb
@@ -160,6 +176,7 @@ services:
       PORT: 3006
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - mongodb
       - redis
@@ -177,6 +194,7 @@ services:
       QUESTDB_HOST: questdb
       CHROMA_HOST: chromadb
       CHROMA_PORT: 8000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - mongodb
       - questdb
@@ -191,6 +209,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
       - trading-net
 
@@ -201,6 +220,7 @@ services:
     build: ../../services/compute-engine
     environment:
       RUST_LOG: info
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
       - trading-net
 
@@ -211,6 +231,7 @@ services:
     environment:
       QUESTDB_HOST: questdb
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - questdb
       - mongodb

@@ -2,6 +2,9 @@ import { NestFactory, PartialGraphHost } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { writeFileSync } from 'fs';
 import { AppModule } from './app.module';
+import { initObservability, OtelLogger } from '@repo/observability';
+
+initObservability('api-gateway');
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -9,7 +12,10 @@ async function bootstrap() {
     snapshot:
       process.env.DEVTOOLS === 'true' && process.env.NODE_ENV !== 'production',
     abortOnError: process.env.DEVTOOLS !== 'true',
+    bufferLogs: true,
   });
+
+  app.useLogger(new OtelLogger('api-gateway'));
 
   // Enable CORS for cross-origin requests from frontend
   let corsOrigins: string[] | undefined;
