@@ -8,7 +8,7 @@ export class EncryptionUtil {
 
   constructor() {
     const key = process.env.ENCRYPTION_KEY;
-    if (!key || key.length !== 32) {
+    if (!key || key.length < 32) {
       throw new Error("ENCRYPTION_KEY must be 32 characters");
     }
     this.secretKey = Buffer.from(key, "utf-8");
