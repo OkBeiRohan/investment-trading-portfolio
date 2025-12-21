@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { QuestDBModule } from '@repo/database';
@@ -13,6 +14,9 @@ import { TraceContextInterceptor } from './common/interceptors/trace-context.int
 
 @Module({
   imports: [
+    // Sentry integration (must be first)
+    SentryModule.forRoot(),
+
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
@@ -42,6 +46,10 @@ import { TraceContextInterceptor } from './common/interceptors/trace-context.int
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: TraceContextInterceptor,

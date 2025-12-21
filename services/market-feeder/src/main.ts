@@ -3,15 +3,15 @@ import { Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { AppModule } from './app.module';
-import { startTelemetry } from './config/telemetry.config';
+import { startTelemetry } from './config/sentry.config';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   try {
-    // CRITICAL: Start OpenTelemetry BEFORE creating NestJS app
-    await startTelemetry();
-    logger.log('OpenTelemetry instrumentation started');
+    // CRITICAL: Start Sentry BEFORE creating NestJS app
+    startTelemetry();
+    logger.log('Sentry instrumentation started');
 
     const app = await NestFactory.createMicroservice<MicroserviceOptions>(
       AppModule,

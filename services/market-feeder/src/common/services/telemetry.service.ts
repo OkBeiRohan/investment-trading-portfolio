@@ -1,10 +1,10 @@
 /**
  * Custom Telemetry Service
- * Layer-specific span tracking and audit logging
+ * Layer-specific span tracking and audit logging with Sentry
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { trace, context, Span, SpanStatusCode } from '@opentelemetry/api';
+import * as Sentry from '@sentry/nestjs';
 import { QuestDBService } from '@repo/database';
 
 export enum Layer {
@@ -26,23 +26,23 @@ export interface LayerSpanOptions {
 @Injectable()
 export class TelemetryService {
   private readonly logger = new Logger(TelemetryService.name);
-  private readonly tracer = trace.getTracer('market-feeder');
 
   constructor(private readonly questdbService: QuestDBService) {}
 
   /**
-   * Create a layer-specific span
+   * Create a layer-specific span with Sentry
    * Automatically logs to system_audit table
    */
   async executeWithLayerSpan<T>(
     options: LayerSpanOptions,
-    fn: (span: Span) => Promise<T>,
+    fn: (span: Sentry.Span) => Promise<T>,
   ): Promise<T> {
     const { layer, operation, attributes = {} } = options;
 
-    return this.tracer.startActiveSpan(
-      `${layer}.${operation}`,
+    return Sentry.startSpan(
       {
+        name: `${layer}.${operation}`,
+        op: operation,
         attributes: {
           'layer.name': layer,
           'layer.operation': operation,
@@ -70,12 +70,9 @@ export class TelemetryService {
             attributes,
           });
 
-          span.setStatus({ code: SpanStatusCode.OK });
-          span.end();
-
           return result;
         } catch (error) {
-          // Error: log to audit table with error details
+          // Error: log to audit table and report to Sentry
           await this.logToAudit({
             traceId,
             spanId,
@@ -86,13 +83,7 @@ export class TelemetryService {
             attributes,
           });
 
-          span.setStatus({
-            code: SpanStatusCode.ERROR,
-            message: (error as Error).message,
-          });
-          span.recordException(error as Error);
-          span.end();
-
+          // Sentry automatically captures exceptions in spans
           throw error;
         }
       },
@@ -100,11 +91,18 @@ export class TelemetryService {
   }
 
   /**
-   * Get current trace_id from active span
+   * Get current trace_id from active Sentry span
    */
   getCurrentTraceId(): string | undefined {
-    const span = trace.getActiveSpan();
+    const span = Sentry.getActiveSpan();
     return span?.spanContext().traceId;
+  }
+
+  /**
+   * Set custom context for Sentry events
+   */
+  setContext(key: string, value: Record<string, any>): void {
+    Sentry.setContext(key, value);
   }
 
   /**

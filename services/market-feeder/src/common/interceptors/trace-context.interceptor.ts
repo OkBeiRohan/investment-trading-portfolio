@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
+import * as Sentry from '@sentry/nestjs';
 import type { Response } from 'express';
 
 @Injectable()
@@ -15,10 +15,10 @@ export class TraceContextInterceptor implements NestInterceptor {
   private readonly logger = new Logger(TraceContextInterceptor.name);
 
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<any> {
-    const span = trace.getActiveSpan();
+    const span = Sentry.getActiveSpan();
     const traceId = span?.spanContext().traceId;
 
-    if (traceId) {
+    if (traceId && span) {
       // Attach trace_id to HTTP response headers
       try {
         const httpContext = ctx.switchToHttp().getResponse<Response>();
@@ -34,21 +34,7 @@ export class TraceContextInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap({
-        next: () => {
-          // Mark span as successful
-          if (span) {
-            span.setStatus({ code: SpanStatusCode.OK });
-          }
-        },
         error: (error: Error) => {
-          // Mark span as error
-          if (span) {
-            span.setStatus({
-              code: SpanStatusCode.ERROR,
-              message: error.message,
-            });
-            span.recordException(error);
-          }
           this.logger.error(`Request failed (trace_id: ${traceId})`, error);
         },
       }),

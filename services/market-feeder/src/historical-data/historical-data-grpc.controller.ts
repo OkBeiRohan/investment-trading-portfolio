@@ -9,7 +9,6 @@ import { Observable, Subject } from 'rxjs';
 import { HistoricalDataService } from './historical-data.service';
 import type { BackfillProgress } from './historical-data.service';
 import { TelemetryService } from '../common/services/telemetry.service';
-import { trace } from '@opentelemetry/api';
 
 interface LoadHistoricalDataRequest {
   instrument_keys: string[];
@@ -101,7 +100,7 @@ export class HistoricalDataGrpcController {
     );
 
     // Start backfill in background
-    (async () => {
+    void (async () => {
       try {
         await this.historicalDataService.backfillHistoricalData({
           instrumentKeys: request.instrument_keys,

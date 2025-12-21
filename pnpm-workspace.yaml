@@ -5,6 +5,7 @@ packages:
 
 onlyBuiltDependencies:
   - '@nestjs/core'
+  - '@sentry-internal/node-cpu-profiler'
   - esbuild
   - msgpackr-extract
   - onnxruntime-node
