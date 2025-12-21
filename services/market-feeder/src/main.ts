@@ -1,9 +1,9 @@
+import { startTelemetry } from './config/sentry.config';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { AppModule } from './app.module';
-import { startTelemetry } from './config/sentry.config';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
