@@ -26,10 +26,10 @@ import { MongoDBModule } from "@repo/database";
     EncryptionUtil,
 
     // Multiplexer
-    MultiplexerService,
-    SocketPool,
-    BinPacker,
-    SubscriptionManager,
+    // MultiplexerService,
+    // SocketPool,
+    // BinPacker,
+    // SubscriptionManager,
 
     // Provider & APIs
     UpstoxProvider,
@@ -41,7 +41,7 @@ import { MongoDBModule } from "@repo/database";
   ],
   exports: [
     AuthManagerService,
-    MultiplexerService,
+    // MultiplexerService,
     UpstoxProvider,
     UpstoxHistoricalAPI,
     UpstoxHistoricalService,
