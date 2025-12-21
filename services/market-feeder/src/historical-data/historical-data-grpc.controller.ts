@@ -7,7 +7,6 @@ import { Controller, Logger } from '@nestjs/common';
 import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
 import { Observable, Subject } from 'rxjs';
 import { HistoricalDataService } from './historical-data.service';
-import type { BackfillProgress } from './historical-data.service';
 import { TelemetryService } from '../common/services/telemetry.service';
 
 interface LoadHistoricalDataRequest {

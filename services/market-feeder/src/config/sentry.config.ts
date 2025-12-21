@@ -5,6 +5,7 @@
 
 import * as Sentry from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
+import { version } from '../../package.json';
 
 /**
  * Initialize Sentry SDK
@@ -14,7 +15,7 @@ export function initializeSentry(): void {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     environment: process.env.NODE_ENV || 'development',
-    release: process.env.APP_VERSION || '1.0.0',
+    release: version,
 
     // Performance Monitoring
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0, // 10% in prod, 100% in dev
