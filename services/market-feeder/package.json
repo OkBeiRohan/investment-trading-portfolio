@@ -6,8 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "proto:generate": "grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=node_modules\\\\.bin\\\\protoc-gen-ts_proto.cmd --ts_proto_out=src/generated --ts_proto_opt=nestJs=true,outputServices=grpc-js,env=node,esModuleInterop=true --proto_path=proto proto/*.proto",
-    "build": "pnpm proto:generate && nest build",
+    "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",

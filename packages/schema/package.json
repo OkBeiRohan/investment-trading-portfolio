@@ -5,7 +5,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "./dist/**"
+    "./dist/**",
+    "./proto/**/*.proto"
   ],
   "publishConfig": {
     "access": "public"
@@ -23,6 +24,7 @@
       "types": "./dist/authentication/index.d.ts",
       "default": "./dist/authentication/index.js"
     },
+    "./proto/*": "./proto/*.proto",
     "./*": {
       "types": "./dist/*.d.ts",
       "default": "./dist/*.js"

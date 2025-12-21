@@ -6,7 +6,7 @@
     "deleteOutDir": true,
     "assets": [
       {
-        "include": "../proto/**/*.proto",
+        "include": "**/*.proto",
         "outDir": "dist/proto",
         "watchAssets": true
       }

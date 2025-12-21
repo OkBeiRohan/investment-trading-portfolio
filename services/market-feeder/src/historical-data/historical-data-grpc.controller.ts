@@ -1,25 +1,49 @@
 /**
  * Historical Data gRPC Controller
- * Exposes backfill operations via gRPC API
- * Uses generated Protocol Buffer types for strict type safety
+ * Official NestJS gRPC approach using @grpc/proto-loader
  */
 
 import { Controller, Logger } from '@nestjs/common';
+import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
+import {
+  Metadata,
+  type ServerUnaryCall,
+  type ServerDuplexStream,
+} from '@grpc/grpc-js';
 import { Observable, Subject } from 'rxjs';
 import { HistoricalDataService } from './historical-data.service';
 import { TelemetryService } from '../common/services/telemetry.service';
-import {
-  LoadHistoricalDataRequest,
-  LoadHistoricalDataResponse,
-  BackfillRequest,
-  BackfillProgress,
-  HistoricalDataServiceController,
-  HistoricalDataServiceControllerMethods,
-} from '../generated/historical-data';
+
+interface LoadHistoricalDataRequest {
+  instrumentKeys: string[];
+  intervals: string[];
+  fromDate: string;
+  toDate: string;
+}
+
+interface LoadHistoricalDataResponse {
+  totalCandles: number;
+  durationMs: number;
+  traceId: string;
+}
+
+interface BackfillRequest {
+  instrumentKeys: string[];
+  intervals: string[];
+  fromDate: string;
+  toDate: string;
+}
+
+interface BackfillProgress {
+  totalInstruments: number;
+  completedInstruments: number;
+  currentInstrument: string;
+  totalCandles: number;
+  elapsedMs: number;
+}
 
 @Controller()
-@HistoricalDataServiceControllerMethods()
-export class HistoricalDataGrpcController implements HistoricalDataServiceController {
+export class HistoricalDataGrpcController {
   private readonly logger = new Logger(HistoricalDataGrpcController.name);
 
   constructor(
@@ -27,12 +51,11 @@ export class HistoricalDataGrpcController implements HistoricalDataServiceContro
     private readonly telemetryService: TelemetryService,
   ) {}
 
-  /**
-   * gRPC method: LoadHistoricalData
-   * Unary RPC for backfilling historical data
-   */
+  @GrpcMethod('HistoricalDataService')
   async loadHistoricalData(
     request: LoadHistoricalDataRequest,
+    metadata: Metadata,
+    call: ServerUnaryCall<any, any>,
   ): Promise<LoadHistoricalDataResponse> {
     const startTime = Date.now();
     const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';
@@ -50,11 +73,9 @@ export class HistoricalDataGrpcController implements HistoricalDataServiceContro
           toDate: request.toDate,
         });
 
-      const durationMs = Date.now() - startTime;
-
       return {
         totalCandles,
-        durationMs,
+        durationMs: Date.now() - startTime,
         traceId,
       };
     } catch (error) {
@@ -63,12 +84,11 @@ export class HistoricalDataGrpcController implements HistoricalDataServiceContro
     }
   }
 
-  /**
-   * gRPC method: StreamBackfillProgress
-   * Server-streaming RPC for real-time progress updates
-   */
+  @GrpcStreamMethod('HistoricalDataService')
   streamBackfillProgress(
     request: BackfillRequest,
+    metadata: Metadata,
+    call: ServerDuplexStream<any, any>,
   ): Observable<BackfillProgress> {
     const subject = new Subject<BackfillProgress>();
     const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';
@@ -77,7 +97,6 @@ export class HistoricalDataGrpcController implements HistoricalDataServiceContro
       `gRPC StreamBackfillProgress started (trace_id: ${traceId})`,
     );
 
-    // Start backfill in background
     void (async () => {
       try {
         await this.historicalDataService.backfillHistoricalData({
@@ -86,7 +105,6 @@ export class HistoricalDataGrpcController implements HistoricalDataServiceContro
           fromDate: request.fromDate,
           toDate: request.toDate,
         });
-
         subject.complete();
       } catch (error) {
         this.logger.error('gRPC StreamBackfillProgress failed', error);
@@ -94,8 +112,6 @@ export class HistoricalDataGrpcController implements HistoricalDataServiceContro
       }
     })();
 
-    // TODO: Subscribe to 'backfill.progress' events and stream to client
-    // For now, complete immediately
     return subject.asObservable();
   }
 }
