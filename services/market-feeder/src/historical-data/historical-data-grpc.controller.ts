@@ -12,7 +12,6 @@ import {
 } from '@grpc/grpc-js';
 import { Observable, Subject } from 'rxjs';
 import { HistoricalDataService } from './historical-data.service';
-import { TelemetryService } from '../common/services/telemetry.service';
 
 interface LoadHistoricalDataRequest {
   instrumentKeys: string[];
@@ -58,10 +57,9 @@ export class HistoricalDataGrpcController {
     _call: ServerUnaryCall<any, any>,
   ): Promise<LoadHistoricalDataResponse> {
     const startTime = Date.now();
-    const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';
 
     this.logger.log(
-      `gRPC LoadHistoricalData: ${request.instrumentKeys.length} instruments (trace_id: ${traceId})`,
+      `gRPC LoadHistoricalData: ${request.instrumentKeys.length} instruments (trace_id: ${0})`,
     );
 
     try {
@@ -76,7 +74,7 @@ export class HistoricalDataGrpcController {
       return {
         totalCandles,
         durationMs: Date.now() - startTime,
-        traceId,
+        traceId: "",
       };
     } catch (error) {
       this.logger.error('gRPC LoadHistoricalData failed', error);
