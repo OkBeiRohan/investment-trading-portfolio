@@ -15,7 +15,7 @@ Write-Host ""
 $ports = @{
     "QuestDB PostgreSQL" = 8812
     "QuestDB Web UI" = 9000
-    "QuestDB ILP" = 9009
+    "QuestDB ILP" = 9000
     "MongoDB" = 27017
     "Redis" = 6379
     "Web Dashboard" = 3000

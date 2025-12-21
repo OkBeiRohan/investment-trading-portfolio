@@ -16,7 +16,7 @@
  *
  * Architecture:
  * - Port 8812: PostgreSQL wire protocol (queries)
- * - Port 9009: ILP protocol (high-throughput writes)
+ * - Port 9000: ILP protocol (high-throughput writes)
  *
  * Schema Design:
  * - SYMBOL for categorical data (instrument_key, interval)

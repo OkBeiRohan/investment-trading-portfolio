@@ -14,7 +14,7 @@ Successfully implemented production-ready QuestDB service with CQRS-lite archite
 
 **Write Path (ILP Protocol)**:
 
-- **Protocol**: QuestDB Influx Line Protocol (ILP) over TCP port 9009
+- **Protocol**: QuestDB Influx Line Protocol (ILP) over TCP port 9000
 - **Throughput**: 100,000+ rows/second
 - **Client**: `@questdb/nodejs-client v4.2.0`
 - **Auto-Flush**: 1000 rows OR 5 seconds (whichever comes first)

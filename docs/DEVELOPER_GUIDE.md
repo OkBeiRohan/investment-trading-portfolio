@@ -151,7 +151,7 @@ MONGODB_URI=mongodb://localhost:27017
 # QuestDB (Time-Series for ML Training)
 QUESTDB_HOST=localhost
 QUESTDB_PORT=8812  # PG Wire Protocol
-QUESTDB_ILP_PORT=9009 # InfluxDB Line Protocol (Fast Ingestion)
+QUESTDB_ILP_PORT=9000 # InfluxDB Line Protocol (Fast Ingestion)
 QUESTDB_USER=admin
 QUESTDB_PASSWORD=quest
 
