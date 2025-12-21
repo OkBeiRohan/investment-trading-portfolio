@@ -1,56 +1,50 @@
-import { LoggerService, Injectable } from '@nestjs/common';
-import { context, trace } from '@opentelemetry/api';
-import * as winston from 'winston';
+import { LoggerService, Injectable, ConsoleLogger } from "@nestjs/common";
+import { context, trace } from "@opentelemetry/api";
 
 @Injectable()
-export class OtelLogger implements LoggerService {
-  private logger: winston.Logger;
-
+export class OtelLogger extends ConsoleLogger implements LoggerService {
   constructor(serviceName: string) {
-    this.logger = winston.createLogger({
-      level: 'info',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-      ),
-      defaultMeta: { service: serviceName },
-      transports: [
-        new winston.transports.Console(),
-      ],
-    });
+    super(serviceName);
   }
 
   log(message: any, ...optionalParams: any[]) {
-    this.printLog('info', message, ...optionalParams);
+    super.log(this.enrichMessage(message), ...optionalParams);
   }
 
   error(message: any, ...optionalParams: any[]) {
-    this.printLog('error', message, ...optionalParams);
+    super.error(this.enrichMessage(message), ...optionalParams);
   }
 
   warn(message: any, ...optionalParams: any[]) {
-    this.printLog('warn', message, ...optionalParams);
+    super.warn(this.enrichMessage(message), ...optionalParams);
   }
 
   debug(message: any, ...optionalParams: any[]) {
-    this.printLog('debug', message, ...optionalParams);
+    super.debug(this.enrichMessage(message), ...optionalParams);
   }
 
   verbose(message: any, ...optionalParams: any[]) {
-    this.printLog('verbose', message, ...optionalParams);
+    super.verbose(this.enrichMessage(message), ...optionalParams);
   }
 
-  private printLog(level: string, message: any, ...optionalParams: any[]) {
+  private enrichMessage(message: any): any {
     const currentSpan = trace.getSpan(context.active());
     const traceId = currentSpan?.spanContext().traceId;
     const spanId = currentSpan?.spanContext().spanId;
 
-    this.logger.log({
-      level,
-      message,
-      traceId,
-      spanId,
-      ...optionalParams,
-    });
+    if (traceId || spanId) {
+      const traceInfo = [
+        traceId ? `trace=${traceId}` : null,
+        spanId ? `span=${spanId}` : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return typeof message === "string"
+        ? `${message} [${traceInfo}]`
+        : message;
+    }
+
+    return message;
   }
 }

@@ -15,7 +15,8 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
-  app.useLogger(new OtelLogger('api-gateway'));
+  const logger = new OtelLogger('api-gateway');
+  app.useLogger(logger);
 
   // Enable CORS for cross-origin requests from frontend
   let corsOrigins: string[] | undefined;
@@ -55,7 +56,7 @@ async function bootstrap() {
 
   // Log memory usage before listening
   const memBefore = process.memoryUsage();
-  console.log(
+  logger.log(
     `Memory before listen: ${Math.round(memBefore.heapUsed / 1024 / 1024)}MB / ${Math.round(memBefore.heapTotal / 1024 / 1024)}MB`,
   );
 
@@ -63,12 +64,12 @@ async function bootstrap() {
 
   // Log memory usage after startup
   const memAfter = process.memoryUsage();
-  console.log(
+  logger.log(
     `Memory after listen: ${Math.round(memAfter.heapUsed / 1024 / 1024)}MB / ${Math.round(memAfter.heapTotal / 1024 / 1024)}MB`,
   );
 
-  console.log(`🚀 Application is running on: http://${host}:${port}`);
-  console.log(`📊 Health check: http://${host}:${port}/health`);
+  logger.log(`🚀 Application is running on: http://${host}:${port}`);
+  logger.log(`📊 Health check: http://${host}:${port}/health`);
 }
 
 void bootstrap().catch((error) => {
