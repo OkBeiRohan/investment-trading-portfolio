@@ -54,8 +54,8 @@ export class HistoricalDataGrpcController {
   @GrpcMethod('HistoricalDataService')
   async loadHistoricalData(
     request: LoadHistoricalDataRequest,
-    metadata: Metadata,
-    call: ServerUnaryCall<any, any>,
+    _metadata: Metadata,
+    _call: ServerUnaryCall<any, any>,
   ): Promise<LoadHistoricalDataResponse> {
     const startTime = Date.now();
     const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';
@@ -87,8 +87,8 @@ export class HistoricalDataGrpcController {
   @GrpcStreamMethod('HistoricalDataService')
   streamBackfillProgress(
     request: BackfillRequest,
-    metadata: Metadata,
-    call: ServerDuplexStream<any, any>,
+    _metadata: Metadata,
+    _call: ServerDuplexStream<any, any>,
   ): Observable<BackfillProgress> {
     const subject = new Subject<BackfillProgress>();
     const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';

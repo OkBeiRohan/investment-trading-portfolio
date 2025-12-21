@@ -2,7 +2,6 @@ import { startTelemetry } from './config/sentry.config';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -21,7 +20,7 @@ async function bootstrap() {
       transport: Transport.GRPC,
       options: {
         package: 'historical_data',
-        protoPath: join(__dirname, 'proto/historical-data.proto'),
+        protoPath: require.resolve('@repo/schema/proto/historical-data.proto'),
         url: `0.0.0.0:${process.env.GRPC_PORT || 50051}`,
       },
     });
