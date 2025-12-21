@@ -20,7 +20,7 @@ async function bootstrap() {
       transport: Transport.GRPC,
       options: {
         package: 'historical_data',
-        protoPath: require.resolve('@repo/schema/proto/historical-data.proto'),
+        protoPath: require.resolve('@repo/schema/proto/historical-data'),
         url: `0.0.0.0:${process.env.GRPC_PORT || 50051}`,
       },
     });
