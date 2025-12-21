@@ -12,9 +12,11 @@ import { AppContext } from './app.context';
 import { AppRouter } from './app.router';
 import registerConfiguration from './environment/configuration';
 import { TrpcAuthMiddleware } from './app.middleware';
+import { ObservabilityModule } from '@repo/observability';
 
 @Module({
   imports: [
+    ObservabilityModule,
     ConfigModule.forRoot({ isGlobal: true, load: [registerConfiguration] }),
     ConditionalModule.registerWhen(
       DevtoolsModule.register({

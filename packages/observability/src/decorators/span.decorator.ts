@@ -45,7 +45,7 @@ export function Span(name?: string) {
           span.end();
           return result;
         } catch (err) {
-          span.recordException(err);
+          span.recordException(err as any);
           span.setStatus({
             code: SpanStatusCode.ERROR,
             message: err instanceof Error ? err.message : String(err),

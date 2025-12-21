@@ -25,7 +25,7 @@ export function initObservability(serviceName: string) {
     metricReader: new PeriodicExportingMetricReader({
       exporter: metricExporter,
       exportIntervalMillis: 15000,
-    }),
+    }) as any,
     instrumentations: [getNodeAutoInstrumentations()],
   });
 

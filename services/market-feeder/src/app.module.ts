@@ -11,9 +11,11 @@ import { UpstoxModule } from '@repo/market-sdk';
 import { HistoricalDataModule } from './historical-data/historical-data.module';
 import configuration from './config/configuration';
 import { TraceContextInterceptor } from './common/interceptors/trace-context.interceptor';
+import { ObservabilityModule } from '@repo/observability';
 
 @Module({
   imports: [
+    ObservabilityModule,
     // Sentry integration (must be first)
     SentryModule.forRoot(),
 
