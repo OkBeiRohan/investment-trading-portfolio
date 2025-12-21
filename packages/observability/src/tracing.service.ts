@@ -2,7 +2,6 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
-import * as process from "process";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import {
   CompositePropagator,

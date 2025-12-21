@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package api_gateway;
+
+service ApiGatewayService{
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+}
+
+message HealthCheckResponse {
+    string status = 1; // e.g., "OK"
+}

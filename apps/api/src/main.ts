@@ -25,7 +25,7 @@ async function bootstrap() {
     transport: Transport.GRPC,
     options: {
       package: 'api_gateway',
-      // protoPath: require.resolve('@repo/schema/proto/api-gateway'),
+      protoPath: require.resolve('@repo/schema/proto/api-gateway'),
       host: '0.0.0.0',
       port: grpcPort,
     },
@@ -84,9 +84,9 @@ async function bootstrap() {
     `Memory after listen: ${Math.round(memAfter.heapUsed / 1024 / 1024)}MB / ${Math.round(memAfter.heapTotal / 1024 / 1024)}MB`,
   );
 
-  logger.log(`🚀 Application is running on: http://${host}:${port}`);
-  logger.log(`🚀 gRPC microservice is running on port ${grpcPort}`);
-  logger.log(`📊 Health check: http://${host}:${port}/health`);
+  logger.log(`Application is running on: http://${host}:${port}`);
+  logger.log(`gRPC microservice is running on port ${grpcPort}`);
+  logger.log(`Health check: http://${host}:${port}/health`);
 }
 
 void bootstrap().catch((error) => {
