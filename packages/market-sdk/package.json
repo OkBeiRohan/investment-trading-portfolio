@@ -14,7 +14,7 @@
   },
   "scripts": {
     "proto:update": "bash scripts/fetch-proto.sh",
-    "build": "npm run proto:update && tsc",
+    "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint .",
     "check-types": "tsc --noEmit",

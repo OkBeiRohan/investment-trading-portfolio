@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { OpenTelemetryModule } from "nestjs-otel";
+import { LoggerModule } from "./logger/logger.module";
 
 @Module({
   imports: [
@@ -8,7 +9,9 @@ import { OpenTelemetryModule } from "nestjs-otel";
         hostMetrics: true,
       },
     }),
+    LoggerModule,
   ],
-  exports: [OpenTelemetryModule],
+  providers: [],
+  exports: [OpenTelemetryModule, LoggerModule],
 })
 export class ObservabilityModule {}

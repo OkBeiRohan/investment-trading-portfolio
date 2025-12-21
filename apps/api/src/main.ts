@@ -1,12 +1,13 @@
 import { NestFactory, PartialGraphHost } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { writeFileSync } from 'fs';
 import { AppModule } from './app.module';
-import { initObservability, OtelLogger } from '@repo/observability';
-
-initObservability('api-gateway');
+import { otelSDK, OtelLogger } from '@repo/observability';
 
 async function bootstrap() {
+  otelSDK.start();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
     snapshot:
@@ -15,8 +16,20 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
-  const logger = new OtelLogger('api-gateway');
+  const logger = app.get(OtelLogger);
   app.useLogger(logger);
+
+  const grpcPort = parseInt(process.env.GRPC_PORT || '50050', 10);
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.GRPC,
+    options: {
+      package: 'api_gateway',
+      // protoPath: require.resolve('@repo/schema/proto/api-gateway'),
+      host: '0.0.0.0',
+      port: grpcPort,
+    },
+  });
 
   // Enable CORS for cross-origin requests from frontend
   let corsOrigins: string[] | undefined;
@@ -60,6 +73,7 @@ async function bootstrap() {
     `Memory before listen: ${Math.round(memBefore.heapUsed / 1024 / 1024)}MB / ${Math.round(memBefore.heapTotal / 1024 / 1024)}MB`,
   );
 
+  await app.startAllMicroservices();
   await app.listen(port, host);
 
   // Log memory usage after startup
@@ -69,6 +83,7 @@ async function bootstrap() {
   );
 
   logger.log(`🚀 Application is running on: http://${host}:${port}`);
+  logger.log(`🚀 gRPC microservice is running on port ${grpcPort}`);
   logger.log(`📊 Health check: http://${host}:${port}/health`);
 }
 
