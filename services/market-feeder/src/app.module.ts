@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConditionalModule, ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
@@ -25,7 +25,10 @@ import { TraceContextInterceptor } from './common/interceptors/trace-context.int
     }),
 
     // Scheduling for nightly backfill
-    ScheduleModule.forRoot(),
+    ConditionalModule.registerWhen(
+      ScheduleModule.forRoot(),
+      'HISTORY_SAVER_ENABLED',
+    ),
 
     // Event emitter for progress tracking
     EventEmitterModule.forRoot({
@@ -35,13 +38,17 @@ import { TraceContextInterceptor } from './common/interceptors/trace-context.int
     }),
 
     // Database
-    QuestDBModule,
+    ConditionalModule.registerWhen(QuestDBModule, 'HISTORY_SAVER_ENABLED'),
 
     // Market SDK (Upstox)
     UpstoxModule,
 
     // Feature modules
-    HistoricalDataModule,
+
+    ConditionalModule.registerWhen(
+      HistoricalDataModule,
+      'HISTORY_SAVER_ENABLED',
+    ),
   ],
   controllers: [AppController],
   providers: [
