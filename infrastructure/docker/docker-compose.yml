@@ -1,32 +1,30 @@
 version: "3.8"
 
 services:
-  # Databases
+  # ==========================================
+  # Databases & Infrastructure
+  # ==========================================
   questdb:
     image: questdb/questdb:latest
     ports:
-      - "9000:9000" # REST API / Web Console
-      - "9009:9009" # InfluxDB Line Protocol
+      - "9000:9000" # REST API / Web Console / ILP
       - "8812:8812" # PostgreSQL Wire Protocol
+      - "9003:9003" # Min health server
     environment:
       QDB_CAIRO_COMMIT_LAG: 1000
       QDB_CAIRO_MAX_UNCOMMITTED_ROWS: 100000
     volumes:
       - questdb_data:/root/.questdb
+    networks:
+      - trading-net
 
   mongodb:
     image: mongo:7
     ports:
       - "27017:27017"
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
     environment:
-      # For standalone mode (development)
-      # Comment out for production replica set
       MONGO_INITDB_DATABASE: investment-trading
-      # For replica set mode (production with transactions)
-      # Uncomment below and run: docker exec mongodb mongosh --eval "rs.initiate()"
-      # MONGO_REPLICA_SET_NAME: rs0
-    # For replica set, add this command:
-    # command: ["--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -35,6 +33,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - trading-net
+
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      - mongodb
+    command: >
+      bash -c "sleep 10 && mongosh --host mongodb:27017 --eval 'try { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] }) } catch (e) { print(e) }'"
+    networks:
+      - trading-net
 
   redis:
     image: redis:7-alpine
@@ -42,61 +51,200 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - trading-net
 
-  # Monitoring
-  prometheus:
-    image: prom/prometheus
+  chromadb:
+    image: chromadb/chroma:latest
     ports:
-      - "9090:9090"
+      - "8000:8000"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
+      - chroma_data:/chroma/chroma
+    networks:
+      - trading-net
 
-  grafana:
-    image: grafana/grafana
+  # ==========================================
+  # Core Applications
+  # ==========================================
+  web:
+    build: ../../apps/web
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      NODE_ENV: development
+      API_URL: http://api:3004
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - api
+    networks:
+      - trading-net
 
-  # Apps
-  market-feeder:
-    build: ./apps/market-feeder
+  api:
+    build: ../../apps/api
+    ports:
+      - "3004:3004"
     environment:
+      NODE_ENV: development
+      PORT: 3004
+      MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
-      QUESTDB_HOST: questdb
-      QUESTDB_PORT: 9009 # ILP Port for high-speed ingestion
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
-      - redis
-      - questdb
-
-  data-processor:
-    build: ./apps/data-processor
-    environment:
-      QUESTDB_HOST: questdb
-      QUESTDB_PORT: 8812 # PG Wire for SQL queries
-      MONGODB_URI: mongodb://mongodb:27017
-    depends_on:
-      - questdb
       - mongodb
+      - redis
+    networks:
+      - trading-net
 
   algo-worker:
-    build: ./apps/algo-worker
+    build: ../../apps/algo-worker
+    ports:
+      - "3001:3001"
     environment:
-      MONGODB_URI: mongodb://mongodb:27017
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     volumes:
-      - ./models:/app/models # ONNX models
+      - ../../models:/app/models # ONNX models
     depends_on:
       - mongodb
       - redis
+    networks:
+      - trading-net
+
+  # ==========================================
+  # Microservices
+  # ==========================================
+  market-feeder:
+    build: ../../services/market-feeder
+    ports:
+      - "3002:3002"
+      - "50051:50051" # gRPC
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      QUESTDB_HOST: questdb
+      QUESTDB_PORT: 9000
+      GRPC_PORT: 50051
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - redis
+      - questdb
+    networks:
+      - trading-net
+
+  data-processor:
+    build: ../../services/data-processor
+    ports:
+      - "3003:3003"
+    environment:
+      NODE_ENV: development
+      QUESTDB_HOST: questdb
+      QUESTDB_PORT: 8812
+      MONGODB_URI: mongodb://mongodb:27017/investment-trading
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - questdb
+      - mongodb
+    networks:
+      - trading-net
+
+  wealth-management:
+    build: ../../services/wealth-management
+    ports:
+      - "3005:3005"
+    environment:
+      NODE_ENV: development
+      PORT: 3005
+      MONGODB_URI: mongodb://mongodb:27017/investment-trading
+      QUESTDB_HOST: questdb
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - mongodb
+      - questdb
+      - redis
+    networks:
+      - trading-net
+
+  document-processor:
+    build: ../../services/document-processor
+    ports:
+      - "3006:3006"
+    environment:
+      NODE_ENV: development
+      PORT: 3006
+      MONGODB_URI: mongodb://mongodb:27017/investment-trading
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - trading-net
+
+  wealth-analyzer:
+    build: ../../services/wealth-analyzer
+    ports:
+      - "3007:3007"
+    environment:
+      NODE_ENV: development
+      PORT: 3007
+      MONGODB_URI: mongodb://mongodb:27017/investment-trading
+      QUESTDB_HOST: questdb
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - mongodb
+      - questdb
+      - chromadb
+    networks:
+      - trading-net
+
+  notification-service:
+    build: ../../services/notification-service
+    ports:
+      - "3008:3000" # Map internal 3000 to host 3008
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    networks:
+      - trading-net
+
+  # ==========================================
+  # Compute & ML
+  # ==========================================
+  compute-engine:
+    build: ../../services/compute-engine
+    environment:
+      RUST_LOG: info
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    networks:
+      - trading-net
+
+  training-pipeline:
+    build: ../../services/training-pipeline
+    ports:
+      - "8888:8888" # Jupyter
+    environment:
+      QUESTDB_HOST: questdb
+      MONGODB_URI: mongodb://mongodb:27017/investment-trading
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - questdb
+      - mongodb
+    networks:
+      - trading-net
 
 volumes:
   questdb_data:
   mongo_data:
   redis_data:
-  prometheus_data:
-  grafana_data:
+  chroma_data:
+
+networks:
+  trading-net:
+    driver: bridge
+    name: trading-net

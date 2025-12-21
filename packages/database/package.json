@@ -24,6 +24,7 @@
   "dependencies": {
     "@nestjs/common": "^11.1.9",
     "@nestjs/mongoose": "^11.0.4",
+    "@questdb/nodejs-client": "^4.2.0",
     "@repo/schema": "workspace:*",
     "ioredis": "^5.8.2",
     "mongoose": "^8.20.3",
@@ -34,6 +35,7 @@
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^25.0.3",
+    "@types/pg": "^8.16.0",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "typescript": "5.9.3"

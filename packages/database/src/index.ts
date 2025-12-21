@@ -18,13 +18,7 @@
 export * from "./redis";
 
 // Export QuestDB module
-export { QuestDBModule, QuestDBService } from "./questdb";
-export type {
-  QuestDBConfig,
-  TickData,
-  CandleData,
-  FeatureData,
-} from "./questdb/questdb.service";
+export * from "./questdb";
 
 // MongoDB
 export * from "./mongodb/repositories";

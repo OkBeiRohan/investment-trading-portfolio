@@ -14,7 +14,7 @@ The wealth management system uses three key AI models:
 
 - **Location**: Local GPU (RTX 3060/4090 or better)
 - **Framework**: PyTorch, Hugging Face Transformers, Unsloth (QLoRA fine-tuning)
-- **Deployment**: ONNX models for production inference (apps/wealth-analyzer, apps/document-processor)
+- **Deployment**: ONNX models for production inference (services/wealth-analyzer, services/document-processor)
 
 ---
 
@@ -53,7 +53,7 @@ Phi-3 (microsoft/Phi-3-mini-4k-instruct) is a 3.8B parameter LLM optimized for e
 - Merge adapters back to full precision
 
 ```python
-# apps/wealth-analyzer/training/finetune_phi3.py
+# services/wealth-analyzer/training/finetune_phi3.py
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from trl import SFTTrainer
@@ -205,7 +205,7 @@ LayoutLMv3 is a multimodal Transformer for document understanding. It combines v
 ### Fine-Tuning Pipeline
 
 ```python
-# apps/document-processor/training/finetune_layoutlmv3.py
+# services/document-processor/training/finetune_layoutlmv3.py
 from transformers import (
     LayoutLMv3Processor,
     LayoutLMv3ForTokenClassification,
@@ -387,7 +387,7 @@ Donut (Document Understanding Transformer) is an OCR-free end-to-end model that 
 ### Fine-Tuning Pipeline
 
 ```python
-# apps/document-processor/training/finetune_donut.py
+# services/document-processor/training/finetune_donut.py
 from transformers import (
     VisionEncoderDecoderModel,
     DonutProcessor,
@@ -713,19 +713,19 @@ ort_model.quantize(
 
 ```bash
 # Phi-3 for wealth-analyzer
-cp models/phi3-finance-finetuned-onnx/* apps/wealth-analyzer/models/
+cp models/phi3-finance-finetuned-onnx/* services/wealth-analyzer/models/
 
 # LayoutLMv3 for document-processor
-cp models/layoutlmv3-bank-finetuned-onnx-int8/* apps/document-processor/models/
+cp models/layoutlmv3-bank-finetuned-onnx-int8/* services/document-processor/models/
 
 # Donut for document-processor
-cp models/donut-receipts-finetuned/* apps/document-processor/models/
+cp models/donut-receipts-finetuned/* services/document-processor/models/
 ```
 
 ### Model Loading in NestJS
 
 ```typescript
-// apps/wealth-analyzer/src/phi3/phi3.service.ts
+// services/wealth-analyzer/src/phi3/phi3.service.ts
 import * as ort from "onnxruntime-node";
 
 @Injectable()

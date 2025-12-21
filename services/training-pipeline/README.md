@@ -73,7 +73,7 @@ This pipeline includes cutting-edge validation and features:
 
 ```bash
 # 1. Navigate to training-pipeline
-cd apps/training-pipeline
+cd services/training-pipeline
 
 # 2. Install dependencies
 poetry install
@@ -607,7 +607,7 @@ kedro run --pipeline backtesting --params use_rl_agent:true
 ## 📁 Project Structure
 
 ```
-apps/training-pipeline/
+services/training-pipeline/
 ├── conf/
 │   ├── base/
 │   │   ├── catalog.yml                # Data sources

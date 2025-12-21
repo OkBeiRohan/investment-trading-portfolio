@@ -5,7 +5,10 @@ packages:
 
 onlyBuiltDependencies:
   - '@nestjs/core'
+  - '@sentry-internal/node-cpu-profiler'
+  - '@sentry/cli'
   - esbuild
+  - grpc-tools
   - msgpackr-extract
   - onnxruntime-node
   - protobufjs

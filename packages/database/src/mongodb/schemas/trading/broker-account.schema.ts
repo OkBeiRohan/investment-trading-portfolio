@@ -1,6 +1,11 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
-import { IBrokerAccount } from "@repo/schema";
+import {
+  IBrokerAccount,
+  BrokerExchange,
+  BrokerProduct,
+  BrokerOrderType,
+} from "@repo/schema";
 import { User } from "../user/user.schema";
 import { Account } from "../authentication/account.schema";
 import {
@@ -48,14 +53,26 @@ export class BrokerAccount extends Document implements IBrokerAccount {
   @Prop({ required: true })
   broker: string;
 
-  @Prop({ type: [String], required: true })
-  products: string[];
+  @Prop({
+    type: [String],
+    enum: Object.values(BrokerProduct),
+    required: true,
+  })
+  products: BrokerProduct[];
 
-  @Prop({ type: [String], required: true })
-  orderTypes: string[];
+  @Prop({
+    type: [String],
+    enum: Object.values(BrokerOrderType),
+    required: true,
+  })
+  orderTypes: BrokerOrderType[];
 
-  @Prop({ type: [String], required: true })
-  exchanges: string[];
+  @Prop({
+    type: [String],
+    enum: Object.values(BrokerExchange),
+    required: true,
+  })
+  exchanges: BrokerExchange[];
 
   @Prop({ type: BrokerAccountFundMarginSchema, required: true })
   fundMargin: BrokerAccountFundMargin;

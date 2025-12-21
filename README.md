@@ -174,23 +174,23 @@ pnpm dev  # Starts on port 3001
 
 - **[Algo Worker](apps/algo-worker/README.md)**: Trading engine
   - [Performance Optimization](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md): 🆕 Worker Threads, GPU inference, zero-allocation patterns
-- **[Training Pipeline](apps/training-pipeline/README.md)**: ML model training
-  - [Advanced Validation](apps/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
+- **[Training Pipeline](services/training-pipeline/README.md)**: ML model training
+  - [Advanced Validation](services/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
 - **[Market SDK](packages/market-sdk/README.md)**: Upstox/Yahoo/Binance integration
 
 ### Wealth Management Components 🆕
 
-- **[Wealth Management](apps/wealth-management/README.md)**: Double-entry ledger, net worth tracking
+- **[Wealth Management](services/wealth-management/README.md)**: Double-entry ledger, net worth tracking
   - Core financial system with PostgreSQL double-entry bookkeeping
   - Account Aggregator integration (Setu/Finvu)
   - Tax calculators (FY 2025-26 compliant)
   - Financial planning tools (retirement, goals, insurance)
-- **[Wealth Analyzer](apps/wealth-analyzer/README.md)**: AI-powered insights
+- **[Wealth Analyzer](services/wealth-analyzer/README.md)**: AI-powered insights
   - Microsoft Phi-3 LLM for natural language queries
   - Spending pattern analysis and anomaly detection
   - Investment performance recommendations
   - Predictive cash flow forecasting
-- **[Document Processor](apps/document-processor/README.md)**: Bank statement parsing
+- **[Document Processor](services/document-processor/README.md)**: Bank statement parsing
   - LayoutLMv3 for structured documents
   - Donut for unstructured receipts
   - Support for Indian banks (HDFC, SBI, ICICI, Axis)
@@ -216,8 +216,8 @@ pnpm dev  # Starts on port 3001
 
 - **[Algo Worker](apps/algo-worker/README.md)**: Trading engine
   - [Performance Optimization](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md): 🆕 Worker Threads, GPU inference, zero-allocation patterns
-- **[Training Pipeline](apps/training-pipeline/README.md)**: ML model training
-  - [Advanced Validation](apps/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
+- **[Training Pipeline](services/training-pipeline/README.md)**: ML model training
+  - [Advanced Validation](services/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
 - **[Web Dashboard](apps/web/README.md)**: UFOS (Unified Financial Operating System)
   - [Authentication](apps/web/docs/AUTHENTICATION.md): Auth state management with Context Provider
   - [Data Access Layer](apps/web/docs/DATA_ACCESS_LAYER.md): Secure data fetching with auto org scoping

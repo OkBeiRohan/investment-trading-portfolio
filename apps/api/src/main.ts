@@ -2,6 +2,9 @@ import { NestFactory, PartialGraphHost } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { writeFileSync } from 'fs';
 import { AppModule } from './app.module';
+import { initObservability, OtelLogger } from '@repo/observability';
+
+initObservability('api-gateway');
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -9,7 +12,11 @@ async function bootstrap() {
     snapshot:
       process.env.DEVTOOLS === 'true' && process.env.NODE_ENV !== 'production',
     abortOnError: process.env.DEVTOOLS !== 'true',
+    bufferLogs: true,
   });
+
+  const logger = new OtelLogger('api-gateway');
+  app.useLogger(logger);
 
   // Enable CORS for cross-origin requests from frontend
   let corsOrigins: string[] | undefined;
@@ -49,7 +56,7 @@ async function bootstrap() {
 
   // Log memory usage before listening
   const memBefore = process.memoryUsage();
-  console.log(
+  logger.log(
     `Memory before listen: ${Math.round(memBefore.heapUsed / 1024 / 1024)}MB / ${Math.round(memBefore.heapTotal / 1024 / 1024)}MB`,
   );
 
@@ -57,12 +64,12 @@ async function bootstrap() {
 
   // Log memory usage after startup
   const memAfter = process.memoryUsage();
-  console.log(
+  logger.log(
     `Memory after listen: ${Math.round(memAfter.heapUsed / 1024 / 1024)}MB / ${Math.round(memAfter.heapTotal / 1024 / 1024)}MB`,
   );
 
-  console.log(`🚀 Application is running on: http://${host}:${port}`);
-  console.log(`📊 Health check: http://${host}:${port}/health`);
+  logger.log(`🚀 Application is running on: http://${host}:${port}`);
+  logger.log(`📊 Health check: http://${host}:${port}/health`);
 }
 
 void bootstrap().catch((error) => {

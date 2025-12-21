@@ -82,7 +82,7 @@ apps/algo-worker/src/
 
 ### ❌ Current Problem
 
-- ML models likely scattered across `apps/algo-worker` and `apps/training-pipeline`
+- ML models likely scattered across `apps/algo-worker` and `services/training-pipeline`
 - No shared ONNX model interface
 
 ### ✅ Recommended Structure

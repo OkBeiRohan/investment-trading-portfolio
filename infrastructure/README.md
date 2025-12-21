@@ -20,11 +20,11 @@ infrastructure/
 
 ### Services
 
-| Service | Image | Port | Purpose |
-|---------|-------|------|---------|
+| Service     | Image               | Port                         | Purpose                                         |
+| ----------- | ------------------- | ---------------------------- | ----------------------------------------------- |
 | **QuestDB** | questdb/questdb:8.0 | 9000 (UI), 8812 (PostgreSQL) | Time-series database for ticks/candles/features |
-| **MongoDB** | mongo:7.0 | 27017 | Document store for signals/orders/positions |
-| **Redis** | redis:7.2-alpine | 6379 | Event bus (Streams) + hot state cache |
+| **MongoDB** | mongo:7.0           | 27017                        | Document store for signals/orders/positions     |
+| **Redis**   | redis:7.2-alpine    | 6379                         | Event bus (Streams) + hot state cache           |
 
 ### Quick Start
 
@@ -49,6 +49,7 @@ docker-compose down -v
 ### Data Persistence
 
 All services use Docker volumes for data persistence:
+
 - **QuestDB**: `questdb_data` → `/var/lib/questdb`
 - **MongoDB**: `mongodb_data` → `/data/db`
 - **Redis**: `redis_data` → `/data` (AOF + RDB snapshots)
@@ -56,18 +57,21 @@ All services use Docker volumes for data persistence:
 ### Accessing Services
 
 #### QuestDB
+
 - **Console UI**: http://localhost:9000
 - **PostgreSQL Connection**:
   ```bash
   psql -h localhost -p 8812 -U admin -d qdb
   ```
-- **ILP (InfluxDB Line Protocol)**: Port 9009 (for high-speed ingestion)
+- **ILP (InfluxDB Line Protocol)**: Port 9000 (for high-speed ingestion)
 
 #### MongoDB
+
 - **Connection String**: `mongodb://localhost:27017/trading`
 - **Compass**: Use connection string above
 
 #### Redis
+
 - **CLI**:
   ```bash
   docker exec -it $(docker ps -qf "name=redis") redis-cli
@@ -228,6 +232,7 @@ module "mongodb_replica_set" {
 ```
 
 **Security**:
+
 - All inter-service communication within VPC (no public IPs)
 - MongoDB authentication + TLS enabled
 - Redis `requirepass` + ACLs
@@ -238,16 +243,19 @@ module "mongodb_replica_set" {
 ## Backup Strategy
 
 ### QuestDB
+
 - **Hourly**: Hot backup to S3/GCS (incremental)
 - **Daily**: Full snapshot to cold storage
 - **Retention**: 30 days (ticks), 1 year (candles/features)
 
 ### MongoDB
+
 - **Hourly**: Oplog backup to S3/GCS
 - **Daily**: Full replica set snapshot
 - **Retention**: 5 years (SEBI compliance for orders/audit)
 
 ### Redis
+
 - **Every 15 min**: RDB snapshot to disk
 - **AOF**: Append-only file for point-in-time recovery
 - **Retention**: 7 days
@@ -258,15 +266,16 @@ module "mongodb_replica_set" {
 
 ### Recovery Time Objectives (RTO)
 
-| Service | RTO | RPO | Recovery Procedure |
-|---------|-----|-----|-------------------|
-| QuestDB | <15 min | <1 hour | Restore from S3 snapshot |
+| Service | RTO     | RPO     | Recovery Procedure        |
+| ------- | ------- | ------- | ------------------------- |
+| QuestDB | <15 min | <1 hour | Restore from S3 snapshot  |
 | MongoDB | <10 min | <1 hour | Restore from oplog backup |
-| Redis | <5 min | <15 min | Restore from RDB + AOF |
+| Redis   | <5 min  | <15 min | Restore from RDB + AOF    |
 
 ### Circuit Breaker Activation
 
 Auto-triggered when:
+
 - Daily loss > ₹50,000
 - Drawdown > 20%
 - Latency > 500ms sustained for 30s
@@ -278,14 +287,14 @@ Auto-triggered when:
 
 ## Cost Estimation (Production - GCP/AWS)
 
-| Resource | Spec | Monthly Cost (USD) |
-|----------|------|-------------------|
-| QuestDB Cluster (3x VMs) | 8 vCPU, 32GB RAM, 500GB SSD | $600 |
-| MongoDB Replica Set (3x VMs) | 4 vCPU, 16GB RAM, 200GB SSD | $400 |
-| Redis Sentinel (3x VMs) | 2 vCPU, 8GB RAM, 50GB SSD | $200 |
-| Algo Worker (Auto-scaling) | 2-4 vCPU, 8-16GB RAM | $150-300 |
-| Load Balancer + Networking | | $50 |
-| **Total** | | **~$1,400-1,550/month** |
+| Resource                     | Spec                        | Monthly Cost (USD)      |
+| ---------------------------- | --------------------------- | ----------------------- |
+| QuestDB Cluster (3x VMs)     | 8 vCPU, 32GB RAM, 500GB SSD | $600                    |
+| MongoDB Replica Set (3x VMs) | 4 vCPU, 16GB RAM, 200GB SSD | $400                    |
+| Redis Sentinel (3x VMs)      | 2 vCPU, 8GB RAM, 50GB SSD   | $200                    |
+| Algo Worker (Auto-scaling)   | 2-4 vCPU, 8-16GB RAM        | $150-300                |
+| Load Balancer + Networking   |                             | $50                     |
+| **Total**                    |                             | **~$1,400-1,550/month** |
 
 ---
 
@@ -314,21 +323,24 @@ docker exec -it $(docker ps -qf "name=redis") redis-cli INFO memory
 ### Performance Tuning
 
 **QuestDB** (edit `docker-compose.yml`):
+
 ```yaml
 environment:
-  - QDB_CAIRO_WRITER_DATA_APPEND_PAGE_SIZE=16777216  # 16MB (faster writes)
-  - QDB_PG_NET_ACTIVE_CONNECTION_LIMIT=64           # More connections
+  - QDB_CAIRO_WRITER_DATA_APPEND_PAGE_SIZE=16777216 # 16MB (faster writes)
+  - QDB_PG_NET_ACTIVE_CONNECTION_LIMIT=64 # More connections
 ```
 
 **MongoDB** (edit `/etc/mongod.conf` in container):
+
 ```yaml
 storage:
   wiredTiger:
     engineConfig:
-      cacheSizeGB: 8  # Increased cache
+      cacheSizeGB: 8 # Increased cache
 ```
 
 **Redis** (edit `redis.conf`):
+
 ```conf
 maxmemory 4gb
 maxmemory-policy allkeys-lru

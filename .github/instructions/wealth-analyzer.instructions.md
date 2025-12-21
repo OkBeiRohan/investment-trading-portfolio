@@ -718,7 +718,7 @@ MONGODB_URI=mongodb://localhost:27017/wealth
 
 # QuestDB
 QUESTDB_HOST=localhost
-QUESTDB_PORT=9009
+QUESTDB_PORT=9000
 
 # Redis
 REDIS_HOST=localhost

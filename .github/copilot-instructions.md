@@ -91,8 +91,8 @@ Fold 2: [--test--][--train--]  # Future data leaks into past!
 
 **Documentation**:
 
-- See `apps/training-pipeline/docs/pipelines/*.md` for pipeline-specific guidelines
-- See `apps/training-pipeline/docs/ADVANCED_VALIDATION.md` for CPCV, OFI, RL patterns
+- See `services/training-pipeline/docs/pipelines/*.md` for pipeline-specific guidelines
+- See `services/training-pipeline/docs/ADVANCED_VALIDATION.md` for CPCV, OFI, RL patterns
 
 ---
 
@@ -338,6 +338,6 @@ with mlflow.start_run(run_name='xgboost_fold_1'):
 ## Getting Help
 
 - **algo-worker Architecture**: `apps/algo-worker/README.md`, `apps/algo-worker/docs/layers/*.md`
-- **training-pipeline Architecture**: `apps/training-pipeline/README.md`, `apps/training-pipeline/docs/pipelines/*.md`
+- **training-pipeline Architecture**: `services/training-pipeline/README.md`, `services/training-pipeline/docs/pipelines/*.md`
 - **AI Research**: Root README "Research & References" section
 - **Agents**: `.github/agents/` for role-specific guidelines

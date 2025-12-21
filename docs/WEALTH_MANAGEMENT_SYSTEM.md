@@ -10,7 +10,7 @@ The Wealth Management System is a comprehensive addition to the Investment Tradi
 
 ## 📦 New Applications Created
 
-### 1. **Wealth Management** (`apps/wealth-management`)
+### 1. **Wealth Management** (`services/wealth-management`)
 
 **Port**: 3005  
 **Purpose**: Core financial ledger system with double-entry bookkeeping
@@ -33,7 +33,7 @@ The Wealth Management System is a comprehensive addition to the Investment Tradi
 - tRPC: Type-safe API communication
 - REST API (external access)
 
-### 2. **Wealth Analyzer** (`apps/wealth-analyzer`)
+### 2. **Wealth Analyzer** (`services/wealth-analyzer`)
 
 **Port**: 3007  
 **Purpose**: AI-powered financial analysis and insights
@@ -54,7 +54,7 @@ The Wealth Management System is a comprehensive addition to the Investment Tradi
 - RAG-enhanced Text-to-SQL for natural language queries
 - SHAP explainability for transparent insights
 
-### 3. **Document Processor** (`apps/document-processor`)
+### 3. **Document Processor** (`services/document-processor`)
 
 **Port**: 3006  
 **Purpose**: AI-powered document parsing and OCR
@@ -210,7 +210,7 @@ User asks: "How much did I spend on food last month?"
 
 **Balance Validation**: Sum of debits = Sum of credits for every transaction
 
-**See**: `apps/wealth-management/docs/MONGODB_SCHEMA.md` for complete schema reference
+**See**: `services/wealth-management/docs/MONGODB_SCHEMA.md` for complete schema reference
 
 ---
 
@@ -462,7 +462,7 @@ AI: "Your loan rate is 8.5%. Investing in mid-cap funds could yield 12-15%. Cons
 ## 📚 Documentation Structure
 
 ```
-apps/wealth-management/
+services/wealth-management/
   ├── README.md (✓ Created - comprehensive MongoDB guide)
   ├── .github/
   │   └── copilot-instructions.md (✓ Created - MongoDB patterns, double-entry)
@@ -472,7 +472,7 @@ apps/wealth-management/
       ├── API_REFERENCE.md (To be created)
       └── TAX_COMPLIANCE.md (To be created)
 
-apps/wealth-analyzer/
+services/wealth-analyzer/
   ├── README.md (To be created)
   ├── .github/
   │   └── copilot-instructions.md (✓ Created - Phi-3, RAG, ML models)
@@ -480,7 +480,7 @@ apps/wealth-analyzer/
       ├── AI_MODELS.md (See: ../../docs/AI_MODEL_TRAINING.md)
       └── FINE_TUNING.md (See: ../../docs/AI_MODEL_TRAINING.md)
 
-apps/document-processor/
+services/document-processor/
   ├── README.md (To be created)
   ├── .github/
   │   └── copilot-instructions.md (✓ Created - LayoutLMv3, Donut)

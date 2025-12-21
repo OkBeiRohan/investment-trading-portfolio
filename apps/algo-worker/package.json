@@ -28,6 +28,7 @@
     "@nestjs/platform-express": "^11.1.9",
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
+    "@repo/observability": "workspace:*",
     "@repo/schema": "workspace:*",
     "bullmq": "^5.66.2",
     "ioredis": "^5.8.2",

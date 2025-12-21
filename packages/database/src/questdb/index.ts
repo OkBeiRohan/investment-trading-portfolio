@@ -4,9 +4,9 @@
 
 export { QuestDBModule } from "./questdb.module";
 export { QuestDBService } from "./questdb.service";
-export type {
-  QuestDBConfig,
-  TickData,
-  CandleData,
-  FeatureData,
-} from "./questdb.service";
+export {
+  CandlesRepository,
+  QuotesRepository,
+  GreeksRepository,
+  DepthRepository,
+} from "./repositories";

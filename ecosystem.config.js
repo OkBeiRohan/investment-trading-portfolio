@@ -37,8 +37,8 @@ module.exports = {
     },
     {
       name: "market-feeder",
-      script: "./apps/market-feeder/dist/main.js",
-      cwd: "./apps/market-feeder",
+      script: "./services/market-feeder/dist/main.js",
+      cwd: "./services/market-feeder",
       instances: 1,
       exec_mode: "fork",
       env: {
@@ -56,8 +56,8 @@ module.exports = {
     },
     {
       name: "data-processor",
-      script: "./apps/data-processor/dist/main.js",
-      cwd: "./apps/data-processor",
+      script: "./services/data-processor/dist/main.js",
+      cwd: "./services/data-processor",
       instances: 1,
       exec_mode: "fork",
       env: {
@@ -133,12 +133,12 @@ module.exports = {
       name: "training-pipeline",
       script: "python",
       args: "kedro_cli.py run",
-      cwd: "./apps/training-pipeline",
+      cwd: "./services/training-pipeline",
       interpreter: "none",
       instances: 1,
       exec_mode: "fork",
       env: {
-        PYTHONPATH: "./apps/training-pipeline",
+        PYTHONPATH: "./services/training-pipeline",
         CUDA_VISIBLE_DEVICES: "0",
       },
       error_file: "./logs/pm2/training-pipeline-error.log",

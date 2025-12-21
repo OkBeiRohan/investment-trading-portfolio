@@ -10,23 +10,26 @@ This document defines the port allocation strategy for all services in the inves
 
 | Service                           | Port(s) | Protocol | Environment | Description                                                       |
 | --------------------------------- | ------- | -------- | ----------- | ----------------------------------------------------------------- |
-| **Databases**                     |
-| QuestDB PostgreSQL                | 8812    | TCP      | Both        | PostgreSQL wire protocol for queries                              |
-| QuestDB Web UI                    | 9000    | HTTP     | Both        | Admin dashboard and SQL console                                   |
-| QuestDB ILP                       | 9009    | TCP      | Both        | InfluxDB Line Protocol for fast writes                            |
+| **Databases**                     |         |          |             |                                                                   |
+| QuestDB PostgreSQL Wire           | 8812    | TCP      | Both        | PostgreSQL wire protocol for queries                              |
+| QuestDB REST API / Web UI / ILP   | 9000    | HTTP/TCP | Both        | Web console, REST API, and InfluxDB Line Protocol                 |
+| QuestDB Min Health Server         | 9003    | HTTP     | Both        | Health check endpoint                                             |
 | MongoDB                           | 27017   | TCP      | Both        | MongoDB default port                                              |
 | Redis                             | 6379    | TCP      | Both        | Redis default port                                                |
-| **Applications**                  |
-| Web Dashboard                     | 3000    | HTTP     | Windows     | Next.js frontend                                                  |
-| Algo Worker                       | 3001    | HTTP     | Both        | Main trading engine (inference on Windows, training on ArchLinux) |
-| Market Feeder                     | 3002    | HTTP     | Windows     | Real-time market data ingestion                                   |
-| Data Processor                    | 3003    | HTTP     | Windows     | ETL and feature engineering                                       |
-| API Server                        | 3004    | HTTP     | Windows     | tRPC backend API                                                  |
-| **Monitoring**                    |
+| **Microservices (gRPC)**          |         |          |             |                                                                   |
+| Web Dashboard                     | 3000    | HTTP     | Windows     | Next.js frontend (only HTTP service)                              |
+| API Server                        | 50050   | gRPC     | Windows     | tRPC + gRPC gateway                                               |
+| Algo Worker                       | 50051   | gRPC     | Both        | Main trading engine (inference on Windows, training on ArchLinux) |
+| Market Feeder                     | 50052   | gRPC     | Windows     | Real-time market data ingestion                                   |
+| Data Processor                    | 50053   | gRPC     | Windows     | ETL and feature engineering                                       |
+| Notification Service              | 50054   | gRPC     | Windows     | Alerts and notifications                                          |
+| Wealth Analyzer                   | 50055   | gRPC     | Windows     | Portfolio analytics                                               |
+| Wealth Management                 | 50056   | gRPC     | Windows     | Portfolio management                                              |
+| **Monitoring**                    |         |          |             |                                                                   |
 | PM2 Web Monit                     | 9615    | HTTP     | Both        | PM2 process monitoring dashboard                                  |
 | Prometheus                        | 9090    | HTTP     | Both        | Metrics collection                                                |
 | Grafana                           | 3005    | HTTP     | Both        | Metrics visualization                                             |
-| **Development Tools**             |
+| **Development Tools**             |         |          |             |                                                                   |
 | VS Code Debugger - Algo Worker    | 9229    | TCP      | Both        | Node.js debugging                                                 |
 | VS Code Debugger - Market Feeder  | 9230    | TCP      | Windows     | Node.js debugging                                                 |
 | VS Code Debugger - Data Processor | 9231    | TCP      | Windows     | Node.js debugging                                                 |
@@ -38,8 +41,9 @@ This document defines the port allocation strategy for all services in the inves
 
 ## Port Ranges
 
-- **3000-3099**: Application services (HTTP/REST)
-- **5000-5999**: Development tools and debuggers
+- **3000**: Web frontend (Next.js - only HTTP service)
+- **50050-50099**: gRPC microservices
+- **5678**: Python debugger (debugpy)
 - **8000-8999**: Database auxiliary ports
 - **9000-9999**: Monitoring, admin UIs, and management
 
@@ -138,7 +142,7 @@ All ports should be configurable via environment variables:
 PORT=3001
 QUESTDB_PG_PORT=8812
 QUESTDB_HTTP_PORT=9000
-QUESTDB_ILP_PORT=9009
+QUESTDB_ILP_PORT=9000
 MONGODB_PORT=27017
 REDIS_PORT=6379
 PM2_WEB_PORT=9615
