@@ -691,6 +691,9 @@ importers:
       '@opentelemetry/api-metrics':
         specifier: ^0.33.0
         version: 0.33.0
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
