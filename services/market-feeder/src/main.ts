@@ -23,7 +23,7 @@ async function bootstrap() {
         options: {
           package: 'historical_data',
           protoPath: require.resolve('@repo/schema/proto/historical-data'),
-          url: `0.0.0.0:${process.env.GRPC_PORT || 50051}`,
+          url: `0.0.0.0:${process.env.GRPC_PORT || 50052}`,
         },
         bufferLogs: true,
       },
@@ -33,7 +33,7 @@ async function bootstrap() {
 
     await app.listen();
     logger.log(
-      `gRPC microservice running on port ${process.env.GRPC_PORT || 50051}`,
+      `gRPC microservice running on port ${process.env.GRPC_PORT || 50052}`,
     );
   } catch (error) {
     logger.error('Failed to start Market Feeder', error);

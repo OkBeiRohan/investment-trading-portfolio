@@ -27,7 +27,7 @@ class SQLQueryLoader:
                         If None, auto-detects from monorepo structure.
         """
         if schema_root is None:
-            # Auto-detect schema root (assumes training-pipeline is in apps/)
+            # Auto-detect schema root (assumes training-pipeline is in services/)
             current_file = Path(__file__)
             monorepo_root = current_file.parent.parent.parent.parent
             schema_root = monorepo_root / "packages" / "schema"
