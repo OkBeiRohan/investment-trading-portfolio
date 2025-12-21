@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "@opentelemetry/api-metrics": "^0.33.0",
+    "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^25.0.3",
     "typescript": "^5.9.3"
