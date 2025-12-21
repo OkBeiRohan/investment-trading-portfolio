@@ -1,14 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { initObservability, OtelLogger } from '@repo/observability';
-
-initObservability('algo-worker');
+import { otelSDK, OtelLogger } from '@repo/observability';
 
 async function bootstrap() {
+  otelSDK.start();
+
   const app = await NestFactory.createApplicationContext(AppModule, {
     bufferLogs: true,
   });
-  app.useLogger(new OtelLogger('algo-worker'));
+
+  const logger = app.get(OtelLogger);
+  app.useLogger(logger);
+
+  app.enableShutdownHooks();
+
   await app.init();
 }
 void bootstrap();

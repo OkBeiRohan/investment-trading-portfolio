@@ -31,6 +31,8 @@ async function bootstrap() {
     },
   });
 
+  app.enableShutdownHooks();
+
   // Enable CORS for cross-origin requests from frontend
   let corsOrigins: string[] | undefined;
   if (process.env.NODE_ENV === 'production') {
