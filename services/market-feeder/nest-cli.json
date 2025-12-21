@@ -4,12 +4,7 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "assets": [
-      {
-        "include": "**/*.proto",
-        "outDir": "dist/proto",
-        "watchAssets": true
-      }
-    ]
+    "assets": ["**/*.proto"],
+    "watchAssets": true
   }
 }
