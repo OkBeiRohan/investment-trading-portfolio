@@ -13,6 +13,7 @@ async function bootstrap() {
       transport: Transport.GRPC,
       options: {
         package: 'data_processor',
+        protoPath: require.resolve('@repo/schema/proto/data-processor'),
         host: '0.0.0.0',
         port: grpcPort,
       },
