@@ -31,25 +31,14 @@ export class DepthRepository {
    */
   async findByTimeRange(query: IDepthQuery): Promise<IMarketDepth[]> {
     // Load SQL from @repo/schema (shared with Python training pipeline)
-    let sql = loadSqlQueryCached("depth/select-by-time-range");
-
-    // Add side filter if specified (dynamic SQL)
-    if (query.side) {
-      sql = sql.replace(
-        "WHERE instrument_key = $1",
-        `WHERE instrument_key = $1\n  AND side = '${query.side}'`
-      );
-    }
-
-    // Add LIMIT clause if specified
-    if (query.limit) {
-      sql = sql.trim().replace(/;$/, "") + ` LIMIT ${query.limit};`;
-    }
+    const sql = loadSqlQueryCached("depth/select-by-time-range-filtered");
 
     const result = await this.questdb.query<IMarketDepth>(sql, [
       query.instrument_key,
       query.start_time.toISOString(),
       query.end_time.toISOString(),
+      query.side || null, // NULL means no filter (all sides)
+      query.limit || 999999999, // Use high number if no limit specified
     ]);
 
     return result.rows.map((row) => ({

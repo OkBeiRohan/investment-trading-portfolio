@@ -796,12 +796,8 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * @returns All audit log entries for this trace
    */
   async getAuditLogsByTraceId(traceId: string): Promise<any[]> {
-    const sql = `
-      SELECT timestamp, service, level, action, user_id, metadata
-      FROM system_audit
-      WHERE trace_id = $1
-      ORDER BY timestamp ASC
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("utils/get-audit-logs-by-trace-id");
 
     const result = await this.query(sql, [traceId]);
     return result.rows;

@@ -26,18 +26,14 @@ export class CandlesRepository {
    */
   async findByTimeRange(query: ICandleQuery): Promise<IMarketCandle[]> {
     // Load SQL from @repo/schema (shared with Python training pipeline)
-    let sql = loadSqlQueryCached("candles/select-by-time-range");
-
-    // Add LIMIT clause if specified
-    if (query.limit) {
-      sql = sql.trim().replace(/;$/, "") + ` LIMIT ${query.limit};`;
-    }
+    const sql = loadSqlQueryCached("candles/select-by-time-range-with-limit");
 
     const result = await this.questdb.query<IMarketCandle>(sql, [
       query.instrument_key,
       query.interval,
       query.start_time.toISOString(),
       query.end_time.toISOString(),
+      query.limit || 999999999, // Use high number if no limit specified
     ]);
 
     return result.rows.map((row) => ({

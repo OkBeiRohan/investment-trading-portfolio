@@ -26,17 +26,13 @@ export class QuotesRepository {
    */
   async findByTimeRange(query: IQuoteQuery): Promise<IMarketQuote[]> {
     // Load SQL from @repo/schema (shared with Python training pipeline)
-    let sql = loadSqlQueryCached("quotes/select-by-time-range");
-
-    // Add LIMIT clause if specified
-    if (query.limit) {
-      sql = sql.trim().replace(/;$/, "") + ` LIMIT ${query.limit};`;
-    }
+    const sql = loadSqlQueryCached("quotes/select-by-time-range-with-limit");
 
     const result = await this.questdb.query<IMarketQuote>(sql, [
       query.instrument_key,
       query.start_time.toISOString(),
       query.end_time.toISOString(),
+      query.limit || 999999999, // Use high number if no limit specified
     ]);
 
     return result.rows.map((row) => ({
