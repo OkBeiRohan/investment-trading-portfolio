@@ -6,7 +6,8 @@
   "types": "./dist/index.d.ts",
   "files": [
     "./dist/**",
-    "./proto/**/*.proto"
+    "./proto/**/*.proto",
+    "./sql/**/*.sql"
   ],
   "publishConfig": {
     "access": "public"
@@ -25,6 +26,7 @@
       "default": "./dist/authentication/index.js"
     },
     "./proto/*": "./proto/*.proto",
+    "./sql/*": "./sql/**/*.sql",
     "./*": {
       "types": "./dist/*.d.ts",
       "default": "./dist/*.js"

@@ -156,7 +156,7 @@ updates:
 
   # Python: Training Pipeline (ML models)
   - package-ecosystem: "pip"
-    directory: "/apps/training-pipeline"
+    directory: "/services/training-pipeline"
     schedule:
       interval: "weekly"
       day: "saturday"

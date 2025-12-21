@@ -2,9 +2,9 @@
   "folders": [
     { "name": "🏠 Root", "path": "." },
     { "name": "⚙️  Algo Worker", "path": "./apps/algo-worker" },
-    { "name": "📡 Market Feeder", "path": "./apps/market-feeder" },
-    { "name": "📊 Data Processor", "path": "./apps/data-processor" },
-    { "name": "🧠 Training Pipeline", "path": "./apps/training-pipeline" },
+    { "name": "📡 Market Feeder", "path": "./services/market-feeder" },
+    { "name": "📊 Data Processor", "path": "./services/data-processor" },
+    { "name": "🧠 Training Pipeline", "path": "./services/training-pipeline" },
     { "name": "🌐 Web", "path": "./apps/web" },
     { "name": "📋 Schema", "path": "./packages/schema" },
     { "name": "💾 Database", "path": "./packages/database" },
@@ -64,7 +64,7 @@
         "request": "attach",
         "port": 9230,
         "restart": true,
-        "cwd": "${workspaceFolder}/apps/market-feeder",
+        "cwd": "${workspaceFolder}/services/market-feeder",
         "skipFiles": ["<node_internals>/**"],
       },
       {
@@ -73,7 +73,7 @@
         "request": "attach",
         "port": 9231,
         "restart": true,
-        "cwd": "${workspaceFolder}/apps/data-processor",
+        "cwd": "${workspaceFolder}/services/data-processor",
         "skipFiles": ["<node_internals>/**"],
       },
       {

@@ -64,7 +64,7 @@ services:
 
   # Apps
   market-feeder:
-    build: ./apps/market-feeder
+    build: ./services/market-feeder
     environment:
       REDIS_URL: redis://redis:6379
       QUESTDB_HOST: questdb
@@ -74,7 +74,7 @@ services:
       - questdb
 
   data-processor:
-    build: ./apps/data-processor
+    build: ./services/data-processor
     environment:
       QUESTDB_HOST: questdb
       QUESTDB_PORT: 8812 # PG Wire for SQL queries

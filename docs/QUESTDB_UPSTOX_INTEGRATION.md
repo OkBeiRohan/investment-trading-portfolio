@@ -473,14 +473,14 @@ packages/
 
 ## Next Steps
 
-### 1. Market Feeder Microservice (apps/market-feeder)
+### 1. Market Feeder Microservice (services/market-feeder)
 
 **Purpose**: Scheduled historical data fetching + real-time WebSocket streaming
 
 **Architecture**:
 
 ```typescript
-// apps/market-feeder/src/app.module.ts
+// services/market-feeder/src/app.module.ts
 @Module({
   imports: [
     QuestDBModule,

@@ -49,7 +49,7 @@ After deep analysis of the 8,000+ word technical audit, we've strategically adop
 - Combinatorial splits: Test on all regime sequences
 - Quality gate: Fail if `sharpe_p5 < 1.0`
 
-**Documentation**: [apps/training-pipeline/docs/ADVANCED_VALIDATION.md](../apps/training-pipeline/docs/ADVANCED_VALIDATION.md)
+**Documentation**: [services/training-pipeline/docs/ADVANCED_VALIDATION.md](../services/training-pipeline/docs/ADVANCED_VALIDATION.md)
 
 ---
 
@@ -66,7 +66,7 @@ After deep analysis of the 8,000+ word technical audit, we've strategically adop
 - Weighted OFI by price distance
 - 5 new features: ofi_5, ofi_10, ofi_30, ofi_weighted, bid_ask_imbalance
 
-**Documentation**: [apps/training-pipeline/docs/ADVANCED_VALIDATION.md](../apps/training-pipeline/docs/ADVANCED_VALIDATION.md#order-flow-imbalance-ofi-features)
+**Documentation**: [services/training-pipeline/docs/ADVANCED_VALIDATION.md](../services/training-pipeline/docs/ADVANCED_VALIDATION.md#order-flow-imbalance-ofi-features)
 
 ---
 
@@ -83,7 +83,7 @@ After deep analysis of the 8,000+ word technical audit, we've strategically adop
 - Reward: Minimize implementation shortfall
 - Trained in Gym environment with historical ticks
 
-**Documentation**: [apps/training-pipeline/docs/ADVANCED_VALIDATION.md](../apps/training-pipeline/docs/ADVANCED_VALIDATION.md#reinforcement-learning-for-smart-execution)
+**Documentation**: [services/training-pipeline/docs/ADVANCED_VALIDATION.md](../services/training-pipeline/docs/ADVANCED_VALIDATION.md#reinforcement-learning-for-smart-execution)
 
 ---
 
@@ -327,7 +327,7 @@ Local (Windows/ArchLinux):
 
 - ✅ [DEPLOYMENT_ARCHITECTURE.md](../DEPLOYMENT_ARCHITECTURE.md)
 - ✅ [apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md](../apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md)
-- ✅ [apps/training-pipeline/docs/ADVANCED_VALIDATION.md](../apps/training-pipeline/docs/ADVANCED_VALIDATION.md)
+- ✅ [services/training-pipeline/docs/ADVANCED_VALIDATION.md](../services/training-pipeline/docs/ADVANCED_VALIDATION.md)
 
 ---
 
@@ -365,8 +365,8 @@ Local (Windows/ArchLinux):
 
 ### **training-pipeline**
 
-- ✅ [apps/training-pipeline/README.md](../apps/training-pipeline/README.md) - Updated with advanced features
-- ✅ [apps/training-pipeline/docs/ADVANCED_VALIDATION.md](../apps/training-pipeline/docs/ADVANCED_VALIDATION.md) - 🆕 CPCV, OFI, RL execution
+- ✅ [services/training-pipeline/README.md](../services/training-pipeline/README.md) - Updated with advanced features
+- ✅ [services/training-pipeline/docs/ADVANCED_VALIDATION.md](../services/training-pipeline/docs/ADVANCED_VALIDATION.md) - 🆕 CPCV, OFI, RL execution
 
 ---
 
@@ -376,7 +376,7 @@ Local (Windows/ArchLinux):
 
 1. Review [DEPLOYMENT_ARCHITECTURE.md](../DEPLOYMENT_ARCHITECTURE.md) for system design
 2. Read [PERFORMANCE_OPTIMIZATION.md](../apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md) for coding patterns
-3. Study [ADVANCED_VALIDATION.md](../apps/training-pipeline/docs/ADVANCED_VALIDATION.md) for ML validation
+3. Study [ADVANCED_VALIDATION.md](../services/training-pipeline/docs/ADVANCED_VALIDATION.md) for ML validation
 4. Follow copilot instructions for consistent implementation
 
 **For Testing**:

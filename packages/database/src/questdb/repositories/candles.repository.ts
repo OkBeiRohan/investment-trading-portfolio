@@ -5,6 +5,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { QuestDBService } from "../questdb.service";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 import type { IMarketCandle, ICandleQuery, ICandleInsert } from "@repo/schema";
 
 @Injectable()
@@ -24,25 +25,13 @@ export class CandlesRepository {
    * Query candles for a time range
    */
   async findByTimeRange(query: ICandleQuery): Promise<IMarketCandle[]> {
-    const sql = `
-      SELECT 
-        timestamp,
-        instrument_key,
-        interval,
-        open,
-        high,
-        low,
-        close,
-        volume,
-        open_interest
-      FROM market_candles
-      WHERE instrument_key = $1
-        AND interval = $2
-        AND timestamp >= $3
-        AND timestamp <= $4
-      ORDER BY timestamp ASC
-      ${query.limit ? `LIMIT ${query.limit}` : ""}
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    let sql = loadSqlQueryCached("candles/select-by-time-range");
+
+    // Add LIMIT clause if specified
+    if (query.limit) {
+      sql = sql.trim().replace(/;$/, "") + ` LIMIT ${query.limit};`;
+    }
 
     const result = await this.questdb.query<IMarketCandle>(sql, [
       query.instrument_key,
@@ -64,23 +53,8 @@ export class CandlesRepository {
     instrumentKey: string,
     interval: string
   ): Promise<IMarketCandle | null> {
-    const sql = `
-      SELECT 
-        timestamp,
-        instrument_key,
-        interval,
-        open,
-        high,
-        low,
-        close,
-        volume,
-        open_interest
-      FROM market_candles
-      WHERE instrument_key = $1
-        AND interval = $2
-      ORDER BY timestamp DESC
-      LIMIT 1
-    `;
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("candles/select-latest");
 
     const result = await this.questdb.query<IMarketCandle>(sql, [
       instrumentKey,
@@ -106,12 +80,17 @@ export class CandlesRepository {
     startTime: Date,
     endTime: Date
   ): Promise<boolean> {
-    return this.questdb.checkDataExists(
-      "market_candles",
+    // Load SQL from @repo/schema (shared with Python training pipeline)
+    const sql = loadSqlQueryCached("candles/check-data-exists");
+
+    const result = await this.questdb.query<{ count: number }>(sql, [
       instrumentKey,
-      startTime,
-      endTime
-    );
+      interval,
+      startTime.toISOString(),
+      endTime.toISOString(),
+    ]);
+
+    return (result.rows[0]?.count || 0) > 0;
   }
 
   /**

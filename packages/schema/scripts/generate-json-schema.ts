@@ -248,7 +248,7 @@ console.log("\n🎉 JSON Schema generation complete!");
 console.log(`📁 Output directory: ${OUTPUT_DIR}\n`);
 console.log("Next steps:");
 console.log(
-  "  1. Run Python type generator: cd apps/training-pipeline && python scripts/generate_types.py"
+  "  1. Run Python type generator: cd services/training-pipeline && python scripts/generate_types.py"
 );
 console.log(
   "  2. Use generated schemas in Python with pydantic or dataclass-wizard\n"

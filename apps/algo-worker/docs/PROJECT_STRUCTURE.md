@@ -799,7 +799,7 @@ kedro run --pipeline backtesting
 
 ```bash
 # 1. Navigate to training-pipeline
-cd apps/training-pipeline
+cd services/training-pipeline
 
 # 2. Install dependencies
 poetry install
@@ -835,7 +835,7 @@ kedro run
 ## 📁 Directory Structure
 
 ```
-apps/training-pipeline/
+services/training-pipeline/
 ├── conf/
 │   ├── base/
 │   │   ├── catalog.yml                # Data sources configuration

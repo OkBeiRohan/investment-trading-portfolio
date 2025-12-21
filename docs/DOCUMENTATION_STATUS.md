@@ -235,7 +235,7 @@ This document tracks the documentation status for all packages and apps in the m
 - Guard usage
 - Error handling
 
-### ⚠️ Market Feeder App (apps/market-feeder)
+### ⚠️ Market Feeder App (services/market-feeder)
 
 **Status**: SKELETON ONLY
 
@@ -254,7 +254,7 @@ This document tracks the documentation status for all packages and apps in the m
 - Error handling and reconnection logic
 - Rate limiting
 
-### ⚠️ Data Processor App (apps/data-processor)
+### ⚠️ Data Processor App (services/data-processor)
 
 **Status**: SKELETON ONLY
 
@@ -452,23 +452,23 @@ Must include:
 
 **Examples**:
 
-- apps/market-feeder ⚠️
-- apps/data-processor ⚠️
+- services/market-feeder ⚠️
+- services/data-processor ⚠️
 
 ## Documentation Metrics
 
-| Package/App          | README         | Copilot Instructions | Architecture | Progress | Score |
-| -------------------- | -------------- | -------------------- | ------------ | -------- | ----- |
-| @repo/authentication | ✅             | ✅ (629 lines)       | ✅           | ⚠️       | 95%   |
-| @repo/database       | ✅ (559 lines) | ✅ (342 lines)       | ⚠️           | ⚠️       | 85%   |
-| @repo/schema         | ✅ (350 lines) | ✅ (394 lines)       | ⚠️           | ✅       | 90%   |
-| @repo/market-sdk     | ✅             | ⚠️                   | ⚠️           | ⚠️       | 40%   |
-| tRPC (in apps/api)   | ✅             | ✅                   | ✅           | ✅       | 100%  |
-| apps/algo-worker     | ✅             | ✅ (extensive)       | ✅           | ✅       | 100%  |
-| apps/api             | ✅             | ✅                   | ⚠️           | ⚠️       | 75%   |
-| apps/web             | ✅             | ✅                   | ✅           | ✅       | 95%   |
-| apps/market-feeder   | 🔄             | 🔄                   | ❌           | ❌       | 20%   |
-| apps/data-processor  | 🔄             | ❌                   | ❌           | ❌       | 15%   |
+| Package/App             | README         | Copilot Instructions | Architecture | Progress | Score |
+| ----------------------- | -------------- | -------------------- | ------------ | -------- | ----- |
+| @repo/authentication    | ✅             | ✅ (629 lines)       | ✅           | ⚠️       | 95%   |
+| @repo/database          | ✅ (559 lines) | ✅ (342 lines)       | ⚠️           | ⚠️       | 85%   |
+| @repo/schema            | ✅ (350 lines) | ✅ (394 lines)       | ⚠️           | ✅       | 90%   |
+| @repo/market-sdk        | ✅             | ⚠️                   | ⚠️           | ⚠️       | 40%   |
+| tRPC (in apps/api)      | ✅             | ✅                   | ✅           | ✅       | 100%  |
+| apps/algo-worker        | ✅             | ✅ (extensive)       | ✅           | ✅       | 100%  |
+| apps/api                | ✅             | ✅                   | ⚠️           | ⚠️       | 75%   |
+| apps/web                | ✅             | ✅                   | ✅           | ✅       | 95%   |
+| services/market-feeder  | 🔄             | 🔄                   | ❌           | ❌       | 20%   |
+| services/data-processor | 🔄             | ❌                   | ❌           | ❌       | 15%   |
 
 **Overall Documentation Coverage**: 75%
 
