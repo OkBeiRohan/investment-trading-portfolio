@@ -12,27 +12,23 @@ async function bootstrap() {
     startTelemetry();
     logger.log('Sentry instrumentation started');
 
-    // Create hybrid HTTP + gRPC application
-    const app = await NestFactory.create(AppModule);
-
-    // Connect gRPC microservice
-    app.connectMicroservice<MicroserviceOptions>({
-      transport: Transport.GRPC,
-      options: {
-        package: 'historical_data',
-        protoPath: require.resolve('@repo/schema/proto/historical-data'),
-        url: `0.0.0.0:${process.env.GRPC_PORT || 50051}`,
+    // Create gRPC microservice (not hybrid HTTP)
+    const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+      AppModule,
+      {
+        transport: Transport.GRPC,
+        options: {
+          package: 'historical_data',
+          protoPath: require.resolve('@repo/schema/proto/historical-data'),
+          url: `0.0.0.0:${process.env.GRPC_PORT || 50051}`,
+        },
       },
-    });
+    );
 
-    // Start all microservices
-    await app.startAllMicroservices();
-    logger.log(`gRPC server running on port ${process.env.GRPC_PORT || 50051}`);
-
-    // Start HTTP server
-    const port = process.env.PORT || 3002;
-    await app.listen(port);
-    logger.log(`HTTP server running on port ${port}`);
+    await app.listen();
+    logger.log(
+      `gRPC microservice running on port ${process.env.GRPC_PORT || 50051}`,
+    );
   } catch (error) {
     logger.error('Failed to start Market Feeder', error);
     process.exit(1);
