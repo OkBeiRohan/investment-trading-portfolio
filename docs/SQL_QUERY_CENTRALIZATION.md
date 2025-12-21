@@ -82,7 +82,7 @@ export class CandlesRepository {
 ### Python (Training Pipeline)
 
 ```python
-# apps/training-pipeline/src/training_pipeline/pipelines/data_ingestion/nodes.py
+# services/training-pipeline/src/training_pipeline/pipelines/data_ingestion/nodes.py
 
 from training_pipeline.utils.sql_loader import load_sql
 import psycopg2
@@ -125,7 +125,7 @@ export function clearSqlCache(): void;
 ### Python: `sql_loader.py`
 
 ```python
-# apps/training-pipeline/src/training_pipeline/utils/sql_loader.py
+# services/training-pipeline/src/training_pipeline/utils/sql_loader.py
 
 from training_pipeline.utils.sql_loader import load_sql, SQLQueryLoader
 
