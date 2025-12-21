@@ -18,13 +18,15 @@ This document defines the port allocation strategy for all services in the inves
 | Redis                             | 6379    | TCP      | Both        | Redis default port                                                |
 | **Microservices (gRPC)**          |         |          |             |                                                                   |
 | Web Dashboard                     | 3000    | HTTP     | Windows     | Next.js frontend (only HTTP service)                              |
-| API Server                        | 50050   | gRPC     | Windows     | tRPC + gRPC gateway                                               |
+| API Server (HTTP)                 | 3004    | HTTP     | Windows     | REST/HTTP API gateway                                             |
+| API Server (gRPC)                 | 50050   | gRPC     | Windows     | tRPC + gRPC gateway                                               |
 | Algo Worker                       | 50051   | gRPC     | Both        | Main trading engine (inference on Windows, training on ArchLinux) |
 | Market Feeder                     | 50052   | gRPC     | Windows     | Real-time market data ingestion                                   |
 | Data Processor                    | 50053   | gRPC     | Windows     | ETL and feature engineering                                       |
 | Notification Service              | 50054   | gRPC     | Windows     | Alerts and notifications                                          |
 | Wealth Analyzer                   | 50055   | gRPC     | Windows     | Portfolio analytics                                               |
 | Wealth Management                 | 50056   | gRPC     | Windows     | Portfolio management                                              |
+| Document Processor                | 50057   | gRPC     | Windows     | Document parsing and indexing                                     |
 | **Monitoring**                    |         |          |             |                                                                   |
 | PM2 Web Monit                     | 9615    | HTTP     | Both        | PM2 process monitoring dashboard                                  |
 | Prometheus                        | 9090    | HTTP     | Both        | Metrics collection                                                |
@@ -35,7 +37,11 @@ This document defines the port allocation strategy for all services in the inves
 | VS Code Debugger - Data Processor | 9231    | TCP      | Windows     | Node.js debugging                                                 |
 | VS Code Debugger - API            | 9232    | TCP      | Windows     | Node.js debugging                                                 |
 | VS Code Debugger - Web            | 9233    | TCP      | Windows     | Node.js debugging                                                 |
+| VS Code Debugger - Doc Processor  | 9234    | TCP      | Windows     | Node.js debugging                                                 |
 | Python Debugpy                    | 5678    | TCP      | ArchLinux   | Python ML training debugging                                      |
+| **Data Science Tools**            |         |          |             |                                                                   |
+| Kedro Viz                         | 4141    | HTTP     | ArchLinux   | Pipeline visualization                                            |
+| MLflow                            | 5000    | HTTP     | ArchLinux   | Experiment tracking UI                                            |
 
 ---
 

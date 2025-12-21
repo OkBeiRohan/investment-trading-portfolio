@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package algo_worker;
+
+service AlgoWorkerService {
+  rpc TriggerReload (ReloadRequest) returns (ReloadResponse);
+}
+
+message ReloadRequest {
+  string model_id = 1;
+}
+
+message ReloadResponse {
+  bool success = 1;
+  string message = 2;
+}

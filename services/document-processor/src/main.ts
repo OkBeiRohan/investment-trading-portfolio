@@ -5,7 +5,7 @@ import { otelSDK, OtelLogger } from '@repo/observability';
 
 async function bootstrap() {
   otelSDK.start();
-  const grpcPort = parseInt(process.env.GRPC_PORT || '50053', 10);
+  const grpcPort = parseInt(process.env.GRPC_PORT || '50057', 10);
 
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,

@@ -27,6 +27,7 @@ All backend services use **gRPC** for inter-service communication. Only the web 
 | **notification-service** | 50054 | Alerts and notifications        |
 | **wealth-analyzer**      | 50055 | Portfolio analytics             |
 | **wealth-management**    | 50056 | Portfolio management            |
+| **document-processor**   | 50057 | Document parsing and indexing   |
 
 ### Frontend (HTTP only)
 
