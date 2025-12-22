@@ -1,5 +1,7 @@
+"use client";
+
 import { PropsWithChildren } from "react";
-import { FallbackProps } from "react-error-boundary";
+import { FallbackProps, useErrorBoundary } from "react-error-boundary";
 
 interface ErrorFallbackProps extends FallbackProps {
   className?: string;
@@ -9,10 +11,13 @@ interface ErrorFallbackProps extends FallbackProps {
 export default function ErrorFallback(
   props: PropsWithChildren<ErrorFallbackProps>
 ) {
+  const { resetBoundary } = useErrorBoundary();
+
   return (
     <div className={`${props.className}`}>
       {props.message || "Something went wrong."}
-      <button onClick={props.resetErrorBoundary}>Try again</button>
+      {props.error}
+      <button onClick={resetBoundary}>Try again</button>
     </div>
   );
 }

@@ -1,5 +1,7 @@
+"use client";
+
 import { PropsWithChildren, ReactNode, Suspense } from "react";
-import { ErrorBoundary } from "react-error-boundary";
+import { withErrorBoundary } from "react-error-boundary";
 import ErrorFallback from "./error-fallback";
 
 interface LoadWithSuspenseProps {
@@ -8,33 +10,35 @@ interface LoadWithSuspenseProps {
   errorFallback?: ReactNode;
   errorClassName?: string;
   defaultErrorMessage?: string;
-  onRetry?: () => void;
   defer?: boolean;
 }
 
-export default function LoadWithSuspense(
+function LoadWithSuspense(
   props: Required<PropsWithChildren<LoadWithSuspenseProps>>
 ) {
   return (
-    <ErrorBoundary
-      fallbackRender={(params) => (
-        <ErrorFallback
-          {...params}
-          className={props.errorClassName}
-          message={props.defaultErrorMessage}
-        />
-      )}
-      onError={(error) => {
-        console.error(`Error in Suspense component (${props.name}):`, error);
-      }}
-      onReset={(details) => {
-        props.onRetry?.();
-        console.log(`Resetting Suspense component (${props.name}).`, details);
-      }}
-    >
-      <Suspense name={props.name} fallback={props.fallback} defer={props.defer}>
-        {props.children}
-      </Suspense>
-    </ErrorBoundary>
+    <Suspense name={props.name} fallback={props.fallback} defer={props.defer}>
+      {props.children}
+    </Suspense>
   );
 }
+
+const LoadWithSuspenseAndError = withErrorBoundary(LoadWithSuspense, {
+  fallbackRender: (props) => (
+    <ErrorFallback
+      {...props}
+      message={props.message}
+      className={props.className}
+    >
+      {props.errorFallback}
+    </ErrorFallback>
+  ),
+  onError: (error) => {
+    console.error(`Error in Suspense component (${props.name}):`, error);
+  },
+  onReset: (details) => {
+    console.log(`Resetting Suspense component (${props.name}).`, details);
+  },
+});
+
+export default LoadWithSuspenseAndError;
