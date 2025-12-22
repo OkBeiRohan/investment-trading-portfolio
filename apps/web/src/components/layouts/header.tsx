@@ -1,14 +1,12 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useAuth } from "@/hooks/auth/use-auth";
-import { useNavigation } from "@/hooks/use-navigation";
-import type { Breadcrumb } from "@/contexts/navigation-context";
-import { Bell, ChevronRight } from "lucide-react";
+import { Bell } from "lucide-react";
 import styles from "./header.module.css";
 import { usePathname } from "next/navigation";
+import Logo from "./logo";
 
 /**
  * Unified Header Component
@@ -20,7 +18,6 @@ import { usePathname } from "next/navigation";
  */
 export function Header() {
   const { user } = useAuth();
-  const { title, breadcrumbs, headerActions } = useNavigation();
   const pathname = usePathname();
   const hasNotifications = false; // TODO: Implement notifications system
 
@@ -33,42 +30,12 @@ export function Header() {
 
   return (
     <header className={styles.header}>
-      <div className={styles.left}>
-        {/* Breadcrumbs Navigation */}
-        {breadcrumbs.length > 0 && (
-          <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
-            {breadcrumbs.map((crumb: Breadcrumb, index: number) => (
-              <React.Fragment key={index}>
-                {index > 0 && (
-                  <ChevronRight
-                    size={16}
-                    className={styles.breadcrumbSeparator}
-                    aria-hidden="true"
-                  />
-                )}
-                {crumb.href ? (
-                  <Link href={crumb.href} className={styles.breadcrumbLink}>
-                    {crumb.label}
-                  </Link>
-                ) : (
-                  <span className={styles.breadcrumbCurrent}>
-                    {crumb.label}
-                  </span>
-                )}
-              </React.Fragment>
-            ))}
-          </nav>
-        )}
-
-        {/* Page Title (shows when no breadcrumbs) */}
-        {title && breadcrumbs.length === 0 && (
-          <h1 className={styles.title}>{title}</h1>
-        )}
-      </div>
+      <Logo />
+      <nav className={styles.nav}></nav>
+      <div className={styles.actions}></div>
 
       <div className={styles.right}>
         {/* Dynamic Actions from Context */}
-        {headerActions && <div className={styles.actions}>{headerActions}</div>}
 
         {/* Notifications */}
         <button

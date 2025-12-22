@@ -13,7 +13,7 @@ export function DashboardLayout({ children }: PropsWithChildren) {
   return (
     <div className={styles.container}>
       <Header />
-      <main className={styles.content}>{children}</main>
+      {children}
     </div>
   );
 }

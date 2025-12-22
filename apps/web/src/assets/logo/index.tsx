@@ -1,4 +1,8 @@
-export default function Logo() {
+interface ILogoIconProps {
+  className?: string;
+}
+
+export default function LogoIcon(props: ILogoIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -8,6 +12,7 @@ export default function Logo() {
       fill="#000000"
       height={24}
       width={24}
+      className={props.className}
     >
       <g stroke="none" strokeWidth="1" fill="none" fillRule="evenodd">
         <path
