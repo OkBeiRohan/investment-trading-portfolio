@@ -1,9 +1,9 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { UnifiedSidebar } from "./unified-sidebar";
+// import { UnifiedSidebar } from "./unified-sidebar";
 import { Header } from "./header";
 import styles from "@/app/layout.module.css";
+import { PropsWithChildren } from "react";
 
 /**
  * DashboardLayout Component
@@ -11,19 +11,10 @@ import styles from "@/app/layout.module.css";
  * Conditionally renders sidebar and header based on current route.
  * Authentication routes get a clean layout without navigation.
  */
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  // Routes that should not have sidebar/header
-  const isAuthRoute = pathname.startsWith("/authentication");
-
-  if (isAuthRoute) {
-    return <>{children}</>;
-  }
-
+export function DashboardLayout({ children }: PropsWithChildren) {
   return (
     <div className={styles.container}>
-      <UnifiedSidebar />
+      {/* <UnifiedSidebar /> */}
       <div className={styles.main}>
         <Header />
         <main className={styles.content}>{children}</main>

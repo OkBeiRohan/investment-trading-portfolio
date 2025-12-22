@@ -8,6 +8,7 @@ import { useNavigation } from "@/hooks/use-navigation";
 import type { Breadcrumb } from "@/contexts/navigation-context";
 import { Bell, ChevronRight } from "lucide-react";
 import styles from "./header.module.css";
+import { usePathname } from "next/navigation";
 
 /**
  * Unified Header Component
@@ -20,8 +21,15 @@ import styles from "./header.module.css";
 export function Header() {
   const { user } = useAuth();
   const { title, breadcrumbs, headerActions } = useNavigation();
-
+  const pathname = usePathname();
   const hasNotifications = false; // TODO: Implement notifications system
+
+  // Routes that should not have sidebar/header
+  const isAuthRoute = pathname.startsWith("/authentication");
+
+  if (isAuthRoute) {
+    return null;
+  }
 
   return (
     <header className={styles.header}>

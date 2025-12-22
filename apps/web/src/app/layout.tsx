@@ -12,11 +12,7 @@ export const metadata: Metadata = {
   description: "Algorithmic trading portfolio management system",
 };
 
-export default async function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
   const settings = await getAppSettings();
   const lang = settings.language || "en";
   const theme = settings.theme || "light";
