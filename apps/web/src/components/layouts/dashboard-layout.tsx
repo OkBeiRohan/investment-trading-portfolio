@@ -1,5 +1,3 @@
-"use client";
-
 // import { UnifiedSidebar } from "./unified-sidebar";
 import { Header } from "./header";
 import styles from "@/app/layout.module.css";
@@ -14,11 +12,8 @@ import { PropsWithChildren } from "react";
 export function DashboardLayout({ children }: PropsWithChildren) {
   return (
     <div className={styles.container}>
-      {/* <UnifiedSidebar /> */}
-      <div className={styles.main}>
-        <Header />
-        <main className={styles.content}>{children}</main>
-      </div>
+      <Header />
+      <main className={styles.content}>{children}</main>
     </div>
   );
 }
