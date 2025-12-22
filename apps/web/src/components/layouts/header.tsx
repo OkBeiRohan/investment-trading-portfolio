@@ -7,6 +7,7 @@ import { Bell } from "lucide-react";
 import styles from "./header.module.css";
 import { usePathname } from "next/navigation";
 import Logo from "./logo";
+import Navigation from "./navigation";
 
 /**
  * Unified Header Component
@@ -31,7 +32,9 @@ export function Header() {
   return (
     <header className={styles.header}>
       <Logo />
-      <nav className={styles.nav}></nav>
+
+      <Navigation />
+
       <div className={styles.actions}></div>
 
       <div className={styles.right}>
