@@ -1,8 +1,6 @@
-import Link from "next/link";
 import styles from "./navigation.module.css";
-import { Route } from "next";
 import { Home, TrendingUp, Wallet } from "lucide-react";
-import { usePathname } from "next/navigation";
+import NavigationItem from "./navigation-item";
 
 export default function Navigation() {
   return (
@@ -15,31 +13,5 @@ export default function Navigation() {
         icon={<TrendingUp />}
       />
     </nav>
-  );
-}
-
-function NavigationItem({
-  href,
-  label,
-  icon,
-}: {
-  href: Route;
-  label: string;
-  icon?: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const isActive =
-    pathname === "/" || href === "/"
-      ? pathname === href
-      : pathname.startsWith(href);
-
-  return (
-    <Link
-      href={href}
-      className={`${styles.navigationItem} ${isActive ? styles.active : ""}`}
-    >
-      {icon}
-      {label}
-    </Link>
   );
 }

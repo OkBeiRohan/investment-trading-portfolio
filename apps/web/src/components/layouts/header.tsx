@@ -1,33 +1,12 @@
-"use client";
-
-import React from "react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { useAuth } from "@/hooks/auth/use-auth";
 import { Bell } from "lucide-react";
 import styles from "./header.module.css";
-import { usePathname } from "next/navigation";
 import Logo from "./logo";
 import Navigation from "./navigation";
 
-/**
- * Unified Header Component
- *
- * Dynamically displays title, breadcrumbs, and actions from NavigationContext.
- * No props needed - fully context-driven for maximum flexibility.
- *
- * Updates automatically when navigation state changes anywhere in the app.
- */
 export function Header() {
-  const { user } = useAuth();
-  const pathname = usePathname();
+  const user: unknown = undefined;
   const hasNotifications = false; // TODO: Implement notifications system
-
-  // Routes that should not have sidebar/header
-  const isAuthRoute = pathname.startsWith("/authentication");
-
-  if (isAuthRoute) {
-    return null;
-  }
 
   return (
     <header className={styles.header}>
@@ -38,8 +17,6 @@ export function Header() {
       <div className={styles.actions}></div>
 
       <div className={styles.right}>
-        {/* Dynamic Actions from Context */}
-
         {/* Notifications */}
         <button
           className={`${styles.iconButton} ${hasNotifications ? styles.hasNotification : ""}`}
@@ -50,7 +27,7 @@ export function Header() {
         </button>
 
         {/* Theme Toggle */}
-        <ThemeToggle iconOnly />
+        <ThemeToggle />
 
         {/* User Profile */}
         <div className={styles.userProfile}>
