@@ -3,7 +3,8 @@ import Image from "next/image";
 import { ReactNode } from "react";
 
 export default function getUserIcon(user: IUser): ReactNode {
-  if (user.image) return <Image src={user.image} alt="User Icon" />;
+  if (user.image)
+    return <Image src={user.image} height={40} width={40} alt="User Icon" />;
 
   return getUserIconCharacters(user.name || user.email || "User");
 }
