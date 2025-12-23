@@ -1,10 +1,13 @@
 import { Bell } from "lucide-react";
 import styles from "./actions.module.css";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { HeaderSearch } from "./search";
 
 export default function HeaderActions() {
   return (
     <div className={styles.actions}>
+      <HeaderSearch />
+
       {/* Notifications */}
       <button
         className={`${styles.iconButton} ${styles.hasNotification}`}
