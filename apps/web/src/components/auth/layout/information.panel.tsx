@@ -4,7 +4,6 @@ import { styleFont } from "@/lib/fonts";
 import styles from "./information-panel.module.css";
 import Link from "next/link";
 import { ChevronRight, Shield, Zap, BarChart3 } from "lucide-react";
-import LogoIcon from "@/assets/logo";
 
 interface InformationPanelProps {
   onGetStarted?: () => void;
@@ -24,14 +23,6 @@ export default function InformationPanel({
     >
       {/* Top Section: Logo + Hero */}
       <div className={styles.informationPanelMainContent}>
-        {/* Logo */}
-        <div className={styles.logo}>
-          <div className={styles.logoIcon}>
-            <LogoIcon />
-          </div>
-          <span className={styleFont.className}>Quantum Trades</span>
-        </div>
-
         {/* Hero Content */}
         <div className={styles.hero}>
           <h1 className={`${styleFont.className} ${styles.heroTitle}`}>
