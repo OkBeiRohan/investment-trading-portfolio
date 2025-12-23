@@ -6,7 +6,9 @@ import { styleFont } from "@/lib/fonts";
 export default function Logo() {
   return (
     <Link href="/" className={styles.logo}>
-      <LogoIcon className={styles.icon} />
+      <div className={styles.icon}>
+        <LogoIcon className={styles.iconSvg} />
+      </div>
       <span className={styleFont.className}>Quantum Trades</span>
     </Link>
   );

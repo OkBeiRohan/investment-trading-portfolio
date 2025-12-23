@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Providers } from "./providers";
-import { getAppSettings } from "@/lib/server/settings";
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { Header } from "@/components/layouts/header";
+import { getAppSettings } from "@/lib/server/settings";
 import mainFont from "@/lib/fonts";
+import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,7 +26,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body>
         <Providers>
-          <DashboardLayout>{children}</DashboardLayout>
+          <Header />
+          {children}
         </Providers>
         <SpeedInsights />
         <Analytics />
