@@ -5,7 +5,6 @@
   padding: clamp(2rem, 5vw, 4rem);
   position: relative;
   z-index: 2;
-  min-height: 100vh;
   justify-content: space-between;
   gap: 2rem;
 }
@@ -15,6 +14,42 @@
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  animation: fadeInDown 0.8s ease-out;
+}
+
+.logoIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--color-primary), #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 4px 20px rgba(129, 140, 248, 0.4);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 20px rgba(129, 140, 248, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 8px 30px rgba(129, 140, 248, 0.6);
+  }
 }
 
 /* Hero Section */

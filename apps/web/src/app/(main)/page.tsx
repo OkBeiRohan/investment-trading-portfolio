@@ -6,7 +6,7 @@ import {
   Wallet,
   ArrowRight,
 } from "lucide-react";
-import styles from "./home.module.css";
+import styles from "./page.module.css";
 
 export default function DashboardPage() {
   return <DashboardContent />;
