@@ -21,13 +21,13 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.9",
+    "@nestjs/common": "^11.1.10",
     "@nestjs/config": "^4.0.2",
-    "@nestjs/core": "^11.1.9",
+    "@nestjs/core": "^11.1.10",
     "@nestjs/devtools-integration": "^0.2.1",
     "@nestjs/mapped-types": "*",
-    "@nestjs/microservices": "^11.1.9",
-    "@nestjs/platform-express": "^11.1.9",
+    "@nestjs/microservices": "^11.1.10",
+    "@nestjs/platform-express": "^11.1.10",
     "@repo/authentication": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
@@ -46,7 +46,7 @@
     "@jest/globals": "^30.2.0",
     "@nestjs/cli": "^11.0.14",
     "@nestjs/schematics": "^11.0.9",
-    "@nestjs/testing": "^11.1.9",
+    "@nestjs/testing": "^11.1.10",
     "@repo/eslint-config": "workspace:*",
     "@repo/jest-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
@@ -67,7 +67,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.50.0"
+    "typescript-eslint": "^8.50.1"
   },
   "jest": {
     "moduleFileExtensions": [
