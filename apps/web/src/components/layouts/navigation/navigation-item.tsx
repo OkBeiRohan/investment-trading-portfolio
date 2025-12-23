@@ -16,6 +16,7 @@ export default function NavigationItem({
       href={href}
       className={styles.navigationItem}
       activeClassName={styles.active}
+      matchFullPath={false}
     >
       {icon}
       {label}
