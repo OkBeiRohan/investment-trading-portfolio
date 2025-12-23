@@ -10,8 +10,8 @@ export default function LogoIcon(props: ILogoIconProps) {
       xmlns="http://www.w3.org/2000/svg"
       xmlnsXlink="http://www.w3.org/1999/xlink"
       fill="#000000"
-      height={24}
-      width={24}
+      height={32}
+      width={32}
       className={props.className}
     >
       <g stroke="none" strokeWidth="1" fill="none" fillRule="evenodd">
