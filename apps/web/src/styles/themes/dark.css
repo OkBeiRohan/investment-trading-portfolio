@@ -9,8 +9,10 @@
   /* Background Colors */
   --color-bg-primary: #111827;
   --color-bg-secondary: #1f2937;
-  --color-bg-tertiary: #374151;
+  --color-bg-tertiary: #172741;
   --color-bg-elevated: #1f2937;
+  --color-bg-accent: #273150;
+  --color-bg-hover: #374151;
 
   /* Auth page specific backgrounds - darker variants */
   --color-auth-gradient-start: #0f172a;
