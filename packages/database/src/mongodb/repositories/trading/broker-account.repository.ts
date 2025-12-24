@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, FilterQuery } from "mongoose";
+import { Model, QueryFilter } from "mongoose";
 import { BrokerAccount } from "../../schemas/trading";
 import DatabaseConnections from "../../connections/connections";
 
@@ -21,7 +21,7 @@ export class BrokerAccountRepository {
   }
 
   async findOne(
-    filter: FilterQuery<BrokerAccount>
+    filter: QueryFilter<BrokerAccount>
   ): Promise<BrokerAccount | null> {
     return this.brokerAccountModel.findOne(filter).exec();
   }
@@ -70,7 +70,7 @@ export class BrokerAccountRepository {
     return result.deletedCount;
   }
 
-  async count(filter: FilterQuery<BrokerAccount>): Promise<number> {
+  async count(filter: QueryFilter<BrokerAccount>): Promise<number> {
     return this.brokerAccountModel.countDocuments(filter).exec();
   }
 

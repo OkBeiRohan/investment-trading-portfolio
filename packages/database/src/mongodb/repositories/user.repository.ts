@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, FilterQuery } from "mongoose";
+import { Model, QueryFilter } from "mongoose";
 import { User } from "../schemas/user/user.schema";
 import DatabaseConnections from "../connections/connections";
 
@@ -20,12 +20,12 @@ export class UserRepository {
     return this.userModel.findById(id).exec();
   }
 
-  async findOne(filter: FilterQuery<User>): Promise<User | null> {
+  async findOne(filter: QueryFilter<User>): Promise<User | null> {
     return this.userModel.findOne(filter).exec();
   }
 
   async findMany(
-    filter: FilterQuery<User>,
+    filter: QueryFilter<User>,
     options?: { limit?: number; skip?: number; sort?: any }
   ): Promise<User[]> {
     const query = this.userModel.find(filter);
@@ -42,7 +42,7 @@ export class UserRepository {
   }
 
   async updateMany(
-    filter: FilterQuery<User>,
+    filter: QueryFilter<User>,
     data: Partial<User>
   ): Promise<number> {
     const result = await this.userModel.updateMany(filter, data).exec();
@@ -54,12 +54,12 @@ export class UserRepository {
     return !!result;
   }
 
-  async deleteMany(filter: FilterQuery<User>): Promise<number> {
+  async deleteMany(filter: QueryFilter<User>): Promise<number> {
     const result = await this.userModel.deleteMany(filter).exec();
     return result.deletedCount;
   }
 
-  async count(filter: FilterQuery<User>): Promise<number> {
+  async count(filter: QueryFilter<User>): Promise<number> {
     return this.userModel.countDocuments(filter).exec();
   }
 }

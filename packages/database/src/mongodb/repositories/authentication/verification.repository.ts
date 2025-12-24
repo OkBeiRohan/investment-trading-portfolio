@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, FilterQuery } from "mongoose";
+import { Model, QueryFilter } from "mongoose";
 import { Verification } from "../../schemas/authentication";
 import DatabaseConnections from "../../connections/connections";
 
@@ -17,13 +17,13 @@ export class VerificationRepository {
   }
 
   async findOne(
-    filter: FilterQuery<Verification>
+    filter: QueryFilter<Verification>
   ): Promise<Verification | null> {
     return this.verificationModel.findOne(filter).exec();
   }
 
   async findMany(
-    filter: FilterQuery<Verification>,
+    filter: QueryFilter<Verification>,
     options?: { limit?: number; skip?: number; sort?: any }
   ): Promise<Verification[]> {
     const query = this.verificationModel.find(filter);
@@ -45,7 +45,7 @@ export class VerificationRepository {
   }
 
   async updateMany(
-    filter: FilterQuery<Verification>,
+    filter: QueryFilter<Verification>,
     data: Partial<Verification>
   ): Promise<number> {
     const result = await this.verificationModel.updateMany(filter, data).exec();
@@ -57,12 +57,12 @@ export class VerificationRepository {
     return !!result;
   }
 
-  async deleteMany(filter: FilterQuery<Verification>): Promise<number> {
+  async deleteMany(filter: QueryFilter<Verification>): Promise<number> {
     const result = await this.verificationModel.deleteMany(filter).exec();
     return result.deletedCount;
   }
 
-  async count(filter: FilterQuery<Verification>): Promise<number> {
+  async count(filter: QueryFilter<Verification>): Promise<number> {
     return this.verificationModel.countDocuments(filter).exec();
   }
 
