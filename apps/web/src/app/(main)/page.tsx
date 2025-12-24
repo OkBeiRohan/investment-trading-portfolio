@@ -7,9 +7,15 @@ import {
   ArrowRight,
 } from "lucide-react";
 import styles from "./page.module.css";
+import { Welcome } from "@/components/home/welcome";
 
 export default function DashboardPage() {
-  return <DashboardContent />;
+  return (
+    <main>
+      <Welcome />
+      <DashboardContent />
+    </main>
+  );
 }
 
 function DashboardContent() {
