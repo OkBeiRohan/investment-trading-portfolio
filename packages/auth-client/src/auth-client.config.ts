@@ -6,7 +6,7 @@ import {
   genericOAuthClient,
   inferAdditionalFields,
   magicLinkClient,
-  multiSessionClient,
+  oneTapClient,
   oneTimeTokenClient,
   organizationClient,
   phoneNumberClient,
@@ -33,7 +33,10 @@ export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
       deviceAuthorizationClient(),
       emailOTPClient(),
       oneTimeTokenClient(),
-      multiSessionClient(),
+      oneTapClient({
+        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+        autoSelect: true,
+      }),
       organizationClient(),
       inferAdditionalFields({
         user: {

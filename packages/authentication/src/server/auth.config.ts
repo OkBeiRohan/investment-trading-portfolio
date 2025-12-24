@@ -7,7 +7,12 @@ import {
 import { DBAdapter } from "@better-auth/core/db/adapter";
 import {
   anonymous,
+  deviceAuthorization,
+  emailOTP,
   magicLink,
+  multiSession,
+  oneTap,
+  oneTimeToken,
   organization,
   phoneNumber,
   twoFactor,
@@ -96,6 +101,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
     // Plugins
     plugins: [
       anonymous(),
+      multiSession(),
 
       // Phone number verification plugin
       phoneNumber({
@@ -153,13 +159,19 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
       }),
 
       magicLink({
-        sendMagicLink: function (
-          data: { email: string; url: string; token: string },
-          ctx?: GenericEndpointContext | undefined
-        ): Promise<void> | void {
+        sendMagicLink: ({ email, url, token }, ctx) => {
           throw new Error("Function not implemented.");
         },
       }),
+
+      deviceAuthorization(),
+      emailOTP({
+        sendVerificationOTP: ({ email, otp, type }, ctx) => {
+          throw new Error("Function not implemented.");
+        },
+      }),
+      oneTimeToken(),
+      oneTap(),
 
       // Upstox OAuth for broker account linking
       ...(config.options.brokerProviders?.upstox

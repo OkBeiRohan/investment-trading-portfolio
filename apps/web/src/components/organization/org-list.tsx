@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { authClient } from "@/lib/auth/auth-client";
 import { Plus, Loader2, ArrowRight, Building2 } from "lucide-react";
 import Link from "next/link";
-import styles from "@/app/organization/organizations.module.css";
+import styles from "@/app/(main)/organization/organizations.module.css";
 import { useOrganization } from "@/hooks/auth/use-organization";
 import { IOrganization } from "@repo/schema";
 

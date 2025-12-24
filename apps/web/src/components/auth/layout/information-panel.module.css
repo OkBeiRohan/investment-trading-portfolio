@@ -5,7 +5,6 @@
   padding: clamp(2rem, 5vw, 4rem);
   position: relative;
   z-index: 2;
-  min-height: 100vh;
   justify-content: space-between;
   gap: 2rem;
 }

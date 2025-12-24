@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { Providers } from "./providers";
-import { getAppSettings } from "@/lib/server/settings";
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { getAppSettings } from "@/lib/server/settings";
 import mainFont from "@/lib/fonts";
+import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,11 +11,7 @@ export const metadata: Metadata = {
   description: "Algorithmic trading portfolio management system",
 };
 
-export default async function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
   const settings = await getAppSettings();
   const lang = settings.language || "en";
   const theme = settings.theme || "light";
@@ -29,9 +24,7 @@ export default async function RootLayout({
       className={mainFont.className}
     >
       <body>
-        <Providers>
-          <DashboardLayout>{children}</DashboardLayout>
-        </Providers>
+        <Providers>{children}</Providers>
         <SpeedInsights />
         <Analytics />
       </body>

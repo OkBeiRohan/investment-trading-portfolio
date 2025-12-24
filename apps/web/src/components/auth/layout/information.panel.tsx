@@ -3,7 +3,8 @@
 import { styleFont } from "@/lib/fonts";
 import styles from "./information-panel.module.css";
 import Link from "next/link";
-import { ChevronRight, TrendingUp, Shield, Zap, BarChart3 } from "lucide-react";
+import { ChevronRight, Shield, Zap, BarChart3 } from "lucide-react";
+import LogoIcon from "@/assets/logo";
 
 interface InformationPanelProps {
   onGetStarted?: () => void;
@@ -26,7 +27,7 @@ export default function InformationPanel({
         {/* Logo */}
         <div className={styles.logo}>
           <div className={styles.logoIcon}>
-            <TrendingUp size={32} strokeWidth={2.5} />
+            <LogoIcon />
           </div>
           <span className={styleFont.className}>Quantum Trades</span>
         </div>

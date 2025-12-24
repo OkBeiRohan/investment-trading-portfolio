@@ -55,6 +55,27 @@ export default function MoreLoginOptions() {
     }
   };
 
+  const handleOneTapLogin = async () => {
+    setLoading(true);
+    try {
+      await authClient.oneTap({
+        fetchOptions: {
+          onSuccess: () => {
+            handleAuthSuccess();
+          },
+          onError: (err) => {
+            setError(err.error.message || "Failed to login with OneTap");
+          },
+        },
+      });
+    } catch (err) {
+      setError("Failed to login with OneTap");
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={styles.moreContainer}>
       <div className={styles.altLogins}>
@@ -65,6 +86,13 @@ export default function MoreLoginOptions() {
           <Mail className={styles.icon} />
           Login with Email OTP
         </Link>
+        <button
+          className={`${styles.altButton} ${loading ? styles.disabledLink : ""}`}
+          disabled={loading}
+          onClick={handleOneTapLogin}
+        >
+          OneTap Login
+        </button>
       </div>
       <div className={styles.socialButtons}>
         <button

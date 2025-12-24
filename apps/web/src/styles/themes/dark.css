@@ -9,8 +9,10 @@
   /* Background Colors */
   --color-bg-primary: #111827;
   --color-bg-secondary: #1f2937;
-  --color-bg-tertiary: #374151;
+  --color-bg-tertiary: #172741;
   --color-bg-elevated: #1f2937;
+  --color-bg-accent: #273150;
+  --color-bg-hover: #374151;
 
   /* Auth page specific backgrounds - darker variants */
   --color-auth-gradient-start: #0f172a;
@@ -78,4 +80,8 @@
   --shadow-sm: 0 1px 2px 0 var(--shadow-color);
   --shadow-md: 0 4px 6px -1px var(--shadow-color);
   --shadow-lg: 0 10px 15px -3px var(--shadow-color);
+
+  /* Skeleton Loader Colors */
+  --skeleton-base-color: #374151;
+  --skeleton-highlight-color: #4b5563;
 }

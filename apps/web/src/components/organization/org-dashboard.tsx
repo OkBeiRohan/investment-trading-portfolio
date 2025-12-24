@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, Users, TrendingUp, Activity } from "lucide-react";
-import styles from "@/app/organization/[id]/dashboard.module.css";
+import styles from "@/app/(main)/organization/[id]/dashboard.module.css";
 import { useOrganization } from "@/hooks/auth/use-organization";
 import { authClient } from "@/lib/auth/auth-client";
 

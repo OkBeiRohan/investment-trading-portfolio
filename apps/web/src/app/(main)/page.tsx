@@ -1,7 +1,3 @@
-"use client";
-
-import { useEffect } from "react";
-import type { Route } from "next";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -10,19 +6,9 @@ import {
   Wallet,
   ArrowRight,
 } from "lucide-react";
-import { useNavigation } from "@/hooks/use-navigation";
-import styles from "./home.module.css";
+import styles from "./page.module.css";
 
 export default function DashboardPage() {
-  const { setNavigation } = useNavigation();
-
-  useEffect(() => {
-    setNavigation({
-      title: "Dashboard",
-      breadcrumbs: [{ label: "Home" }],
-    });
-  }, [setNavigation]);
-
   return <DashboardContent />;
 }
 

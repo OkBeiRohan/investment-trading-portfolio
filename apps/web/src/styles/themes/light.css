@@ -11,6 +11,8 @@
   --color-bg-secondary: #f9fafb;
   --color-bg-tertiary: #f3f4f6;
   --color-bg-elevated: #ffffff;
+  --color-bg-accent: #e7e7e7;
+  --color-bg-hover: #f3f4f6;
 
   /* Auth page specific backgrounds */
   --color-auth-gradient-start: #ffffff;
@@ -78,4 +80,8 @@
   --shadow-sm: 0 1px 2px 0 var(--shadow-color);
   --shadow-md: 0 4px 6px -1px var(--shadow-color);
   --shadow-lg: 0 10px 15px -3px var(--shadow-color);
+
+  /* Skeleton Loader Colors */
+  --skeleton-base-color: #e5e7eb;
+  --skeleton-highlight-color: #f3f4f6;
 }

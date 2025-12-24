@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import type { OrganizationRole } from "@repo/schema";
-import styles from "@/app/organization/[id]/settings/settings.module.css";
+import styles from "@/app/(main)/organization/[id]/settings/settings.module.css";
 import { useOrganization } from "@/hooks/auth/use-organization";
 import { authClient } from "@/lib/auth/auth-client";
 
