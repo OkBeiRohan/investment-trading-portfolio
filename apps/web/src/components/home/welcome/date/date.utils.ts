@@ -37,7 +37,8 @@ export function getLocalDateNumber(
 export function getLocalDayName(
   dateInput?: Date | number,
   locale?: string,
-  timeZone?: string
+  timeZone?: string,
+  longFormat: boolean = false
 ): string {
   const dt =
     dateInput instanceof Date
@@ -48,21 +49,23 @@ export function getLocalDayName(
 
   try {
     const formatter = new Intl.DateTimeFormat(locale, {
-      weekday: "long",
+      weekday: longFormat ? "long" : "short",
       timeZone: timeZone,
     });
     return formatter.format(dt);
   } catch {
     // Fallback to local day name using getDay when Intl fails
-    const fallbackDays = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
+    const fallbackDays = longFormat
+      ? [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ]
+      : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     return fallbackDays[dt.getDay()] ?? "";
   }
 }

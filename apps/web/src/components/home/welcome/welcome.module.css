@@ -1,4 +1,4 @@
 .container {
-  padding: 24px;
+  padding: 24px 10em;
   background-color: var(--color-bg-tertiary);
 }

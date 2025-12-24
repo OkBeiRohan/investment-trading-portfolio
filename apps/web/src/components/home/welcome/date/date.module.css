@@ -3,10 +3,16 @@
   align-items: center;
   gap: 20px;
   font-size: 1.5rem;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 .date {
-  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-secondary);
+  font-size: 3rem;
   border-radius: 50%;
+  height: 100px;
+  width: 100px;
 }
