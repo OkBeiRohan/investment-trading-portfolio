@@ -6,7 +6,6 @@ import {
   genericOAuthClient,
   inferAdditionalFields,
   magicLinkClient,
-  multiSessionClient,
   oneTimeTokenClient,
   organizationClient,
   phoneNumberClient,
@@ -33,7 +32,6 @@ export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
       deviceAuthorizationClient(),
       emailOTPClient(),
       oneTimeTokenClient(),
-      multiSessionClient(),
       organizationClient(),
       inferAdditionalFields({
         user: {
