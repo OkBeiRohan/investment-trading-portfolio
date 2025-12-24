@@ -7,7 +7,6 @@ export {
   genericOAuthClient,
 } from "better-auth/client/plugins";
 export { passkeyClient } from "@better-auth/passkey/client";
-export { toNextJsHandler } from "better-auth/next-js";
 
 /**
  * Singleton auth client instance
