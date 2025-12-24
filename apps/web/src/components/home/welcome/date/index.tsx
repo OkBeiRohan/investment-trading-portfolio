@@ -1,5 +1,9 @@
 import styles from "./date.module.css";
-import { getLocalDayName } from "./date.utils";
+import {
+  getLocalDateNumber,
+  getLocalDayName,
+  getLocalMonthName,
+} from "./date.utils";
 
 /**
  * Displays the current date and a calendar view with activities.
@@ -7,14 +11,12 @@ import { getLocalDayName } from "./date.utils";
  *
  */
 export default function WelcomeDate() {
-  const date = new Date();
-
   return (
     <div className={styles.container}>
-      <div className={styles.date}>{date.getDate()}</div>
+      <div className={styles.date}>{getLocalDateNumber()}</div>
       <div className={styles.info}>
-        <div className={styles.day}>{getLocalDayName(date)}</div>
-        <div className={styles.month}>{date.getMonth()}</div>
+        <div className={styles.day}>{getLocalDayName()}</div>
+        <div className={styles.month}>{getLocalMonthName()}</div>
       </div>
     </div>
   );
