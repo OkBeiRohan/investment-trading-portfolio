@@ -19,9 +19,13 @@ export default function HeaderUser() {
 
   return (
     <div className={styles.headerUser}>
-      <div className={styles.avatar}>{getUserIcon(user)}</div>
+      <Link href="/account" className={styles.avatar}>
+        {getUserIcon(user)}
+      </Link>
       <div className={styles.userInfo}>
-        <p className={styles.userName}>{user.name}</p>
+        <Link href="/account" className={styles.userName}>
+          {user.name}
+        </Link>
         <p className={styles.userRole}>{user.role}</p>
       </div>
     </div>
