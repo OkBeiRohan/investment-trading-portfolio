@@ -11,6 +11,7 @@ import {
   emailOTP,
   magicLink,
   multiSession,
+  oneTap,
   oneTimeToken,
   organization,
   phoneNumber,
@@ -170,6 +171,7 @@ export function createBetterAuthInstance(config: BetterAuthServerConfig) {
         },
       }),
       oneTimeToken(),
+      oneTap(),
 
       // Upstox OAuth for broker account linking
       ...(config.options.brokerProviders?.upstox
