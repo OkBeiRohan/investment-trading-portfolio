@@ -6,7 +6,7 @@ applyTo: "apps/web/**"
 
 ## Role & Context
 
-You are working on the **Web Dashboard** - the Next.js frontend implementing the Unified Financial Operating System (UFOS). This is a comprehensive trading and wealth management platform with multi-dashboard architecture, organization-level multi-tenancy, and forensic AI observability.
+You are working on the **Web Dashboard** - the Next.js frontend implementing the **Quantum Investments and Trades** platform (Unified Financial Operating System - UFOS). This is a comprehensive trading and wealth management platform with multi-dashboard architecture, organization-level multi-tenancy, and forensic AI observability.
 
 ## Application Overview
 
@@ -338,17 +338,6 @@ export const config = {
 };
 ```
 
-pages: {
-signIn: "/login",
-},
-});
-
-export const config = {
-matcher: ["/dashboard/:path*", "/portfolio/:path*", "/trades/:path*"],
-};
-
-````
-
 ## Dashboard-Specific Development Patterns
 
 ### Module 1: Wealth Management Dashboard
@@ -388,7 +377,7 @@ export function NetWorthWaterfall({ data }: Props) {
     </div>
   );
 }
-````
+```
 
 **Sunburst Chart (Asset Allocation):**
 
@@ -995,5 +984,5 @@ Keep these files updated:
 
 ---
 
-**Last Updated**: December 5, 2025  
+**Last Updated**: December 25, 2025  
 **Status**: Active Development - UFOS Implementation

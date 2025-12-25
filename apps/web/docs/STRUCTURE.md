@@ -1,6 +1,6 @@
 # Next.js 16 Production Frontend Architecture
 
-## Investment Trading Portfolio - Web Dashboard
+## Quantum Investments and Trades - Web Dashboard
 
 > **Modern, scalable architecture leveraging Next.js 16 App Router, Better Auth, tRPC, and advanced React patterns**
 
@@ -347,7 +347,7 @@ apps/web/
 │   │   │   │   ├── instruments/
 │   │   │   │   │   └── page.tsx         # Instrument selection
 │   │   │   │   └── advanced/
-│   │   │   │       └── page.tsx         # Advanced settings
+│   │   │   │   │   └── page.tsx         # Advanced settings
 │   │   │   │
 │   │   │   ├── positions/               # Position Management
 │   │   │   │   ├── page.tsx             # All positions
