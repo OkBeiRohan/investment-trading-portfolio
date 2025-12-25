@@ -1,5 +1,3 @@
-"use client";
-
 import styles from "./auth.module.css";
 import MainAuthFormContainer from "./_components/container";
 import LoginPageCheckerProvider from "./_contexts/login-page-checker";
