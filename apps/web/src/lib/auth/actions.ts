@@ -9,15 +9,6 @@ import { redirect } from "next/navigation";
  * Deletes session cookie and redirects to login
  */
 export async function signOutAction() {
-  const cookieStore = await cookies();
-  const cookiePrefix = process.env.APP_NAME || "better-auth";
-
-  // Delete all possible cookie names (both token and data)
-  // cookieStore.delete(`__Secure-${cookiePrefix}.session_token`);
-  // cookieStore.delete(`${cookiePrefix}.session_token`);
-  // cookieStore.delete(`__Secure-${cookiePrefix}.session_data`);
-  // cookieStore.delete(`${cookiePrefix}.session_data`);
-
   redirect("/authentication/login");
 }
 
