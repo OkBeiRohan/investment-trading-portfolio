@@ -5,6 +5,7 @@ import { User, Mail, Phone, BadgeCheck } from "lucide-react";
 import styles from "./profile-settings.module.css";
 import Input from "@/components/form/input";
 import PrimaryButton from "@/components/form/button";
+import { authClient } from "@repo/auth-client";
 
 export function ProfileSettings() {
   const { user } = useAuth();
@@ -63,7 +64,9 @@ export function ProfileSettings() {
       <div className={styles.verificationSection}>
         <div className={styles.verificationHeader}>
           <h3 className={styles.verificationTitle}>Identity Verification</h3>
-          <span className={`${styles.badge} ${user?.emailVerified ? styles.verified : styles.pending}`}>
+          <span
+            className={`${styles.badge} ${user?.emailVerified ? styles.verified : styles.pending}`}
+          >
             {user?.emailVerified ? "Verified" : "Pending"}
           </span>
         </div>
@@ -75,8 +78,8 @@ export function ProfileSettings() {
             <div>
               <p className={styles.verificationLabel}>Email Verification</p>
               <p className={styles.verificationDesc}>
-                {user?.emailVerified 
-                  ? "Your email address has been verified." 
+                {user?.emailVerified
+                  ? "Your email address has been verified."
                   : "Please verify your email address to unlock all features."}
               </p>
             </div>
@@ -86,6 +89,14 @@ export function ProfileSettings() {
           </div>
         </div>
       </div>
+
+      <PrimaryButton
+        text="Logout"
+        type="button"
+        onClick={() => {
+          authClient.signOut();
+        }}
+      />
     </div>
   );
 }
