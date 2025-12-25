@@ -1,11 +1,11 @@
-# Investment Trading Portfolio - Project Quantum
+# Quantum Investments and Trades
 
 > **Institutional-grade algorithmic trading + Professional wealth management for comprehensive financial sovereignty.**
 > Event-Driven Architecture | AI-Powered Insights | SEBI 2024-2025 Compliant | Production-Ready
 
 ---
 
-## 🎯 What is Project Quantum?
+## 🎯 What is Quantum Investments and Trades?
 
 A comprehensive financial ecosystem combining two powerful systems:
 

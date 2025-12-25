@@ -1,4 +1,4 @@
-# Web Dashboard Architecture - UFOS (Unified Financial Operating System)
+# Web Dashboard Architecture - Quantum Investments and Trades (UFOS)
 
 > **Design Philosophy**: A next-generation financial platform bridging high-frequency algorithmic trading and holistic wealth management with forensic AI observability.
 
@@ -1034,15 +1034,19 @@ interface TradeState {
   chartTimeframe: "1D" | "1W" | "1M";
   setSelectedStrategy: (id: string | null) => void;
   toggleLiveTuner: () => void;
+  chartType: "CANDLESTICK" | "HEIKIN_ASHI" | "LINE";
+  setChartType: (type: "CANDLESTICK" | "HEIKIN_ASHI" | "LINE") => void;
 }
 
 export const useTradeStore = create<TradeState>((set) => ({
   selectedStrategy: null,
   liveTunerOpen: false,
   chartTimeframe: "1D",
+  chartType: "CANDLESTICK",
   setSelectedStrategy: (id) => set({ selectedStrategy: id }),
   toggleLiveTuner: () =>
     set((state) => ({ liveTunerOpen: !state.liveTunerOpen })),
+  setChartType: (type) => set({ chartType: type }),
 }));
 ```
 

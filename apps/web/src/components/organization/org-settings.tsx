@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Shield, Trash2 } from "lucide-react";
 import type { OrganizationRole } from "@repo/schema";
 import styles from "@/app/(main)/organization/[id]/settings/settings.module.css";
-import { useOrganization } from "@/hooks/auth/use-organization";
 import { authClient } from "@/lib/auth/auth-client";
 
 export function OrgSettings() {
-  const { activeOrganizationId, isLoading } = useOrganization();
+  const { data, isPending } = authClient.useActiveOrganization();
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<OrganizationRole>("member");
@@ -16,12 +15,12 @@ export function OrgSettings() {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeOrganizationId) return;
+    if (!data?.id) return;
 
     setInviting(true);
     try {
       await authClient.organization.inviteMember({
-        organizationId: activeOrganizationId,
+        organizationId: data.id,
         email: inviteEmail,
         role: inviteRole,
       });
@@ -33,7 +32,7 @@ export function OrgSettings() {
     }
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className={styles.loaderContainer}>
         <Loader2 className={styles.loader} size={32} />
@@ -100,7 +99,7 @@ export function OrgSettings() {
           </h2>
         </div>
         <div className={styles.membersList}>
-          {/* {organization?.members?.map((member: any) => (
+          {data?.members?.map((member) => (
             <div key={member.id} className={styles.memberRow}>
               <div className={styles.memberInfo}>
                 <div className={styles.avatar}>
@@ -126,8 +125,8 @@ export function OrgSettings() {
                     if (
                       confirm("Are you sure you want to remove this member?")
                     ) {
-                      removeMember({
-                        organizationId: activeOrganization.id,
+                      authClient.organization.removeMember({
+                        organizationId: data.id,
                         memberIdOrEmail: member.id,
                       });
                     }
@@ -139,7 +138,7 @@ export function OrgSettings() {
                 </button>
               </div>
             </div>
-          ))} */}
+          ))}
         </div>
       </div>
     </div>

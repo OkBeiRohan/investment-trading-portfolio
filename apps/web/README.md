@@ -1,4 +1,4 @@
-# Web Dashboard - Unified Financial Operating System (UFOS)
+# Quantum Investments and Trades - Web Dashboard (UFOS)
 
 Next.js frontend implementing a comprehensive trading and wealth management platform.
 

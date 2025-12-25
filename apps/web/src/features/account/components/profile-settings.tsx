@@ -1,13 +1,16 @@
 "use client";
 
-import { useAuth } from "@/hooks/auth/use-auth";
 import { User, Mail, Phone, BadgeCheck } from "lucide-react";
 import styles from "./profile-settings.module.css";
 import Input from "@/components/form/input";
 import PrimaryButton from "@/components/form/button";
+import { authClient } from "@repo/auth-client";
 
 export function ProfileSettings() {
-  const { user } = useAuth();
+  const { data, error } = authClient.useSession();
+
+  if (!data || error)
+    return <p className={styles.error}>Unable to load user data.</p>;
 
   return (
     <div className={styles.container}>
@@ -21,11 +24,13 @@ export function ProfileSettings() {
       <div className={styles.card}>
         <div className={styles.avatarSection}>
           <div className={styles.avatar}>
-            <span>{user?.name?.charAt(0) || user?.email?.charAt(0)}</span>
+            <span>
+              {data.user.name?.charAt(0) || data.user.email?.charAt(0)}
+            </span>
           </div>
           <div className={styles.avatarInfo}>
-            <h3 className={styles.avatarName}>{user?.name}</h3>
-            <p className={styles.avatarRole}>{user?.role || "Member"}</p>
+            <h3 className={styles.avatarName}>{data.user.name}</h3>
+            <p className={styles.avatarRole}>{data.user.role || "Member"}</p>
           </div>
           <button className={styles.changeAvatarButton}>Change</button>
         </div>
@@ -35,20 +40,20 @@ export function ProfileSettings() {
             <Input
               name="name"
               label="Full Name"
-              defaultValue={user?.name || ""}
+              defaultValue={data.user?.name || ""}
               icon={<User size={18} />}
             />
             <Input
               name="email"
               label="Email Address"
-              defaultValue={user?.email || ""}
+              defaultValue={data.user?.email || ""}
               icon={<Mail size={18} />}
               disabled
             />
             <Input
               name="phone"
               label="Phone Number"
-              defaultValue={user?.phoneNumber || ""}
+              defaultValue={data.user?.phoneNumber || ""}
               icon={<Phone size={18} />}
               placeholder="+1 (555) 000-0000"
             />
@@ -63,8 +68,10 @@ export function ProfileSettings() {
       <div className={styles.verificationSection}>
         <div className={styles.verificationHeader}>
           <h3 className={styles.verificationTitle}>Identity Verification</h3>
-          <span className={`${styles.badge} ${user?.emailVerified ? styles.verified : styles.pending}`}>
-            {user?.emailVerified ? "Verified" : "Pending"}
+          <span
+            className={`${styles.badge} ${data.user?.emailVerified ? styles.verified : styles.pending}`}
+          >
+            {data.user?.emailVerified ? "Verified" : "Pending"}
           </span>
         </div>
         <div className={styles.verificationContent}>
@@ -75,17 +82,23 @@ export function ProfileSettings() {
             <div>
               <p className={styles.verificationLabel}>Email Verification</p>
               <p className={styles.verificationDesc}>
-                {user?.emailVerified 
-                  ? "Your email address has been verified." 
+                {data.user?.emailVerified
+                  ? "Your email address has been verified."
                   : "Please verify your email address to unlock all features."}
               </p>
             </div>
-            {!user?.emailVerified && (
+            {!data.user?.emailVerified && (
               <button className={styles.verifyButton}>Verify</button>
             )}
           </div>
         </div>
       </div>
+
+      <PrimaryButton
+        text="Logout"
+        type="button"
+        onClick={() => authClient.signOut()}
+      />
     </div>
   );
 }

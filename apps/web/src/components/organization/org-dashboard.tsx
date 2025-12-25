@@ -1,25 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
-import { useParams } from "next/navigation";
 import { Loader2, Users, TrendingUp, Activity } from "lucide-react";
 import styles from "@/app/(main)/organization/[id]/dashboard.module.css";
-import { useOrganization } from "@/hooks/auth/use-organization";
 import { authClient } from "@/lib/auth/auth-client";
 
 export function OrgDashboard() {
-  const params = useParams();
-  const { activeOrganizationId, organization, isLoading } = useOrganization();
+  const { data, isPending } = authClient.useActiveOrganization();
 
-  useEffect(() => {
-    if (params?.id && activeOrganizationId !== params.id) {
-      authClient.organization.setActive({
-        organizationId: params.id as string,
-      });
-    }
-  }, [params?.id, activeOrganizationId]);
-
-  if (isLoading || activeOrganizationId !== params?.id) {
+  if (isPending) {
     return (
       <div className={styles.loaderContainer}>
         <Loader2 className={styles.loader} size={32} />
@@ -30,7 +18,7 @@ export function OrgDashboard() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>{organization?.name}</h1>
+        <h1 className={styles.title}>{data?.name}</h1>
         <p className={styles.subtitle}>Organization Dashboard</p>
       </div>
 

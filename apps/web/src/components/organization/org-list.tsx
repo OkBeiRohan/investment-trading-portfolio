@@ -1,34 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { authClient } from "@/lib/auth/auth-client";
 import { Plus, Loader2, ArrowRight, Building2 } from "lucide-react";
 import Link from "next/link";
 import styles from "@/app/(main)/organization/organizations.module.css";
-import { useOrganization } from "@/hooks/auth/use-organization";
-import { IOrganization } from "@repo/schema";
 
 export function OrgList() {
-  const {} = useOrganization();
-  const [orgs, setOrgs] = useState<IOrganization[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: orgs, isPending: loading } = authClient.useListOrganizations();
   const [creating, setCreating] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
   const [newOrgSlug, setNewOrgSlug] = useState("");
-
-  useEffect(() => {
-    const fetchOrgs = async () => {
-      try {
-        const { data } = await authClient.organization.list();
-        if (data) {
-          setOrgs(data);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrgs();
-  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,13 +46,13 @@ export function OrgList() {
             <div className={styles.loaderContainer}>
               <Loader2 className={styles.loader} />
             </div>
-          ) : orgs.length === 0 ? (
+          ) : orgs?.length === 0 ? (
             <div className={styles.emptyState}>
               <p>No organizations found</p>
             </div>
           ) : (
             <div className={styles.orgList}>
-              {orgs.map((org) => (
+              {orgs?.map((org) => (
                 <Link
                   key={org.slug}
                   href={`/organization/${org.slug}`}

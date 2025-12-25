@@ -4,6 +4,12 @@ import Link from "next/link";
 import MoreLoginOptions from "@/components/auth/login/more-login/more-login";
 import Divider from "@/components/form/divider";
 import { StoreCallbackUrl } from "./store-callback-url";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Login",
+  description: "Sign in to your Project Quantum dashboard",
+};
 
 export default function LoginPage() {
   return (

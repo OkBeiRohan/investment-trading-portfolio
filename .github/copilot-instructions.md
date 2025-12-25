@@ -2,7 +2,7 @@
 
 ## Deployment Model (CRITICAL)
 
-**Target Environment**: Small personal team (2 users max), local execution with RTX GPU
+**Target Environment**: Hybrid Deployment (Local Algo + Cloud Web) supporting Multi-Tenancy
 
 **Architecture**:
 
