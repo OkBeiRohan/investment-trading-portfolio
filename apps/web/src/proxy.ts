@@ -2,23 +2,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { CallbackUrlSchema } from "@repo/schema";
 import { isAuthenticatedAction } from "./lib/auth/actions";
+import { authClient } from "./lib/auth/auth-client";
+import publicPaths from "./lib/auth/PUBLIC_PATHS";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Define public paths that don't require authentication
-  const publicPaths = [
-    "/authentication/login",
-    "/authentication/register",
-    "/authentication/forgot-password",
-    "/authentication/reset-password",
-    "/authentication/verify-email",
-    "/authentication/verify-phone",
-    "/authentication/magic-link",
-    "/authentication/passkey",
-    "/authentication/2fa",
-    "/authentication/email-otp",
-  ];
 
   // Check if the path is public
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
@@ -47,15 +37,24 @@ export async function proxy(request: NextRequest) {
   }
 
   // If the user is authenticated and trying to access auth pages (login/register)
-  // Redirect them to the dashboard
+  // Verify the login
   if (
     sessionToken &&
     (pathname === "/authentication/login" ||
       pathname === "/authentication/register")
   ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    const session = await authClient.getSession({
+      fetchOptions: {
+        baseURL: `${request.nextUrl.origin}/api/auth`,
+        headers: request.headers,
+      },
+    });
+
+    if (session.data) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();

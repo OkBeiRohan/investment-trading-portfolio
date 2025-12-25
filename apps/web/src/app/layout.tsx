@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { getAppSettings } from "@/lib/server/settings";
 import mainFont from "@/lib/fonts";
 import { Providers } from "./providers";
+import { AuthVerifier } from "@/verifiers/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Providers>{children}</Providers>
         <SpeedInsights />
         <Analytics />
+        <AuthVerifier />
       </body>
     </html>
   );

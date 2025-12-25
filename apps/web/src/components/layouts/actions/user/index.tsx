@@ -1,20 +1,20 @@
 "use client";
 
-import { useAuth } from "@/hooks/auth/use-auth";
-import { useOrganization } from "@/hooks/auth/use-organization";
 import styles from "./user.module.css";
 import HeaderUserLoading from "./loading";
 import Link from "next/link";
 import getUserIcon from "./user-utils";
 import HeaderUserOrgSwitcher from "./switcher";
 import { Skeleton } from "@/components/loading/skeleton";
+import { authClient } from "@repo/auth-client";
 
 export default function HeaderUser() {
-  const { user, isLoading, isAuthenticated } = useAuth();
-  const { organization, isLoading: isOrgLoading } = useOrganization();
+  const { data, error, isPending } = authClient.useSession();
+  const { data: organization, isPending: isOrgPending } =
+    authClient.useActiveOrganization();
 
-  if (isLoading) return <HeaderUserLoading />;
-  if (!isAuthenticated || !user)
+  if (isPending) return <HeaderUserLoading />;
+  if (!data || error)
     return (
       <div className={styles.headerUser}>
         <Link href="/authentication/login">Login</Link>
@@ -24,13 +24,13 @@ export default function HeaderUser() {
   return (
     <div className={styles.headerUser}>
       <Link href="/account" className={styles.avatar}>
-        {getUserIcon(user)}
+        {getUserIcon(data.user)}
       </Link>
       <div className={styles.userInfo}>
         <Link href="/account" className={styles.userName}>
-          {user.name}
+          {data.user.name}
         </Link>
-        {isOrgLoading ? (
+        {isOrgPending ? (
           <Skeleton
             className={styles.userRole}
             variant="text"
@@ -38,7 +38,9 @@ export default function HeaderUser() {
             height={10}
           />
         ) : (
-          <p className={styles.userRole}>{organization?.name || user.role}</p>
+          <p className={styles.userRole}>
+            {organization?.name || data.user.role}
+          </p>
         )}
       </div>
       <HeaderUserOrgSwitcher />
