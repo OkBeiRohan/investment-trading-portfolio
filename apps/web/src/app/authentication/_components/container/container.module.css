@@ -1,12 +1,26 @@
 .formContainer {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--spacing-lg);
   padding: var(--spacing-lg);
-  position: relative;
+  overflow-y: auto;
   z-index: 2;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Desktop: side-by-side layout */

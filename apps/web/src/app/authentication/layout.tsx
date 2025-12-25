@@ -6,8 +6,9 @@ import LoginPageCheckerProvider from "./_contexts/login-page-checker";
 
 export default function AuthLayout({
   children,
-  header,
   information,
+  header,
+  more,
 }: LayoutProps<"/authentication">) {
   return (
     <LoginPageCheckerProvider>
@@ -16,6 +17,7 @@ export default function AuthLayout({
         <MainAuthFormContainer>
           {header}
           {children}
+          {more}
         </MainAuthFormContainer>
       </div>
     </LoginPageCheckerProvider>
