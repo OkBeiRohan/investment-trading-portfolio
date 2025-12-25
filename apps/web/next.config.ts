@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   typedRoutes: true,
+  cacheComponents: true,
   experimental: {
     authInterrupts: true,
     viewTransition: true,
