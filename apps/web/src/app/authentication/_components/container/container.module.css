@@ -1,0 +1,39 @@
+.formContainer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  position: relative;
+  z-index: 2;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Desktop: side-by-side layout */
+@media (min-width: 769px) {
+  .formContainer {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Mobile: landing first, form slides in */
+@media (max-width: 768px) {
+  .formContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--color-bg-primary);
+    opacity: 0;
+    transform: translateY(100%);
+    pointer-events: none;
+  }
+
+  .formContainer.formVisible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+}
