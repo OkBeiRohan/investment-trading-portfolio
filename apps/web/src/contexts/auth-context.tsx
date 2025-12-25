@@ -51,6 +51,22 @@ export function AuthProvider({
   const [error, setError] = useState<Error | null>(null);
   const router = useRouter();
 
+
+  // TODO: USE THE FOLLOWING HOOKS
+  // const useSession = authClient.useSession();
+  // const useActiveOrganization = authClient.useActiveOrganization();
+  // const useActiveMember = authClient.useActiveMember();
+  // const useActiveMemberRole = authClient.useActiveMemberRole();
+  // const useListOrganizations = authClient.useListOrganizations();
+  // const useListPasskeys = authClient.useListPasskeys();
+
+  // console.log("useSession:", useSession);
+  // console.log("useActiveOrganization:", useActiveOrganization);
+  // console.log("useActiveMember:", useActiveMember);
+  // console.log("useActiveMemberRole:", useActiveMemberRole);
+  // console.log("useListOrganizations:", useListOrganizations);
+  // console.log("useListPasskeys:", useListPasskeys);
+
   const fetchSession = useCallback(async () => {
     try {
       setIsLoading(true);
