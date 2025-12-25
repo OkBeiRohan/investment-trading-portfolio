@@ -11,15 +11,17 @@ import {
  * Eg: 23 | Mon, March
  *
  */
-export default function WelcomeDate() {
+export default async function WelcomeDate() {
+  const date = new Date();
+
   return (
     <div className={styles.container}>
       <div className={styles.date}>
-        <span className={styleFont.className}>{getLocalDateNumber()}</span>
+        <span className={styleFont.className}>{getLocalDateNumber(date)}</span>
       </div>
       <div className={styles.info}>
-        <div className={styles.day}>{getLocalDayName()}</div>
-        <div className={styles.month}>{getLocalMonthName()}</div>
+        <div className={styles.day}>{getLocalDayName(date)}</div>
+        <div className={styles.month}>{getLocalMonthName(date)}</div>
       </div>
     </div>
   );
