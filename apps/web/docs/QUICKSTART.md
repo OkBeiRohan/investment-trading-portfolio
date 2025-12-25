@@ -15,22 +15,21 @@
 cd apps/web
 rm -rf app pages # Remove old structure if exists
 
-# Initialize with latest Next.js
-pnpm dlx create-next-app@latest . --typescript --tailwind --app --src-dir=false
+# Initialize with latest Next.js (Manual setup to avoid default tailwind)
+pnpm dlx create-next-app@latest . --typescript --no-tailwind --app --src-dir=false --import-alias "@/*"
 
 # Install core dependencies
 pnpm add @trpc/client @trpc/server @trpc/react-query @tanstack/react-query
 pnpm add better-auth
 pnpm add zod
-pnpm add clsx tailwind-merge class-variance-authority
-pnpm add lucide-react
 pnpm add date-fns
 pnpm add zustand
+pnpm add sass # Optional: If using SASS modules
 
 # Install dev dependencies
 pnpm add -D @types/node @types/react @types/react-dom
 pnpm add -D eslint-config-next
-pnpm add -D prettier prettier-plugin-tailwindcss
+pnpm add -D prettier
 ```
 
 ### 1.2 Environment Configuration
@@ -76,7 +75,8 @@ NEXT_PUBLIC_ENABLE_CRYPTO_ASSETS=true
       "@/lib/*": ["./lib/*"],
       "@/hooks/*": ["./hooks/*"],
       "@/types/*": ["./types/*"],
-      "@/store/*": ["./store/*"]
+      "@/store/*": ["./store/*"],
+      "@/styles/*": ["./styles/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
@@ -84,81 +84,41 @@ NEXT_PUBLIC_ENABLE_CRYPTO_ASSETS=true
 }
 ```
 
-### 1.4 Tailwind Configuration
+### 1.4 Styling Configuration (CSS Modules)
 
-```typescript
-// tailwind.config.ts
-import type { Config } from "tailwindcss";
+Ensure your `next.config.mjs` supports SASS if you choose to use it.
 
-const config: Config = {
-  darkMode: ["class"],
-  content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-      keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-      },
-    },
+```javascript
+// next.config.mjs
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  sassOptions: {
+    includePaths: ['./styles'],
   },
-  plugins: [require("tailwindcss-animate")],
 };
 
-export default config;
+export default nextConfig;
+```
+
+Create a global stylesheet:
+
+```css
+/* app/globals.css */
+:root {
+  --primary-color: #0070f3;
+  --secondary-color: #1a1a1a;
+  --background-color: #ffffff;
+  --text-color: #000000;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
 ```
 
 ---
@@ -298,7 +258,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/lib/trpc/react";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toaster"; // Custom Toaster implementation
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -367,27 +327,46 @@ export const config = {
 
 ## 🏗️ Phase 3: Base Components (Week 2)
 
-### 3.1 UI Components (shadcn/ui)
+### 3.1 UI Components (Custom Implementation)
 
-```bash
-# Install shadcn/ui
-pnpm dlx shadcn-ui@latest init
+Create your own reusable components using CSS Modules.
 
-# Add base components
-pnpm dlx shadcn-ui@latest add button
-pnpm dlx shadcn-ui@latest add card
-pnpm dlx shadcn-ui@latest add input
-pnpm dlx shadcn-ui@latest add label
-pnpm dlx shadcn-ui@latest add select
-pnpm dlx shadcn-ui@latest add dialog
-pnpm dlx shadcn-ui@latest add dropdown-menu
-pnpm dlx shadcn-ui@latest add tabs
-pnpm dlx shadcn-ui@latest add toast
-pnpm dlx shadcn-ui@latest add skeleton
-pnpm dlx shadcn-ui@latest add alert
-pnpm dlx shadcn-ui@latest add badge
-pnpm dlx shadcn-ui@latest add separator
-pnpm dlx shadcn-ui@latest add sheet
+**Example Button:**
+
+```typescript
+// components/ui/Button/index.tsx
+import styles from './Button.module.css';
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'danger';
+}
+
+export function Button({ variant = 'primary', className, ...props }: ButtonProps) {
+  return (
+    <button 
+      className={`${styles.button} ${styles[variant]} ${className || ''}`}
+      {...props} 
+    />
+  );
+}
+```
+
+```css
+/* components/ui/Button/Button.module.css */
+.button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* ... other variants */
 ```
 
 ### 3.2 Custom Hooks
@@ -483,147 +462,49 @@ export function useWorkspace() {
 
 import { useState } from "react";
 import { signIn } from "@/lib/auth/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
+import styles from './login.module.css';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
 
   const handleEmailPasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const result = await signIn.email({
       email,
       password,
       callbackURL: "/",
     });
-
     if (!result.error) {
       router.push("/");
     }
   };
 
-  const handlePhoneLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    await signIn.phoneNumber({
-      phoneNumber: phone,
-    });
-
-    router.push("/verify-otp");
-  };
-
-  const handleGoogleLogin = async () => {
-    await signIn.social({
-      provider: "google",
-      callbackURL: "/",
-    });
-  };
-
-  const handleUpstoxLogin = async () => {
-    await signIn.social({
-      provider: "upstox",
-      callbackURL: "/account/linked-accounts",
-    });
-  };
-
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-md space-y-6 p-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome Back</h1>
-          <p className="text-muted-foreground">
-            Sign in to your account
-          </p>
-        </div>
-
-        <Tabs defaultValue="email">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="email">Email</TabsTrigger>
-            <TabsTrigger value="phone">Phone</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="email">
-            <form onSubmit={handleEmailPasswordLogin} className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full">
-                Sign In
-              </Button>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="phone">
-            <form onSubmit={handlePhoneLogin} className="space-y-4">
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full">
-                Send OTP
-              </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
-
-        <div className="space-y-2">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleGoogleLogin}
-          >
-            Continue with Google
-          </Button>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleUpstoxLogin}
-          >
-            Connect Upstox Account
-          </Button>
-        </div>
-
-        <div className="text-center text-sm">
-          Don't have an account?{" "}
-          <a href="/register" className="underline">
-            Sign Up
-          </a>
-        </div>
+    <div className={styles.container}>
+      <div className={styles.card}>
+        <h1>Welcome Back</h1>
+        <form onSubmit={handleEmailPasswordLogin} className={styles.form}>
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Input
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <Button type="submit">Sign In</Button>
+        </form>
       </div>
     </div>
   );
@@ -638,8 +519,9 @@ export default function LoginPage() {
 
 ```typescript
 // app/(dashboard)/layout.tsx
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
+import styles from './layout.module.css';
 
 export default function DashboardLayout({
   children,
@@ -647,11 +529,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen">
+    <div className={styles.dashboardContainer}>
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className={styles.mainContent}>
         <Header />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className={styles.contentArea}>{children}</main>
       </div>
     </div>
   );
@@ -661,56 +543,41 @@ export default function DashboardLayout({
 ### 5.2 Sidebar Component
 
 ```typescript
-// components/layout/sidebar.tsx
+// components/layout/Sidebar/index.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home,
-  Wallet,
-  Receipt,
-  TrendingUp,
-  Settings,
-  Users,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import styles from './Sidebar.module.css';
 
 const navigation = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Wealth", href: "/wealth", icon: Wallet },
-  { name: "Expenses", href: "/expenses", icon: Receipt },
-  { name: "Trading", href: "/trading", icon: TrendingUp },
-  { name: "Workspaces", href: "/workspaces", icon: Users },
-  { name: "Account", href: "/account", icon: Settings },
+  { name: "Home", href: "/" },
+  { name: "Wealth", href: "/wealth" },
+  { name: "Expenses", href: "/expenses" },
+  { name: "Trading", href: "/trading" },
+  { name: "Workspaces", href: "/workspaces" },
+  { name: "Account", href: "/account" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 border-r bg-card">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold">QIT</h1>
+    <aside className={styles.sidebar}>
+      <div className={styles.logo}>
+        <h1>QIT</h1>
       </div>
 
-      <nav className="space-y-1 px-3">
+      <nav className={styles.nav}>
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          const Icon = item.icon;
-
+          
           return (
             <Link
               key={item.name}
               href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent hover:text-accent-foreground"
-              )}
+              className={`${styles.link} ${isActive ? styles.active : ''}`}
             >
-              <Icon className="h-5 w-5" />
               {item.name}
             </Link>
           );
@@ -727,9 +594,9 @@ export function Sidebar() {
 
 ### Week 1: Foundation
 
-- [ ] Initialize Next.js 16 project with App Router
+- [ ] Initialize Next.js 16 project with App Router (No Tailwind)
 - [ ] Configure TypeScript and ESLint
-- [ ] Set up Tailwind CSS
+- [ ] Set up CSS Modules (and SASS if desired)
 - [ ] Install and configure Better Auth
 - [ ] Set up tRPC client and provider
 - [ ] Create root layout and providers
@@ -741,7 +608,7 @@ export function Sidebar() {
 - [ ] Implement registration page
 - [ ] Add 2FA setup flow
 - [ ] Add passkey registration
-- [ ] Install shadcn/ui components
+- [ ] Build base UI components (Button, Input, Card, Modal, etc.)
 - [ ] Create custom hooks (useAuth, useWorkspace)
 - [ ] Build base layout components (Sidebar, Header)
 
@@ -905,6 +772,7 @@ export function Sidebar() {
 - [Next.js Documentation](https://nextjs.org/docs)
 - [App Router Patterns](https://nextjs.org/docs/app)
 - [Server Components](https://nextjs.org/docs/app/building-your-application/rendering/server-components)
+- [CSS Modules](https://nextjs.org/docs/app/building-your-application/styling/css-modules)
 
 ### Better Auth
 
@@ -918,9 +786,8 @@ export function Sidebar() {
 
 ### UI/UX
 
-- [shadcn/ui](https://ui.shadcn.com)
-- [Tailwind CSS](https://tailwindcss.com)
-- [Radix UI](https://www.radix-ui.com)
+- [Sass/SCSS](https://sass-lang.com/)
+- [CSS Modules Spec](https://github.com/css-modules/css-modules)
 
 ---
 

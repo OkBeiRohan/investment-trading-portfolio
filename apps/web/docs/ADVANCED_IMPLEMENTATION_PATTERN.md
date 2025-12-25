@@ -12,6 +12,8 @@
 
 ```typescript
 // app/(dashboard)/(home)/layout.tsx
+import styles from './home.module.css';
+
 export default function HomeLayout({
   children,
   networth,      // @networth slot
@@ -26,20 +28,20 @@ export default function HomeLayout({
   alerts: React.ReactNode;
 }) {
   return (
-    <div className="space-y-6">
+    <div className={styles.container}>
       {children} {/* Main content */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={styles.topRow}>
         {/* Each slot loads independently */}
-        <div className="lg:col-span-2">
+        <div className={styles.mainSlot}>
           {networth}
         </div>
-        <div>
+        <div className={styles.sideSlot}>
           {quickActions}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={styles.bottomRow}>
         {recentActivity}
         {alerts}
       </div>
@@ -52,6 +54,7 @@ export default function HomeLayout({
 // app/(dashboard)/(home)/@networth/page.tsx
 import { api } from "@/lib/trpc/server";
 import { cache } from "react";
+import styles from './networth.module.css';
 
 // Cache the data fetching function
 const getNetWorth = cache(async () => {
@@ -62,28 +65,30 @@ export default async function NetWorthSlot() {
   const netWorth = await getNetWorth();
 
   return (
-    <Card>
-      <Card.Header>
-        <Card.Title>Net Worth</Card.Title>
-      </Card.Header>
-      <Card.Content>
-        <div className="text-4xl font-bold">
+    <div className={styles.card}>
+      <div className={styles.header}>
+        <h3>Net Worth</h3>
+      </div>
+      <div className={styles.content}>
+        <div className={styles.amount}>
           ₹{netWorth.total.toLocaleString("en-IN")}
         </div>
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className={styles.trend}>
           {netWorth.change > 0 ? "+" : ""}
           {netWorth.changePercent.toFixed(2)}% from last month
         </p>
-      </Card.Content>
-    </Card>
+      </div>
+    </div>
   );
 }
 ```
 
 ```typescript
 // app/(dashboard)/(home)/@networth/loading.tsx
+import styles from './networth.module.css';
+
 export default function NetWorthLoading() {
-  return <Skeleton className="h-48" />;
+  return <div className={`${styles.card} ${styles.loading}`} />;
 }
 ```
 
@@ -100,6 +105,7 @@ export default function NetWorthLoading() {
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc/client";
+import styles from './modal.module.css';
 
 export default function SnapshotModal({ params }: { params: { date: string } }) {
   const router = useRouter();
@@ -114,26 +120,26 @@ export default function SnapshotModal({ params }: { params: { date: string } }) 
         if (!open) router.back();
       }}
     >
-      <Modal.Content className="max-w-4xl">
-        <Modal.Header>
-          <Modal.Title>Net Worth Snapshot</Modal.Title>
-          <Modal.Description>
+      <div className={styles.modalContent}>
+        <div className={styles.header}>
+          <h3>Net Worth Snapshot</h3>
+          <p>
             {new Date(params.date).toLocaleDateString("en-IN", {
               year: "numeric",
               month: "long",
               day: "numeric",
             })}
-          </Modal.Description>
-        </Modal.Header>
+          </p>
+        </div>
 
         {isLoading ? (
-          <div className="p-6">
-            <Skeleton className="h-64" />
+          <div className={styles.loadingState}>
+            <div className={styles.skeleton} />
           </div>
         ) : (
-          <div className="p-6 space-y-6">
+          <div className={styles.body}>
             {/* Snapshot visualization */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className={styles.statsGrid}>
               <StatCard
                 label="Total Assets"
                 value={data?.assets || 0}
@@ -150,15 +156,15 @@ export default function SnapshotModal({ params }: { params: { date: string } }) 
           </div>
         )}
 
-        <Modal.Footer>
+        <div className={styles.footer}>
           <Button variant="outline" onClick={() => router.back()}>
             Close
           </Button>
           <Button onClick={() => downloadReport(params.date)}>
             Download Report
           </Button>
-        </Modal.Footer>
-      </Modal.Content>
+        </div>
+      </div>
     </Modal>
   );
 }
@@ -168,6 +174,7 @@ export default function SnapshotModal({ params }: { params: { date: string } }) 
 // app/(dashboard)/wealth/networth/snapshot/[date]/page.tsx
 // Full page version (when accessed directly)
 import { api } from "@/lib/trpc/server";
+import styles from './page.module.css';
 
 export default async function SnapshotPage({
   params,
@@ -177,14 +184,14 @@ export default async function SnapshotPage({
   const snapshot = await api.wealth.getSnapshot({ date: params.date });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Net Worth Snapshot</h1>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>Net Worth Snapshot</h1>
         <Button>Download Report</Button>
       </div>
 
       {/* Same content as modal but full page layout */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className={styles.statsGrid}>
         <StatCard
           label="Total Assets"
           value={snapshot.assets}
