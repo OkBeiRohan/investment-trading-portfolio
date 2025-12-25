@@ -8,7 +8,10 @@ import { AuthVerifier } from "@/verifiers/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Investment Trading Portfolio",
+  title: {
+    default: "Quantum Trades and Investment",
+    template: "%s | Quantum Trades and Investment",
+  },
   description: "Algorithmic trading portfolio management system",
 };
 
