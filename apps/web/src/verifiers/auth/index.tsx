@@ -12,7 +12,7 @@ import publicPaths from "@/lib/auth/PUBLIC_PATHS";
  * Verifies user authentication status on mount
  * If not authenticated, triggers sign out action
  */
-export function AuthVerifier() {
+export default function AuthVerifier() {
   const { data, isPending, isRefetching } = authClient.useSession();
   const pathname = usePathname();
 

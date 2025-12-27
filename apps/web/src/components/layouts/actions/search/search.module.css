@@ -6,6 +6,7 @@
   padding: 8px 42px 8px 16px;
   border: 1px solid var(--color-border);
   background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
   border-radius: 32px;
   font-size: 1rem;
   width: 200px;

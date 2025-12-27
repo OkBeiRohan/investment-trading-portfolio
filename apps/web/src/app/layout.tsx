@@ -3,8 +3,8 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { getAppSettings } from "@/lib/server/settings";
 import mainFont from "@/lib/fonts";
-import { Providers } from "./providers";
-import { AuthVerifier } from "@/verifiers/auth";
+import Providers from "./providers";
+import Verifiers from "./verifiers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,9 +29,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body>
         <Providers>{children}</Providers>
+        <Verifiers />
         <SpeedInsights />
         <Analytics />
-        <AuthVerifier />
       </body>
     </html>
   );

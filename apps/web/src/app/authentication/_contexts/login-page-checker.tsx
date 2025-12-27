@@ -26,11 +26,11 @@ export default function LoginPageCheckerProvider(props: PropsWithChildren) {
   const isLoginPage = pathname === "/authentication/login";
 
   return (
-    <LoginPageCheckerContext.Provider
+    <LoginPageCheckerContext
       value={{ isLoginPage, showForm, getStarted: () => setShowForm(true) }}
     >
       {isLoginPage && <StoreCallbackUrl />}
       {props.children}
-    </LoginPageCheckerContext.Provider>
+    </LoginPageCheckerContext>
   );
 }

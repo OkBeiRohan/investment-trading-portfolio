@@ -5,7 +5,7 @@ import { actionSetTheme } from "@/lib/actions/settings";
 import { getThemeSettings } from "@/lib/server/settings";
 
 /**
- * Client-side theme provider that handles system preference detection
+ * Client-side theme verifier that handles system preference detection
  * and automatic theme switching when isSystemTheme=true.
  *
  * Security: Uses httpOnly cookies accessed only via server functions.
@@ -16,7 +16,7 @@ import { getThemeSettings } from "@/lib/server/settings";
  *   - If isSystemTheme=true and mismatch with system: Update cookie
  * - On system preference change: If isSystemTheme=true, update cookie
  */
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export default function ThemeVerifier() {
   const [isSystemTheme, setIsSystemTheme] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -71,5 +71,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isSystemTheme]);
 
-  return <>{children}</>;
+  return null;
 }
