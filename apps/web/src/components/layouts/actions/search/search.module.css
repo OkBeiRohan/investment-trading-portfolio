@@ -32,5 +32,5 @@
 }
 
 .searchButton:hover {
-  color: #6366f1;
+  color: var(--color-text-primary);
 }
