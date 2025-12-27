@@ -1,6 +1,6 @@
-import styles from "./navigation.module.css";
 import { IndianRupee, TrendingUp, Wallet } from "lucide-react";
 import NavigationItem from "./navigation-item";
+import styles from "./navigation.module.css";
 
 export default function Navigation() {
   return (
