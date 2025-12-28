@@ -222,7 +222,7 @@ pnpm dev  # Starts on port 3001
 
 ### Web Dashboard & API
 
-- **[Web Dashboard](apps/web/README.md)**: UFOS (Unified Financial Operating System)
+- **[Web Dashboard](apps/web/README.md)**: Quantum Investments and Trades
   - [Authentication](apps/web/docs/AUTHENTICATION.md): Auth state management with Context Provider
   - [Data Access Layer](apps/web/docs/DATA_ACCESS_LAYER.md): Secure data fetching with auto org scoping
   - **Algo Trading Cockpit**: Options analytics, Greeks visualization, strategy management
@@ -242,7 +242,7 @@ pnpm dev  # Starts on port 3001
   - [Performance Optimization](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md): 🆕 Worker Threads, GPU inference, zero-allocation patterns
 - **[Training Pipeline](services/training-pipeline/README.md)**: ML model training
   - [Advanced Validation](services/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
-- **[Web Dashboard](apps/web/README.md)**: UFOS (Unified Financial Operating System)
+- **[Web Dashboard](apps/web/README.md)**: Quantum Investments and Trades
   - [Authentication](apps/web/docs/AUTHENTICATION.md): Auth state management with Context Provider
   - [Data Access Layer](apps/web/docs/DATA_ACCESS_LAYER.md): Secure data fetching with auto org scoping
 - **[Market SDK](packages/market-sdk/README.md)**: Upstox/Yahoo/Binance integration
