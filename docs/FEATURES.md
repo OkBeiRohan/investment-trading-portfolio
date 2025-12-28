@@ -96,7 +96,8 @@ These is achieved using multi tenancy of better-auth. Feature is internally name
    4. Based on the inputs, map those to already added assets, etc or create new
    5. Identify where the expenses going, analytics, and how to save money, etc
    6. Investment tips, proper management
-   7. Others
+   7. Split amount between family/friends
+   8. Others
 3. Planning and Experiments
    1. Create and manage goals
       1. Map investments and loans to goals
@@ -127,7 +128,8 @@ These is achieved using multi tenancy of better-auth. Feature is internally name
             1. Let user add several flights/transport options (each of the transport option may contain several types or different legs. But treat as one. Tokyo to Osaka -> Local train + Flight. cost, time, layovers, etc)
             2. Compare and take the winner
             3. others
-         7. Others
+         7. Plan amounts can be splitted with friends/family
+         8. Others
       2. Legacy Planning
          1. Send all the information of investments or debts to close ones if the user is inactive for a specified time and no response with login options for them
          2. Others
