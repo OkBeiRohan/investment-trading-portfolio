@@ -156,3 +156,4 @@ These is achieved using multi tenancy of better-auth. Feature is internally name
    4. insights
    5. AI can also create experiments on new strategies in which the user can participate
    6. others
+5. Others
