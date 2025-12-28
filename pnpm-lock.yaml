@@ -193,8 +193,8 @@ importers:
         specifier: ^11.8.1
         version: 11.8.1(typescript@5.9.3)
       nestjs-trpc-v2:
-        specifier: ^1.0.0
-        version: 1.0.0(@nestjs/common@11.1.10(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.10)(@trpc/server@11.8.1(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.2)(zod@4.2.1)
+        specifier: ^1.1.0
+        version: 1.1.0(@nestjs/common@11.1.10(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.10)(@trpc/server@11.8.1(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.2)(zod@4.2.1)
       nestjs-zod:
         specifier: ^5.0.1
         version: 5.0.1(@nestjs/common@11.1.10(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)(zod@4.2.1)
@@ -330,7 +330,7 @@ importers:
         version: 0.562.0(react@19.2.3)
       next:
         specifier: 16.1.1
-        version: 16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
+        version: 16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -404,7 +404,7 @@ importers:
         version: 9.39.2
       next:
         specifier: 16.1.1
-        version: 16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
+        version: 16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -556,7 +556,7 @@ importers:
         version: 30.2.0(@types/node@25.0.3)(ts-node@10.9.2(@types/node@25.0.3)(typescript@5.9.3))
       next:
         specifier: ^16.1.1
-        version: 16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
+        version: 16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -3412,8 +3412,8 @@ packages:
       react-dom: '>=18.2.0'
       typescript: '>=5.7.2'
 
-  '@ts-morph/common@0.23.0':
-    resolution: {integrity: sha512-m7Lllj9n/S6sOkCkRftpM7L24uvmfXQFedlW/4hENcuJH1HHm9u5EgxZb9uVjQSCGrbBWBkOGgcTxNg36r6ywA==}
+  '@ts-morph/common@0.28.1':
+    resolution: {integrity: sha512-W74iWf7ILp1ZKNYXY5qbddNaml7e9Sedv5lvU1V8lftlitkc9Pq1A+jlH23ltDgWYeZFFEqGCD1Ies9hqu3O+g==}
 
   '@tsconfig/node10@1.0.12':
     resolution: {integrity: sha512-UCYBaeFvM11aU2y3YPZ//O5Rhj+xKyzy7mvcIoAjASbigy8mHMryP5cK7dgjlz2hWxh1g5pLw084E0a/wlUSFQ==}
@@ -5781,11 +5781,6 @@ packages:
     resolution: {integrity: sha512-FP+p8RB8OWpF3YZBCrP5gtADmtXApB5AMLn+vdyA+PyxCjrCs00mjyUozssO33cwDeT3wNGdLxJ5M//YqtHAJw==}
     hasBin: true
 
-  mkdirp@3.0.1:
-    resolution: {integrity: sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==}
-    engines: {node: '>=10'}
-    hasBin: true
-
   module-details-from-path@1.0.4:
     resolution: {integrity: sha512-EGWKgxALGMgzvxYF1UyGTy0HXX/2vHLkw6+NvDKW2jypWbHpjQuj4UMcqQWXHERJhVGKikolT06G3bcKe4fi7w==}
 
@@ -5890,15 +5885,15 @@ packages:
       pino-http: ^6.4.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
       rxjs: ^7.1.0
 
-  nestjs-trpc-v2@1.0.0:
-    resolution: {integrity: sha512-BCblPINmKYZq9v3FctUHVjmX8Ic4y7tsSVXB0Rl3REOr9ek3FjNsDvb2Cz+amgDz1tJD3C7eFCVRdy5PHCSoQw==}
+  nestjs-trpc-v2@1.1.0:
+    resolution: {integrity: sha512-0wI4SnHnwncDu7tTa5+Ga49Pk65+GkSkyZUmVnpZ/RDA507THGolZDjbFcFQHc0ruhGuskK/HQiaV/Z2axb5rg==}
     peerDependencies:
-      '@nestjs/common': ^9.3.8 || ^10.0.0
-      '@nestjs/core': ^9.3.8 || ^10.0.0
-      '@trpc/server': ^10.0.0
+      '@nestjs/common': ^9.3.8 || ^10.0.0 || ^11.0.0
+      '@nestjs/core': ^9.3.8 || ^10.0.0 || ^11.0.0
+      '@trpc/server': ^10.0.0 || ^11.0.0
       reflect-metadata: ^0.1.13 || ^0.2.0
-      rxjs: 7.8.1
-      zod: ^3.14.0
+      rxjs: ^7.8.1
+      zod: ^3.14.0 || ^4.0.0
 
   nestjs-zod@5.0.1:
     resolution: {integrity: sha512-IjK99tpK+04UobLJJA5tlHv94Ml3wNWiRr7pRVDFJ62Jy/c/aYhMQa90WKiy7qUcmIDMWyPHQpHQN/MehESOmw==}
@@ -6889,8 +6884,8 @@ packages:
       typescript: '*'
       webpack: ^5.0.0
 
-  ts-morph@22.0.0:
-    resolution: {integrity: sha512-M9MqFGZREyeb5fTl6gNHKZLqBQA0TjA1lea+CR48R8EBTDuWrNqW6ccC5QvjNR4s6wDumD3LTCjOFSp9iwlzaw==}
+  ts-morph@27.0.2:
+    resolution: {integrity: sha512-fhUhgeljcrdZ+9DZND1De1029PrE+cMkIP7ooqkLRTrRLTqcki2AstsyJm0vRNbTbVCNJ0idGlbBrfqc7/nA8w==}
 
   ts-node@10.9.2:
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
@@ -9512,12 +9507,11 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
       typescript: 5.9.3
 
-  '@ts-morph/common@0.23.0':
+  '@ts-morph/common@0.28.1':
     dependencies:
-      fast-glob: 3.3.3
-      minimatch: 9.0.5
-      mkdirp: 3.0.1
+      minimatch: 10.1.1
       path-browserify: 1.0.1
+      tinyglobby: 0.2.15
 
   '@tsconfig/node10@1.0.12': {}
 
@@ -9865,7 +9859,7 @@ snapshots:
 
   '@vercel/analytics@1.6.1(next@16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1))(react@19.2.3)':
     optionalDependencies:
-      next: 16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
+      next: 16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
       react: 19.2.3
 
   '@vercel/otel@2.1.0(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/instrumentation@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))':
@@ -9880,7 +9874,7 @@ snapshots:
 
   '@vercel/speed-insights@1.3.1(next@16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1))(react@19.2.3)':
     optionalDependencies:
-      next: 16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
+      next: 16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
       react: 19.2.3
 
   '@webassemblyjs/ast@1.14.1':
@@ -10243,7 +10237,7 @@ snapshots:
       zod: 4.2.1
     optionalDependencies:
       mongodb: 7.0.0
-      next: 16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
+      next: 16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1)
       pg: 8.16.3
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -12213,8 +12207,6 @@ snapshots:
     dependencies:
       minimist: 1.2.8
 
-  mkdirp@3.0.1: {}
-
   module-details-from-path@1.0.4: {}
 
   mongodb-connection-string-url@7.0.0:
@@ -12305,7 +12297,7 @@ snapshots:
       pino-http: 11.0.0
       rxjs: 7.8.2
 
-  nestjs-trpc-v2@1.0.0(@nestjs/common@11.1.10(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.10)(@trpc/server@11.8.1(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.2)(zod@4.2.1):
+  nestjs-trpc-v2@1.1.0(@nestjs/common@11.1.10(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.10)(@trpc/server@11.8.1(typescript@5.9.3))(reflect-metadata@0.2.2)(rxjs@7.8.2)(zod@4.2.1):
     dependencies:
       '@nestjs/common': 11.1.10(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core': 11.1.10(@nestjs/common@11.1.10(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.1.10)(@nestjs/platform-express@11.1.10)(@nestjs/websockets@11.1.9)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -12313,7 +12305,7 @@ snapshots:
       lodash: 4.17.21
       reflect-metadata: 0.2.2
       rxjs: 7.8.2
-      ts-morph: 22.0.0
+      ts-morph: 27.0.2
       tslib: 2.8.1
       zod: 4.2.1
 
@@ -12332,7 +12324,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-      styled-jsx: 5.1.6(@babel/core@7.28.5)(react@19.2.3)
+      styled-jsx: 5.1.6(react@19.2.3)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.0.10
       '@next/swc-darwin-x64': 16.0.10
@@ -12350,7 +12342,7 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1):
+  next@16.1.1(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.1):
     dependencies:
       '@next/env': 16.1.1
       '@swc/helpers': 0.5.15
@@ -12359,7 +12351,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-      styled-jsx: 5.1.6(@babel/core@7.28.5)(react@19.2.3)
+      styled-jsx: 5.1.6(react@19.2.3)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.1.1
       '@next/swc-darwin-x64': 16.1.1
@@ -13244,12 +13236,10 @@ snapshots:
     dependencies:
       '@tokenizer/token': 0.3.0
 
-  styled-jsx@5.1.6(@babel/core@7.28.5)(react@19.2.3):
+  styled-jsx@5.1.6(react@19.2.3):
     dependencies:
       client-only: 0.0.1
       react: 19.2.3
-    optionalDependencies:
-      '@babel/core': 7.28.5
 
   subscriptions-transport-ws@0.11.0(graphql@16.12.0):
     dependencies:
@@ -13420,9 +13410,9 @@ snapshots:
       typescript: 5.9.3
       webpack: 5.103.0
 
-  ts-morph@22.0.0:
+  ts-morph@27.0.2:
     dependencies:
-      '@ts-morph/common': 0.23.0
+      '@ts-morph/common': 0.28.1
       code-block-writer: 13.0.3
 
   ts-node@10.9.2(@types/node@25.0.3)(typescript@5.9.3):
