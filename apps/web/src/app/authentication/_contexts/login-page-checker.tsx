@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { createContext, PropsWithChildren, useContext, useState } from "react";
-import { StoreCallbackUrl } from "../login/store-callback-url";
+import { StoreCallbackUrl } from "./store-callback-url";
 
 interface ILoginPageCheckerContext {
   isLoginPage: boolean;
