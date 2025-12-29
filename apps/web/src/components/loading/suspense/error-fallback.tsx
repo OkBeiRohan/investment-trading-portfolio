@@ -14,9 +14,9 @@ export default function ErrorFallback(
   const { resetBoundary } = useErrorBoundary();
 
   return (
-    <div className={`${props.className}`}>
+    <div className={props.className}>
       {props.message || "Something went wrong."}
-      {props.error}
+      {`${props.error.cause}`}
       <button onClick={resetBoundary}>Try again</button>
     </div>
   );

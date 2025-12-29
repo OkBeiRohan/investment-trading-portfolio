@@ -1,30 +1,23 @@
-"use client";
-
-import { useState } from "react";
-import InformationPanel from "@/components/auth/layout/information.panel";
 import styles from "./auth.module.css";
-import { usePathname } from "next/navigation";
+import MainAuthFormContainer from "./_components/container";
+import LoginPageCheckerProvider from "./_contexts/login-page-checker";
 
 export default function AuthLayout({
   children,
+  information,
+  header,
+  more,
 }: LayoutProps<"/authentication">) {
-  const pathname = usePathname();
-  const [showForm, setShowForm] = useState(false);
-  const isLoginPage = pathname === "/authentication/login";
-
   return (
-    <div className={styles.authRoot}>
-      <InformationPanel
-        onGetStarted={() => setShowForm(true)}
-        showForm={showForm}
-        isLoginPage={isLoginPage}
-      />
-      <div
-        className={`${styles.formContainer} ${showForm ? styles.formVisible : ""}`}
-        data-show={showForm}
-      >
-        {children}
+    <LoginPageCheckerProvider>
+      <div className={styles.authRoot}>
+        {information}
+        <MainAuthFormContainer>
+          {header}
+          {children}
+          {more}
+        </MainAuthFormContainer>
       </div>
-    </div>
+    </LoginPageCheckerProvider>
   );
 }

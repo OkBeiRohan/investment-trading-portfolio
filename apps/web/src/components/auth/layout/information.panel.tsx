@@ -5,18 +5,11 @@ import styles from "./information-panel.module.css";
 import Link from "next/link";
 import { ChevronRight, Shield, Zap, BarChart3 } from "lucide-react";
 import LogoIcon from "@/assets/logo";
+import { useLoginPageChecker } from "@/app/authentication/_contexts/login-page-checker";
 
-interface InformationPanelProps {
-  onGetStarted?: () => void;
-  showForm?: boolean;
-  isLoginPage?: boolean;
-}
+export default function InformationPanel() {
+  const { isLoginPage, showForm, getStarted } = useLoginPageChecker();
 
-export default function InformationPanel({
-  onGetStarted,
-  showForm,
-  isLoginPage,
-}: InformationPanelProps) {
   return (
     <div
       className={styles.informationPanel}
@@ -78,7 +71,7 @@ export default function InformationPanel({
       {/* Bottom Section: CTA Button */}
       <div className={styles.ctaContainer}>
         {isLoginPage ? (
-          <button onClick={onGetStarted} className={styles.ctaButton}>
+          <button onClick={getStarted} className={styles.ctaButton}>
             Get Started
             <ChevronRight size={20} />
           </button>

@@ -1,0 +1,32 @@
+.authHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-primary);
+  transition: color var(--transition-base);
+  background: linear-gradient(
+    135deg,
+    var(--color-text-primary),
+    var(--color-primary)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-top: calc(var(--spacing-md) * -1);
+  margin-bottom: var(--spacing-sm);
+  transition: color var(--transition-base);
+}

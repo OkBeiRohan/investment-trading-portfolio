@@ -5,9 +5,10 @@ import GoogleIcon from "@/components/icons/brands/Google";
 import { authClient } from "@/lib/auth/auth-client";
 import { Mail, Fingerprint, User, Phone } from "lucide-react";
 import { useState } from "react";
-import styles from "./more-login.module.css";
+import styles from "./more-options.module.css";
 import Link from "next/link";
 import { handleAuthSuccess } from "@/lib/actions/authentication";
+import Divider from "@/components/form/divider";
 
 export default function MoreLoginOptions() {
   const [loading, setLoading] = useState(false);
@@ -78,6 +79,7 @@ export default function MoreLoginOptions() {
 
   return (
     <div className={styles.moreContainer}>
+      <Divider text="Or continue with" />
       <div className={styles.altLogins}>
         <Link
           href="/authentication/email-otp"
