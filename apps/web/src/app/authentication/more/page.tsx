@@ -1,7 +1,7 @@
-import styles from "./page.module.css";
+import styles from "./more.module.css";
 
-export default function MoreLoginPage(
-  props: PageProps<"/authentication/more">
-) {
+export default async function MoreLoginPage({
+  searchParams,
+}: PageProps<"/authentication/more">) {
   return <div className={styles.container}>More Login Page</div>;
 }
