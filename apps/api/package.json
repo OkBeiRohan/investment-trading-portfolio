@@ -35,7 +35,7 @@
     "@repo/schema": "workspace:*",
     "@trpc/server": "^11.8.1",
     "nestjs-trpc-v2": "^1.1.0",
-    "nestjs-zod": "^5.0.1",
+    "nestjs-zod": "^5.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.2.1"
