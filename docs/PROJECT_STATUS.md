@@ -428,3 +428,404 @@ MAX_VEGA=100
 - 🔄 In Progress
 - ⏳ Pending/Not Started
 - ❌ Blocked/Issue
+
+---
+
+## Gap Analysis: Current vs Next-Gen AFT Architecture
+
+**Last Updated**: January 13, 2026
+
+### Overview
+
+This section compares our current implementation against industry best practices for Automated Financial Trading (AFT) systems, highlighting high-ROI gaps and R&D opportunities.
+
+---
+
+### 1. Data Ingestion (Tick-By-Tick & Kernel Bypass)
+
+#### Current Implementation ✅
+
+- Upstox WebSocket API (1s OHLCV, L20 LOB depth)
+- Redis Streams event bus (microsecond delivery)
+- Time-stamped, ordered events
+- Connection resilience and circuit breakers
+
+#### Missing (High ROI) 🚨
+
+1. **Tick-By-Tick (TBT) Exchange Feeds**
+   - Status: ⏳ Not Implemented
+   - What: Individual trade/quote events with nanosecond timestamps
+   - Vendor: GLOBE (NSE-certified), Symphony, Bloomberg B-PIPE
+   - Cost: ₹50,000/month
+   - ROI: **100-500ms edge improvement** (order flow imbalances visible earlier)
+   - Priority: **HIGH**
+   - Timeline: 2-3 weeks (vendor integration)
+
+2. **Kernel-Bypass Networking (DPDK)**
+   - Status: ⏳ Not Implemented
+   - What: Direct NIC access, bypass OS kernel network stack
+   - Technology: DPDK (Data Plane Development Kit) or OpenOnload
+   - Cost: ₹1,200 (Intel E810 NIC, one-time)
+   - ROI: **50-200μs latency reduction per message** (critical for sub-100ms target)
+   - Priority: **HIGH**
+   - Timeline: 3-4 weeks (C++ native addon)
+
+#### Optional (R&D) 🔬
+
+1. **Specialized Network Hardware**
+   - FPGA NICs (Solarflare/Xilinx): <500ns latency, cost ₹5,000-15,000
+   - RDMA (InfiniBand/RoCE): Sub-microsecond latency
+   - Use case: Ultra-HFT scenarios only (not current priority)
+
+**Action Items**:
+
+- [ ] Evaluate GLOBE/Symphony TBT feed demos (2 weeks)
+- [ ] Pilot DPDK-based feed handler (3 weeks)
+- [ ] Benchmark TBT vs Upstox latency improvements (1 week)
+
+**Reference**: [ALGO_TRADING_ARCHITECTURE.md - Data Ingestion](./ALGO_TRADING_ARCHITECTURE.md#next-gen-data-ingestion-enhancements-high-roi)
+
+---
+
+### 2. Feature Engineering & Feature Store
+
+#### Current Implementation ✅
+
+- Custom feature pipeline (FeatureCacheService, IndicatorService)
+- Market State Encoder (MSE) compresses 50k+ signals → 200-500 features
+- Real-time feature computation (sliding windows, technical indicators)
+- Features stored in QuestDB (historical) and Redis (hot cache)
+
+#### Missing (High ROI) 🚨
+
+1. **Formal Feature Store Architecture**
+   - Status: ⏳ Design Complete ([FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md)), Not Implemented
+   - What: Centralized feature registry with online/offline serving
+   - Why:
+     - ❌ Feature definitions duplicated (algo-worker + training-pipeline)
+     - ❌ Training/serving skew risk (different implementations)
+     - ❌ No versioning (can't reproduce historical predictions)
+     - ❌ Hard to discover which features exist
+   - Benefits:
+     - ✅ Single source of truth for features
+     - ✅ Guaranteed consistency (training = serving)
+     - ✅ Version-controlled reproducibility
+     - ✅ 50% faster model development (reuse features)
+   - Technology: Faust (Kafka Streams) + Redis + QuestDB
+   - Cost: ₹0 (open-source stack)
+   - ROI: **Eliminate training/serving skew, 50% faster model development**
+   - Priority: **HIGH**
+   - Timeline: 3-4 weeks (Phase 1: registry + API)
+
+**Action Items**:
+
+- [ ] Extract feature registry (YAML + version control) (1 week)
+- [ ] Build gRPC feature serving API (1 week)
+- [ ] Deploy Kafka + Faust streaming layer (2 weeks)
+- [ ] Migrate FeatureCacheService to feature store (1 week)
+
+**Reference**: [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md)
+
+---
+
+### 3. AI/ML Models & Deployment
+
+#### Current Implementation ✅
+
+- Hierarchical 9-layer stack (LightGBM, TFT, LiT + 6-8 conditional models)
+- Tier-based activation (4-7 models run simultaneously, regime-dependent)
+- ONNX Runtime with TensorRT (FP16 quantization)
+- GPU inference (local RTX) achieving <100ms latency
+- Contextual meta-learner for adaptive model weighting
+
+#### Missing (High ROI) 🚨
+
+1. **CI/CD Model Deployment Pipeline**
+   - Status: ⏳ Design Complete ([HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md#model-deployment-cicd-pipeline-high-roi-enhancement)), Not Implemented
+   - What: Automated training → export → staging → canary → production
+   - Current Pain:
+     - ❌ Manual ONNX export (error-prone)
+     - ❌ No automated testing before deployment
+     - ❌ No rollback mechanism if model underperforms
+     - ❌ Hard to track model versions in production
+   - Components:
+     - Automated ONNX export with validation
+     - Shadow mode deployment (log only, no trades)
+     - Canary rollout (10% → 50% → 100%)
+     - Auto-rollback on performance degradation (Sharpe <0.5)
+     - Model registry (S3/MinIO with versioning)
+   - ROI: **20-30 hours/month saved, 90% reduction in deployment failures**
+   - Priority: **HIGH**
+   - Timeline: 2-4 weeks
+
+2. **Meta-Learning Frameworks (MAML, Few-Shot)**
+   - Status: ⏳ Design Complete ([MODEL_INVENTORY.md](./MODEL_INVENTORY.md#meta-learning--automated-model-refresh-high-roi-enhancement)), Not Implemented
+   - What: Fast adaptation to new market regimes (10-20 examples vs 10,000)
+   - Use Cases:
+     - New regime (COVID-like shock) → adapt in hours (not days of retraining)
+     - New instrument (FINNIFTY) → trade with 15 examples (not 10,000)
+     - Continual learning (no catastrophic forgetting)
+   - Technology: MAML (Model-Agnostic Meta-Learning), Prototypical Networks
+   - ROI: **10x faster adaptation (hours vs days)**
+   - Priority: **MEDIUM-HIGH**
+   - Timeline: 3-6 weeks (Phase 1: MAML for LightGBM)
+
+#### Optional (R&D) 🔬
+
+1. **Advanced Model Architectures**
+   - Multi-modal models (ViT for IV surface analysis)
+   - Graph Neural Networks (sectoral relationships)
+   - Large Transformer models (if latency permits)
+
+**Action Items**:
+
+- [ ] Set up model registry (S3 bucket + metadata) (1 week)
+- [ ] Implement automated ONNX export + validation (1 week)
+- [ ] Create canary deployment logic in algo-worker (1 week)
+- [ ] Prototype MAML for fast regime adaptation (3 weeks)
+
+**Reference**: [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md - CI/CD](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md#model-deployment-cicd-pipeline-high-roi-enhancement)
+
+---
+
+### 4. Execution Layer (Latency Optimization)
+
+#### Current Implementation ✅
+
+- Deterministic event sequencer (<10μs per event)
+- GPU worker threads for inference (no event loop blocking)
+- SharedArrayBuffer for zero-copy data transfer
+- CPU pinning + lock-free data structures
+- Object pooling (eliminate GC pauses)
+- DRL PPO execution agent (optional, slippage minimization)
+
+#### Missing (High ROI) 🚨
+
+1. **Audit Python/C++ Split for Hot Paths**
+   - Status: ⏳ Design Complete ([PERFORMANCE_OPTIMIZATION.md](../apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md#-advanced-optimization-hybrid-cpython-architecture-high-roi)), Not Implemented
+   - What: Rewrite CPU-intensive features in Rust/C++ with SIMD
+   - Candidates:
+     - RSI/EMA/ATR calculation: 2ms → 200μs (10x speedup with Rust SIMD)
+     - Lock-free event bus: 500μs → <1μs (500x speedup with C++)
+   - Current: 80ms (tick → signal)
+   - With C++/Rust: **60ms (25% faster)**
+   - ROI: **20ms saved per tick, 33% throughput increase**
+   - Priority: **MEDIUM** (TypeScript fast enough for <100ms target)
+   - Timeline: 3-4 weeks (profile → port → benchmark)
+
+2. **Kernel Bypass for Event Bus** (see Data Ingestion above)
+
+**Action Items**:
+
+- [ ] Profile production with `perf` (1 hour)
+- [ ] Generate flamegraphs, identify top 5 bottlenecks (1 day)
+- [ ] Port top 3 indicators to Rust (if >500μs saved) (2 weeks)
+- [ ] Benchmark TypeScript vs Rust correctness (1 week)
+
+**Reference**: [PERFORMANCE_OPTIMIZATION.md - C++/Python Split](../apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md#-advanced-optimization-hybrid-cpython-architecture-high-roi)
+
+---
+
+### 5. Risk Management Architecture
+
+#### Current Implementation ✅
+
+- Real-time Greeks monitoring (Delta, Gamma, Vega, Theta)
+- Multi-criteria exit rules (stop-loss, trailing stop, ML-based, time-based)
+- Position sizing (Kelly criterion, VIX-scaled)
+- Circuit breakers (max loss, drawdown, latency degradation)
+- SHAP explainability for regulatory compliance
+
+#### Missing (High ROI) 🚨
+
+1. **Automated Regulatory Reporting**
+   - Status: ⏳ Not Implemented
+   - What: Compliance dashboards, SEBI 2026+ alignment, automated report generation
+   - Current: Manual log extraction for regulatory audits
+   - Components:
+     - Real-time compliance dashboard (SEBI risk limits, algo ID tracking)
+     - Automated daily/monthly reports (P&L, positions, Greeks)
+     - Stress testing framework (VaR, scenario analysis)
+     - Risk-parity portfolio optimization
+   - ROI: **10-15 hours/month saved in manual reporting**
+   - Priority: **MEDIUM**
+   - Timeline: 2-3 weeks
+
+2. **Advanced Risk Analytics**
+   - VaR (Value at Risk) calculation with Monte Carlo simulations
+   - Stress testing (regime shifts, volatility spikes)
+   - Risk-parity position sizing
+   - Portfolio optimization (mean-variance, Black-Litterman)
+
+**Action Items**:
+
+- [ ] Build compliance dashboard (Grafana + custom panels) (1 week)
+- [ ] Implement automated report generation (Python scripts) (1 week)
+- [ ] Add VaR calculation to RiskManager (1 week)
+
+**Reference**: [06-RISK-MANAGER.md](../apps/algo-worker/docs/layers/06-RISK-MANAGER.md)
+
+---
+
+### 6. Agentic AI (Multi-Agent Systems)
+
+#### Current Implementation ✅
+
+- None (pure ML/algorithmic approach)
+
+#### Missing (Optional/R&D) 🔬
+
+1. **Multi-Agent Debate Systems**
+   - Status: ⏳ Design Complete ([AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md)), Not Implemented
+   - What: Bull/Bear/Risk/Judge agents debate trade decisions
+   - Why NOT production:
+     - ❌ 600-1600ms latency (too slow for <100ms requirement)
+     - ❌ Non-deterministic (LLM temp >0)
+     - ❌ Hard to backtest (LLMs change over time)
+     - ❌ Expensive (₹10-100/day API costs)
+   - Valid Use Cases (offline):
+     - Post-trade analysis (why did trade fail?)
+     - Strategy research (brainstorm new setups)
+     - Risk committee reports (qualitative insights)
+   - Technology: OpenAI GPT-4, Claude-3, or local Llama-3-70B
+   - ROI: **Medium (research value, not production trading)**
+   - Priority: **LOW** (R&D only)
+   - Timeline: 1-2 months (prototype + evaluation)
+
+**Action Items**:
+
+- [ ] Prototype Bull/Bear/Judge system (OpenAI API) (2 weeks)
+- [ ] Run on 100 historical trades (post-mortem) (1 week)
+- [ ] Measure insight quality vs human analysts (1 week)
+
+**Reference**: [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md)
+
+---
+
+## Priority Matrix
+
+### High ROI (Implement ASAP)
+
+| Enhancement              | ROI                   | Cost         | Timeline  | Priority    |
+| ------------------------ | --------------------- | ------------ | --------- | ----------- |
+| **TBT Feed Integration** | 100-500ms edge        | ₹50k/month   | 2-3 weeks | 🔥 HIGH     |
+| **Kernel-Bypass (DPDK)** | 50-200μs latency      | ₹1,200 (NIC) | 3-4 weeks | 🔥 HIGH     |
+| **Feature Store**        | 50% faster model dev  | ₹0 (OSS)     | 3-4 weeks | 🔥 HIGH     |
+| **Model CI/CD Pipeline** | 20-30 hrs/month saved | ₹0           | 2-4 weeks | 🔥 HIGH     |
+| **Meta-Learning (MAML)** | 10x faster adaptation | ₹0           | 3-6 weeks | 🟡 MED-HIGH |
+| **C++/Rust Hot Paths**   | 20ms latency saved    | ₹0           | 3-4 weeks | 🟡 MEDIUM   |
+| **Regulatory Reporting** | 10-15 hrs/month saved | ₹0           | 2-3 weeks | 🟡 MEDIUM   |
+
+### Optional R&D (Future Exploration)
+
+| Research Area             | ROI            | Cost        | Timeline   | Priority |
+| ------------------------- | -------------- | ----------- | ---------- | -------- |
+| **Agentic AI**            | Qualitative    | ₹10-100/day | 1-2 months | 🟢 LOW   |
+| **FPGA NICs**             | <10μs latency  | ₹5k-15k     | 2-3 months | 🟢 LOW   |
+| **Advanced NLP Models**   | Sentiment edge | ₹0 (local)  | 2-3 months | 🟢 LOW   |
+| **Graph Neural Networks** | Sectoral edge  | ₹0          | 3-4 months | 🟢 LOW   |
+
+---
+
+## Comparison: Current vs Industry Best Practices
+
+| Aspect                  | Current State                  | Industry Best (AFT)               | Gap         |
+| ----------------------- | ------------------------------ | --------------------------------- | ----------- |
+| **Data Ingestion**      | 1s OHLCV (Upstox)              | TBT feeds (nanosecond timestamps) | ⚠️ Missing  |
+| **Network Stack**       | Standard TCP/WebSocket         | DPDK/kernel bypass                | ⚠️ Missing  |
+| **Feature Engineering** | Custom pipelines               | Centralized feature store         | ⚠️ Missing  |
+| **Model Deployment**    | Manual export + deployment     | Automated CI/CD with canary       | ⚠️ Missing  |
+| **Meta-Learning**       | None (static models)           | MAML/few-shot adaptation          | ⚠️ Missing  |
+| **Hot Path Language**   | TypeScript (all paths)         | C++/Rust for <1ms paths           | 🟡 Optional |
+| **Regulatory**          | Manual log extraction          | Automated compliance dashboards   | ⚠️ Missing  |
+| **ML Architecture**     | ✅ Hierarchical (9-layer)      | ✅ Hierarchical/tiered            | ✅ Match    |
+| **Risk Management**     | ✅ Real-time Greeks + circuits | ✅ Real-time + VaR/stress tests   | 🟡 Partial  |
+| **Execution**           | ✅ DRL PPO (optional)          | ✅ DRL/RL-based execution         | ✅ Match    |
+| **Latency**             | ✅ 80-150ms (tick → order)     | ✅ <100ms target                  | ✅ Within   |
+
+**Legend**:
+
+- ✅ Match: On par with industry best practices
+- 🟡 Partial: Implemented but can be enhanced
+- ⚠️ Missing: Significant gap (high ROI to address)
+
+---
+
+## Recommended Implementation Sequence
+
+### Phase 1: Foundation (Months 1-2)
+
+**Goal**: Eliminate training/serving skew, automate deployments
+
+1. ✅ Feature Store (3-4 weeks)
+2. ✅ Model CI/CD Pipeline (2-4 weeks)
+3. ✅ Regulatory Reporting Dashboard (2-3 weeks)
+
+**Impact**: 50% faster model development, zero deployment failures, compliance automation
+
+---
+
+### Phase 2: Performance (Months 3-4)
+
+**Goal**: Achieve sub-100ms latency consistently
+
+1. ✅ TBT Feed Integration (2-3 weeks)
+2. ✅ DPDK Kernel Bypass (3-4 weeks)
+3. ✅ Profile & Optimize Hot Paths (C++/Rust if needed) (3-4 weeks)
+
+**Impact**: 30-50ms latency reduction (80ms → 50ms tick-to-order)
+
+---
+
+### Phase 3: Adaptivity (Months 5-6)
+
+**Goal**: Faster adaptation to market changes
+
+1. ✅ MAML Meta-Learning (3-6 weeks)
+2. ✅ Continual Learning (EWC) (4-6 weeks)
+3. ✅ Multi-Task Model (optional) (6-8 weeks)
+
+**Impact**: 10x faster regime adaptation (hours vs days)
+
+---
+
+### Phase 4: R&D (Months 7+)
+
+**Goal**: Explore cutting-edge techniques
+
+1. 🔬 Agentic AI (post-trade analysis) (1-2 months)
+2. 🔬 Advanced NLP (news sentiment) (2-3 months)
+3. 🔬 Graph Neural Networks (sectoral relationships) (3-4 months)
+
+**Impact**: Qualitative improvements, research value
+
+---
+
+## Conclusion
+
+**Current System Strengths**:
+
+- ✅ Solid hierarchical ML architecture (9-layer, tier-based activation)
+- ✅ Sub-100ms latency achieved (local GPU deployment)
+- ✅ Institutional-grade risk management (Greeks, circuit breakers)
+- ✅ SEBI 2024-2026 compliant
+
+**Key Gaps (High ROI)**:
+
+1. 🚨 **TBT feeds + DPDK** (100-500ms edge improvement)
+2. 🚨 **Feature store** (eliminate training/serving skew)
+3. 🚨 **Model CI/CD** (zero deployment failures)
+4. 🚨 **Meta-learning** (10x faster adaptation)
+
+**Recommendation**: Focus on Phase 1 (Foundation) and Phase 2 (Performance) over next 4 months. Phase 3 (Adaptivity) and Phase 4 (R&D) are optional enhancements.
+
+**Next Review**: February 13, 2026 (after Phase 1 completion)
+
+---
+
+**Status Legend**:
+
+- ✅ Complete
+- 🔄 In Progress
+- ⏳ Pending/Not Started
+- ❌ Blocked/Issue

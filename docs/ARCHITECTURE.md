@@ -330,6 +330,41 @@ interface SEBICompliantOrder {
 
 ---
 
+## Future Enhancements & R&D Opportunities
+
+### High-ROI Enhancements (Recommended for Implementation)
+
+See [PROJECT_STATUS.md - Gap Analysis](./PROJECT_STATUS.md#gap-analysis-current-vs-next-gen-aft-architecture) for detailed implementation roadmap:
+
+1. **Tick-by-Tick Feeds** (100-500ms edge improvement) - HIGH PRIORITY
+   - See [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md#next-gen-data-ingestion-enhancements-high-roi) for vendor options
+2. **Feature Store** (eliminate training/serving skew) - HIGH PRIORITY
+   - See [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md) for architecture
+3. **Model CI/CD Pipeline** (zero deployment failures) - HIGH PRIORITY
+   - See [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md#model-deployment-cicd-pipeline-high-roi-enhancement) for automation
+4. **Meta-Learning (MAML)** (10x faster regime adaptation) - MEDIUM-HIGH PRIORITY
+   - See [MODEL_INVENTORY.md](./MODEL_INVENTORY.md#meta-learning--automated-model-refresh-high-roi-enhancement) for frameworks
+
+### Optional R&D (Non-Production Exploration)
+
+5. **Agentic AI Multi-Agent Systems** (R&D ONLY - NOT FOR PRODUCTION)
+   - **Use Case**: Post-trade analysis, strategy research (qualitative insights)
+   - **Why NOT Production**: 600-1600ms latency (too slow for <100ms trading requirement), non-deterministic
+   - **Status**: Research prototype only
+   - See [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md) for design and limitations
+
+6. **Advanced NLP for News Sentiment** (R&D)
+   - Real-time news analysis for event-driven strategies
+   - FinBERT, Bloomberg GPT integration
+
+7. **Graph Neural Networks** (R&D)
+   - Sectoral relationship modeling
+   - Cross-instrument correlation prediction
+
+**Note**: All R&D items marked as OPTIONAL due to latency/determinism constraints. Focus should remain on HIGH-ROI enhancements (1-4) that directly improve production trading performance.
+
+---
+
 ## References
 
 1. _Event-Driven Architecture for HFT_ - Medium, 2024
@@ -338,8 +373,10 @@ interface SEBICompliantOrder {
 4. _QuestDB vs TimescaleDB Benchmark 2025_ - Database Performance Study
 5. _ONNX Runtime Execution Providers_ - Microsoft AI, 2024
 6. _Kernel Bypass Techniques_ - High-Performance Networking
+7. _Multi-Agent Debate Systems for Trading_ - [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md) (R&D only)
+8. _Next-Gen AFT Architecture Comparative Analysis_ - [PROJECT_STATUS.md](./PROJECT_STATUS.md#gap-analysis-current-vs-next-gen-aft-architecture)
 
 ---
 
-**Last Updated**: November 29, 2025
+**Last Updated**: January 13, 2026
 **Status**: Production-Ready Architecture

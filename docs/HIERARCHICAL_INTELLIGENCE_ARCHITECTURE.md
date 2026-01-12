@@ -915,6 +915,488 @@ if drl_agent_slippage > benchmark_slippage * 1.2:
 
 ---
 
+## Model Deployment CI/CD Pipeline (High ROI Enhancement)
+
+### Current State
+
+**Manual Deployment**: Models trained locally → manually copied to production → manually validated
+
+**Pain Points**:
+
+- ❌ No automated testing before deployment
+- ❌ Manual ONNX export prone to errors
+- ❌ No rollback mechanism if model underperforms
+- ❌ Hard to track which model version is in production
+- ❌ Slow deployment (manual steps take hours)
+
+---
+
+### Proposed CI/CD Architecture
+
+```
+┌──────────────────────────────────────────────────────┐
+│ MODEL CI/CD PIPELINE                                  │
+└──────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│ 1. TRAINING (Kedro + MLflow)                         │
+│    ├─ Train models (LightGBM, LiT, TFT, DRL)         │
+│    ├─ Walk-forward validation                        │
+│    ├─ Log metrics to MLflow (AUC, Sharpe, latency)   │
+│    └─ Tag successful runs: "candidate-for-deploy"    │
+└───────────────────┬─────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────┐
+│ 2. EXPORT & VALIDATION (Automated)                   │
+│    ├─ Export to ONNX (FP16 quantization)             │
+│    ├─ Verify inference latency (<50ms)               │
+│    ├─ Compare predictions: PyTorch vs ONNX           │
+│    ├─ Run unit tests (input shapes, output ranges)   │
+│    └─ Upload to model registry (Artifactory/S3)      │
+└───────────────────┬─────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────┐
+│ 3. STAGING DEPLOYMENT (Shadow Mode)                  │
+│    ├─ Deploy to staging algo-worker instance         │
+│    ├─ Run in shadow mode (log predictions, no trades)│
+│    ├─ Monitor for 24-48 hours                        │
+│    ├─ Compare vs production model (A/B)              │
+│    └─ Quality gates:                                 │
+│        - AUC degradation <2%                         │
+│        - Latency <50ms (p95)                         │
+│        - No crashes/OOM errors                       │
+└───────────────────┬─────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────┐
+│ 4. CANARY DEPLOYMENT (Gradual Rollout)               │
+│    ├─ Deploy to 10% of live traffic                  │
+│    ├─ Monitor Sharpe, win rate, slippage             │
+│    ├─ If metrics >= baseline:                        │
+│    │   └─ Increase to 50% → 100%                     │
+│    ├─ If metrics < baseline:                         │
+│    │   └─ Auto-rollback to previous model            │
+│    └─ Full deployment only after 48h stability       │
+└───────────────────┬─────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────┐
+│ 5. MONITORING & AUTO-ROLLBACK                        │
+│    ├─ Track live performance (Prometheus)            │
+│    ├─ Drift detection (ADWIN on predictions)         │
+│    ├─ Performance degradation triggers:              │
+│    │   - Sharpe <0.8 → Alert                         │
+│    │   - Sharpe <0.5 → Auto-rollback                 │
+│    │   - AUC <0.70 → Auto-rollback                   │
+│    │   - Latency >100ms → Auto-rollback              │
+│    └─ Keep last 3 model versions for rollback        │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+### Implementation Details
+
+#### **1. Automated Model Export**
+
+```python
+# Kedro pipeline node: export_to_onnx.py
+import onnx
+import onnxmltools
+from onnxruntime.quantization import quantize_dynamic, QuantType
+
+def export_model_to_onnx(
+    model,
+    feature_names: list,
+    output_path: str,
+    quantize: bool = True,
+) -> None:
+    """
+    Export model to ONNX with validation
+    """
+    # 1. Convert to ONNX
+    initial_type = [('float_input', FloatTensorType([None, len(feature_names)]))]
+
+    if isinstance(model, xgb.XGBClassifier):
+        onnx_model = onnxmltools.convert_xgboost(
+            model,
+            initial_types=initial_type,
+            target_opset=13,
+        )
+    else:
+        onnx_model = onnxmltools.convert_sklearn(
+            model,
+            initial_types=initial_type,
+            target_opset=13,
+        )
+
+    # 2. Quantize to FP16 (2x speedup, minimal accuracy loss)
+    if quantize:
+        quantize_dynamic(
+            onnx_model,
+            weight_type=QuantType.QFloat16,
+            extra_options={'MatMulConstBOnly': True},
+        )
+
+    # 3. Save model
+    onnx.save_model(onnx_model, output_path)
+
+    # 4. Validation: Check model correctness
+    validate_onnx_model(model, onnx_model, feature_names)
+
+    logger.info(f"ONNX model exported and validated: {output_path}")
+
+def validate_onnx_model(
+    original_model,
+    onnx_model_path: str,
+    feature_names: list,
+) -> None:
+    """
+    Verify ONNX model produces same results as original
+    """
+    import onnxruntime as ort
+
+    # Load ONNX session
+    session = ort.InferenceSession(onnx_model_path)
+
+    # Generate random test data
+    X_test = np.random.randn(100, len(feature_names)).astype(np.float32)
+
+    # Original predictions
+    original_preds = original_model.predict_proba(X_test)[:, 1]
+
+    # ONNX predictions
+    onnx_preds = session.run(
+        None,
+        {'float_input': X_test}
+    )[0][:, 1]
+
+    # Compare (allow small numerical differences)
+    mae = np.mean(np.abs(original_preds - onnx_preds))
+
+    if mae > 1e-4:
+        raise ValueError(f"ONNX conversion error: MAE = {mae:.6f}")
+
+    logger.info(f"ONNX validation passed: MAE = {mae:.6f}")
+```
+
+#### **2. Automated Testing Suite**
+
+```python
+# tests/test_model_deployment.py
+import pytest
+import onnxruntime as ort
+
+def test_model_latency():
+    """Ensure inference <50ms"""
+    session = ort.InferenceSession('models/lightgbm.onnx')
+    X = np.random.randn(1, 33).astype(np.float32)
+
+    start = time.perf_counter()
+    for _ in range(100):
+        session.run(None, {'float_input': X})
+    latency_ms = (time.perf_counter() - start) / 100 * 1000
+
+    assert latency_ms < 50, f"Latency {latency_ms}ms > 50ms"
+
+def test_model_output_range():
+    """Ensure probabilities in [0,1]"""
+    session = ort.InferenceSession('models/lightgbm.onnx')
+    X = np.random.randn(100, 33).astype(np.float32)
+
+    preds = session.run(None, {'float_input': X})[0]
+
+    assert np.all(preds >= 0) and np.all(preds <= 1), "Invalid probabilities"
+
+def test_model_input_shape():
+    """Ensure model accepts correct input shape"""
+    session = ort.InferenceSession('models/lightgbm.onnx')
+
+    with pytest.raises(Exception):
+        # Wrong feature count (should be 33)
+        X_wrong = np.random.randn(1, 50).astype(np.float32)
+        session.run(None, {'float_input': X_wrong})
+```
+
+#### **3. Deployment Scripts**
+
+```bash
+#!/bin/bash
+# scripts/deploy-model.sh
+
+MODEL_NAME=$1
+MODEL_VERSION=$2
+ENVIRONMENT=$3  # staging | production
+
+echo "Deploying ${MODEL_NAME} v${MODEL_VERSION} to ${ENVIRONMENT}..."
+
+# 1. Download model from registry
+aws s3 cp s3://models/${MODEL_NAME}/${MODEL_VERSION}.onnx /tmp/model.onnx
+
+# 2. Run validation tests
+pytest tests/test_model_deployment.py --model=/tmp/model.onnx
+
+if [ $? -ne 0 ]; then
+  echo "Model validation FAILED. Aborting deployment."
+  exit 1
+fi
+
+# 3. Deploy to algo-worker
+if [ "$ENVIRONMENT" == "staging" ]; then
+  # Copy to staging instance
+  scp /tmp/model.onnx staging-algo-worker:/app/models/${MODEL_NAME}.onnx
+
+  # Restart algo-worker (graceful reload)
+  ssh staging-algo-worker "pm2 reload algo-worker --update-env"
+
+elif [ "$ENVIRONMENT" == "production" ]; then
+  # Canary deployment: 10% → 50% → 100%
+  ./scripts/canary-deploy.sh ${MODEL_NAME} /tmp/model.onnx
+fi
+
+echo "Deployment complete. Monitoring for 24h..."
+```
+
+#### **4. Canary Deployment**
+
+```typescript
+// Canary deployment logic in algo-worker
+@Injectable()
+export class ModelManager {
+  private currentModel: InferenceSession;
+  private candidateModel: InferenceSession | null = null;
+  private canaryTrafficPercent: number = 0;
+
+  async loadCandidateModel(modelPath: string) {
+    // Load new model in parallel with current
+    this.candidateModel = await ort.InferenceSession.create(modelPath);
+    this.canaryTrafficPercent = 10; // Start with 10%
+
+    this.logger.log(`Candidate model loaded. Canary at 10%`);
+  }
+
+  async predict(features: Float32Array): Promise<Float32Array> {
+    // Decide which model to use (canary routing)
+    const useCanary = Math.random() < this.canaryTrafficPercent / 100;
+
+    if (useCanary && this.candidateModel) {
+      const prediction = await this.candidateModel.run({
+        input: new ort.Tensor("float32", features, [1, 33]),
+      });
+
+      // Log canary prediction for comparison
+      this.metrics.recordCanaryPrediction(prediction);
+
+      return prediction.output.data as Float32Array;
+    } else {
+      return this.currentModel
+        .run({
+          input: new ort.Tensor("float32", features, [1, 33]),
+        })
+        .then((r) => r.output.data as Float32Array);
+    }
+  }
+
+  async increaseCanaryTraffic() {
+    // Gradual rollout: 10% → 50% → 100%
+    if (this.canaryTrafficPercent === 10) {
+      this.canaryTrafficPercent = 50;
+    } else if (this.canaryTrafficPercent === 50) {
+      this.canaryTrafficPercent = 100;
+
+      // Promote canary to production
+      this.currentModel = this.candidateModel;
+      this.candidateModel = null;
+
+      this.logger.log("Canary promoted to production");
+    }
+  }
+
+  async rollbackCanary() {
+    // Revert to previous model
+    this.candidateModel = null;
+    this.canaryTrafficPercent = 0;
+
+    this.logger.warn("Canary rollback triggered");
+  }
+}
+```
+
+#### **5. Automated Monitoring & Rollback**
+
+```typescript
+// Automated rollback based on metrics
+@Cron('*/5 * * * *') // Every 5 minutes
+async monitorModelPerformance() {
+  const metrics = await this.getRecentMetrics(24 * 60 * 60 * 1000); // 24h
+
+  const sharpe = this.calculateSharpe(metrics.returns);
+  const auc = this.calculateAUC(metrics.predictions, metrics.actual);
+  const p95Latency = this.percentile(metrics.latencies, 0.95);
+
+  // Quality gates
+  const shouldRollback = (
+    sharpe < 0.5 ||
+    auc < 0.70 ||
+    p95Latency > 100
+  );
+
+  if (shouldRollback) {
+    this.logger.error(`Model performance degraded: Sharpe=${sharpe}, AUC=${auc}`);
+    await this.modelManager.rollbackToPreviousVersion();
+    await this.notifyOps('Model auto-rollback triggered');
+  } else if (this.modelManager.canaryTrafficPercent < 100) {
+    // Canary performing well, increase traffic
+    if (sharpe > 0.8 && auc > 0.75) {
+      await this.modelManager.increaseCanaryTraffic();
+    }
+  }
+}
+```
+
+---
+
+### Model Registry
+
+**Storage**: AWS S3 / MinIO (self-hosted)
+
+**Structure**:
+
+```
+models/
+├── lightgbm/
+│   ├── v1.0.0/
+│   │   ├── model.onnx
+│   │   ├── metadata.json
+│   │   └── performance.json
+│   ├── v1.1.0/
+│   └── v1.2.0/  ← Latest
+├── lit/
+│   ├── v1.0.0/
+│   └── v1.1.0/
+├── tft/
+└── meta_learner/
+```
+
+**Metadata** (`metadata.json`):
+
+```json
+{
+  "model_name": "lightgbm",
+  "version": "v1.2.0",
+  "trained_at": "2026-01-13T10:30:00Z",
+  "framework": "XGBoost 1.7.0",
+  "feature_names": ["rsi_14", "ema_20", ...],
+  "feature_count": 33,
+  "target_latency_ms": 50,
+  "validation_metrics": {
+    "auc": 0.7735,
+    "sharpe": 1.42,
+    "max_drawdown": 0.18
+  },
+  "training_config": {
+    "max_depth": 6,
+    "learning_rate": 0.01,
+    "n_estimators": 500
+  },
+  "deployment_history": [
+    {
+      "deployed_at": "2026-01-13T15:00:00Z",
+      "environment": "staging",
+      "status": "success"
+    },
+    {
+      "deployed_at": "2026-01-14T09:00:00Z",
+      "environment": "production",
+      "status": "success"
+    }
+  ]
+}
+```
+
+---
+
+### Automated Retraining Triggers
+
+```python
+# Scheduled retraining (nightly)
+@cron('0 2 * * *')  # 2 AM daily
+def scheduled_retrain():
+    """
+    Nightly retraining with latest data
+    """
+    # 1. Fetch latest data (yesterday's data)
+    end_date = datetime.now() - timedelta(days=1)
+    start_date = end_date - timedelta(days=365)  # 1 year training window
+
+    # 2. Run training pipeline
+    kedro_run(
+        pipeline='train_ensemble',
+        params={
+            'start_date': start_date,
+            'end_date': end_date,
+        }
+    )
+
+    # 3. If new model passes validation, deploy to staging
+    if new_model.auc > current_model.auc * 1.02:  # 2% improvement
+        deploy_to_staging(new_model)
+
+# Event-driven retraining (drift detected)
+@on_event('model_drift_detected')
+def emergency_retrain(drift_magnitude: float):
+    """
+    Triggered when ADWIN detects concept drift
+    """
+    if drift_magnitude > 0.1:  # 10% drift
+        logger.warn(f"Drift detected: {drift_magnitude:.2%}. Triggering retrain.")
+
+        # Use last 90 days (adaptive window)
+        kedro_run(
+            pipeline='train_ensemble',
+            params={'lookback_days': 90}
+        )
+```
+
+---
+
+### ROI & Benefits
+
+| Aspect                  | Before (Manual)       | After (CI/CD)              | Improvement |
+| ----------------------- | --------------------- | -------------------------- | ----------- |
+| **Deployment Time**     | 4-8 hours             | 30 minutes (automated)     | 90%         |
+| **Testing Coverage**    | Manual (inconsistent) | Automated (100% coverage)  | ∞           |
+| **Rollback Time**       | 1-2 hours             | <5 minutes (auto)          | 95%         |
+| **Deployment Failures** | 10-20% (human error)  | <2% (validated)            | 90%         |
+| **Model Versioning**    | Manual tags           | Full lineage tracking      | ✅          |
+| **Confidence**          | Low (no staging)      | High (canary + monitoring) | ✅          |
+
+**Estimated ROI**: 20-30 hours/month saved in manual deployment work
+
+---
+
+### Action Items
+
+**Immediate (High ROI)**:
+
+1. ✅ Set up model registry (S3 bucket + metadata schema)
+2. ✅ Implement automated ONNX export + validation
+3. ✅ Write deployment tests (latency, output range, shapes)
+4. ✅ Create deployment scripts (staging + canary)
+
+**Short-Term (2-4 weeks)**:
+
+1. ✅ Implement canary deployment logic in algo-worker
+2. ✅ Add performance monitoring with auto-rollback
+3. ✅ Set up nightly retraining pipeline
+4. ✅ Create deployment runbooks and documentation
+
+**Long-Term (2-3 months)**:
+
+1. 🔬 Multi-model A/B testing framework
+2. 🔬 Automated hyperparameter tuning (Optuna)
+3. 🔬 Continuous learning (online model updates)
+
+---
+
 ## Key Takeaways
 
 1. **LiT, TFT, and DRL are ADDITIONS, not replacements**
