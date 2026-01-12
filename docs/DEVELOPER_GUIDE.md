@@ -615,11 +615,30 @@ pm2 restart all
 
 ## Additional Resources
 
+### Core Documentation
+
 - [Turborepo Documentation](https://turbo.build/repo/docs)
 - [NestJS Documentation](https://docs.nestjs.com)
 - [QuestDB Documentation](https://questdb.io/docs/)
 - [MongoDB Best Practices](https://www.mongodb.com/docs/manual/administration/production-notes/)
 - [Redis Best Practices](https://redis.io/docs/manual/patterns/)
+
+### Project-Specific Architecture
+
+- **Core Architecture**: [ARCHITECTURE.md](./ARCHITECTURE.md) - System overview and design philosophy
+- **Algo Trading Architecture**: [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md) - Complete 9-layer system design
+- **Hierarchical Intelligence**: [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md) - ML model stack
+- **Market State Encoder**: [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md) - Feature engineering patterns
+- **Model Inventory**: [MODEL_INVENTORY.md](./MODEL_INVENTORY.md) - Complete model taxonomy
+- **Project Status**: [PROJECT_STATUS.md](./PROJECT_STATUS.md) - Implementation roadmap and gap analysis
+
+### Advanced & R&D Topics
+
+- **Feature Store Architecture**: [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md) - Centralized feature registry (HIGH ROI)
+- **Agentic AI Research**: [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md) - Multi-agent systems (R&D ONLY, NOT PRODUCTION)
+  - ⚠️ **WARNING**: Agentic AI has 600-1600ms latency, incompatible with <100ms trading requirement
+  - Valid for: Post-trade analysis, strategy research, qualitative insights
+  - Invalid for: Real-time trade decisions, signal generation
 
 ---
 
@@ -631,7 +650,8 @@ For issues and questions:
 2. Review app-specific README in `apps/*/README.md`
 3. Check package-specific docs in `packages/*/README.md`
 4. Review `docs/PROGRESS.md` for implementation status
-5. Create an issue on GitHub
+5. Review `docs/PROJECT_STATUS.md` for gap analysis and roadmap
+6. Create an issue on GitHub
 
 ---
 

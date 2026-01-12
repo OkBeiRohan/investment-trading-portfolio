@@ -150,7 +150,7 @@ Each component communicates via a **central event bus**, allowing:
 
 ### Layer 1: Data Ingestion
 
-**Purpose**: Interface to Upstox API feeds and publish timestamped events
+**Purpose**: Interface to market data feeds and publish timestamped events with ultra-low latency
 
 **Components**:
 
@@ -169,6 +169,243 @@ Each component communicates via a **central event bus**, allowing:
 - Writes to time-series database for historical analysis
 
 **Latency Target**: <5ms
+
+---
+
+#### **Next-Gen Data Ingestion Enhancements (High ROI)**
+
+**Current Implementation**: Upstox WebSocket API (1s OHLCV, L20 LOB depth)
+
+**Missing High-ROI Components**:
+
+##### 1. **Tick-By-Tick (TBT) Exchange Feeds**
+
+**What**: Direct exchange feeds with nanosecond timestamps for every trade and quote update
+
+**Current Gap**: Upstox provides 1-second aggregated OHLCV. True TBT feeds provide:
+
+- Individual trade events with exact exchange timestamps
+- Quote updates (bid/ask changes) at nanosecond precision
+- Order book reconstruction with microsecond accuracy
+
+**Why It Matters**:
+
+- **Timing Edge**: TBT reveals order flow imbalances 100-500ms before aggregated feeds
+- **Data Quality**: No aggregation artifacts or timestamp jitter
+- **Market Impact Detection**: See large institutional orders in real-time
+- **Improved ML Signals**: LiT model can detect liquidity events with 10x better temporal resolution
+
+**Implementation Path**:
+
+```typescript
+// Vendor options for NSE TBT feeds
+const vendors = [
+  "GLOBE (NSE-certified TBT feed)",
+  "Symphony (low-latency market data)",
+  "Bloomberg B-PIPE",
+  "Refinitiv RMDS",
+];
+
+// Feed handler architecture
+class TBTFeedHandler {
+  async processTrade(trade: {
+    exchange_timestamp_ns: bigint;
+    symbol: string;
+    price: number;
+    size: number;
+    aggressor: "BUY" | "SELL";
+  }) {
+    // <1μs processing target
+    this.updateOrderFlow(trade);
+    this.publishEvent("trade", trade);
+  }
+
+  async processQuote(quote: {
+    exchange_timestamp_ns: bigint;
+    symbol: string;
+    bid: number[];
+    ask: number[];
+    bid_sizes: number[];
+    ask_sizes: number[];
+  }) {
+    // Reconstruct full order book
+    this.updateLOB(quote);
+    this.publishEvent("quote", quote);
+  }
+}
+```
+
+**ROI**: 20-50ms latency reduction, 15-25% improvement in signal quality
+
+---
+
+##### 2. **Kernel-Bypass Networking**
+
+**What**: Bypass OS kernel network stack to reduce network processing latency from milliseconds to microseconds
+
+**Current Gap**: Standard WebSocket/TCP stack introduces 50-200μs of kernel overhead per packet
+
+**Technologies**:
+
+1. **DPDK (Data Plane Development Kit)**
+   - Direct NIC access from userspace
+   - Zero-copy packet processing
+   - Typical gain: 50-150μs per message
+
+2. **OpenOnload (Solarflare)**
+   - Accelerated TCP/UDP stack
+   - Integrates with standard sockets API
+   - Typical gain: 30-100μs per message
+
+3. **AF_XDP (Linux kernel bypass)**
+   - eBPF-based packet filtering
+   - Direct memory access to NIC buffers
+   - Typical gain: 20-80μs per message
+
+4. **RDMA (Remote Direct Memory Access)**
+   - InfiniBand or RoCE networks
+   - Sub-microsecond latency
+   - Typical gain: 100-500μs per message
+
+**Implementation Architecture**:
+
+```
+┌─────────────────────────────────────────────┐
+│ Trading Application (algo-worker)           │
+│  ├─ DPDK Poll-Mode Driver (PMD)             │
+│  └─ Lock-free ring buffers                  │
+└────────────────┬────────────────────────────┘
+                 │ (Direct memory access)
+                 ↓
+┌─────────────────────────────────────────────┐
+│ NIC Hardware (Mellanox ConnectX-6/Intel E810)│
+│  ├─ RSS (Receive Side Scaling)              │
+│  ├─ Hardware timestamping                   │
+│  └─ Direct packet placement                 │
+└─────────────────────────────────────────────┘
+```
+
+**Code Pattern**:
+
+```c++
+// DPDK initialization (C++ hot path)
+#include <rte_eal.h>
+#include <rte_ethdev.h>
+#include <rte_mbuf.h>
+
+class KernelBypassReceiver {
+public:
+  void init() {
+    // Initialize DPDK
+    int ret = rte_eal_init(argc, argv);
+
+    // Configure NIC
+    struct rte_eth_conf port_conf = {
+      .rxmode = {
+        .max_rx_pkt_len = RTE_ETHER_MAX_LEN,
+        .split_hdr_size = 0,
+      },
+    };
+
+    // Create memory pool
+    mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", 8192,
+      256, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+  }
+
+  void pollPackets() {
+    struct rte_mbuf *bufs[BURST_SIZE];
+
+    while (running) {
+      // Poll NIC (no kernel interrupts)
+      uint16_t nb_rx = rte_eth_rx_burst(port_id, 0, bufs, BURST_SIZE);
+
+      for (uint16_t i = 0; i < nb_rx; i++) {
+        // Parse market data packet (zero-copy)
+        processMarketData(bufs[i]);
+        rte_pktmbuf_free(bufs[i]);
+      }
+    }
+  }
+};
+```
+
+**Integration with Node.js**:
+
+```typescript
+// Native addon bridge
+import { DPDKReceiver } from "./native/dpdk_receiver.node";
+
+@Injectable()
+export class MarketDataService {
+  private dpdkReceiver = new DPDKReceiver();
+
+  async onModuleInit() {
+    // Start DPDK poll thread (dedicated CPU core)
+    this.dpdkReceiver.start((packet: MarketDataPacket) => {
+      // Callback from C++ (shared memory)
+      this.handleMarketData(packet);
+    });
+  }
+}
+```
+
+**ROI**: 50-200μs latency reduction per message, critical for sub-100ms decision-to-trade target
+
+---
+
+##### 3. **Specialized Network Hardware (Optional/R&D)**
+
+**High-End Options**:
+
+1. **Solarflare/Xilinx FPGA NICs**
+   - Programmable packet processing in hardware
+   - <500ns latency
+   - Cost: $5,000-15,000/NIC
+   - Use case: Ultra-HFT scenarios only
+
+2. **Mellanox ConnectX-7**
+   - RDMA + GPUDirect support
+   - Hardware timestamping with nanosecond accuracy
+   - Cost: $1,500-3,000/NIC
+   - Use case: GPU-accelerated inference with RDMA data transfer
+
+3. **Intel E810 (Time-Sensitive Networking)**
+   - IEEE 1588 PTP hardware sync
+   - 4ns timestamp accuracy
+   - Cost: $800-1,200/NIC
+   - Use case: Multi-system clock synchronization
+
+**Decision Matrix**:
+
+| Latency Requirement | Technology Stack       | Cost          | ROI  |
+| ------------------- | ---------------------- | ------------- | ---- |
+| <10ms               | Standard TCP/WebSocket | $0            | N/A  |
+| <1ms                | DPDK + OpenOnload      | $500-2,000    | High |
+| <100μs              | RDMA + Specialized NIC | $5,000-20,000 | Med  |
+| <10μs               | FPGA + Custom Logic    | $50,000+      | Low  |
+
+**Current Recommendation**:
+
+- **Phase 1** (High ROI): Implement DPDK with Intel E810 NIC (~$1,200 investment)
+- **Phase 2** (R&D): Evaluate vendor TBT feeds (GLOBE/Symphony)
+- **Phase 3** (Future): FPGA NICs only if sub-100μs becomes critical
+
+---
+
+#### **Action Items**
+
+**High Priority (High ROI)**:
+
+1. ✅ Evaluate vendor TBT feed subscriptions (GLOBE, Symphony)
+2. ✅ Pilot DPDK-based feed handler for critical data paths
+3. ✅ Profile current network stack to quantify kernel overhead
+4. ✅ Benchmark DPDK vs standard sockets on test environment
+
+**Optional (R&D)**:
+
+1. 🔬 Research FPGA NIC capabilities for future <100μs scenarios
+2. 🔬 Prototype eBPF/XDP filtering for high-noise feeds
+3. 🔬 Evaluate RDMA for GPU-direct inference pipelines
 
 ---
 

@@ -1254,6 +1254,813 @@ const litInput = buildLiTTensor(nifty_spot_lob); // ❌ Spot has no LOB!
 
 ---
 
+## Feature Store Integration (HIGH ROI Enhancement)
+
+### Overview
+
+**Status**: ⏳ Design Complete ([FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md)), Not Implemented
+
+Integrate Market State Encoder with a centralized feature store to guarantee training/serving consistency, enable feature versioning, and provide point-in-time correctness for backtesting.
+
+**Why**: Current MSE computes features on-the-fly in both algo-worker and training-pipeline, leading to:
+
+- ❌ Feature definitions duplicated across codebases
+- ❌ Training/serving skew risk (different implementations)
+- ❌ No versioning (can't reproduce historical predictions)
+- ❌ Hard to discover which features exist
+
+**ROI**: **Eliminate training/serving skew, 50% faster model development**
+
+---
+
+### Architecture: MSE as Feature Producer
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Current State (Duplicated Logic)                            │
+├─────────────────────────────────────────────────────────────┤
+│ algo-worker (Production):                                   │
+│   ├─ MarketStateEncoder.ts (compute features)               │
+│   └─ FeatureCacheService.ts (sliding windows)               │
+│                                                              │
+│ training-pipeline (Training):                                │
+│   ├─ feature_engineering.py (compute features)              │ ← ❌ DUPLICATE!
+│   └─ Kedro pipelines (batch computation)                    │
+│                                                              │
+│ Risk: Features computed differently → predictions diverge   │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ Next-Gen State (Feature Store)                              │
+├─────────────────────────────────────────────────────────────┤
+│ 1. Feature Registry (YAML + Git)                            │
+│    ├─ feature_definitions.yaml (single source of truth)     │
+│    ├─ Versioned (git tags: v1.0, v1.1, v2.0)               │
+│    └─ Code generation (TypeScript + Python from YAML)       │
+│                                                              │
+│ 2. Feature Computation (Unified Logic)                      │
+│    ├─ MarketStateEncoder.ts (algo-worker)                   │
+│    └─ Publishes features → Kafka topic                      │
+│                                                              │
+│ 3. Feature Serving (Faust Streaming + Redis)                │
+│    ├─ Faust consumes Kafka → computes aggregations          │
+│    ├─ Publishes to Redis (online serving, <5ms latency)     │
+│    └─ Publishes to QuestDB (offline materialization)        │
+│                                                              │
+│ 4. Feature Retrieval (Unified API)                          │
+│    ├─ algo-worker → gRPC getOnlineFeatures()                │
+│    ├─ training-pipeline → getOfflineFeatures(date range)    │
+│    └─ Guaranteed consistency (same code path)               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 1. Feature Registry (YAML Definition)
+
+**File**: `feature-store/features/market_state.yaml`
+
+```yaml
+# Market State Encoder Features v2.0
+# Compatible with: algo-worker 2.x, training-pipeline 3.x
+
+featureGroup:
+  name: market_state_features
+  version: "2.0"
+  description: |
+    Market State Encoder outputs for LightGBM, TFT, and LiT models.
+    Compresses 50,000+ signals/sec into 200-500 actionable features.
+
+  entities:
+    - name: timestamp
+      type: TIMESTAMP
+      description: Feature computation timestamp (nanosecond precision)
+
+    - name: symbol
+      type: STRING
+      description: Primary instrument symbol (NIFTY_FUTURE, BANKNIFTY_FUTURE)
+
+  # ==================================================================
+  # Index Aggregation Features (8 features)
+  # ==================================================================
+  features:
+    - name: index_weighted_return
+      type: DOUBLE
+      description: |
+        Weighted average return of NIFTY constituents (last 5m).
+        Weights = market cap. Aggregation across 50 stocks.
+      valueType: POINT_IN_TIME
+      sources:
+        - nifty_constituents_ohlcv
+      computation: |
+        ts: sum(stock.returns * stock.weight for stock in constituents)
+        py: np.sum(returns * weights)
+
+    - name: index_breadth
+      type: DOUBLE
+      description: |
+        Fraction of constituents with positive returns (last 5m).
+        Range: 0.0 (all down) to 1.0 (all up).
+      valueType: POINT_IN_TIME
+      sources:
+        - nifty_constituents_ohlcv
+      computation: |
+        ts: constituents.filter(s => s.return > 0).length / constituents.length
+        py: (returns > 0).sum() / len(returns)
+
+    - name: index_alignment
+      type: DOUBLE
+      description: |
+        Correlation between constituent returns and NIFTY FUTURE return.
+        High alignment (>0.7) = strong directional move.
+      valueType: POINT_IN_TIME
+      sources:
+        - nifty_constituents_ohlcv
+        - nifty_future_ohlcv
+      computation: |
+        ts: pearsonCorrelation(constituentReturns, futureReturn)
+        py: np.corrcoef(constituent_returns, future_return)[0, 1]
+
+    # ... (remaining 5 index features)
+
+    # ==================================================================
+    # LOB Tensor Features (80 features for LiT)
+    # ==================================================================
+    - name: lob_bid_prices
+      type: ARRAY[DOUBLE]
+      description: |
+        LOB bid prices (depth-20), normalized to tick size.
+        Shape: [20,]. Used by LiT model.
+      valueType: POINT_IN_TIME
+      sources:
+        - nifty_future_lob
+      computation: |
+        ts: lob.bids.map((b, i) => (b.price - midPrice) / tickSize)
+        py: (bid_prices - mid_price) / tick_size
+
+    - name: lob_ask_prices
+      type: ARRAY[DOUBLE]
+      description: LOB ask prices (depth-20), normalized to tick size.
+      valueType: POINT_IN_TIME
+      sources:
+        - nifty_future_lob
+      computation: |
+        ts: lob.asks.map((a, i) => (a.price - midPrice) / tickSize)
+        py: (ask_prices - mid_price) / tick_size
+
+    # ... (remaining 76 LOB features)
+
+    # ==================================================================
+    # Time-Series Features (TFT input, 13 × 60 timesteps)
+    # ==================================================================
+    - name: tft_realized_vol_5d
+      type: DOUBLE
+      description: |
+        Realized volatility (5-day rolling). Used in TFT time-series.
+      valueType: TIME_SERIES
+      aggregations:
+        - MEAN
+        - STD
+      sources:
+        - nifty_future_ohlcv
+      computation: |
+        ts: rollingStd(returns, 5) * sqrt(252)
+        py: returns.rolling(5).std() * np.sqrt(252)
+
+    # ... (remaining 12 TFT time-series features)
+
+# ==================================================================
+# Feature Transformations (Derived Features)
+# ==================================================================
+transformations:
+  - name: vol_regime
+    inputFeatures:
+      - tft_realized_vol_5d
+      - india_vix
+    outputFeature: vol_regime_class
+    logic: |
+      if realized_vol < 0.15 and india_vix < 15:
+        return "LOW_VOL"
+      elif realized_vol > 0.25 or india_vix > 25:
+        return "HIGH_VOL"
+      else:
+        return "MODERATE_VOL"
+
+  - name: breadth_momentum
+    inputFeatures:
+      - index_breadth
+    outputFeature: breadth_momentum
+    logic: |
+      return index_breadth - index_breadth.shift(5)  # 5-min change
+
+# ==================================================================
+# Validation & Quality Gates
+# ==================================================================
+validations:
+  - name: lob_depth_check
+    description: Ensure LOB has all 20 levels populated
+    assertion: |
+      len(lob_bid_prices) == 20 and len(lob_ask_prices) == 20
+    onFailure: DEGRADE # Disable LiT model if LOB incomplete
+
+  - name: constituent_coverage_check
+    description: Require at least 45/50 constituents for breadth
+    assertion: |
+      len(constituents_with_data) >= 45
+    onFailure: DEGRADE # Fallback to futures-only features
+
+  - name: timestamp_freshness
+    description: Features must be <1s old
+    assertion: |
+      (current_time - feature_timestamp) < 1000  # milliseconds
+    onFailure: REJECT # Don't serve stale features
+```
+
+---
+
+### 2. Code Generation from Registry
+
+**Generate TypeScript interfaces** (algo-worker):
+
+```bash
+# Generate TypeScript from YAML
+pnpm run feature-store:codegen --lang typescript --output packages/schema/src/features/
+
+# Output: packages/schema/src/features/market-state.ts
+```
+
+**Generated TypeScript**:
+
+```typescript
+// Auto-generated from market_state.yaml v2.0
+// DO NOT EDIT MANUALLY
+
+export interface MarketStateFeatures {
+  timestamp: number;
+  symbol: string;
+
+  // Index Aggregation (8 features)
+  index_weighted_return: number;
+  index_breadth: number;
+  index_alignment: number;
+  // ... remaining 5
+
+  // LOB Tensor (80 features)
+  lob_bid_prices: Float32Array; // [20,]
+  lob_ask_prices: Float32Array; // [20,]
+  lob_bid_volumes: Float32Array; // [20,]
+  // ... remaining 76
+
+  // Time-Series (13 × 60 for TFT)
+  tft_realized_vol_5d: number[];
+  // ... remaining 12
+
+  // Derived features
+  vol_regime_class: "LOW_VOL" | "MODERATE_VOL" | "HIGH_VOL";
+  breadth_momentum: number;
+}
+
+// Feature metadata for validation
+export const MARKET_STATE_FEATURE_METADATA = {
+  version: "2.0",
+  totalFeatures: 200,
+  requiredSources: [
+    "nifty_constituents_ohlcv",
+    "nifty_future_ohlcv",
+    "nifty_future_lob",
+  ],
+  validations: [
+    {
+      name: "lob_depth_check",
+      assertion: (features) => features.lob_bid_prices.length === 20,
+      onFailure: "DEGRADE",
+    },
+    // ...
+  ],
+};
+```
+
+**Generate Python dataclasses** (training-pipeline):
+
+```bash
+python feature-store/codegen/generate_python.py \
+  --input feature-store/features/market_state.yaml \
+  --output services/training-pipeline/src/features/market_state.py
+```
+
+**Generated Python**:
+
+```python
+# Auto-generated from market_state.yaml v2.0
+# DO NOT EDIT MANUALLY
+
+from dataclasses import dataclass
+from typing import List, Literal
+import numpy as np
+
+@dataclass
+class MarketStateFeatures:
+    timestamp: int
+    symbol: str
+
+    # Index Aggregation (8 features)
+    index_weighted_return: float
+    index_breadth: float
+    index_alignment: float
+    # ... remaining 5
+
+    # LOB Tensor (80 features)
+    lob_bid_prices: np.ndarray  # shape: (20,)
+    lob_ask_prices: np.ndarray  # shape: (20,)
+    # ... remaining 76
+
+    # Time-Series (13 × 60 for TFT)
+    tft_realized_vol_5d: List[float]  # length: 60
+    # ... remaining 12
+
+    # Derived features
+    vol_regime_class: Literal["LOW_VOL", "MODERATE_VOL", "HIGH_VOL"]
+    breadth_momentum: float
+
+# Feature metadata
+MARKET_STATE_FEATURE_METADATA = {
+    "version": "2.0",
+    "total_features": 200,
+    "required_sources": [
+        "nifty_constituents_ohlcv",
+        "nifty_future_ohlcv",
+        "nifty_future_lob",
+    ],
+}
+```
+
+**Key Benefit**: **Single source of truth** (YAML) → **guaranteed consistency** (TypeScript = Python)
+
+---
+
+### 3. MSE as Feature Producer
+
+**Updated MarketStateEncoder** (algo-worker):
+
+```typescript
+@Injectable()
+export class MarketStateEncoder {
+  constructor(
+    private readonly kafka: KafkaService,
+    private readonly featureRegistry: FeatureRegistryService
+  ) {}
+
+  async encode(marketData: RawMarketData): Promise<MarketStateFeatures> {
+    // 1. Compute features (same logic as before)
+    const features = {
+      timestamp: Date.now(),
+      symbol: "NIFTY_FUTURE",
+
+      // Index aggregation
+      index_weighted_return: this.computeWeightedReturn(
+        marketData.constituents
+      ),
+      index_breadth: this.computeBreadth(marketData.constituents),
+      index_alignment: this.computeAlignment(
+        marketData.constituents,
+        marketData.future
+      ),
+      // ... all 200 features
+    };
+
+    // 2. Validate features against registry
+    const validation = this.featureRegistry.validate(features);
+    if (!validation.valid) {
+      this.logger.warn("Feature validation failed", validation.errors);
+      // Apply degradations (e.g., disable LiT if LOB incomplete)
+    }
+
+    // 3. Publish to Kafka topic (feature store ingestion)
+    await this.kafka.publish("feature-store.market-state", {
+      key: features.symbol,
+      value: features,
+      timestamp: features.timestamp,
+    });
+
+    // 4. Return for immediate use (online serving)
+    return features;
+  }
+}
+```
+
+---
+
+### 4. Feature Serving (Faust + Redis + QuestDB)
+
+**Faust streaming app** (feature-store service):
+
+```python
+import faust
+from typing import List
+from features.market_state import MarketStateFeatures
+
+app = faust.App(
+    'feature-store-streaming',
+    broker='kafka://localhost:9092',
+    value_serializer='json',
+)
+
+# Kafka topic (produced by algo-worker)
+market_state_topic = app.topic('feature-store.market-state', value_type=MarketStateFeatures)
+
+@app.agent(market_state_topic)
+async def materialize_features(stream):
+    """
+    Consume features from Kafka, materialize to:
+    1. Redis (online serving, <5ms latency)
+    2. QuestDB (offline serving, point-in-time correctness)
+    """
+    async for features in stream:
+        # 1. Redis (online serving)
+        await redis.hset(
+            f'features:market_state:{features.symbol}',
+            mapping={
+                'timestamp': features.timestamp,
+                'features_json': json.dumps(features.__dict__),
+            },
+            ex=300,  # Expire after 5 minutes
+        )
+
+        # 2. QuestDB (offline serving)
+        await questdb.insert('feature_store_market_state', {
+            'timestamp': features.timestamp,
+            'symbol': features.symbol,
+            **features.__dict__,  # All 200 features
+        })
+
+        logger.info(f'Materialized features for {features.symbol} at {features.timestamp}')
+```
+
+---
+
+### 5. Feature Retrieval API (gRPC)
+
+**Proto definition**:
+
+```protobuf
+// feature-store/proto/feature_serving.proto
+
+syntax = "proto3";
+
+package feature_store;
+
+service FeatureServingService {
+  // Online serving (real-time, <5ms)
+  rpc GetOnlineFeatures(OnlineFeaturesRequest) returns (OnlineFeaturesResponse);
+
+  // Offline serving (batch, point-in-time correctness)
+  rpc GetOfflineFeatures(OfflineFeaturesRequest) returns (OfflineFeaturesResponse);
+}
+
+message OnlineFeaturesRequest {
+  string feature_group = 1;  // "market_state_features"
+  repeated string symbols = 2;  // ["NIFTY_FUTURE"]
+  repeated string feature_names = 3;  // ["index_breadth", "index_alignment", ...]
+}
+
+message OnlineFeaturesResponse {
+  map<string, FeatureVector> features = 1;  // symbol → features
+}
+
+message OfflineFeaturesRequest {
+  string feature_group = 1;
+  repeated string symbols = 2;
+  int64 start_timestamp = 3;
+  int64 end_timestamp = 4;
+  repeated string feature_names = 5;
+}
+
+message OfflineFeaturesResponse {
+  repeated FeatureSnapshot snapshots = 1;  // Time-series of features
+}
+
+message FeatureVector {
+  int64 timestamp = 1;
+  map<string, double> features = 2;  // feature_name → value
+}
+
+message FeatureSnapshot {
+  int64 timestamp = 1;
+  string symbol = 2;
+  map<string, double> features = 3;
+}
+```
+
+**Server implementation** (feature-store service):
+
+```typescript
+@GrpcMethod('FeatureServingService', 'GetOnlineFeatures')
+async getOnlineFeatures(
+  request: OnlineFeaturesRequest,
+): Promise<OnlineFeaturesResponse> {
+  const features = {};
+
+  for (const symbol of request.symbols) {
+    // Fetch from Redis (hot cache)
+    const cached = await this.redis.hget(
+      `features:market_state:${symbol}`,
+      'features_json',
+    );
+
+    if (cached) {
+      const parsed = JSON.parse(cached);
+
+      // Filter requested features only
+      const filteredFeatures = {};
+      for (const featureName of request.featureNames) {
+        filteredFeatures[featureName] = parsed[featureName];
+      }
+
+      features[symbol] = {
+        timestamp: parsed.timestamp,
+        features: filteredFeatures,
+      };
+    } else {
+      this.logger.warn(`No cached features for ${symbol}`);
+    }
+  }
+
+  return { features };
+}
+
+@GrpcMethod('FeatureServingService', 'GetOfflineFeatures')
+async getOfflineFeatures(
+  request: OfflineFeaturesRequest,
+): Promise<OfflineFeaturesResponse> {
+  // Query QuestDB with point-in-time correctness
+  const query = `
+    SELECT timestamp, symbol, ${request.featureNames.join(', ')}
+    FROM feature_store_market_state
+    WHERE symbol IN (${request.symbols.map((s) => `'${s}'`).join(', ')})
+      AND timestamp >= ${request.startTimestamp}
+      AND timestamp <= ${request.endTimestamp}
+    ORDER BY timestamp ASC
+  `;
+
+  const rows = await this.questdb.query(query);
+
+  const snapshots = rows.map((row) => ({
+    timestamp: row.timestamp,
+    symbol: row.symbol,
+    features: request.featureNames.reduce((acc, name) => {
+      acc[name] = row[name];
+      return acc;
+    }, {}),
+  }));
+
+  return { snapshots };
+}
+```
+
+---
+
+### 6. Usage in algo-worker (Online Serving)
+
+**Before** (direct computation):
+
+```typescript
+// ❌ OLD: Compute features every tick
+const features = await this.marketStateEncoder.encode(marketData);
+const prediction = await this.lightgbm.predict(features);
+```
+
+**After** (feature store retrieval):
+
+```typescript
+// ✅ NEW: Retrieve pre-computed features from feature store
+const response = await this.featureStoreClient.getOnlineFeatures({
+  featureGroup: "market_state_features",
+  symbols: ["NIFTY_FUTURE"],
+  featureNames: [
+    "index_breadth",
+    "index_alignment",
+    "index_weighted_return",
+    // ... all 33 LightGBM features
+  ],
+});
+
+const features = response.features["NIFTY_FUTURE"].features;
+const prediction = await this.lightgbm.predict(features);
+```
+
+**Benefit**: Features computed once (MSE), served many times (LightGBM, TFT, risk manager)
+
+---
+
+### 7. Usage in training-pipeline (Offline Serving)
+
+**Before** (re-compute features):
+
+```python
+# ❌ OLD: Re-compute features during training (inconsistency risk!)
+def fetch_training_data(start_date, end_date):
+    ticks = questdb.query(f"SELECT * FROM ticks WHERE timestamp >= '{start_date}'")
+
+    # Re-compute features (might differ from production!)
+    features = []
+    for tick in ticks:
+        feature_vector = compute_features(tick)  # ❌ NOT same as algo-worker!
+        features.append(feature_vector)
+
+    return features
+```
+
+**After** (feature store retrieval):
+
+```python
+# ✅ NEW: Retrieve pre-computed features (guaranteed consistency!)
+def fetch_training_data(start_date, end_date):
+    response = feature_store_client.get_offline_features(
+        feature_group='market_state_features',
+        symbols=['NIFTY_FUTURE'],
+        start_timestamp=int(start_date.timestamp() * 1000),
+        end_timestamp=int(end_date.timestamp() * 1000),
+        feature_names=[
+            'index_breadth',
+            'index_alignment',
+            # ... all 33 features
+        ],
+    )
+
+    # Convert to pandas DataFrame
+    df = pd.DataFrame([
+        {**snapshot.features, 'timestamp': snapshot.timestamp}
+        for snapshot in response.snapshots
+    ])
+
+    return df
+```
+
+**Benefit**: **Training features = Production features** (zero training/serving skew!)
+
+---
+
+### 8. Point-in-Time Correctness for Backtesting
+
+**Problem**: Standard join creates lookahead bias
+
+```python
+# ❌ WRONG: This leaks future data!
+df_features = pd.merge(
+    df_ticks,
+    df_labels,
+    on='timestamp',
+    how='left',  # ❌ Uses label from same timestamp (lookahead!)
+)
+```
+
+**Solution**: Point-in-time join (as-of join)
+
+```python
+# ✅ CORRECT: Point-in-time join (no lookahead)
+def get_features_at_timestamp(timestamp: int, symbol: str) -> dict:
+    """
+    Retrieve features as they existed at given timestamp
+    (NOT including any data from future)
+    """
+    query = f"""
+        SELECT *
+        FROM feature_store_market_state
+        WHERE symbol = '{symbol}'
+          AND timestamp <= {timestamp}
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """
+
+    row = questdb.query(query)[0]
+    return row
+
+# Usage in backtest
+for timestamp in backtest_timestamps:
+    # Get features as-of this timestamp (no lookahead)
+    features = get_features_at_timestamp(timestamp, 'NIFTY_FUTURE')
+
+    # Get label (target) from future (1 minute ahead)
+    label = get_label_at_timestamp(timestamp + 60_000)  # 60s ahead
+
+    training_examples.append((features, label))
+```
+
+**QuestDB ASOF JOIN** (native support):
+
+```sql
+-- Point-in-time correctness with ASOF JOIN
+SELECT
+  t.timestamp,
+  t.symbol,
+  f.*
+FROM ticks t
+ASOF JOIN feature_store_market_state f
+  ON t.symbol = f.symbol
+WHERE t.timestamp BETWEEN '2025-01-01' AND '2025-12-31'
+```
+
+---
+
+### 9. Feature Versioning & Reproducibility
+
+**Problem**: Can't reproduce historical predictions
+
+```typescript
+// Deployed model on Jan 1, 2026 with features v1.0
+// Later (Mar 1, 2026), features updated to v2.0
+// How do we reproduce Jan 15 prediction?
+```
+
+**Solution**: Version all features in registry
+
+```yaml
+# feature-store/features/market_state_v1.0.yaml
+featureGroup:
+  name: market_state_features
+  version: "1.0"
+  deprecatedAt: "2026-03-01"
+  features:
+    - name: index_breadth
+      # ... v1.0 definition
+
+# feature-store/features/market_state_v2.0.yaml
+featureGroup:
+  name: market_state_features
+  version: "2.0"
+  features:
+    - name: index_breadth
+      # ... v2.0 definition (improved computation)
+```
+
+**Retrieval with version pinning**:
+
+```python
+# Reproduce prediction from Jan 15, 2026 (used v1.0)
+features = feature_store_client.get_offline_features(
+    feature_group='market_state_features',
+    version='1.0',  # ← Pin to historical version
+    symbols=['NIFTY_FUTURE'],
+    start_timestamp=datetime(2026, 1, 15).timestamp(),
+    end_timestamp=datetime(2026, 1, 15, 23, 59).timestamp(),
+)
+```
+
+---
+
+### 10. Migration Path from Current MSE
+
+**Phase 1** (Week 1): Feature registry + code generation
+
+- [ ] Create `feature-store/features/market_state.yaml` (document current MSE features)
+- [ ] Build code generator (YAML → TypeScript + Python)
+- [ ] Validate generated code matches current MSE output
+
+**Phase 2** (Week 2): Kafka + Faust streaming
+
+- [ ] Deploy Kafka cluster (or use existing if available)
+- [ ] Update MSE to publish to Kafka topic
+- [ ] Implement Faust materialization service (Kafka → Redis + QuestDB)
+
+**Phase 3** (Week 3): gRPC serving API
+
+- [ ] Implement `GetOnlineFeatures` (algo-worker use case)
+- [ ] Implement `GetOfflineFeatures` (training-pipeline use case)
+- [ ] Add point-in-time join support (ASOF JOIN in QuestDB)
+
+**Phase 4** (Week 4): Migrate clients
+
+- [ ] Update algo-worker to use gRPC feature store client
+- [ ] Update training-pipeline to use offline feature retrieval
+- [ ] A/B test: old MSE vs feature store (validate consistency)
+
+**Total Timeline**: 3-4 weeks
+
+---
+
+### Benefits Summary
+
+| Benefit                      | Before (Current)                   | After (Feature Store)         | Impact                 |
+| ---------------------------- | ---------------------------------- | ----------------------------- | ---------------------- |
+| **Training/Serving Skew**    | ⚠️ Risk (duplicate code)           | ✅ Zero skew (same code path) | **Production Safety**  |
+| **Feature Discovery**        | ❌ Hard (search codebase)          | ✅ Easy (registry UI/API)     | **Developer Velocity** |
+| **Reproducibility**          | ❌ Can't reproduce old predictions | ✅ Version-pinned retrieval   | **Audit Compliance**   |
+| **Model Development Speed**  | 🐢 Slow (re-implement features)    | 🚀 Fast (reuse existing)      | **50% faster**         |
+| **Backtest Accuracy**        | ⚠️ Potential lookahead bias        | ✅ Point-in-time correctness  | **Trustworthy**        |
+| **Feature Computation Cost** | 🔥 Compute every tick (2x work)    | 💰 Compute once, serve many   | **50% CPU savings**    |
+
+**ROI**: **HIGH** (eliminates critical production risk + accelerates ML iteration)
+
+---
+
+**See Also**:
+
+- [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md) - Detailed feature store design
+- [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md) - Model deployment CI/CD
+- [PROJECT_STATUS.md](./PROJECT_STATUS.md) - Implementation roadmap & gap analysis
+
+---
+
 ## Summary & Key Takeaways
 
 ### The Mental Model
