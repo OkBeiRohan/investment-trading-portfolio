@@ -13,9 +13,9 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
-    classification_report,
+    classification_report,  # pyright: ignore[reportUnknownVariableType]
     confusion_matrix,
-    precision_recall_fscore_support,
+    precision_recall_fscore_support,  # pyright: ignore[reportUnknownVariableType]
     roc_auc_score,
 )
 from sklearn.model_selection import TimeSeriesSplit
