@@ -6,89 +6,106 @@ The `algo-worker` implements an **event-driven, microservices-based architecture
 
 **Key Architectural Principle**: This implementation uses an event-driven message bus (Redis Streams) with modular microservices for each processing stage—enabling adaptive regime detection, continuous learning, and ultra-low latency execution.
 
-## The 7-Layer Implementation
+## The 9-Layer Architecture
 
-### 1. Perception Layer (Event Consumption)
+This implementation follows the comprehensive [Algo Trading Architecture](../../../docs/ALGO_TRADING_ARCHITECTURE.md) with all 9 layers:
+
+### 1. Data Ingestion Layer
 
 - **Service**: `MarketDataConsumer`, `NewsConsumer`
-- **Tech**: Redis Streams (event-driven)
-- **Data**: Market ticks, quotes, option chain, order book
-- **Output**: Raw market events published to event bus
+- **Tech**: Redis Streams (event-driven), Upstox WebSocket
+- **Data**: 1s OHLCV, L20 order book, Greeks, spot/futures
+- **Output**: Timestamped market events
+- **See**: [layers/01-DATA-INGESTION.md](./layers/01-DATA-INGESTION.md)
 
-### 2. Cortex Layer (Feature Engineering)
+### 2. Feature & Technical Engine
 
 - **Service**: `FeatureEngineService`, `FeatureCacheService`
-- **Tech**: TypeScript + Sliding window caching
-- **Features**: 50 technical indicators (RSI, MACD, Realized Vol, Greeks, etc.)
+- **Tech**: TypeScript + TypedArrays, vectorized operations
+- **Features**: 50+ indicators (RSI, MACD, ATR, Greeks, OBI, etc.)
 - **Output**: Feature vectors (Float32Array)
+- **See**: [layers/02-FEATURE-ENGINE.md](./layers/02-FEATURE-ENGINE.md)
 
-### 3. Prediction Layer (ML Inference)
+### 3. Market Structure & Regime Detector
 
-- **Service**: `ModelLoaderService`, `EnsembleInferenceService`
+- **Service**: `RegimeDetectorService`, `SwingZoneDetector`
+- **Tech**: HMMs, Kalman filters, technical heuristics
+- **Regimes**: Trending, ranging, volatile, low-volatility
+- **Output**: Regime classification + swing zones
+- **See**: [layers/03-REGIME-DETECTOR.md](./layers/03-REGIME-DETECTOR.md)
+
+### 4. Signal/Prediction Engine
+
+- **Service**: `ModelLoaderService`, `EnsembleInferenceService`, `PredictionWorkerPool`
 - **Models**:
-  - **Level-0 Core** (6): XGBoost, LightGBM, Mamba (SSM), GINN, SVM, PatchTST
-  - **Level-0 Optional** (4): TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer
-  - **Level-1 Meta-Learner**: Logistic Regression stacker
-- **Tech**: ONNX Runtime with TensorRT/OpenVINO
-- **Architecture Note**: Supports Transformers (Autoformer, Informer) for time-series, CNNs for pattern recognition, and KANs for interpretability
-- **Output**: Trading signal probability (0-1) with confidence
+  - **Level-0 Core** (6): XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
+  - **Level-0 Optional** (4): TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
+  - **Level-1 Meta-Learner**: XGBoost stacker
+- **Tech**: ONNX Runtime (TensorRT/OpenVINO), Worker Threads
+- **Output**: Trading signals (VOL_UP/VOL_DOWN) + confidence
+- **See**: [layers/04-PREDICTION-ENGINE.md](./layers/04-PREDICTION-ENGINE.md)
 
-### 4. Cognition Layer (Strategy & Risk Management)
+### 5. Strategy Manager
 
-- **Service**: `StrategySelectionService`, `RiskManagerService`, `RegimeDetectorService`, `RLAgentService` (optional)
-- **Logic**:
-  - **Regime Detection**: HMMs/Kalman filters classify market state (trending/ranging/volatile)
-  - **Regime-Based Strategy Selection**: Momentum models for trends, mean-reversion for ranges
-  - Receives prediction signal
-  - Validates portfolio state (Greeks, margin, position limits)
-  - Selects option strategy (LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD, etc.)
-  - Determines position size (Kelly criterion, volatility scaling, or RL-based)
-- **Adaptive Learning**: Continuous monitoring with drift detection (ADDM algorithm)
-- **Output**: Validated target allocation with strategy type
+- **Service**: `StrategySelectionService`, `StrikeSelector`
+- **Strategies**: LONG_CALL, LONG_PUT, LONG_STRADDLE, IRON_CONDOR, spreads
+- **Logic**: Regime-based strategy routing, RL-based selection (optional)
+- **Output**: Selected strategy with strike/expiry
+- **See**: [layers/05-STRATEGY-MANAGER.md](./layers/05-STRATEGY-MANAGER.md)
 
-### 5. Execution Layer (Order Placement)
+### 6. Risk & Portfolio Manager
 
-- **Service**: `OrderPlacementService`, `ExecutionMonitorService`
-- **Logic**: Smart Order Routing with TWAP/VWAP execution
+- **Service**: `RiskValidationService`, `PositionSizingService`, `CircuitBreaker`
+- **Logic**: Kelly criterion, Greeks limits, VIX-scaled stop loss
+- **Output**: Validated orders with position sizes
+- **See**: [layers/06-RISK-MANAGER.md](./layers/06-RISK-MANAGER.md)
+
+### 7. Order Management & Execution
+
+- **Service**: `OrderManagerService`, `ExecutionEngineService`, `PositionManagerService`
+- **Logic**: Smart order routing (NSE/BSE), TWAP/VWAP/RL execution
 - **API**: Upstox REST API
-- **Output**: Order confirmations, position updates
+- **Output**: Order fills, position tracking, exit signals
+- **See**: [layers/07-ORDER-MANAGEMENT.md](./layers/07-ORDER-MANAGEMENT.md)
 
-### 6. Memory Layer (Multi-Tier Storage)
+### 8. Logging & Monitoring
 
-- **Hot Storage**: Redis (sub-second access for active positions, signals)
-- **Warm Storage**: QuestDB (time-series data - ticks, features, PnL)
-- **Cold Storage**: MongoDB (5-year audit trail - orders, signals, positions)
+- **Service**: `LoggingService`, `MetricsCollector`, `HealthCheckService`, `AlertingService`
+- **Tech**: Prometheus, Grafana, Winston/Pino, MongoDB audit trail
+- **Output**: Real-time metrics, alerts, 5-year audit trail
+- **See**: [layers/08-LOGGING-MONITORING.md](./layers/08-LOGGING-MONITORING.md)
 
-### 7. Control Layer (Observability)
+### 9. Offline Training & Deployment
 
-- **Monitoring**: Prometheus metrics at `/metrics`
-- **Health Checks**: Circuit breakers for data staleness, latency, risk breaches
-- **Tracing**: Structured JSON logging with trace IDs
+- **Service**: External `training-pipeline` (Kedro + Python)
+- **Logic**: CPCV, ensemble training, backtesting, ONNX export
+- **Output**: Production-ready ONNX models, MLflow registry
+- **See**: [layers/09-OFFLINE-TRAINING.md](./layers/09-OFFLINE-TRAINING.md), [training-pipeline docs](../../../services/training-pipeline/)
 
 ## Data Flow
 
 ```
-[market-feeder] → Redis Streams (market-data)
+[Upstox WebSocket] → Redis Streams (market-data)
          ↓
-[Layer 1: Perception] - MarketDataConsumer
-         ↓ (MarketDataReceivedEvent)
-[Layer 2: Cortex] - Feature Engineering
+[Layer 1: Data Ingestion] - MarketDataGateway
+         ↓ (MarketDataEvent)
+[Layer 2: Feature Engine] - Feature Computation
          ↓ (FeaturesComputedEvent)
-[Layer 3: Prediction] - ONNX Ensemble Inference (8-10 L0 + 1 L1)
-         ↓ (PredictionCompletedEvent)
-[Layer 4: Cognition] - Strategy Selection + Risk Management
-         ↓ (OrderValidatedEvent)
-[Layer 5: Execution] - Smart Order Routing
+[Layer 3: Regime Detector] - HMM/Kalman Classification
+         ↓ (RegimeDetectedEvent)
+[Layer 4: Prediction Engine] - ONNX Ensemble (Worker Threads)
+         ↓ (TradingSignal)
+[Layer 5: Strategy Manager] - Strategy Selection
+         ↓ (Strategy)
+[Layer 6: Risk Manager] - Pre-trade Validation
+         ↓ (ValidatedOrder)
+[Layer 7: Order Management] - Smart Routing & Execution
          ↓ (OrderFilledEvent)
-[Layer 5: Execution] - Position Manager (track open positions)
-         ↓ (PositionOpenedEvent, PositionUpdatedEvent)
-[Layer 5: Execution] - Exit Signal Generator (monitor exit conditions)
-         ↓ (ExitSignalEvent)
-[Layer 5: Execution] - Close Position (execute exit order)
-         ↓ (PositionClosedEvent)
-[Layer 6: Memory] - Hot/Warm/Cold Storage
+[Layer 7: Position Manager] - Track & Monitor Exits
+         ↓ (PositionOpenedEvent, ExitSignalEvent, PositionClosedEvent)
+[Layer 8: Logging & Monitoring] - Metrics + Audit Trail
          ↓
-[Layer 7: Control] - Metrics + Circuit Breakers
+[Layer 9: Offline Training] - Model Updates (Weekly)
 ```
 
 ## Key Design Principles
@@ -105,23 +122,16 @@ The `algo-worker` implements an **event-driven, microservices-based architecture
 
 ---
 
-## Integration with Modern Architecture
+## Architecture Design Principles
 
-This 7-layer implementation aligns with the 9-layer Modern Algo Trading Architecture:
-
-| Modern Architecture Layer             | Algo-Worker Implementation                    |
-| ------------------------------------- | --------------------------------------------- |
-| 1. Data Ingestion                     | Layer 1: Perception                           |
-| 2. Feature & Technical Engine         | Layer 2: Cortex                               |
-| 3. Market Structure & Regime Detector | Layer 4: Cognition (RegimeDetectorService)    |
-| 4. Signal/Prediction Engine           | Layer 3: Prediction                           |
-| 5. Strategy Manager                   | Layer 4: Cognition (StrategySelectionService) |
-| 6. Risk & Portfolio Manager           | Layer 4: Cognition (RiskManagerService)       |
-| 7. Order Management & Execution       | Layer 5: Execution                            |
-| 8. Logging/Monitoring                 | Layer 7: Control                              |
-| 9. Offline Training & Deployment      | External: `training-pipeline` service         |
-
-**Key Insight**: The 7-layer structure is an implementation choice that groups related modern architecture components into cohesive NestJS modules.
+1. **9-Layer Separation**: Each layer has single responsibility with clear boundaries
+2. **Event-Driven Core**: All inter-layer communication via Redis Streams (microsecond latency)
+3. **Adaptive Learning**: Real-time regime detection with HMMs/Kalman filters
+4. **User-Configurable**: Only analyze instruments/strategies enabled by active users
+5. **Sub-100ms Latency**: GPU inference in Worker Threads, zero-copy buffers
+6. **Fail-Safe**: Circuit breakers at every layer (data, prediction, risk, execution)
+7. **SEBI Compliant**: Unique algo IDs, pre-trade checks, 5-year audit trail
+8. **Production-Grade**: Prometheus metrics, health checks, comprehensive testing
 
 ---
 
