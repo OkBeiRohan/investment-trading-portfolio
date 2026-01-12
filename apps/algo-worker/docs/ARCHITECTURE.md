@@ -1,10 +1,10 @@
-# Algo Worker - Modern Event-Driven Trading Architecture
+# Algo Worker - Event-Driven Trading Architecture
 
 ## Overview
 
-The `algo-worker` implements a **modern event-driven, microservices-based architecture** designed for institutional-grade algorithmic trading with sub-150ms end-to-end latency. This design aligns with the comprehensive [Modern Algo Trading Architecture](../../../docs/MODERN_ALGO_TRADING_ARCHITECTURE.md) while providing implementation-specific details for the NestJS-based system.
+The `algo-worker` implements an **event-driven, microservices-based architecture** designed for institutional-grade algorithmic trading with sub-150ms end-to-end latency. This design aligns with the comprehensive [Algo Trading Architecture](../../../docs/ALGO_TRADING_ARCHITECTURE.md) while providing implementation-specific details for the NestJS-based system.
 
-**Key Architectural Principle**: Unlike traditional monolithic trading systems, this implementation uses an event-driven message bus (Redis Streams) with modular microservices for each processing stage—enabling adaptive regime detection, continuous learning, and ultra-low latency execution.
+**Key Architectural Principle**: This implementation uses an event-driven message bus (Redis Streams) with modular microservices for each processing stage—enabling adaptive regime detection, continuous learning, and ultra-low latency execution.
 
 ## The 7-Layer Implementation
 

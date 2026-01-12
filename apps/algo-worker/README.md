@@ -1,10 +1,10 @@
-# Algo Worker - Modern Event-Driven Trading Engine
+# Algo Worker - Event-Driven Trading Engine
 
-> **Real-time algorithmic trading engine for NSE Nifty/Bank Nifty options using modern event-driven microservices architecture and adaptive ML ensemble models.**
+> **Real-time algorithmic trading engine for NSE Nifty/Bank Nifty options using event-driven microservices architecture and adaptive ML ensemble models.**
 
 Built with NestJS, TypeScript, ONNX Runtime, QuestDB, MongoDB, and Redis Streams.
 
-**Architecture Documentation**: See [Modern Algo Trading Architecture](../../docs/MODERN_ALGO_TRADING_ARCHITECTURE.md) for comprehensive system design.
+**Architecture Documentation**: See [Algo Trading Architecture](../../docs/ALGO_TRADING_ARCHITECTURE.md) for comprehensive system design.
 
 ---
 
@@ -12,7 +12,7 @@ Built with NestJS, TypeScript, ONNX Runtime, QuestDB, MongoDB, and Redis Streams
 
 Algo Worker is the **live trading execution engine** that implements a modern event-driven, microservices-based architecture. It consumes pre-trained ONNX models from `training-pipeline` and real-time market data from `market-feeder` to generate trading signals and execute orders.
 
-**Key Innovation**: Unlike traditional monolithic algos, this system uses an event-driven message bus (Redis Streams) with modular microservices for each stage—enabling sub-100ms latency, adaptive regime detection, and continuous learning.
+**Key Design**: This system uses an event-driven message bus (Redis Streams) with modular microservices for each stage—enabling sub-100ms latency, adaptive regime detection, and continuous learning.
 
 ### **Design Principles**
 
@@ -24,9 +24,9 @@ Algo Worker is the **live trading execution engine** that implements a modern ev
 6. **SEBI 2024-2026 Compliant**: Unique `algoId`, pre-trade risk checks, 5-year audit trail
 7. **Fail-Safe**: Circuit breakers halt trading on data staleness, risk breaches, or latency degradation
 
-### **Modern Event-Driven Architecture (9 Layers)**
+### **Event-Driven Architecture (9 Layers)**
 
-**Comprehensive Architecture**: See [MODERN_ALGO_TRADING_ARCHITECTURE.md](../../docs/MODERN_ALGO_TRADING_ARCHITECTURE.md)
+**Comprehensive Architecture**: See [ALGO_TRADING_ARCHITECTURE.md](../../docs/ALGO_TRADING_ARCHITECTURE.md)
 
 **Implementation (7-Layer Internal Architecture)**:
 

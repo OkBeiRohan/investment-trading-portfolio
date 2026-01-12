@@ -1,7 +1,7 @@
-# Modern Algorithmic Trading Architecture (2026)
+# Algorithmic Trading Architecture
 
 > **Event-Driven, Microservices-Based Trading System for NIFTY/BANKNIFTY Options**
-> Built on latest 2024-2025 research findings and industry best practices
+> Built on 2024-2025 research findings and industry best practices
 
 **Last Updated**: January 12, 2026  
 **Status**: Production Architecture Specification
@@ -11,7 +11,7 @@
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Modern Trading System Challenges](#modern-trading-system-challenges)
+2. [Trading System Challenges](#trading-system-challenges)
 3. [Proposed Architecture](#proposed-architecture)
 4. [System Layers](#system-layers)
 5. [Data & Feature Layer](#data--feature-layer)
@@ -26,7 +26,7 @@
 
 ## Overview
 
-Modern algorithmic trading requires an architecture that combines:
+Algorithmic trading requires an architecture that combines:
 
 - **Event-driven microservices** for low-latency data processing
 - **Adaptive learning systems** for regime detection and online model updates
@@ -37,7 +37,7 @@ This document outlines a production-grade architecture for NIFTY/BANKNIFTY optio
 
 ---
 
-## Modern Trading System Challenges
+## Trading System Challenges
 
 ### State-of-the-Art Approaches
 

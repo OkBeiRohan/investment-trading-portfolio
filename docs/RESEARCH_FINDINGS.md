@@ -4,7 +4,7 @@
 
 Based on comprehensive research for algorithmic trading systems targeting Indian index options, this document outlines critical architectural decisions that differ from conventional wisdom and previous versions of the system.
 
-**📚 Modern Architecture**: See [MODERN_ALGO_TRADING_ARCHITECTURE.md](./MODERN_ALGO_TRADING_ARCHITECTURE.md) for the complete implementation based on these research findings.
+**📚 Architecture**: See [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md) for the complete implementation based on these research findings.
 
 ---
 

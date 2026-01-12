@@ -7,15 +7,15 @@
 
 Project Quantum is an **Event-Driven, Neuro-Symbolic Trading Architecture** specifically engineered for ultra-low latency Indian index options trading. It combines deterministic event processing with advanced AI/ML models while maintaining strict SEBI 2024-2026 compliance.
 
-**📚 Comprehensive Architecture**: For the complete modern algo-trading architecture with detailed system design, see [MODERN_ALGO_TRADING_ARCHITECTURE.md](./MODERN_ALGO_TRADING_ARCHITECTURE.md). This document provides implementation-specific details for Project Quantum.
+**📚 Comprehensive Architecture**: For the complete algo-trading architecture with detailed system design, see [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md). This document provides implementation-specific details for Project Quantum.
 
 ---
 
-## Modern Architecture Overview
+## Architecture Overview
 
-**Key Innovation**: Event-driven microservices with adaptive ML and regime detection.
+**Key Design**: Event-driven microservices with adaptive ML and regime detection.
 
-### The 9-Layer Modern Architecture
+### The 9-Layer Architecture
 
 1. **Data Ingestion Layer** → Upstox API feeds, real-time Greeks
 2. **Feature & Technical Engine** → Moving averages, ATR, order flow imbalance
@@ -27,7 +27,7 @@ Project Quantum is an **Event-Driven, Neuro-Symbolic Trading Architecture** spec
 8. **Logging/Monitoring** → Prometheus, Grafana, real-time dashboards
 9. **Offline Training & Deployment** → Walk-forward validation, drift detection
 
-See [MODERN_ALGO_TRADING_ARCHITECTURE.md](./MODERN_ALGO_TRADING_ARCHITECTURE.md) for detailed design patterns, ML model selection strategies, and performance benchmarks.
+See [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md) for detailed design patterns, ML model selection strategies, and performance benchmarks.
 
 ---
 

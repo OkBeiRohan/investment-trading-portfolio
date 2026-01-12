@@ -10,7 +10,7 @@
 
 The Cognition layer receives ML predictions and makes trading decisions. It **detects market regimes** (trending/ranging/volatile), selects strategies based on regime + predictions, applies risk management rules (Kelly criterion, VIX-scaled stop-loss), performs SEBI compliance checks, and emits orders for the Execution layer.
 
-**Modern Architecture Alignment**: This layer implements Market Structure & Regime Detector (Layer 3), Strategy Manager (Layer 5), and Risk & Portfolio Manager (Layer 6) from the [Modern Algo Trading Architecture](../../../../docs/MODERN_ALGO_TRADING_ARCHITECTURE.md).
+**Architecture Alignment**: This layer implements Market Structure & Regime Detector (Layer 3), Strategy Manager (Layer 5), and Risk & Portfolio Manager (Layer 6) from the [Algo Trading Architecture](../../../../docs/ALGO_TRADING_ARCHITECTURE.md).
 
 ---
 
