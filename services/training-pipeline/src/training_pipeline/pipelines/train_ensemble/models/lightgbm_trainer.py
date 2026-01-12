@@ -1,26 +1,102 @@
-# services/training-pipeline/src/training_pipeline/pipelines/train_ensemble/models/lightgbm_trainer.py
 """
 Production-grade LightGBM Level-0 Model Trainer
 Implements walk-forward validation with volatility-adjusted labeling
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Literal, Optional
 
 import lightgbm as lgb
 import mlflow
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
+from pydantic import BaseModel, Field
 from sklearn.metrics import (
     accuracy_score,
-    classification_report,  # pyright: ignore[reportUnknownVariableType]
     confusion_matrix,
-    precision_recall_fscore_support,  # pyright: ignore[reportUnknownVariableType]
+    precision_recall_fscore_support,  # type: ignore
     roc_auc_score,
 )
-from sklearn.model_selection import TimeSeriesSplit
+from sklearn.model_selection import TimeSeriesSplit  # type: ignore
+
+from training_pipeline.types import (  # type: ignore[import]
+    FoldMetrics,
+    TrainingConfig,
+    TrainingResult,
+    ValidationMetrics,
+)
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Internal Type Definitions (Pydantic Models)
+# ============================================================================
+
+
+class LightGBMConfig(BaseModel):
+    """LightGBM-specific hyperparameters"""
+
+    objective: Literal["multiclass"] = "multiclass"
+    num_class: Literal[3] = 3
+    metric: str = "multi_logloss"
+    boosting_type: Literal["gbdt", "dart", "goss"] = "gbdt"
+    num_leaves: int = Field(default=31, ge=2, le=131072)
+    learning_rate: float = Field(default=0.05, gt=0.0, le=1.0)
+    n_estimators: int = Field(default=400, ge=1)
+    min_data_in_leaf: int = Field(default=80, ge=1)
+    feature_fraction: float = Field(default=0.8, gt=0.0, le=1.0)
+    bagging_fraction: float = Field(default=0.8, gt=0.0, le=1.0)
+    bagging_freq: int = Field(default=5, ge=0)
+    lambda_l1: float = Field(default=0.5, ge=0.0)
+    lambda_l2: float = Field(default=1.0, ge=0.0)
+    max_depth: int = Field(default=-1, ge=-1)
+    verbose: int = Field(default=-1)
+    device: Literal["cpu", "gpu", "cuda"] = "gpu"
+    gpu_platform_id: int = Field(default=0, ge=0)
+    gpu_device_id: int = Field(default=0, ge=0)
+
+    class Config:
+        frozen = True
+
+    def to_dict(self) -> dict[str, object]:
+        """Convert to dict for LightGBM with proper types"""
+        return self.model_dump()
+
+
+class LabelingConfig(BaseModel):
+    """Configuration for volatility-adjusted labeling"""
+
+    horizon: int = Field(
+        default=5, ge=1, description="Forward-looking horizon (minutes)"
+    )
+    k: float = Field(default=1.0, gt=0.0, description="Multiplier for ATR threshold")
+    atr_column: str = Field(default="atr_percent", description="ATR feature name")
+
+    class Config:
+        frozen = True
+
+
+class SplitIndices(BaseModel):
+    """Train/test split indices"""
+
+    train_idx: list[int] = Field(description="Training indices")
+    test_idx: list[int] = Field(description="Test indices")
+
+    class Config:
+        frozen = True
+
+
+class FeatureImportance(BaseModel):
+    """Feature importance scores"""
+
+    feature: str
+    importance: float = Field(ge=0.0)
+
+    class Config:
+        frozen = True
 
 
 class LightGBMTrainer:
@@ -38,57 +114,30 @@ class LightGBMTrainer:
 
     def __init__(
         self,
-        n_splits: int = 12,
-        purge_window: int = 375,  # 1 day @ 1s candles
-        embargo_window: int = 375,
-        parameters: Optional[Dict] = None,
+        training_config: Optional[TrainingConfig] = None,
+        lightgbm_config: Optional[LightGBMConfig] = None,
+        labeling_config: Optional[LabelingConfig] = None,
     ):
         """
         Initialize LightGBM trainer
 
         Args:
-            n_splits: Number of walk-forward splits
-            purge_window: Timesteps to purge between train/test (prevent leakage)
-            embargo_window: Timesteps to embargo after test (account for long memory)
-            parameters: Model hyperparameters (uses safe defaults if None)
+            training_config: Walk-forward training configuration
+            lightgbm_config: LightGBM hyperparameters
+            labeling_config: Labeling configuration
         """
-        self.n_splits = n_splits
-        self.purge_window = purge_window
-        self.embargo_window = embargo_window
+        self.training_config = training_config or TrainingConfig()
+        self.lightgbm_config = lightgbm_config or LightGBMConfig()
+        self.labeling_config = labeling_config or LabelingConfig()
 
-        # Production-safe hyperparameters (aligned with blueprint)
-        self.parameters = parameters or {
-            "objective": "multiclass",
-            "num_class": 3,
-            "metric": "multi_logloss",
-            "boosting_type": "gbdt",
-            "num_leaves": 31,
-            "learning_rate": 0.05,
-            "n_estimators": 400,
-            "min_data_in_leaf": 80,
-            "feature_fraction": 0.8,
-            "bagging_fraction": 0.8,
-            "bagging_freq": 5,
-            "lambda_l1": 0.5,
-            "lambda_l2": 1.0,
-            "max_depth": -1,
-            "verbose": -1,
-            "device": "gpu",  # Use GPU if available
-            "gpu_platform_id": 0,
-            "gpu_device_id": 0,
-        }
-
-        self.model = None
-        self.oof_predictions = None
-        self.fold_metrics = []
+        self.model: Optional[lgb.LGBMClassifier] = None
+        self.oof_predictions: Optional[npt.NDArray[np.float64]] = None
+        self.fold_metrics: list[FoldMetrics] = []
 
     def create_volatility_adjusted_labels(
         self,
         features: pd.DataFrame,
         prices: pd.Series,
-        horizon: int = 5,  # 5 minutes
-        k: float = 1.0,
-        atr_column: str = "atr_percent",
     ) -> pd.Series:
         """
         Create volatility-adjusted labels
@@ -99,28 +148,35 @@ class LightGBMTrainer:
         Args:
             features: Feature DataFrame with ATR
             prices: Price series
-            horizon: Forward-looking horizon (minutes)
-            k: Multiplier for ATR threshold
-            atr_column: ATR feature name
 
         Returns:
             Series with labels: 1 (UP), 0 (NEUTRAL), -1 (DOWN)
         """
-        logger.info(f"Creating volatility-adjusted labels (horizon={horizon}, k={k})")
+        logger.info(
+            f"Creating volatility-adjusted labels "
+            f"(horizon={self.labeling_config.horizon}, k={self.labeling_config.k})"
+        )
 
         # Future returns
-        future_returns = (prices.shift(-horizon) - prices) / prices
+        future_returns = (prices.shift(-self.labeling_config.horizon) - prices) / prices
 
         # Volatility-based threshold
-        atr_threshold = k * features[atr_column]
+        if self.labeling_config.atr_column not in features.columns:
+            raise ValueError(
+                f"ATR column '{self.labeling_config.atr_column}' not found in features"
+            )
+
+        atr_threshold = (
+            self.labeling_config.k * features[self.labeling_config.atr_column]
+        )
 
         # Label logic (from blueprint)
-        labels = pd.Series(0, index=features.index)  # Default NEUTRAL
+        labels = pd.Series(0, index=features.index, dtype=np.int8)  # Default NEUTRAL
         labels[future_returns > atr_threshold] = 1  # UP
         labels[future_returns < -atr_threshold] = -1  # DOWN
 
         # Remove NaN at end (can't compute future returns)
-        labels = labels.iloc[:-horizon]
+        labels = labels.iloc[: -self.labeling_config.horizon]
 
         label_dist = labels.value_counts(normalize=True)
         logger.info(
@@ -134,7 +190,7 @@ class LightGBMTrainer:
         self,
         features: pd.DataFrame,
         labels: pd.Series,
-    ) -> List[Tuple[np.ndarray, np.ndarray]]:
+    ) -> list[SplitIndices]:
         """
         Walk-forward cross-validation with purging and embargoing
 
@@ -148,25 +204,28 @@ class LightGBMTrainer:
             labels: Label Series
 
         Returns:
-            List of (train_idx, test_idx) tuples
+            List of SplitIndices with train/test indices
         """
         logger.info(
-            f"Creating {self.n_splits} walk-forward splits with "
-            f"purge={self.purge_window}, embargo={self.embargo_window}"
+            f"Creating {self.training_config.n_splits} walk-forward splits with "
+            f"purge={self.training_config.purge_window}, "
+            f"embargo={self.training_config.embargo_window}"
         )
 
-        tscv = TimeSeriesSplit(n_splits=self.n_splits)
-        splits = []
+        tscv = TimeSeriesSplit(n_splits=self.training_config.n_splits)
+        splits: list[SplitIndices] = []
 
         for fold, (train_idx, test_idx) in enumerate(tscv.split(features), 1):
             # Purge: Remove data immediately before test set
-            purged_train_idx = train_idx[train_idx < test_idx[0] - self.purge_window]
+            purged_train_idx = train_idx[
+                train_idx < test_idx[0] - self.training_config.purge_window
+            ]
 
             # Embargo: Remove data immediately after test set
             max_test_idx = test_idx[-1]
-            if max_test_idx + self.embargo_window < len(features):
+            if max_test_idx + self.training_config.embargo_window < len(features):
                 embargoed_test_idx = test_idx[
-                    test_idx < len(features) - self.embargo_window
+                    test_idx < len(features) - self.training_config.embargo_window
                 ]
             else:
                 embargoed_test_idx = test_idx
@@ -174,7 +233,13 @@ class LightGBMTrainer:
             logger.info(
                 f"Fold {fold}: Train={len(purged_train_idx)}, Test={len(embargoed_test_idx)}"
             )
-            splits.append((purged_train_idx, embargoed_test_idx))
+
+            splits.append(
+                SplitIndices(
+                    train_idx=purged_train_idx.tolist(),
+                    test_idx=embargoed_test_idx.tolist(),
+                )
+            )
 
         return splits
 
@@ -185,7 +250,7 @@ class LightGBMTrainer:
         X_val: pd.DataFrame,
         y_val: pd.Series,
         fold: int,
-    ) -> Tuple[lgb.LGBMClassifier, Dict]:
+    ) -> tuple[lgb.LGBMClassifier, FoldMetrics]:
         """
         Train LightGBM on a single fold
 
@@ -197,7 +262,7 @@ class LightGBMTrainer:
             fold: Fold number (for logging)
 
         Returns:
-            Trained model and metrics dict
+            Trained model and fold metrics
         """
         logger.info(f"Training fold {fold}: Train={len(X_train)}, Val={len(X_val)}")
 
@@ -206,10 +271,10 @@ class LightGBMTrainer:
         y_val_encoded = y_val + 1
 
         # Initialize model
-        model = lgb.LGBMClassifier(**self.parameters)
+        model = lgb.LGBMClassifier(**self.lightgbm_config.to_dict())  # type: ignore[arg-type]
 
         # Train with early stopping
-        model.fit(
+        model.fit(  # type: ignore
             X_train,
             y_train_encoded,
             eval_set=[(X_val, y_val_encoded)],
@@ -221,17 +286,19 @@ class LightGBMTrainer:
         )
 
         # Predict probabilities
-        y_pred_proba = model.predict_proba(X_val)
-        y_pred = np.argmax(y_pred_proba, axis=1) - 1  # Back to -1, 0, 1
+        y_pred_proba: npt.NDArray[np.float64] = model.predict_proba(X_val)  # type: ignore
+        y_pred: npt.NDArray[np.int64] = (
+            np.argmax(y_pred_proba, axis=1) - 1
+        )  # Back to -1, 0, 1
 
         # Compute metrics
         metrics = self._compute_metrics(y_val, y_pred, y_pred_proba, fold)
 
         logger.info(
             f"Fold {fold} complete: "
-            f"Accuracy={metrics['accuracy']:.3f}, "
-            f"Precision(UP)={metrics['precision_up']:.3f}, "
-            f"Precision(DOWN)={metrics['precision_down']:.3f}"
+            f"Accuracy={metrics.accuracy:.3f}, "
+            f"Precision(UP)={metrics.precision_up:.3f}, "
+            f"Precision(DOWN)={metrics.precision_down:.3f}"
         )
 
         return model, metrics
@@ -239,10 +306,10 @@ class LightGBMTrainer:
     def _compute_metrics(
         self,
         y_true: pd.Series,
-        y_pred: np.ndarray,
-        y_pred_proba: np.ndarray,
+        y_pred: npt.NDArray[np.int64],
+        y_pred_proba: npt.NDArray[np.float64],
         fold: int,
-    ) -> Dict:
+    ) -> FoldMetrics:
         """Compute comprehensive metrics for a fold"""
 
         # Convert to encoded labels for sklearn
@@ -250,10 +317,10 @@ class LightGBMTrainer:
         y_pred_encoded = y_pred + 1
 
         # Overall accuracy
-        accuracy = accuracy_score(y_true_encoded, y_pred_encoded)
+        accuracy = float(accuracy_score(y_true_encoded, y_pred_encoded))
 
         # Per-class metrics
-        precision, recall, f1, support = precision_recall_fscore_support(
+        precision, recall, f1, _ = precision_recall_fscore_support(
             y_true_encoded, y_pred_encoded, labels=[0, 1, 2], zero_division=0
         )
 
@@ -262,49 +329,46 @@ class LightGBMTrainer:
 
         # Multi-class AUC (ovr = one-vs-rest)
         try:
-            auc = roc_auc_score(y_true_encoded, y_pred_proba, multi_class="ovr")
+            auc = float(roc_auc_score(y_true_encoded, y_pred_proba, multi_class="ovr"))
         except ValueError:
             auc = 0.0
-
-        # Trade expectancy (focus on UP and DOWN only)
-        up_mask = y_true == 1
-        down_mask = y_true == -1
-
-        precision_up = precision[2] if len(precision) > 2 else 0.0  # Label 2 = UP
-        precision_down = precision[0] if len(precision) > 0 else 0.0  # Label 0 = DOWN
 
         # Neutral accuracy (important for NOT trading)
         neutral_mask = y_true == 0
         if neutral_mask.sum() > 0:
-            neutral_accuracy = (y_pred[neutral_mask] == 0).mean()
+            neutral_accuracy = float((y_pred[neutral_mask] == 0).mean())
         else:
             neutral_accuracy = 0.0
 
-        metrics = {
-            "fold": fold,
-            "accuracy": accuracy,
-            "auc": auc,
-            "precision_up": precision_up,
-            "precision_neutral": precision[1] if len(precision) > 1 else 0.0,
-            "precision_down": precision_down,
-            "recall_up": recall[2] if len(recall) > 2 else 0.0,
-            "recall_neutral": recall[1] if len(recall) > 1 else 0.0,
-            "recall_down": recall[0] if len(recall) > 0 else 0.0,
-            "f1_up": f1[2] if len(f1) > 2 else 0.0,
-            "f1_neutral": f1[1] if len(f1) > 1 else 0.0,
-            "f1_down": f1[0] if len(f1) > 0 else 0.0,
-            "neutral_accuracy": neutral_accuracy,
-            "confusion_matrix": cm.tolist(),
-        }
+        # Extract per-class metrics (guaranteed to be arrays of length 3)
+        # precision[0]=DOWN, precision[1]=NEUTRAL, precision[2]=UP
+        precision_arr = np.asarray(precision)
+        recall_arr = np.asarray(recall)
+        f1_arr = np.asarray(f1)
 
-        return metrics
+        return FoldMetrics(
+            fold=fold,
+            accuracy=accuracy,
+            auc=auc,
+            precision_up=float(precision_arr[2]),
+            precision_neutral=float(precision_arr[1]),
+            precision_down=float(precision_arr[0]),
+            recall_up=float(recall_arr[2]),
+            recall_neutral=float(recall_arr[1]),
+            recall_down=float(recall_arr[0]),
+            f1_up=float(f1_arr[2]),
+            f1_neutral=float(f1_arr[1]),
+            f1_down=float(f1_arr[0]),
+            neutral_accuracy=neutral_accuracy,
+            confusion_matrix=cm.tolist(),
+        )
 
     def train(
         self,
         features: pd.DataFrame,
         labels: pd.Series,
         mlflow_run_name: Optional[str] = None,
-    ) -> Tuple[lgb.LGBMClassifier, np.ndarray]:
+    ) -> TrainingResult:
         """
         Train LightGBM with walk-forward validation
 
@@ -314,12 +378,18 @@ class LightGBMTrainer:
             mlflow_run_name: Optional MLflow run name
 
         Returns:
-            Final trained model and out-of-fold predictions
+            TrainingResult with model, metrics, and feature importance
         """
         logger.info("Starting LightGBM training with walk-forward validation")
 
+        # Validate features
+        validate_features(features)
+
         # Initialize OOF predictions
-        self.oof_predictions = np.zeros((len(features), 3))  # 3 classes
+        self.oof_predictions = np.zeros(
+            (len(features), 3), dtype=np.float64
+        )  # 3 classes
+        self.fold_metrics = []
 
         # Walk-forward splits
         splits = self.walk_forward_split(features, labels)
@@ -327,110 +397,184 @@ class LightGBMTrainer:
         # Start MLflow run
         with mlflow.start_run(run_name=mlflow_run_name or "lightgbm_walk_forward"):
             # Log hyperparameters
-            mlflow.log_params(self.parameters)
-            mlflow.log_param("n_splits", self.n_splits)
-            mlflow.log_param("purge_window", self.purge_window)
-            mlflow.log_param("embargo_window", self.embargo_window)
+            mlflow.log_params(self.lightgbm_config.to_dict())
+            mlflow.log_param("n_splits", self.training_config.n_splits)
+            mlflow.log_param("purge_window", self.training_config.purge_window)
+            mlflow.log_param("embargo_window", self.training_config.embargo_window)
 
             # Train each fold
-            for fold, (train_idx, test_idx) in enumerate(splits, 1):
-                X_train = features.iloc[train_idx]
-                y_train = labels.iloc[train_idx]
-                X_val = features.iloc[test_idx]
-                y_val = labels.iloc[test_idx]
+            for fold, split in enumerate(splits, 1):
+                X_train = features.iloc[np.array(split.train_idx)]
+                y_train = labels.iloc[np.array(split.train_idx)]
+                X_val = features.iloc[np.array(split.test_idx)]
+                y_val = labels.iloc[np.array(split.test_idx)]
 
                 # Train fold
                 fold_model, fold_metrics = self.train_fold(
                     X_train, y_train, X_val, y_val, fold
                 )
 
-                # Store OOF predictions
-                self.oof_predictions[test_idx] = fold_model.predict_proba(X_val)
+                # Store OOF predictions (convert to dense array)
+                self.oof_predictions[np.array(split.test_idx)] = np.asarray(
+                    fold_model.predict_proba(X_val)  # type: ignore
+                )
 
                 # Store metrics
                 self.fold_metrics.append(fold_metrics)
 
                 # Log fold metrics to MLflow
-                for metric_name, metric_value in fold_metrics.items():
-                    if isinstance(metric_value, (int, float)):
-                        mlflow.log_metric(f"fold_{fold}_{metric_name}", metric_value)
+                mlflow.log_metric(f"fold_{fold}_accuracy", fold_metrics.accuracy)
+                mlflow.log_metric(f"fold_{fold}_auc", fold_metrics.auc)
+                mlflow.log_metric(
+                    f"fold_{fold}_precision_up", fold_metrics.precision_up
+                )
+                mlflow.log_metric(
+                    f"fold_{fold}_precision_down", fold_metrics.precision_down
+                )
 
             # Compute average metrics across folds
-            avg_metrics = self._aggregate_fold_metrics()
+            validation_metrics = self._aggregate_fold_metrics()
 
             # Log average metrics
-            for metric_name, metric_value in avg_metrics.items():
-                if isinstance(metric_value, (int, float)):
-                    mlflow.log_metric(f"avg_{metric_name}", metric_value)
+            mlflow.log_metric("avg_accuracy", validation_metrics.accuracy_mean)
+            mlflow.log_metric("avg_auc", validation_metrics.auc_mean)
+            mlflow.log_metric("avg_precision_up", validation_metrics.precision_up_mean)
+            mlflow.log_metric(
+                "avg_precision_down", validation_metrics.precision_down_mean
+            )
 
             logger.info(
                 f"Walk-forward validation complete: "
-                f"Avg Accuracy={avg_metrics['accuracy']:.3f}, "
-                f"Avg AUC={avg_metrics['auc']:.3f}"
+                f"Avg Accuracy={validation_metrics.accuracy_mean:.3f}±{validation_metrics.accuracy_std:.3f}, "
+                f"Avg AUC={validation_metrics.auc_mean:.3f}±{validation_metrics.auc_std:.3f}"
             )
 
             # Train final model on full dataset
             logger.info("Training final model on full dataset")
             y_encoded = labels + 1
-            self.model = lgb.LGBMClassifier(**self.parameters)
-            self.model.fit(features, y_encoded)
+            self.model = lgb.LGBMClassifier(**self.lightgbm_config.to_dict())  # type: ignore[arg-type]
+            self.model.fit(features, y_encoded)  # type: ignore
 
-            # Log feature importance
-            feature_importance = pd.DataFrame(
-                {
-                    "feature": features.columns,
-                    "importance": self.model.feature_importances_,
-                }
-            ).sort_values("importance", ascending=False)
-
-            logger.info("Top 10 features:")
-            for idx, row in feature_importance.head(10).iterrows():
-                logger.info(f"  {row['feature']}: {row['importance']:.2f}")
+            # Compute feature importance
+            feature_importance_scores = self._compute_feature_importance()
 
             # Save feature importance as artifact
-            feature_importance.to_csv("feature_importance.csv", index=False)
+            feature_importance_df = pd.DataFrame(
+                [(fi.feature, fi.importance) for fi in feature_importance_scores],
+                columns=["feature", "importance"],
+            )
+            feature_importance_df.to_csv("feature_importance.csv", index=False)
             mlflow.log_artifact("feature_importance.csv")
 
             # Log model
-            mlflow.lightgbm.log_model(self.model, "lightgbm")
+            mlflow.lightgbm.log_model(self.model, "lightgbm")  # type: ignore
 
-        return self.model, self.oof_predictions
+        return TrainingResult(
+            model_type="lightgbm",
+            fold_metrics=self.fold_metrics,
+            validation_metrics=validation_metrics,
+            feature_importance=[
+                (fi.feature, fi.importance) for fi in feature_importance_scores
+            ],
+            oof_predictions_shape=self.oof_predictions.shape,
+        )
 
-    def _aggregate_fold_metrics(self) -> Dict:
+    def _aggregate_fold_metrics(self) -> ValidationMetrics:
         """Aggregate metrics across all folds"""
-        avg_metrics = {}
+        # Extract metric arrays
+        accuracies = [m.accuracy for m in self.fold_metrics]
+        aucs = [m.auc for m in self.fold_metrics]
+        precision_ups = [m.precision_up for m in self.fold_metrics]
+        precision_neutrals = [m.precision_neutral for m in self.fold_metrics]
+        precision_downs = [m.precision_down for m in self.fold_metrics]
+        recall_ups = [m.recall_up for m in self.fold_metrics]
+        recall_neutrals = [m.recall_neutral for m in self.fold_metrics]
+        recall_downs = [m.recall_down for m in self.fold_metrics]
+        f1_ups = [m.f1_up for m in self.fold_metrics]
+        f1_neutrals = [m.f1_neutral for m in self.fold_metrics]
+        f1_downs = [m.f1_down for m in self.fold_metrics]
+        neutral_accuracies = [m.neutral_accuracy for m in self.fold_metrics]
 
-        for key in self.fold_metrics[0].keys():
-            if key in ["fold", "confusion_matrix"]:
-                continue
+        return ValidationMetrics(
+            accuracy_mean=float(np.mean(accuracies)),
+            accuracy_std=float(np.std(accuracies)),
+            auc_mean=float(np.mean(aucs)),
+            auc_std=float(np.std(aucs)),
+            precision_up_mean=float(np.mean(precision_ups)),
+            precision_up_std=float(np.std(precision_ups)),
+            precision_neutral_mean=float(np.mean(precision_neutrals)),
+            precision_neutral_std=float(np.std(precision_neutrals)),
+            precision_down_mean=float(np.mean(precision_downs)),
+            precision_down_std=float(np.std(precision_downs)),
+            recall_up_mean=float(np.mean(recall_ups)),
+            recall_up_std=float(np.std(recall_ups)),
+            recall_neutral_mean=float(np.mean(recall_neutrals)),
+            recall_neutral_std=float(np.std(recall_neutrals)),
+            recall_down_mean=float(np.mean(recall_downs)),
+            recall_down_std=float(np.std(recall_downs)),
+            f1_up_mean=float(np.mean(f1_ups)),
+            f1_up_std=float(np.std(f1_ups)),
+            f1_neutral_mean=float(np.mean(f1_neutrals)),
+            f1_neutral_std=float(np.std(f1_neutrals)),
+            f1_down_mean=float(np.mean(f1_downs)),
+            f1_down_std=float(np.std(f1_downs)),
+            neutral_accuracy_mean=float(np.mean(neutral_accuracies)),
+            neutral_accuracy_std=float(np.std(neutral_accuracies)),
+        )
 
-            values = [m[key] for m in self.fold_metrics]
-            avg_metrics[key] = np.mean(values)
-            avg_metrics[f"{key}_std"] = np.std(values)
+    def _compute_feature_importance(self) -> list[FeatureImportance]:
+        """Compute feature importance from final model"""
+        if self.model is None:
+            raise ValueError("No model trained yet")
 
-        return avg_metrics
+        feature_importance_scores = [
+            FeatureImportance(
+                feature=feature,
+                importance=float(importance),
+            )
+            for feature, importance in zip(
+                self.model.feature_name_,
+                self.model.feature_importances_,
+            )
+        ]
 
-    def save_model(self, filepath: str) -> None:
+        # Sort by importance descending
+        feature_importance_scores.sort(key=lambda x: x.importance, reverse=True)
+
+        # Log top 10 features
+        logger.info("Top 10 features:")
+        for fi in feature_importance_scores[:10]:
+            logger.info(f"  {fi.feature}: {fi.importance:.2f}")
+
+        return feature_importance_scores
+
+    def save_model(self, filepath: Path) -> None:
         """Save trained model to disk"""
         if self.model is None:
             raise ValueError("No model trained yet")
 
-        self.model.booster_.save_model(filepath)
+        # Ensure parent directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        self.model.booster_.save_model(str(filepath))
         logger.info(f"Model saved to {filepath}")
 
-    def save_oof_predictions(self, filepath: str) -> None:
+    def save_oof_predictions(self, filepath: Path) -> None:
         """Save out-of-fold predictions for meta-learner"""
         if self.oof_predictions is None:
             raise ValueError("No OOF predictions available")
 
+        # Ensure parent directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
         oof_df = pd.DataFrame(
             self.oof_predictions, columns=["prob_down", "prob_neutral", "prob_up"]
         )
-        oof_df.to_parquet(filepath)
+        oof_df.to_parquet(str(filepath))
         logger.info(f"OOF predictions saved to {filepath}")
 
 
-def validate_features(features: pd.DataFrame) -> None:
+def validate_features(features: pd.DataFrame) -> pd.DataFrame:
     """
     Validate feature DataFrame matches blueprint specification
 
@@ -500,6 +644,8 @@ def validate_features(features: pd.DataFrame) -> None:
 
 # Example usage
 if __name__ == "__main__":
+    from pathlib import Path
+
     # This would be called from a Kedro pipeline node
 
     # Load features and prices
@@ -509,33 +655,73 @@ if __name__ == "__main__":
     # Validate features match blueprint
     features = validate_features(features)
 
-    # Initialize trainer
-    trainer = LightGBMTrainer(
+    # Initialize configs
+    training_config = TrainingConfig(
         n_splits=12,
         purge_window=375,
         embargo_window=375,
+        random_state=42,
+    )
+
+    lightgbm_config = LightGBMConfig(
+        objective="multiclass",
+        num_class=3,
+        metric="multi_logloss",
+        boosting_type="gbdt",
+        num_leaves=31,
+        learning_rate=0.05,
+        n_estimators=400,
+        min_data_in_leaf=80,
+        feature_fraction=0.8,
+        bagging_fraction=0.8,
+        bagging_freq=5,
+        lambda_l1=0.5,
+        lambda_l2=1.0,
+        max_depth=-1,
+        verbose=-1,
+        device="gpu",
+        gpu_platform_id=0,
+        gpu_device_id=0,
+    )
+
+    labeling_config = LabelingConfig(
+        horizon=5,  # 5 minutes
+        k=1.0,
+        atr_column="atr_percent",
+    )
+
+    # Initialize trainer
+    trainer = LightGBMTrainer(
+        training_config=training_config,
+        lightgbm_config=lightgbm_config,
+        labeling_config=labeling_config,
     )
 
     # Create volatility-adjusted labels
     labels = trainer.create_volatility_adjusted_labels(
         features=features,
         prices=prices,
-        horizon=5,  # 5 minutes
-        k=1.0,
     )
 
     # Align features with labels (remove last horizon rows)
-    features_aligned = features.iloc[:-5]
+    features_aligned = features.iloc[: -labeling_config.horizon]
 
     # Train with walk-forward validation
-    model, oof_predictions = trainer.train(
+    result = trainer.train(
         features=features_aligned,
         labels=labels,
         mlflow_run_name="lightgbm_v1",
     )
 
     # Save outputs
-    trainer.save_model("data/06_models/lightgbm.txt")
-    trainer.save_oof_predictions("data/07_model_output/oof_lightgbm.parquet")
+    trainer.save_model(Path("data/06_models/lightgbm.txt"))
+    trainer.save_oof_predictions(Path("data/07_model_output/oof_lightgbm.parquet"))
 
-    logger.info("LightGBM training complete!")
+    logger.info(f"LightGBM training complete!")
+    logger.info(f"Model type: {result.model_type}")
+    logger.info(
+        f"Validation AUC: {result.validation_metrics.auc_mean:.3f}±{result.validation_metrics.auc_std:.3f}"
+    )
+    logger.info(
+        f"Top 3 features: {', '.join([f'{feat}: {imp:.2f}' for feat, imp in result.feature_importance[:3]])}"
+    )
