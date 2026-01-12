@@ -23,23 +23,38 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 
 ### Algo Trading (algo-worker)
 
-- **🧠 ML Ensemble Stack**:
-  - 8-10 Level-0 models: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer (core 6) + TimesNet-MLP, WFTNet-MLP, PatchTST, KAN (optional 4)
-  - Level-1 meta-learner: Logistic Regression stacker
-  - Advanced architectures: Channel-independent Transformers (PatchTST) + learnable activation networks (KAN)
-  - Research-backed: Informer transformers outperform LSTM in option pricing; Vision Transformers process IV surface as 2D images
+- **🧠 ML Hierarchical Intelligence Stack** 🆕 (12-14 Models Total):
+  - **TIER 1 - Core (Always-On)**:
+    - **Level-0A: Micro-Alpha** - LiT (LOB Transformer) for 10s-1min microstructure signals from depth-20 order book
+    - **Level-0B: Macro Direction (CORE)** - LightGBM, XGBoost for 5-15min forecasting with 50+ features (Greeks, momentum, volatility)
+    - **Level-0C: Regime & Volatility** - TFT (Temporal Fusion Transformer) for multi-horizon forecasting (5min-EOD)
+  - **TIER 2 - Conditional (Regime-Activated)**:
+    - PatchTST (TREND regimes), Mamba (regime shifts), TimesNet-MLP (volatility expansion), WFTNet-MLP (news spikes)
+  - **TIER 3 - Research/Shadow**:
+    - SVM, GINN, KAN (compliance), ViT, CNN-LSTM for validation and interpretability
+  - **Level-1**: Contextual meta-learner with adaptive gating (market-state aware fusion, not simple stacking)
+  - **Key Insight**: 4-7 models run simultaneously (regime-dependent), NEVER all at once (prevents latency explosion)
+  - **Orthogonal Information**: LiT learns from LOB microstructure, LightGBM from technical+Greeks, TFT from time-series volatility
   - Online learning: Drift detection (ADWIN) for real-time model adaptation
   - Explainability: SHAP for feature importance monitoring (SEBI compliance)
   - Symbolic risk rules (hard limits override AI predictions)
 - **⚡ Ultra-Low Latency**:
   - Event-driven core with deterministic sequencer (<10μs event processing)
-  - Kernel bypass (DPDK/Solarflare ef_vi) for network (-30% latency)
-  - SIMD-vectorized technical indicators
+  - Worker Threads for GPU inference (eliminates main-thread blocking)
+  - ONNX Runtime with TensorRT/OpenVINO (FP16 quantization)
+  - Object pooling + TypedArrays (eliminates GC pauses)
   - CPU pinning + lock-free data structures
 - **🛡️ Institutional Risk Management**:
   - Real-time Greeks monitoring (Delta, Gamma, Vega, Theta)
-  - Kelly Criterion position sizing with dynamic leverage
+  - Multi-criteria exits (stop loss, trailing stop, ML reversal, time-based, risk breach)
+  - Kelly Criterion position sizing with VIX-scaled dynamic leverage
   - Automated circuit breakers (max loss, drawdown, latency degradation)
+- **🚀 DRL PPO Execution Agent** 🆕 (Optional):
+  - Learned optimal execution for slippage minimization (-5 to -10 bps improvement)
+  - State: LOB snapshot, remaining qty, spread, volatility
+  - Actions: Limit price offset, slice size, wait time
+  - **Critical Rule**: ONLY execution optimization (never decides direction/strategy)
+  - Safety: Fallback to TWAP/VWAP if agent underperforms
 
 ### Wealth Management (wealth-management, wealth-analyzer, document-processor) 🆕
 
@@ -189,6 +204,9 @@ pnpm dev  # Starts on port 3001
 ### Core Guides
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: Event-driven 7-layer system design
+- **[HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](docs/HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md)**: 🆕 LiT, TFT, DRL integration guide (multi-scale prediction system)
+- **[MARKET_STATE_ENCODER.md](docs/MARKET_STATE_ENCODER.md)**: 🆕 **Critical**: Data-model interface (50k signals → 200 numbers) - how models consume multi-instrument data
+- **[MODEL_INVENTORY.md](docs/MODEL_INVENTORY.md)**: 🆕 Complete 12-14 model taxonomy with tier classification and activation patterns
 - **[DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md)**: 🆕 Hybrid local-cloud deployment strategy
 - **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)**: Production roadmap (SEBI compliance, latency optimization)
 - **[WEALTH_MANAGEMENT_SYSTEM.md](docs/WEALTH_MANAGEMENT_SYSTEM.md)**: 🆕 Comprehensive wealth management guide

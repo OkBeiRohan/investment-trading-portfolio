@@ -172,45 +172,93 @@ Each component communicates via a **central event bus**, allowing:
 
 ---
 
-### Layer 2: Feature & Technical Engine
+### Layer 2: Cortex (Feature Engineering + Market State Encoder)
 
-**Purpose**: Transform raw data into model inputs
+**Purpose**: Transform raw multi-instrument data into compressed, model-specific views
 
-**Inputs**: Tick-level data, full depth (20 levels), Greeks
+**Inputs**:
 
-**Feature Categories**:
+- NIFTY FUTURE (OHLCV + LOB depth-20 + trades)
+- 50 NIFTY Constituents (OHLCV + volume + depth)
+- Option Chain (Greeks, IV, OI, volume, LOB for active strikes)
 
-1. **Statistical Features**
-   - Moving averages, Bollinger Bands, RSI
-   - Momentum indicators, volatility (ATR)
-   - Support/resistance levels (Donchian channels)
+**Critical Architecture Component**: 🧠 **Market State Encoder (MSE)**
 
-2. **Microstructure Features**
-   - Bid-ask spread
-   - Order book imbalance
-   - Trade volume spikes
-   - Time-of-day patterns
+> **Key Insight**: Models NEVER see "many instruments". Models see a SINGLE, AGGREGATED, CONTEXTUALIZED STATE.
 
-3. **Option-Centric Features**
-   - Implied volatility surface (skew, term structure)
-   - Greeks for ATM strikes
-   - Synthetic Greeks for multi-leg strategies
+**MSE Responsibilities**:
 
-4. **Cross-Asset Signals**
-   - Leading/lagging from related indexes
-   - Sector indices correlations
+1. Consume all raw feeds (50k+ signals/second)
+2. Maintain sliding windows and caches
+3. Aggregate intelligently (breadth, alignment, flow)
+4. Emit **model-specific views** (not raw data)
 
-**Advanced Pattern Extraction**:
+**MSE Sub-Components**:
 
-- **CNNs**: Process sliding window of order-book levels or OHLCV as "image"
-  - Capture shape-invariant patterns (head-and-shoulder, engulfing)
-- **Autoencoders**: Learn compact latent features from raw data
-- **Transformers**: Consume long sequences of ticks to summarize market context
-  - Parallel attention focuses on relevant history
+1. **IndexAggregator**
+   - Purpose: Collapse 50 constituents → 10 index-level metrics
+   - Outputs: Breadth scores, advance-decline ratio, weighted returns, sectoral alignment
+   - Example: `pct_stocks_above_vwap: 0.72` (36/50 stocks above VWAP)
 
-**Output**: Feature vectors published as events on the bus
+2. **BreadthComputer**
+   - Purpose: Detect false moves vs real participation
+   - Outputs: Participation index, divergence score, correlation to leaders
+   - Critical: Filters ~40% of false futures breakouts
 
-**Latency Target**: <10ms
+3. **AlignmentScorer**
+   - Purpose: Measure sectoral cohesion and correlation
+   - Outputs: Sector alignment score, intra-sector spreads
+   - Example: High alignment (0.85) → strong conviction move
+
+4. **LOBTensorBuilder**
+   - Purpose: Build normalized LOB tensors for LiT model
+   - Input: NIFTY FUTURE LOB depth-20 (NOT spot - spot has no order book)
+   - Output: (T×80) tensor (60 timesteps × [20 bid prices + 20 ask prices + 20 bid sizes + 20 ask sizes])
+   - Normalization: Prices relative to mid, sizes relative to average
+
+5. **RegimeFeatureBuilder**
+   - Purpose: Stack temporal features for TFT model
+   - Output: (T×F) time-series (120 timesteps × 15 features)
+   - Features: Index return, realized vol, breadth, momentum, IV, PCR, etc.
+
+6. **ExecutionStateBuilder**
+   - Purpose: Build execution-specific state for DRL PPO agent
+   - Output: Option LOB + underlying context + order state
+   - Scope: ONLY execution-relevant features (never direction/strategy)
+
+**Feature Categories by Model**:
+
+**LightGBM Features (33 total)**:
+
+- Index Aggregation (10): Breadth, alignment, divergence, participation
+- Futures Features (8): Momentum, RSI, ATR, volume, basis
+- Options Features (10): ATM IV, PCR, skew, Greeks, max pain distance
+- Time Context (5): Minutes from open/close, expiry proximity
+
+**TFT Features (15 per timestep)**:
+
+- Temporal aggregates: Returns, realized vol, breadth, momentum
+- Options flow: IV changes, PCR evolution
+- Microstructure: Spread, range position, volume surges
+- Context: Time-of-day, days-to-expiry
+
+**LiT Features (80 per timestep)**:
+
+- NIFTY FUTURE LOB ONLY (depth-20)
+- 20 bid levels (price + size) + 20 ask levels (price + size)
+- Normalized relative to mid-price
+- Data quality gates: Freshness <2s, spread <0.5%, depth ≥10 levels
+
+**Output**: Model-specific encoded states published as events:
+
+- `LightGBMStateReadyEvent` → Float32Array(33)
+- `TFTStateReadyEvent` → Float32Array(120×15)
+- `LiTStateReadyEvent` → Float32Array(60×80)
+- `ExecutionStateReadyEvent` → Execution-specific object
+
+**Latency Target**: <15ms (including aggregation)
+
+**See**: [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md) for complete implementation details
 
 ---
 
@@ -256,47 +304,296 @@ Each component communicates via a **central event bus**, allowing:
 
 ---
 
-### Layer 4: Signal/Prediction Engine
+### Layer 4: Signal/Prediction Engine (Multi-Scale Intelligence)
 
-**Purpose**: Forecast short-term direction or breakouts based on regime and features
+**Purpose**: Hierarchical prediction system combining microstructure-aware, macro-directional, and regime intelligence
 
-**Model Selection Strategy**:
+This layer implements a **3-tier prediction hierarchy** that eliminates the weaknesses of traditional flat ensembles:
 
-- **Trending Regime**: Momentum model (LSTM/Transformer predicting continuation)
-- **Ranging Regime**: Mean-reversion model (Random Forest, ARIMA)
-- **Volatile Break**: Event-detection model (CNN on candlestick matrices)
+1. **Level-0A: Micro-Alpha (LiT)** - LOB depth-20 microstructure signals (10s-1min)
+2. **Level-0B: Macro Direction (LightGBM/XGBoost)** - Primary directional forecasting (5-15min)
+3. **Level-0C: Regime & Volatility (TFT)** - Multi-horizon volatility and regime forecasting (5min-EOD)
+4. **Level-1: Contextual Meta-Learner** - Adaptive gating based on market conditions
 
-**ML/DL Models**:
+---
 
-1. **Time-Series Transformers** (Autoformer, Informer)
-   - Superior performance on high-frequency data
-   - Self-attention captures long-term context (overnight, weekly patterns)
-   - Parallelizable for low latency
+#### **Level-0A: Micro-Alpha - LiT (Limit Order Book Transformer)**
 
-2. **LSTMs/GRUs**
-   - Sequence data modeling
-   - Good for capturing temporal dependencies
+**Purpose**: Capture very short-term directional bias from LOB depth-20 microstructure
 
-3. **Convolutional Networks**
-   - 1D CNNs on time series
-   - 2D CNNs on "tick image" patches
-   - Detect local patterns quickly
+**What it does**:
 
-4. **Knowledge-Augmented Networks (KANs)**
-   - Replace weight matrices with spline functions
-   - High accuracy with fewer parameters
-   - Interpretable for regulators
+- Detects aggressive buying/selling pressure in real-time
+- Identifies liquidity imbalances that precede price moves
+- Provides sub-minute directional edge
 
-**Ensemble & Meta-Learning**:
+**Input (XLOB Tensor)**:
 
-- Maintain multiple parallel models per regime
-- Gating network (or simple ensemble weighting) chooses which model's signal to act on
-- Stacking: Blend CNN's pattern probability with Transformer's price prediction
-- Reduces overfitting risk
+```
+Shape: (T, 40)
+T = 50–100 snapshots (~10–30 seconds @ 1s granularity)
 
-**Output**: Probabilistic signals (e.g., "upward breakout likely 0.75", "mean-reversion bounce 0.68")
+Each snapshot:
+[
+  bid_price_1…bid_price_20,
+  bid_size_1…bid_size_20,
+  ask_price_1…ask_price_20,
+  ask_size_1…ask_size_20
+]
+```
 
-**Latency Target**: <50ms (GPU), <100ms (CPU)
+**Model Architecture**:
+
+- Transformer encoder with 4-8 attention heads
+- Positional encoding for temporal ordering
+- Multi-head attention captures cross-level interactions
+- Final classification: UP / NEUTRAL / DOWN
+
+**Output**:
+
+```json
+{
+  "micro_up": 0.58,
+  "micro_neutral": 0.2,
+  "micro_down": 0.22,
+  "confidence": 0.58
+}
+```
+
+**Prediction Horizon**: 10 seconds → 1 minute
+
+**Key Limitations** (Why it's NOT a replacement):
+
+- ❌ No understanding of options Greeks
+- ❌ No awareness of IV regimes
+- ❌ No day structure knowledge
+- ❌ No support/resistance context
+- ✅ ONLY answers: "Is aggressive pressure present RIGHT NOW?"
+
+**Usage Pattern**:
+
+```
+IF LightGBM says UP
+AND TFT says breakout regime
+AND LiT says micro_up > 0.6
+→ HIGH-CONFIDENCE CE entry with optimal timing
+```
+
+**Latency Target**: ~5-10ms (ONNX + TensorRT)
+
+---
+
+#### **Level-0B: Macro Direction - LightGBM/XGBoost (UNCHANGED)**
+
+**Purpose**: Primary directional forecasting using comprehensive market features
+
+**What it does**:
+
+- Synthesizes market structure, momentum, volatility, Greeks
+- Provides 5-15 minute directional forecasts
+- **Remains the CORE directional voting model**
+
+**Why it stays central**:
+
+- ✅ Only model that simultaneously understands:
+  - Market structure (VWAP, range position, swing zones)
+  - Momentum (RSI, MACD, ROC, ADX)
+  - Volatility (ATR, realized vol, India VIX)
+  - Options Greeks (Delta, Gamma, Theta, Vega)
+  - Time-of-day patterns
+
+**Feature Categories** (50+ features):
+
+1. Market Structure (8): price vs VWAP, day high/low, range position
+2. Momentum & Trend (8): RSI(5/14/21), MACD, EMA slopes, ADX, ROC
+3. Volatility (5): ATR%, realized vol (5m/15m), vol expansion ratio, India VIX
+4. Options (9): ATM IV, IV change, Greeks (Delta/Gamma/Vega/Theta), PCR (OI/Volume), max pain dist
+5. Time Context (3): minutes from open/close, day of week
+
+**Output**:
+
+```json
+{
+  "vol_up": 0.65,
+  "vol_neutral": 0.25,
+  "vol_down": 0.1,
+  "confidence": 0.65
+}
+```
+
+**Prediction Horizon**: 5-15 minutes
+
+**Latency Target**: <50ms
+
+---
+
+#### **Level-0C: Regime & Volatility Intelligence - TFT (Temporal Fusion Transformer)**
+
+**Purpose**: Multi-horizon volatility forecasting and regime classification
+
+**What it does**:
+
+- Forecasts expected price ranges and volatility expansion
+- Classifies market regime (RANGE / TREND / BREAKOUT / LOW_VOL)
+- Provides strategy eligibility signals
+
+**Input (Time-Series Tensor)**:
+
+```
+Shape: (N, F)
+N = 60–300 timesteps (1s or 1min bars)
+F = price, volume, IV, Greeks, index breadth, sector indices
+```
+
+**Model Architecture**:
+
+- Variable Selection Network (VSN) for feature importance
+- Gated Residual Network (GRN) for temporal processing
+- Multi-head attention for long-term dependencies
+- Quantile regression for uncertainty estimation
+
+**Outputs**:
+
+```json
+{
+  "expected_high": 26120,
+  "expected_low": 25980,
+  "volatility_forecast": 1.35,
+  "regime": "RANGE",
+  "breakout_probability": 0.15,
+  "regime_confidence": 0.82
+}
+```
+
+**Prediction Horizon**: 5 minutes → End-of-Day
+
+**Key Strengths**:
+
+- ✅ Exceptional at regime transitions
+- ✅ Volatility expansion detection
+- ✅ Range boundary forecasting
+- ✅ Multi-horizon consistency
+
+**Key Limitations**:
+
+- ❌ Slower than LightGBM
+- ❌ Less precise for immediate entry timing
+- ❌ Not ideal for sub-minute directional calls
+
+**Usage Pattern - Strategy Eligibility**:
+
+```python
+IF TFT says RANGE:
+    disable_momentum_strategies()
+    enable_mean_reversion()
+    set_stop_loss(tight)
+
+IF TFT says BREAKOUT:
+    enable_momentum_strategies()
+    disable_mean_reversion()
+    set_stop_loss(wide)
+    allow_LiT_signals(weight=HIGH)
+```
+
+**Latency Target**: <80ms
+
+---
+
+#### **Level-1: Contextual Meta-Learner (UPGRADED)**
+
+**Purpose**: Adaptive signal fusion with context-aware gating
+
+**Previous Approach** (Simple Stacking):
+
+```python
+# ❌ OLD: Fixed weights
+ensemble_prob = 0.5 * lightgbm_prob + 0.3 * cnn_prob + 0.2 * lstm_prob
+```
+
+**New Approach** (Contextual Gating):
+
+```python
+# ✅ NEW: Conditional weights based on market state
+meta_input = [
+    lightgbm_probs,      # (3,) - UP/NEUTRAL/DOWN
+    lit_micro_probs,     # (3,) - micro directional bias
+    tft_regime_embed,    # (8,) - regime classification embedding
+    tft_vol_forecast,    # (1,) - volatility forecast
+    current_spread,      # (1,) - bid-ask spread
+    current_vol_regime   # (1,) - low/medium/high vol
+]
+
+# Gating network learns context-dependent weights
+weights = gating_network(meta_input)  # → (3,) weights for [LightGBM, LiT, TFT]
+final_probs = weighted_sum(lightgbm_probs, lit_probs, tft_directional_bias, weights)
+confidence = compute_confidence(final_probs, weights, market_state)
+```
+
+**Gating Behavior Examples**:
+
+- **Low Volatility + RANGE**: LiT weight ↓, TFT weight ↑, LightGBM baseline
+- **High Volatility + BREAKOUT**: LiT weight ↑, LightGBM weight ↑, TFT provides bounds
+- **Wide Spread + Uncertain Regime**: ALL weights ↓, confidence penalty
+
+**Architecture**:
+
+- Input: Concatenated predictions + regime features (15 dims)
+- Hidden: 2 dense layers (32 → 16 units)
+- Output: 3-class probabilities + confidence score
+
+**Training**:
+
+- Supervised on historical labels
+- Optimize for both accuracy AND calibration (Brier score)
+- Walk-forward validation to prevent overfitting
+
+**Output**:
+
+```json
+{
+  "final_direction": "UP",
+  "final_probs": {
+    "vol_up": 0.72,
+    "vol_neutral": 0.18,
+    "vol_down": 0.1
+  },
+  "confidence": 0.72,
+  "model_weights": {
+    "lightgbm": 0.55,
+    "lit": 0.3,
+    "tft": 0.15
+  },
+  "reasoning": "Strong macro signal + microstructure confirmation"
+}
+```
+
+**Latency Target**: <20ms
+
+---
+
+#### **Failure Isolation (Critical)**
+
+Each model is independently disable-able:
+
+| Model    | If it fails                      | Fallback Behavior                  |
+| -------- | -------------------------------- | ---------------------------------- |
+| LiT      | Degrades to macro-only trading   | Use LightGBM + TFT only            |
+| TFT      | Defaults to rule-based regime    | Use technical indicators (ADX, BB) |
+| LightGBM | **SYSTEM HALTS**                 | No trading without core direction  |
+| Meta-L1  | Revert to simple ensemble voting | Equal-weight average               |
+
+**Circuit Breaker Triggers**:
+
+- LiT latency >50ms → disable LiT, log alert
+- TFT inference error → fallback to rule-based regime
+- LightGBM missing → halt all trading immediately
+- Meta-learner NaN output → use fallback voting
+
+**Latency Summary**:
+
+- Total prediction layer: <100ms (parallel inference)
+- Critical path: LightGBM (50ms) + Meta-learner (20ms) = 70ms
+- LiT + TFT run in parallel, results cached for meta-learner
 
 ---
 
@@ -363,9 +660,13 @@ Each component communicates via a **central event bus**, allowing:
 
 ---
 
-### Layer 7: Order Management & Execution (OMS/EMS)
+### Layer 7: Order Management & Execution (OMS/EMS) with DRL Optimization
 
-**Purpose**: Translate trade decisions into exchange orders with minimal slippage
+**Purpose**: Translate trade decisions into exchange orders with minimal slippage using reinforcement learning
+
+---
+
+#### **Traditional Execution** (Base Implementation)
 
 **Strike Selection**:
 
@@ -389,6 +690,83 @@ Each component communicates via a **central event bus**, allowing:
 - **Large Orders**: Split into smaller IOC orders to walk multiple book levels
 - Real-time risk checks (max order size, market-impact limits)
 
+---
+
+#### **DRL PPO Execution Agent** (Advanced Optimization)
+
+**Purpose**: Minimize slippage and adverse selection through learned optimal execution
+
+**Critical Rule** (NEVER VIOLATED):
+
+```
+❌ Agent NEVER decides: direction, CE vs PE, strategy
+✅ Agent ONLY decides: how to execute a given order optimally
+```
+
+**Scope**:
+
+- Input: "BUY 50 lots ATM CE @ confidence 0.72"
+- Output: Optimal order slicing and timing to minimize cost
+- Does NOT: Change the trade decision or strategy
+
+**State Space**:
+
+```python
+{
+    "order_type": "BUY",              # BUY/SELL
+    "remaining_qty": 35,              # Unfilled quantity
+    "bid_prices": [26100, 26099, ...], # Top 5 bids
+    "ask_prices": [26102, 26103, ...], # Top 5 asks
+    "spread": 2.0,                     # Bid-ask spread
+    "volatility": 1.2,                 # Current vol regime
+    "elapsed_time": 2.5,               # Seconds since start
+}
+```
+
+**Action Space** (Continuous):
+
+```python
+{
+    "limit_price_offset": 0.5,   # Ticks from mid (-10 to +10)
+    "slice_size": 5,             # Lots (1-20)
+    "wait_time": 1.0             # Seconds (0-5)
+}
+```
+
+**Reward Function**:
+
+```python
+reward = -abs(slippage) - λ*delay_penalty - μ*adverse_selection
+```
+
+**Why PPO**:
+
+- ✅ Stable training (clipped updates)
+- ✅ Continuous action space
+- ✅ Works in noisy environments
+- ✅ Proven in HFT execution
+
+**Safety Mechanisms**:
+
+- Fallback to traditional if agent latency >50ms
+- Disable if slippage >1.2x benchmark
+- Position limits override
+
+**Metrics**:
+
+- Avg slippage: -5 bps vs benchmark
+- Fill rate: 98%
+- Avg execution time: 3.2s
+
+**When NOT to Use DRL**:
+
+- Order size > max_rl_size
+- Volatility > high_vol_threshold
+- Agent underperforming benchmark
+- Wide spread >5x normal
+
+---
+
 **Latency Optimization**:
 
 - End-to-end inference + send <100ms
@@ -400,10 +778,15 @@ Each component communicates via a **central event bus**, allowing:
 
 - Handle acknowledgments/cancelations with minimal delay
 - Track fills, partial fills, rejections
+- Real-time position tracking
+- Exit signal generation (stop loss, trailing stop, ML reversal)
 
-**Output**: Exchange orders, fill confirmations
+**Output**: Exchange orders, fill confirmations, execution analytics
 
-**Latency Target**: <50ms
+**Latency Target**:
+
+- Traditional: <50ms
+- DRL Agent: <60ms (includes 10ms inference)
 
 ---
 
@@ -619,109 +1002,421 @@ ELSE:
 
 ## Predictive Models & ML Layers
 
-### Model Architecture Overview
+### Model Architecture Overview - Hierarchical Intelligence System
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│           Feature Extraction Layer                      │
-│  (Autoencoders, GNNs for order-book, KANs)            │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│         Regime/State Estimation Layer                   │
-│  (Kalman Filters, HMMs, RNN with attention)            │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│        Price/Signal Prediction Layer                    │
-│  (Transformers, LSTMs, CNNs, KANs)                     │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│         Strategy Gating/Meta-Layer                      │
-│  (Classifier, Decision Tree, RL/Bandit)                │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                Data Ingestion (Upstox Plus)                 │
+│       1s OHLCV | LOB Depth-20 | Greeks | IV Surface        │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│              Feature & Tensor Preparation                   │
+│  • Scalar features (50+) → LightGBM                         │
+│  • LOB tensors (T×40) → LiT                                 │
+│  • Time-series tensors (N×F) → TFT                          │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│         Multi-Scale Prediction (Level-0)                    │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │  Level-0A: Micro-Alpha (LiT)                     │      │
+│  │  → LOB Transformer for 10s-1min microstructure   │      │
+│  │  → Detects aggressive buy/sell pressure          │      │
+│  └──────────────────────────────────────────────────┘      │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │  Level-0B: Macro Direction (LightGBM/XGBoost)    │      │
+│  │  → Core 5-15min directional forecasting          │      │
+│  │  → Synthesizes 50+ features (Greeks, momentum)   │      │
+│  └──────────────────────────────────────────────────┘      │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │  Level-0C: Regime & Volatility (TFT)             │      │
+│  │  → Multi-horizon volatility forecasting          │      │
+│  │  → Regime classification (RANGE/TREND/BREAKOUT)  │      │
+│  └──────────────────────────────────────────────────┘      │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│        Level-1: Contextual Meta-Learner                     │
+│  • Adaptive gating based on market conditions               │
+│  • Context-aware weight assignment                          │
+│  • Confidence scoring & arbitration                         │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│         Strategy Manager + Risk Validation                  │
+│  • CE/PE selection | Strike selection | Position sizing     │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│         DRL PPO Execution Agent (Optional)                  │
+│  • Optimal order slicing | Slippage minimization            │
+│  • NEVER decides direction/strategy (execution only)        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Layer 1: Feature Extraction
+### Key Design Principles
 
-**Purpose**: Learn compact representations from raw data
+1. **Hierarchical Intelligence** (not flat ensemble)
+   - Each model solves a specific scale/domain problem
+   - LiT: Microstructure (10s-1min)
+   - LightGBM: Macro direction (5-15min)
+   - TFT: Regime + volatility (5min-EOD)
 
-**Models**:
+2. **Orthogonal Information Sources**
+   - LiT learns from LOB depth-20 (aggressive flow)
+   - LightGBM learns from technical + Greeks
+   - TFT learns from time-series volatility patterns
+   - **Minimal correlation → maximum ensemble gain**
 
-1. **Autoencoders**
-   - Deep learning autoencoders for dimensionality reduction
-   - Learn latent features from raw tick data
+3. **Contextual Fusion**
+   - Meta-learner uses market state to weight models
+   - Low vol + RANGE → TFT dominates
+   - High vol + BREAKOUT → LiT weight increases
 
-2. **Graph Neural Networks (GNNs)**
-   - Encode order-book topology
-   - Model relationships between price levels
+4. **Failure Isolation**
+   - Each model independently disable-able
+   - LightGBM failure → system halts (core model)
+   - LiT/TFT failure → graceful degradation
 
-3. **Kolmogorov-Arnold Networks (KANs)**
-   - Replace weight matrices with spline functions
-   - High accuracy with fewer parameters
-   - Interpretable feature attributions
+---
 
-**Output**: Compact latent feature vectors
+### Model Details
 
-### Layer 2: Regime/State Estimation
+#### **Level-0A: LiT (Limit Order Book Transformer)**
 
-**Purpose**: Infer hidden market states
+**Purpose**: Micro-alpha from LOB depth-20 microstructure
 
-**Models**:
+**Architecture**:
 
-1. **State-Space Models**
-   - Kalman filters for trend/volatility estimation
-   - Continuously adapt parameters
-2. **Hidden Markov Models (HMMs)**
-   - Infer latent regimes from observations
-   - Transition probabilities between states
+- Transformer encoder (4-8 heads)
+- Input: 50-100 LOB snapshots (T×40 tensor)
+- Output: 3-class probabilities (UP/NEUTRAL/DOWN)
 
-3. **Recurrent Neural Networks with Attention**
-   - RNN/LSTM for sequence modeling
-   - Attention mechanisms highlight relevant history
-   - Classify regimes online
+**Training**:
 
-**Output**: Current regime label + confidence
+- Labels: Price movement in next 10-60 seconds
+- Loss: Cross-entropy with class weighting
+- Data: Historical LOB snapshots with 1s granularity
 
-### Layer 3: Price/Signal Prediction
+**Inference**:
 
-**Purpose**: Forecast short-term price movements or signal probabilities
+- Latency: 5-10ms (ONNX + TensorRT)
+- Frequency: Every tick (if latency permits)
 
-**Models**:
+**Feature Engineering**:
 
-1. **Time-Series Transformers**
-   - **Autoformer**: Decomposition-based forecasting
-   - **Informer**: Efficient for long sequences
-   - Self-attention captures long-term context
-   - Parallelizable for low latency
-   - Superior on high-frequency market data
+```python
+# LOB snapshot vectorization
+for level in range(20):
+    features.append([
+        bid_prices[level],
+        bid_sizes[level],
+        ask_prices[level],
+        ask_sizes[level]
+    ])
+```
 
-2. **LSTMs/GRUs**
-   - Recurrent networks for sequence data
-   - Capture temporal dependencies
-   - Good for moderate sequence lengths
+---
 
-3. **Convolutional Networks**
-   - **1D CNNs**: Time series patterns
-   - **2D CNNs**: "Tick image" patches (price/volume heatmaps)
-   - Fast local pattern detection
+#### **Level-0B: LightGBM (Macro Direction) - UNCHANGED**
 
-4. **Knowledge-Augmented Networks (KANs)**
-   - Final MLP in deep architectures
-   - Human-interpretable feature attributions
-   - Regulatory transparency
+**Purpose**: Core directional forecasting (5-15min)
 
-**Ensemble Strategy**:
+**Why it stays**:
 
-- Average predictions from diverse models
-- Weight by recent performance
-- Reduces overfitting risk
-- Improves stability across regimes
+- ✅ Only model understanding full market context
+- ✅ Greeks + momentum + volatility + structure
+- ✅ Proven robustness across regimes
+- ✅ Interpretable (SHAP values for compliance)
 
-**Output**: Probabilistic signals (0-1) with confidence intervals
+**Features**: 50+ scalar features
 
-### Layer 4: Strategy Gating/Meta-Layer
+- Market Structure (8)
+- Momentum & Trend (8)
+- Volatility (5)
+- Options (9): Greeks, PCR, IV
+- Time Context (3)
+
+**Training**:
+
+- Walk-forward validation (CPCV)
+- Purging + embargoing to prevent leakage
+- Target: 5-15min directional moves
+
+**Inference**:
+
+- Latency: <50ms
+- Frequency: Every new feature vector (1s or configurable)
+
+---
+
+#### **Level-0C: TFT (Temporal Fusion Transformer)**
+
+**Purpose**: Multi-horizon volatility forecasting and regime detection
+
+**Architecture**:
+
+- Variable Selection Network (VSN)
+- Gated Residual Network (GRN)
+- Multi-head attention
+- Quantile regression head
+
+**Input**: Time-series tensor (N×F)
+
+- N = 60-300 timesteps
+- F = price, volume, IV, Greeks, breadth
+
+**Outputs**:
+
+```json
+{
+  "expected_high": 26120,
+  "expected_low": 25980,
+  "volatility_forecast": 1.35,
+  "regime": "RANGE|TREND|BREAKOUT|LOW_VOL",
+  "breakout_probability": 0.15
+}
+```
+
+**Training**:
+
+- Multi-task learning (volatility + regime)
+- Quantile regression for uncertainty
+- Rolling window validation
+
+**Inference**:
+
+- Latency: <80ms
+- Frequency: Every minute (or 5min for EOD forecast)
+
+**Usage**:
+
+- Controls strategy eligibility
+- Adjusts position sizing
+- Sets stop-loss width
+
+---
+
+#### **Level-1: Contextual Meta-Learner (Upgraded)**
+
+**Purpose**: Adaptive signal fusion
+
+**Input**:
+
+```python
+meta_features = [
+    lightgbm_probs,      # (3,)
+    lit_probs,           # (3,)
+    tft_regime_embed,    # (8,) - regime embedding
+    tft_vol_forecast,    # (1,)
+    spread,              # (1,)
+    vol_regime           # (1,) - low/med/high
+]  # Total: 17 dims
+```
+
+**Architecture**:
+
+- Dense(32) → ReLU → Dropout(0.3)
+- Dense(16) → ReLU → Dropout(0.2)
+- Output: 3-class probs + confidence
+
+**Training**:
+
+- Supervised on historical labels
+- Optimize for accuracy + calibration (Brier score)
+- Learn context-dependent weights
+
+**Gating Logic**:
+
+- Low vol + RANGE → downweight LiT
+- High vol + BREAKOUT → upweight LiT
+- Wide spread → confidence penalty
+
+**Inference**:
+
+- Latency: <20ms
+- Output: Final directional call + reasoning
+
+---
+
+### Complete Model Inventory - Tier Classification
+
+#### **TIER 1: Core Models (Always-On)**
+
+Essential models that form the system backbone:
+
+| Model        | Role                   | Horizon  | Always Active | Status     |
+| ------------ | ---------------------- | -------- | ------------- | ---------- |
+| **LightGBM** | Macro direction (CORE) | 5-15min  | ✅ YES        | Production |
+| **TFT**      | Regime + volatility    | 5min-EOD | ✅ YES        | Production |
+| **LiT**      | Microstructure alpha   | 10s-1min | ✅ YES        | Production |
+| **DRL PPO**  | Execution optimization | ms       | ✅ Optional   | Production |
+
+---
+
+#### **TIER 2: Conditional Models (Regime-Activated)**
+
+Specialist models activated by TFT regime signals:
+
+| Model            | Specialization     | Activation Trigger   | Input                | Status      |
+| ---------------- | ------------------ | -------------------- | -------------------- | ----------- |
+| **PatchTST**     | Intraday sequences | TREND regime         | Time-series patches  | Conditional |
+| **Mamba (SSM)**  | Long memory        | REGIME SHIFTS        | State-space sequence | Conditional |
+| **TimesNet-MLP** | Frequency patterns | VOLATILITY EXPANSION | Multi-period decomp  | Conditional |
+| **WFTNet-MLP**   | Wavelet features   | NEWS SPIKES          | Wavelet coefficients | Conditional |
+| **XGBoost**      | Sanity check       | Always (shadow)      | Same as LightGBM     | Shadow      |
+
+**Activation Logic**:
+
+```python
+if tft.regime == "TREND" and confidence > 0.7:
+    activate(PatchTST)  # +40ms
+elif tft.regime == "VOLATILE":
+    activate(TimesNet)  # +50ms
+elif tft.detecting_regime_shift():
+    activate(Mamba)     # +45ms
+# else: use TIER 1 only (saves 60-70% compute)
+```
+
+---
+
+#### **TIER 3: Research/Shadow Models (Offline Analysis)**
+
+Models trained for validation, research, or compliance:
+
+| Model         | Purpose                 | Usage             | Status   |
+| ------------- | ----------------------- | ----------------- | -------- |
+| **SVM (RBF)** | Baseline comparison     | Shadow/benchmark  | Research |
+| **GINN**      | Volatility clustering   | Research          | Research |
+| **KAN**       | Interpretability (SEBI) | Compliance review | Research |
+| **ViT**       | IV surface analysis     | Options-specific  | Research |
+| **CNN-LSTM**  | Legacy hybrid           | Comparison        | Legacy   |
+
+**Research Pipeline**:
+
+- All models trained weekly
+- Metrics logged to MLflow
+- Best performers promoted to TIER 2
+- KAN used for regulatory explanations
+
+---
+
+### Model Count Summary
+
+```
+TOTAL MODELS:             12-14
+  ├─ TIER 1 (Core):       4
+  ├─ TIER 2 (Conditional):5
+  └─ TIER 3 (Research):   3-6
+
+SIMULTANEOUS EXECUTION:
+  ├─ Low Vol Range:       2-3 models
+  ├─ Normal Market:       4-5 models
+  ├─ High Vol Trend:      6-7 models
+  └─ NEVER ALL:          Latency explosion (300ms+)
+```
+
+---
+
+### Why Hierarchical > Flat Ensemble
+
+#### ❌ Flat Ensemble Problems:
+
+- 300-500ms latency (misses edge)
+- Conflicting time horizons
+- No failure isolation
+- Expensive GPU usage
+
+#### ✅ Hierarchical Benefits:
+
+- Sub-150ms latency
+- Context-aware activation
+- Clear responsibility
+- 60-70% cost savings
+
+---
+
+### Optional Models (Research/Advanced)
+
+**PatchTST** (TIER 2 - Conditional):
+
+- Patching mechanism for time series
+- Channel-independent processing
+- Activated during TREND regimes
+- 10-20% improvement over standard Transformers
+
+**Mamba (SSM)** (TIER 2 - Conditional):
+
+- Linear-time sequence modeling (O(L) vs O(L²))
+- Long memory without transformer quadratic cost
+- Activated during regime shifts
+- Excellent for detecting market structure changes
+
+**TimesNet-MLP** (TIER 2 - Conditional):
+
+- Frequency-domain pattern detection
+- Multi-period decomposition
+- Activated during volatility expansion
+- Captures cyclical patterns
+
+**KAN (Kolmogorov-Arnold Networks)** (TIER 3 - Research):
+
+- Learnable activation functions
+- 10x fewer parameters than MLPs
+- Interpretable spline visualizations
+- Used for SEBI compliance explanations
+
+**Vision Transformer (ViT)** (TIER 3 - Research):
+
+- For IV surface image analysis
+- 2D convolution over strike×expiry grid
+- Computationally expensive
+- Requires specialized preprocessing
+
+**GINN (GARCH-Informed NN)** (TIER 3 - Research):
+
+- Volatility clustering via GARCH(1,1) + LSTM
+- Strong volatility forecasting
+- Redundant with TFT in production
+
+**SVM (RBF Kernel)** (TIER 3 - Shadow):
+
+- Baseline comparison model
+- Lower capacity than tree models
+- Kept for validation
+
+---
+
+### Ensemble Strategy
+
+**OLD** (Flat ensemble):
+
+```python
+# ❌ Fixed weights, no context
+final = 0.5*lightgbm + 0.3*cnn + 0.2*lstm
+```
+
+**NEW** (Hierarchical + contextual):
+
+```python
+# ✅ Context-aware gating
+weights = meta_learner(market_state)
+final = weights[0]*lightgbm + weights[1]*lit + weights[2]*tft
+confidence = compute_confidence(weights, final_probs, market_state)
+```
+
+---
+
+### Failure Modes & Mitigations
+
+| Model    | Failure Mode          | Mitigation                      |
+| -------- | --------------------- | ------------------------------- |
+| LiT      | Latency spike (>50ms) | Disable LiT, use macro only     |
+| TFT      | NaN output            | Fallback to rule-based regime   |
+| LightGBM | Missing/failed        | **HALT SYSTEM IMMEDIATELY**     |
+| Meta-L1  | Invalid output        | Equal-weight fallback           |
+| DRL PPO  | Slippage >1.2x bench  | Revert to traditional execution |
 
 **Purpose**: Select among strategy signals based on context
 

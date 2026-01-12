@@ -1,0 +1,15 @@
+{
+  "include": ["src"],
+  "exclude": ["**/node_modules", "**/__pycache__", "**/.*"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnknownParameterType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownMemberType": false,
+  "reportUntypedFunctionDecorator": false,
+  "reportUntypedClassDecorator": false,
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux"
+}

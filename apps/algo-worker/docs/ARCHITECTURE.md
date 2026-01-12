@@ -18,13 +18,20 @@ This implementation follows the comprehensive [Algo Trading Architecture](../../
 - **Output**: Timestamped market events
 - **See**: [layers/01-DATA-INGESTION.md](./layers/01-DATA-INGESTION.md)
 
-### 2. Feature & Technical Engine
+### 2. Cortex (Feature Engineering + Market State Encoder)
 
-- **Service**: `FeatureEngineService`, `FeatureCacheService`
-- **Tech**: TypeScript + TypedArrays, vectorized operations
-- **Features**: 50+ indicators (RSI, MACD, ATR, Greeks, OBI, etc.)
-- **Output**: Feature vectors (Float32Array)
-- **See**: [layers/02-FEATURE-ENGINE.md](./layers/02-FEATURE-ENGINE.md)
+- **Service**: `MarketStateEncoder`, `FeatureEngineService`, `FeatureCacheService`, `IndexAggregator`, `BreadthComputer`, `AlignmentScorer`, `LOBTensorBuilder`, `RegimeFeatureBuilder`, `ExecutionStateBuilder`
+- **Tech**: TypeScript + TypedArrays, vectorized operations, SharedArrayBuffer for zero-copy
+- **Architecture**: Multi-instrument aggregation → model-specific compressed views
+- **Key Principle**: Models NEVER see raw 50+ instruments, they see aggregated state
+- **Inputs**: NIFTY FUTURE (OHLCV + LOB depth-20) + 50 constituents (OHLCV + depth) + Option chain (Greeks + OI + LOB)
+- **Outputs**:
+  - LightGBM: Float32Array(33) - index aggregation + futures + options + time context
+  - TFT: Float32Array(120×15) - temporal aggregates for regime classification
+  - LiT: Float32Array(60×80) - NIFTY FUTURE LOB tensors only
+  - DRL PPO: Execution state (option LOB + underlying + order state)
+- **Data Quality**: Staleness checks, spread validation, depth completeness
+- **See**: [layers/02-CORTEX.md](./layers/02-CORTEX.md), [../../../docs/MARKET_STATE_ENCODER.md](../../../docs/MARKET_STATE_ENCODER.md)
 
 ### 3. Market Structure & Regime Detector
 
@@ -34,16 +41,26 @@ This implementation follows the comprehensive [Algo Trading Architecture](../../
 - **Output**: Regime classification + swing zones
 - **See**: [layers/03-REGIME-DETECTOR.md](./layers/03-REGIME-DETECTOR.md)
 
-### 4. Signal/Prediction Engine
+### 4. Signal/Prediction Engine (Multi-Scale Intelligence)
 
 - **Service**: `ModelLoaderService`, `EnsembleInferenceService`, `PredictionWorkerPool`
+- **Architecture**: 3-tier hierarchical prediction system
 - **Models**:
-  - **Level-0 Core** (6): XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
-  - **Level-0 Optional** (4): TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
-  - **Level-1 Meta-Learner**: XGBoost stacker
+  - **Level-0A: Micro-Alpha** - LiT (Limit Order Book Transformer) for 10s-1min microstructure signals
+  - **Level-0B: Macro Direction** - LightGBM (CORE model), XGBoost for 5-15min directional forecasting
+  - **Level-0C: Regime & Volatility** - TFT (Temporal Fusion Transformer) for multi-horizon forecasting
+  - **Optional**: PatchTST, KAN, ViT for research/advanced use cases
+  - **Level-1 Meta-Learner**: Contextual gating network for adaptive model fusion
 - **Tech**: ONNX Runtime (TensorRT/OpenVINO), Worker Threads
-- **Output**: Trading signals (VOL_UP/VOL_DOWN) + confidence
+- **Output**: Trading signals (VOL_UP/VOL_DOWN/NEUTRAL) + confidence + model weights + reasoning
 - **See**: [layers/04-PREDICTION-ENGINE.md](./layers/04-PREDICTION-ENGINE.md)
+
+**Key Innovation**: Hierarchical intelligence where:
+
+- LiT detects microstructure pressure (LOB depth-20)
+- LightGBM provides core directional forecast (50+ features)
+- TFT classifies regime and forecasts volatility
+- Meta-learner adaptively weights based on market state
 
 ### 5. Strategy Manager
 
@@ -62,11 +79,20 @@ This implementation follows the comprehensive [Algo Trading Architecture](../../
 
 ### 7. Order Management & Execution
 
-- **Service**: `OrderManagerService`, `ExecutionEngineService`, `PositionManagerService`
-- **Logic**: Smart order routing (NSE/BSE), TWAP/VWAP/RL execution
+- **Service**: `OrderManagerService`, `ExecutionEngineService`, `PositionManagerService`, `DRLExecutionAgent` (optional)
+- **Logic**: Smart order routing (NSE/BSE), Traditional execution (TWAP/VWAP) + DRL PPO optimization
 - **API**: Upstox REST API
-- **Output**: Order fills, position tracking, exit signals
+- **Output**: Order fills, position tracking, exit signals, execution analytics
 - **See**: [layers/07-ORDER-MANAGEMENT.md](./layers/07-ORDER-MANAGEMENT.md)
+
+**DRL PPO Execution Agent** (Advanced):
+
+- **Purpose**: Minimize slippage through learned optimal execution
+- **Scope**: ONLY execution optimization (never decides direction/strategy)
+- **State**: LOB snapshot, remaining qty, spread, volatility
+- **Actions**: Limit price offset, slice size, wait time
+- **Reward**: -slippage - delay_penalty - adverse_selection
+- **Fallback**: Traditional execution if agent underperforms
 
 ### 8. Logging & Monitoring
 
