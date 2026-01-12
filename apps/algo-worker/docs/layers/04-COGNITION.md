@@ -1,6 +1,6 @@
 # Layer 4: Cognition
 
-> **Strategy selection, risk management, and SEBI compliance checks**
+> **Strategy selection, regime detection, risk management, and SEBI compliance checks**
 
 **Latency Target**: <30ms per decision
 
@@ -8,7 +8,9 @@
 
 ## Purpose
 
-The Cognition layer receives ML predictions and makes trading decisions. It selects strategies based on market regime, applies risk management rules, performs SEBI compliance checks, and emits orders for the Execution layer.
+The Cognition layer receives ML predictions and makes trading decisions. It **detects market regimes** (trending/ranging/volatile), selects strategies based on regime + predictions, applies risk management rules (Kelly criterion, VIX-scaled stop-loss), performs SEBI compliance checks, and emits orders for the Execution layer.
+
+**Modern Architecture Alignment**: This layer implements Market Structure & Regime Detector (Layer 3), Strategy Manager (Layer 5), and Risk & Portfolio Manager (Layer 6) from the [Modern Algo Trading Architecture](../../../../docs/MODERN_ALGO_TRADING_ARCHITECTURE.md).
 
 ---
 
@@ -99,24 +101,167 @@ export class UserConfigService {
 
 ---
 
-### **2. StrategySelectionService**
+### **2. RegimeDetectorService** 🆕
+
+**File**: `src/cognition/regime-detector.service.ts`
+
+**Responsibilities**:
+
+- Continuously classify market regime from recent price/feature data
+- Detect regime transitions in real-time
+- Provide regime context for strategy selection
+
+**Regime Types**:
+
+1. **TRENDING_UP**: Strong bullish momentum (MA50 > MA200, RSI > 60)
+2. **TRENDING_DOWN**: Strong bearish momentum (MA50 < MA200, RSI < 40)
+3. **RANGING**: Sideways, mean-reverting (Bollinger Band compression, low ATR)
+4. **HIGH_VOLATILITY**: Large price swings (VIX > 20, ATR increasing)
+5. **LOW_VOLATILITY**: Quiet, compressed range (VIX < 15, tight Bollinger Bands)
+
+**Implementation Approaches**:
+
+**A. Hidden Markov Model (HMM)** - Recommended for production
+
+```typescript
+@Injectable()
+export class RegimeDetectorService {
+  private hmmModel: HiddenMarkovModel;
+
+  async detectRegime(recentFeatures: Float32Array[]): Promise<RegimeState> {
+    // Load pre-trained HMM (trained in Python, exported to JSON)
+    const observations = this.prepareObservations(recentFeatures);
+    const stateSequence = this.hmmModel.viterbi(observations);
+    const currentState = stateSequence[stateSequence.length - 1];
+
+    return this.mapStateToRegime(currentState);
+  }
+
+  private mapStateToRegime(state: number): RegimeState {
+    // State 0: Low Vol, State 1: Trending, State 2: High Vol
+    const map = { 0: 'RANGING', 1: 'TRENDING_UP', 2: 'HIGH_VOLATILITY' };
+    return map[state] || 'RANGING';
+  }
+}
+```
+
+**B. Kalman Filter** - For continuous trend/volatility estimation
+
+```typescript
+async detectRegimeContinuous(prices: number[]): Promise<RegimeState> {
+  const trendEstimate = this.kalmanFilter.update(prices);
+  const volatility = this.calculateVolatility(prices);
+
+  if (Math.abs(trendEstimate) > 0.5 && volatility < 0.15) {
+    return trendEstimate > 0 ? 'TRENDING_UP' : 'TRENDING_DOWN';
+  } else if (volatility > 0.25) {
+    return 'HIGH_VOLATILITY';
+  } else {
+    return 'RANGING';
+  }
+}
+```
+
+**C. Technical Heuristics** - Fast fallback
+
+```typescript
+async detectRegimeSimple(features: FeatureVector): Promise<RegimeState> {
+  const { rsi, ma50, ma200, bollingerWidth, vix } = features;
+
+  // Trending detection
+  if (ma50 > ma200 * 1.02 && rsi > 55) return 'TRENDING_UP';
+  if (ma50 < ma200 * 0.98 && rsi < 45) return 'TRENDING_DOWN';
+
+  // Volatility detection
+  if (vix > 20 || bollingerWidth > 0.05) return 'HIGH_VOLATILITY';
+  if (vix < 15 && bollingerWidth < 0.02) return 'LOW_VOLATILITY';
+
+  return 'RANGING';
+}
+```
+
+**Drift Detection** (Monitor regime classifier performance):
+
+```typescript
+@Injectable()
+export class RegimeDriftDetector {
+  private recentAccuracy: number[] = [];
+
+  async checkDrift(predictedRegime: RegimeState, actualRegime: RegimeState) {
+    const correct = predictedRegime === actualRegime ? 1 : 0;
+    this.recentAccuracy.push(correct);
+
+    // Keep rolling window of last 100 predictions
+    if (this.recentAccuracy.length > 100) {
+      this.recentAccuracy.shift();
+    }
+
+    const accuracy =
+      this.recentAccuracy.reduce((a, b) => a + b, 0) /
+      this.recentAccuracy.length;
+
+    // Alert if accuracy drops below 60%
+    if (accuracy < 0.6) {
+      this.logger.warn('Regime detection drift detected', { accuracy });
+      this.eventBus.publish(new RegimeDriftDetectedEvent(accuracy));
+    }
+  }
+}
+```
+
+---
+
+### **3. StrategySelectionService**
 
 **File**: `src/cognition/strategy-selection.service.ts`
 
 **Responsibilities**:
 
-- Map predictions to trading strategies (Long Straddle, Iron Condor, etc.)
-- Detect market regime (trending, ranging, volatile)
+- Map predictions + regime to trading strategies
+- **Regime-based model selection** (momentum models for trends, mean-reversion for ranges)
 - Select optimal strategy based on regime + prediction confidence
 
-**Strategies**:
+**Adaptive Strategy Selection** (Regime-Aware):
 
-- **Long Straddle**: High vol prediction + low current IV (buy ATM call + put)
-- **Iron Condor**: Low vol prediction + ranging market (sell OTM spreads)
-- **Bull Call Spread**: Bullish prediction + trending market
-- **Bear Put Spread**: Bearish prediction + trending market
+```typescript
+@Injectable()
+export class StrategySelectionService {
+  async selectStrategy(
+    prediction: PredictionResult,
+    regime: RegimeState,
+    userConfig: UserTradingConfig,
+  ): Promise<StrategyDecision> {
+    // Regime-based strategy routing
+    if (regime === 'TRENDING_UP' && prediction.direction === 'BULLISH') {
+      // Use momentum model prediction
+      if (prediction.confidence > 0.7) {
+        return this.selectCallStrategy(prediction, userConfig);
+      }
+    } else if (regime === 'RANGING' && prediction.meanReversionProb > 0.65) {
+      // Use mean-reversion model prediction
+      return this.selectRangingStrategy(prediction, userConfig);
+    } else if (regime === 'HIGH_VOLATILITY') {
+      // Avoid naked positions, prefer spreads
+      if (userConfig.strategies.allowed.includes('IRON_CONDOR')) {
+        return { strategy: 'IRON_CONDOR', confidence: prediction.confidence };
+      }
+    }
 
-### **3. RiskManagerService**
+    return { strategy: 'STAY_FLAT', confidence: 1.0 };
+  }
+}
+```
+
+**Strategies** (Mapped to Regimes):
+
+| Strategy             | Best Regime              | Prediction Signal    | Risk Profile           |
+| -------------------- | ------------------------ | -------------------- | ---------------------- |
+| **Long Straddle**    | High Volatility Expected | Vol spike coming     | High risk, high reward |
+| **Iron Condor**      | Ranging/Low Vol          | Sideways movement    | Defined risk           |
+| **Bull Call Spread** | Trending Up              | Bullish continuation | Defined risk           |
+| **Bear Put Spread**  | Trending Down            | Bearish continuation | Defined risk           |
+
+### **4. RiskManagerService**
 
 **File**: `src/cognition/risk-manager.service.ts`
 
@@ -285,7 +430,12 @@ if (dailyPnL < -portfolioValue * 0.03) {
 Force close Buy positions that are In-The-Money (ITM) on expiry day to avoid Securities Transaction Tax (STT) on notional value.
 
 ```typescript
-if (isExpiryDay && currentTime > '15:15' && position.side === 'BUY' && isITM(position)) {
+if (
+  isExpiryDay &&
+  currentTime > '15:15' &&
+  position.side === 'BUY' &&
+  isITM(position)
+) {
   await this.forceClose(position, 'STT_TRAP_GUARD');
 }
 ```

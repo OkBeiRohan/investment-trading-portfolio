@@ -1,25 +1,34 @@
-# Algo Worker - 7-Layer Cognitive Trading Engine
+# Algo Worker - Modern Event-Driven Trading Engine
 
-> **Real-time algorithmic trading engine for NSE Nifty/Bank Nifty options using event-driven architecture and ML ensemble models.**
+> **Real-time algorithmic trading engine for NSE Nifty/Bank Nifty options using modern event-driven microservices architecture and adaptive ML ensemble models.**
 
 Built with NestJS, TypeScript, ONNX Runtime, QuestDB, MongoDB, and Redis Streams.
+
+**Architecture Documentation**: See [Modern Algo Trading Architecture](../../docs/MODERN_ALGO_TRADING_ARCHITECTURE.md) for comprehensive system design.
 
 ---
 
 ## 🎯 System Overview
 
-Algo Worker is the **live trading execution engine** that implements the 7-Layer Cognitive Architecture. It consumes pre-trained ONNX models from `training-pipeline` and real-time market data from `market-feeder` to generate trading signals and execute orders.
+Algo Worker is the **live trading execution engine** that implements a modern event-driven, microservices-based architecture. It consumes pre-trained ONNX models from `training-pipeline` and real-time market data from `market-feeder` to generate trading signals and execute orders.
+
+**Key Innovation**: Unlike traditional monolithic algos, this system uses an event-driven message bus (Redis Streams) with modular microservices for each stage—enabling sub-100ms latency, adaptive regime detection, and continuous learning.
 
 ### **Design Principles**
 
-1. **User-Configurable Trading**: Each user defines trading permissions, limits, and strategies in MongoDB
-2. **Resource-Efficient**: Only analyze instruments/strategies enabled by active users (95% cost reduction)
-3. **Event-Driven Core**: All components communicate via Redis Streams (sub-millisecond latency)
-4. **Stateless Inference**: Models loaded once at startup, zero cold-start
-5. **SEBI 2024-2025 Compliant**: Every order has unique `algoId`, pre-trade risk checks mandatory
-6. **Fail-Safe**: Circuit breakers halt trading on data staleness, risk breaches, or latency degradation
+1. **Event-Driven Microservices**: Message bus (Redis Streams) decouples all components for <100ms latency
+2. **Adaptive Learning**: Real-time regime detection with online model updates and drift detection
+3. **User-Configurable Trading**: Each user defines trading permissions, limits, and strategies in MongoDB
+4. **Resource-Efficient**: Only analyze instruments/strategies enabled by active users (95% cost reduction)
+5. **Stateless Inference**: Models loaded once at startup, zero cold-start
+6. **SEBI 2024-2026 Compliant**: Unique `algoId`, pre-trade risk checks, 5-year audit trail
+7. **Fail-Safe**: Circuit breakers halt trading on data staleness, risk breaches, or latency degradation
 
-### **7-Layer Architecture**
+### **Modern Event-Driven Architecture (9 Layers)**
+
+**Comprehensive Architecture**: See [MODERN_ALGO_TRADING_ARCHITECTURE.md](../../docs/MODERN_ALGO_TRADING_ARCHITECTURE.md)
+
+**Implementation (7-Layer Internal Architecture)**:
 
 1. **Perception**: Subscribe to Redis market data events from `market-feeder`
 2. **Cortex**: Real-time feature engineering with sliding window caching
@@ -28,6 +37,12 @@ Algo Worker is the **live trading execution engine** that implements the 7-Layer
 5. **Execution**: Smart order routing (TWAP/VWAP) + position tracking + exit management
 6. **Memory**: Hot (Redis), Warm (QuestDB), Cold (MongoDB) storage tiers
 7. **Control**: Prometheus metrics, circuit breakers, health checks
+
+**Integrated External Layers**:
+
+- **Regime Detection**: Integrated in Cognition layer (HMMs, Kalman filters)
+- **Logging/Monitoring**: Prometheus + Grafana dashboards
+- **Offline Training**: `training-pipeline` service with walk-forward validation
 
 ### **Position Management & Exit Strategy**
 
@@ -48,19 +63,25 @@ Critical trading components for managing open positions:
 ### **Key Features**
 
 - ⚡ **Ultra-Low Latency**: <100ms end-to-end (tick → signal → order)
+  - **Event-Driven**: Redis Streams message bus (microsecond delivery)
   - **Worker Threads**: GPU inference isolated from event loop (see [PERFORMANCE_OPTIMIZATION.md](docs/PERFORMANCE_OPTIMIZATION.md))
   - **SharedArrayBuffer**: Zero-copy data transfer between threads
   - **Object Pooling**: Eliminates GC pauses (500ms → <10ms)
-- 🧠 **ML Ensemble**: 8-10 Level-0 models (core + optional) + Logistic Regression meta-learner
+- 🧠 **Adaptive ML Ensemble**: 8-10 Level-0 models + meta-learner + regime detection
   - **Core Models** (6): XGBoost, LightGBM, Mamba (SSM), GINN, SVM, PatchTST
   - **Advanced Models** (4): TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer
-  - **Architecture**: State Space Models (Mamba) + Channel-independent Transformers (PatchTST)
+  - **Regime Detection**: HMMs/Kalman filters classify trending/ranging/volatile states
+  - **Online Learning**: Continuous model updates with drift detection (ADDM)
+- 🔄 **Strategy Adaptation**: Automatic regime-based strategy switching
+  - Trending → Momentum models (LSTM/Transformer)
+  - Ranging → Mean-reversion (Random Forest/ARIMA)
+  - Volatile → Event detection (CNN on candlesticks)
 - 📊 **Options Strategies**: LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD, BEAR_CALL_SPREAD
-- 🛡️ **Risk Management**: Portfolio Greeks limits, position sizing, circuit breakers
+- 🛡️ **Risk Management**: Portfolio Greeks limits, Kelly criterion, VIX-scaled stop-loss
 - 🚀 **GPU Acceleration**: ONNX Runtime with TensorRT/OpenVINO execution providers
 - 📈 **Event-Driven**: Redis Streams for market data, signals, orders
-- 💾 **Multi-Tier Storage**: Redis (hot), QuestDB (warm), MongoDB (cold)
-- 🎓 **SEBI Compliant**: Unique Algo IDs, pre-trade checks, 5-year audit trail
+- 💾 **Multi-Tier Storage**: Redis (hot), QuestDB (warm 22x faster than ClickHouse), MongoDB (cold)
+- 🎓 **SEBI 2024-2026 Compliant**: Unique Algo IDs, pre-trade checks, SHAP explainability, 5-year audit trail
 
 ---
 

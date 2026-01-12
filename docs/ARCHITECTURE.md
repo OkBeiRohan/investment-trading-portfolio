@@ -1,11 +1,33 @@
 # Project Quantum: Production-Grade Architecture for Indian Index Options
 
 > **Institutional-grade algorithmic trading system optimized for NSE Nifty 50 & Bank Nifty Options.**
-> Built on latest 2024-2025 research and SEBI compliance standards.
+> Built on latest 2024-2026 research and SEBI compliance standards.
 
 ## Overview
 
-Project Quantum is an **Event-Driven, Neuro-Symbolic Trading Architecture** specifically engineered for ultra-low latency Indian index options trading. It combines deterministic event processing with advanced AI/ML models while maintaining strict SEBI 2024-2025 compliance.
+Project Quantum is an **Event-Driven, Neuro-Symbolic Trading Architecture** specifically engineered for ultra-low latency Indian index options trading. It combines deterministic event processing with advanced AI/ML models while maintaining strict SEBI 2024-2026 compliance.
+
+**📚 Comprehensive Architecture**: For the complete modern algo-trading architecture with detailed system design, see [MODERN_ALGO_TRADING_ARCHITECTURE.md](./MODERN_ALGO_TRADING_ARCHITECTURE.md). This document provides implementation-specific details for Project Quantum.
+
+---
+
+## Modern Architecture Overview
+
+**Key Innovation**: Event-driven microservices with adaptive ML and regime detection.
+
+### The 9-Layer Modern Architecture
+
+1. **Data Ingestion Layer** → Upstox API feeds, real-time Greeks
+2. **Feature & Technical Engine** → Moving averages, ATR, order flow imbalance
+3. **Market Structure & Regime Detector** → HMMs/Kalman filters (trending/ranging/volatile)
+4. **Signal/Prediction Engine** → Transformers, CNNs, LSTMs, KANs
+5. **Strategy Manager** → Regime-based strategy selection (momentum/mean-reversion/event-detection)
+6. **Risk & Portfolio Manager** → Kelly criterion, VIX-scaled stop-loss, Greeks limits
+7. **Order Management & Execution** → Smart routing (NSE/BSE), IOC orders
+8. **Logging/Monitoring** → Prometheus, Grafana, real-time dashboards
+9. **Offline Training & Deployment** → Walk-forward validation, drift detection
+
+See [MODERN_ALGO_TRADING_ARCHITECTURE.md](./MODERN_ALGO_TRADING_ARCHITECTURE.md) for detailed design patterns, ML model selection strategies, and performance benchmarks.
 
 ---
 
@@ -180,7 +202,7 @@ ONNX Runtime (Cross-Platform Base)
 **Risk Rules**:
 
 - **STT Trap Guard**: Force close ITM Buy options on Expiry @ 3:15 PM
-- **Dynamic VIX Scaling**: Adjust Stop Loss = BaseSL * (CurrentVIX / 15)
+- **Dynamic VIX Scaling**: Adjust Stop Loss = BaseSL \* (CurrentVIX / 15)
 
 **Strategies** (Based on 2024 Indian Market Research):
 
@@ -296,15 +318,15 @@ interface SEBICompliantOrder {
 
 ## Tech Stack (2024-2025 Recommended)
 
-| Layer          | Technology                                                    | Rationale                               |
-| -------------- | ------------------------------------------------------------- | --------------------------------------- |
-| **Languages**  | TypeScript (Core), Python (ML), Rust (NAPI-RS Calculation)    | Rust for ultra-low latency components   |
-| **Frameworks** | NestJS, Next.js 16, PyTorch 2.5                               | Production battle-tested                |
-| **Databases**  | QuestDB, MongoDB, Redis                                       | Research-validated for trading          |
-| **AI/ML**      | ONNX (TensorRT), Mamba (SSM), PatchTST                        | Hardware-agnostic with GPU acceleration |
-| **Event Bus**  | Redis Streams, Apache Kafka (future scaling)                  | Proven for HFT                          |
-| **Monitoring** | Prometheus, Grafana, eBPF                                     | Industry standard                       |
-| **Deployment** | Docker + Kubernetes (optional), PM2                           | Flexibility for ArchLinux server        |
+| Layer          | Technology                                                 | Rationale                               |
+| -------------- | ---------------------------------------------------------- | --------------------------------------- |
+| **Languages**  | TypeScript (Core), Python (ML), Rust (NAPI-RS Calculation) | Rust for ultra-low latency components   |
+| **Frameworks** | NestJS, Next.js 16, PyTorch 2.5                            | Production battle-tested                |
+| **Databases**  | QuestDB, MongoDB, Redis                                    | Research-validated for trading          |
+| **AI/ML**      | ONNX (TensorRT), Mamba (SSM), PatchTST                     | Hardware-agnostic with GPU acceleration |
+| **Event Bus**  | Redis Streams, Apache Kafka (future scaling)               | Proven for HFT                          |
+| **Monitoring** | Prometheus, Grafana, eBPF                                  | Industry standard                       |
+| **Deployment** | Docker + Kubernetes (optional), PM2                        | Flexibility for ArchLinux server        |
 
 ---
 

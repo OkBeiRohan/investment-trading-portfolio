@@ -1,10 +1,12 @@
-# Algo Worker - 7-Layer Cognitive Architecture
+# Algo Worker - Modern Event-Driven Trading Architecture
 
 ## Overview
 
-The `algo-worker` implements a **7-Layer Cognitive Architecture** designed for institutional-grade algorithmic trading with sub-150ms end-to-end latency.
+The `algo-worker` implements a **modern event-driven, microservices-based architecture** designed for institutional-grade algorithmic trading with sub-150ms end-to-end latency. This design aligns with the comprehensive [Modern Algo Trading Architecture](../../../docs/MODERN_ALGO_TRADING_ARCHITECTURE.md) while providing implementation-specific details for the NestJS-based system.
 
-## The 7 Layers
+**Key Architectural Principle**: Unlike traditional monolithic trading systems, this implementation uses an event-driven message bus (Redis Streams) with modular microservices for each processing stage—enabling adaptive regime detection, continuous learning, and ultra-low latency execution.
+
+## The 7-Layer Implementation
 
 ### 1. Perception Layer (Event Consumption)
 
@@ -24,21 +26,25 @@ The `algo-worker` implements a **7-Layer Cognitive Architecture** designed for i
 
 - **Service**: `ModelLoaderService`, `EnsembleInferenceService`
 - **Models**:
-  - **Level-0 Core** (6): XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
-  - **Level-0 Optional** (4): TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
+  - **Level-0 Core** (6): XGBoost, LightGBM, Mamba (SSM), GINN, SVM, PatchTST
+  - **Level-0 Optional** (4): TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer
   - **Level-1 Meta-Learner**: Logistic Regression stacker
 - **Tech**: ONNX Runtime with TensorRT/OpenVINO
+- **Architecture Note**: Supports Transformers (Autoformer, Informer) for time-series, CNNs for pattern recognition, and KANs for interpretability
 - **Output**: Trading signal probability (0-1) with confidence
 
 ### 4. Cognition Layer (Strategy & Risk Management)
 
-- **Service**: `StrategySelectionService`, `RiskManagerService`, `RLAgentService` (optional)
+- **Service**: `StrategySelectionService`, `RiskManagerService`, `RegimeDetectorService`, `RLAgentService` (optional)
 - **Logic**:
+  - **Regime Detection**: HMMs/Kalman filters classify market state (trending/ranging/volatile)
+  - **Regime-Based Strategy Selection**: Momentum models for trends, mean-reversion for ranges
   - Receives prediction signal
   - Validates portfolio state (Greeks, margin, position limits)
   - Selects option strategy (LONG_STRADDLE, IRON_CONDOR, BULL_PUT_SPREAD, etc.)
-  - Determines position size (fixed or RL-based)
-- **Output**: Validated target allocation
+  - Determines position size (Kelly criterion, volatility scaling, or RL-based)
+- **Adaptive Learning**: Continuous monitoring with drift detection (ADDM algorithm)
+- **Output**: Validated target allocation with strategy type
 
 ### 5. Execution Layer (Order Placement)
 
@@ -87,13 +93,35 @@ The `algo-worker` implements a **7-Layer Cognitive Architecture** designed for i
 
 ## Key Design Principles
 
-1. **User-Configurable Trading**: Each user has custom trading preferences stored in MongoDB (permissions, limits, strategies)
-2. **Resource-Efficient**: Only analyze instruments and strategies enabled by at least one active user
-3. **Event-Driven**: All layer communication via internal event bus (NestJS EventEmitter2)
-4. **Sub-150ms Latency**: GPU-accelerated inference, pre-allocated buffers, no blocking I/O
-5. **Fail-Safe**: Circuit breakers halt trading on anomalies (stale data, risk breach, latency spike)
-6. **SEBI Compliant**: Unique Algo IDs, mandatory pre-trade checks, 5-year audit trail
-7. **Ensemble Approach**: 6-8 diverse ML models for robust predictions (AUC >0.75-0.77)
+1. **Event-Driven Microservices**: Message bus (Redis Streams) with microsecond delivery, eliminates HTTP latency
+2. **Adaptive Learning**: Real-time regime detection with online model updates and drift detection
+3. **User-Configurable Trading**: Each user has custom trading preferences stored in MongoDB (permissions, limits, strategies)
+4. **Resource-Efficient**: Only analyze instruments and strategies enabled by at least one active user (95% cost reduction)
+5. **Sub-150ms Latency**: GPU-accelerated inference, pre-allocated buffers, no blocking I/O
+6. **Fail-Safe**: Circuit breakers halt trading on anomalies (stale data, risk breach, latency spike)
+7. **SEBI 2024-2026 Compliant**: Unique Algo IDs, pre-trade checks, SHAP explainability, 5-year audit trail
+8. **Ensemble Approach**: 6-10 diverse ML models for robust predictions (AUC >0.75-0.77)
+9. **Smart Order Routing**: Strike selection with Greeks, IOC orders for large sizes, NSE/BSE optimization
+
+---
+
+## Integration with Modern Architecture
+
+This 7-layer implementation aligns with the 9-layer Modern Algo Trading Architecture:
+
+| Modern Architecture Layer             | Algo-Worker Implementation                    |
+| ------------------------------------- | --------------------------------------------- |
+| 1. Data Ingestion                     | Layer 1: Perception                           |
+| 2. Feature & Technical Engine         | Layer 2: Cortex                               |
+| 3. Market Structure & Regime Detector | Layer 4: Cognition (RegimeDetectorService)    |
+| 4. Signal/Prediction Engine           | Layer 3: Prediction                           |
+| 5. Strategy Manager                   | Layer 4: Cognition (StrategySelectionService) |
+| 6. Risk & Portfolio Manager           | Layer 4: Cognition (RiskManagerService)       |
+| 7. Order Management & Execution       | Layer 5: Execution                            |
+| 8. Logging/Monitoring                 | Layer 7: Control                              |
+| 9. Offline Training & Deployment      | External: `training-pipeline` service         |
+
+**Key Insight**: The 7-layer structure is an implementation choice that groups related modern architecture components into cohesive NestJS modules.
 
 ---
 

@@ -1,8 +1,10 @@
-# Architecture Research Findings (Nov 2024 - Nov 2025)
+# Architecture Research Findings (Nov 2024 - Jan 2026)
 
 ## Executive Summary
 
 Based on comprehensive research for algorithmic trading systems targeting Indian index options, this document outlines critical architectural decisions that differ from conventional wisdom and previous versions of the system.
+
+**📚 Modern Architecture**: See [MODERN_ALGO_TRADING_ARCHITECTURE.md](./MODERN_ALGO_TRADING_ARCHITECTURE.md) for the complete implementation based on these research findings.
 
 ---
 
@@ -14,6 +16,7 @@ Based on comprehensive research for algorithmic trading systems targeting Indian
 Industry studies from 2024 show that **deterministic event sequencers** achieve ultra-low latency (<10μs) by eliminating context switches and lock contention through single-threaded event processing[1][2].
 
 **Recommendation**: ✅ **ADOPTED**
+
 - Use Redis Streams as event bus (not HTTP/REST between services)
 - Implement Disruptor pattern for event queue
 - Asynchronous processing on non-critical paths
@@ -27,11 +30,13 @@ Microservices alone introduce inter-service HTTP latency (10-50ms per hop). For 
 
 **Research Finding**:
 2025 benchmark study demonstrated QuestDB's superior performance for financial applications:
+
 - **22x faster** than ClickHouse for OHLCV computation
 - **41x faster** than TimescaleDB for tick-to-candle aggregation
 - Native support for nanosecond timestamps, ASOF joins, and columnar storage[3][4]
 
 **Recommendation**: ✅ **ALREADY IMPLEMENTED**
+
 - Current system correctly uses QuestDB for ticks/candles/features
 - Keep MongoDB for documents (signals, orders, positions)
 - Keep Redis for hot state (active positions, circuit breakers)
@@ -44,17 +49,19 @@ Microservices alone introduce inter-service HTTP latency (10-50ms per hop). For 
 
 **Research Finding**:
 While TensorRT offers the absolute lowest latency on NVIDIA GPUs, ONNX Runtime with Execution Providers achieves 90-95% of TensorRT's performance while providing:
+
 - Hardware abstraction (can switch between NVIDIA, Intel, CPU)
 - Model portability (train in PyTorch, deploy anywhere)
 - Unified API reducing integration complexity[5][6]
 
 **Recommendation**: ✅ **ADOPTED**
+
 ```typescript
 executionProviders: [
-  'TensorrtExecutionProvider',  // NVIDIA GPU (primary)
-  'OpenVINOExecutionProvider',   // Intel CPU (fallback)
-  'CPUExecutionProvider'         // Universal fallback
-]
+  "TensorrtExecutionProvider", // NVIDIA GPU (primary)
+  "OpenVINOExecutionProvider", // Intel CPU (fallback)
+  "CPUExecutionProvider", // Universal fallback
+];
 ```
 
 ---
@@ -63,6 +70,7 @@ executionProviders: [
 
 **Regulatory Update**:
 New SEBI circular mandates:
+
 - **Unique Algo ID** on every order (format specified)
 - **Exchange approval** for strategies >10 orders/sec
 - **Broker-level monitoring** for anomaly detection
@@ -70,6 +78,7 @@ New SEBI circular mandates:
 - **Audit trail** with 5-year retention[7][8]
 
 **Recommendation**: ✅ **IMPLEMENTED**
+
 - Every order tagged with `algoId`: `PROJ_QUANTUM_v{version}_USER_{userId}`
 - Pre-trade risk checks in `RiskManager`
 - Audit logging to MongoDB (`orders_audit` collection)
@@ -83,15 +92,16 @@ New SEBI circular mandates:
 **Research Finding**:
 Production HFT systems combine multiple optimization layers:
 
-| Technique | Latency Reduction | Implementation Complexity |
-|-----------|-------------------|---------------------------|
-| Kernel Bypass (DPDK/Solarflare ef_vi) | -30% network latency | High (requires specialized NIC) |
-| CPU Pinning + Isolation | -15% jitter | Medium (Linux `taskset`, PREEMPT-RT kernel) |
-| Lock-Free Data Structures | -20% contention | High (Disruptor pattern, atomic ops) |
-| SIMD Vectorization | 2-4x throughput | Medium (AVX2/AVX-512 for indicators) |
-| FPGA Acceleration | -50% inference latency | Very High (future consideration) |
+| Technique                             | Latency Reduction      | Implementation Complexity                   |
+| ------------------------------------- | ---------------------- | ------------------------------------------- |
+| Kernel Bypass (DPDK/Solarflare ef_vi) | -30% network latency   | High (requires specialized NIC)             |
+| CPU Pinning + Isolation               | -15% jitter            | Medium (Linux `taskset`, PREEMPT-RT kernel) |
+| Lock-Free Data Structures             | -20% contention        | High (Disruptor pattern, atomic ops)        |
+| SIMD Vectorization                    | 2-4x throughput        | Medium (AVX2/AVX-512 for indicators)        |
+| FPGA Acceleration                     | -50% inference latency | Very High (future consideration)            |
 
 **Recommendation**: ✅ **PHASED APPROACH**
+
 1. **Phase 1** (Weeks 4-6): CPU pinning, lock-free queues, SIMD
 2. **Phase 2** (Weeks 7-10): Kernel bypass (if latency >80ms p95)
 3. **Future**: FPGA for market data decoding[9][10]
@@ -102,6 +112,7 @@ Production HFT systems combine multiple optimization layers:
 
 **Market Research Findings** (2024):
 Most successful retail algo strategies on NSE:
+
 1. **9:20 Straddle** (Bank Nifty/Nifty) - Time decay on non-trending days
 2. **Iron Condor** - High IV environments (pre-RBI, elections)
 3. **Bollinger + RSI Mean Reversion** - Intraday
@@ -109,6 +120,7 @@ Most successful retail algo strategies on NSE:
 5. **News-Based Gaps** - Using FinBERT overnight sentiment[11][12]
 
 **Recommendation**: ✅ **IMPLEMENTED**
+
 - Strategies mapped in `PolicyEngine`
 - RL agent dynamically selects based on market regime
 - Risk Manager enforces Greeks limits
@@ -134,6 +146,7 @@ Redis (In-Memory - CRITICAL PATH)
 ```
 
 **Why This is Optimal**:
+
 - QuestDB handles 1M inserts/sec with millisecond query latency
 - MongoDB provides flexible schema for evolving strategies
 - Redis enables sub-millisecond pub/sub for events
@@ -156,6 +169,7 @@ ONNX Runtime v1.19+
 ```
 
 **Quantization Guidance**:
+
 - INT8: Non-critical models (sentiment, news classification) - 3-4x faster
 - FP16: Precision-sensitive models (options pricing, Greeks) - 2x faster
 - FP32: Only for critical accuracy requirements
@@ -167,6 +181,7 @@ ONNX Runtime v1.19+
 Based on research into production-grade trading systems:
 
 ### Infrastructure
+
 - [ ] QuestDB cluster (3 nodes, HA)
 - [ ] MongoDB replica set (3 nodes, auto-failover)
 - [ ] Redis Sentinel (for high availability)
@@ -174,17 +189,20 @@ Based on research into production-grade trading systems:
 - [ ] MLflow (model tracking)
 
 ### Compliance
+
 - [ ] SEBI Algo ID implementation
 - [ ] Pre-trade risk checks
 - [ ] Audit logging (5-year retention)
 - [ ] Exchange registration (if >10 orders/sec)
 
 ### Performance
+
 - [ ] Latency testing (<100ms p95 tick-to-trade)
 - [ ] Load testing (10K ticks/sec sustained)
 - [ ] Circuit breaker validation (auto-liquidate on loss >₹50K)
 
 ### Security
+
 - [ ] API key rotation (90 days)
 - [ ] MongoDB authentication + TLS
 - [ ] Redis `requirepass` enabled
