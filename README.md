@@ -201,77 +201,67 @@ pnpm dev  # Starts on port 3001
 
 ## 📚 Documentation
 
-### Core Guides
+> **📁 All documentation organized by domain. See [docs/README.md](docs/README.md) for complete navigation guide.**
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Event-driven 7-layer system design
-- **[HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](docs/HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md)**: 🆕 LiT, TFT, DRL integration guide (multi-scale prediction system)
-- **[MARKET_STATE_ENCODER.md](docs/MARKET_STATE_ENCODER.md)**: 🆕 **Critical**: Data-model interface (50k signals → 200 numbers) - how models consume multi-instrument data
-- **[MODEL_INVENTORY.md](docs/MODEL_INVENTORY.md)**: 🆕 Complete 12-14 model taxonomy with tier classification and activation patterns
-- **[DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md)**: 🆕 Hybrid local-cloud deployment strategy
-- **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)**: Production roadmap (SEBI compliance, latency optimization)
-- **[WEALTH_MANAGEMENT_SYSTEM.md](docs/WEALTH_MANAGEMENT_SYSTEM.md)**: 🆕 Comprehensive wealth management guide
-- **[.github/copilot-instructions.md](.github/copilot-instructions.md)**: Coding standards
+### 🎯 Quick Start Guides
 
-### Algo Trading Components
+- **[Developer Guide](docs/DEVELOPER_GUIDE.md)**: Development setup and workflow
+- **[Architecture Overview](docs/ARCHITECTURE.md)**: System design philosophy
+- **[Project Status](docs/PROJECT_STATUS.md)**: Implementation roadmap and gap analysis
 
-- **[Algo Worker](apps/algo-worker/README.md)**: Trading engine
-  - [Performance Optimization](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md): 🆕 Worker Threads, GPU inference, zero-allocation patterns
-- **[Training Pipeline](services/training-pipeline/README.md)**: ML model training
-  - [Advanced Validation](services/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
-- **[Market SDK](packages/market-sdk/README.md)**: Upstox/Yahoo/Binance integration
+### 🏗️ Core Architecture (docs/)
 
-### Wealth Management Components 🆕
+**System Design**:
 
-- **[Wealth Management](services/wealth-management/README.md)**: Double-entry ledger, net worth tracking
-  - Core financial system with PostgreSQL double-entry bookkeeping
-  - Account Aggregator integration (Setu/Finvu)
-  - Tax calculators (FY 2025-26 compliant)
-  - Financial planning tools (retirement, goals, insurance)
-- **[Wealth Analyzer](services/wealth-analyzer/README.md)**: AI-powered insights
-  - Microsoft Phi-3 LLM for natural language queries
-  - Spending pattern analysis and anomaly detection
-  - Investment performance recommendations
-  - Predictive cash flow forecasting
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Event-driven 9-layer system
+- **[ALGO_TRADING_ARCHITECTURE.md](docs/ALGO_TRADING_ARCHITECTURE.md)**: Complete algo trading architecture
+- **[DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md)**: Hybrid local-cloud deployment
+- **[SECURITY.md](docs/SECURITY.md)**: Security policies
+
+**AI/ML Architecture**:
+
+- **[HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](docs/HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md)**: ML model hierarchy + CI/CD
+- **[MODEL_INVENTORY.md](docs/MODEL_INVENTORY.md)**: 12-14 model taxonomy
+- **[MARKET_STATE_ENCODER.md](docs/MARKET_STATE_ENCODER.md)**: **Critical** - Feature engineering (50k→200)
+- **[FEATURE_STORE_ARCHITECTURE.md](docs/FEATURE_STORE_ARCHITECTURE.md)**: Centralized feature registry
+- **[AI_MODEL_TRAINING.md](docs/AI_MODEL_TRAINING.md)**: ML training pipelines
+
+**Research**:
+
+- **[RESEARCH_FINDINGS.md](docs/RESEARCH_FINDINGS.md)**: Research insights
+- **[AGENTIC_AI_RESEARCH.md](docs/AGENTIC_AI_RESEARCH.md)**: Multi-agent systems (R&D only)
+
+### 🤖 Algo Trading (apps/algo-worker)
+
+- **[Trading Engine](apps/algo-worker/README.md)**: 7-layer cognitive architecture
+- **[PERFORMANCE_OPTIMIZATION.md](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md)**: Worker Threads, GPU, C++/Rust
+- **[QUESTDB_UPSTOX_INTEGRATION.md](apps/algo-worker/docs/QUESTDB_UPSTOX_INTEGRATION.md)**: Market data
+- **[Training Pipeline](services/training-pipeline/README.md)**: ML model training (Kedro + CPCV)
+
+### 💰 Wealth Management (services/)
+
+- **[Wealth Management](services/wealth-management/README.md)**: Double-entry ledger, net worth
+  - [WEALTH_MANAGEMENT_SYSTEM.md](services/wealth-management/docs/WEALTH_MANAGEMENT_SYSTEM.md) - System guide
+- **[Wealth Analyzer](services/wealth-analyzer/README.md)**: AI insights (Phi-3 LLM)
 - **[Document Processor](services/document-processor/README.md)**: Bank statement parsing
-  - LayoutLMv3 for structured documents
-  - Donut for unstructured receipts
-  - Support for Indian banks (HDFC, SBI, ICICI, Axis)
-  - Insurance policy and invoice extraction
 
-### Web Dashboard & API
+### 🌐 Web & API (apps/)
 
-- **[Web Dashboard](apps/web/README.md)**: Quantum Investments and Trades
-  - [Authentication](apps/web/docs/AUTHENTICATION.md): Auth state management with Context Provider
-  - [Data Access Layer](apps/web/docs/DATA_ACCESS_LAYER.md): Secure data fetching with auto org scoping
-  - **Algo Trading Cockpit**: Options analytics, Greeks visualization, strategy management
-  - **Wealth Management Dashboard**: 🆕 Net worth, asset allocation, cash flow, tax planning
-- **[API Backend](apps/api/README.md)**: NestJS REST + tRPC
-  - User authentication and authorization
-  - Portfolio aggregation and reporting
-  - Historical trade queries
-  - Wealth management endpoints
+- **[Web Dashboard](apps/web/README.md)**: Next.js 16 App Router
+  - Trading Cockpit + Wealth Dashboard
+- **[API Backend](apps/api/README.md)**: NestJS + tRPC
+  - [TRPC_ARCHITECTURE.md](apps/api/docs/TRPC_ARCHITECTURE.md) - tRPC patterns
+  - [NESTJS_CONFIG_PATTERN.md](apps/api/docs/NESTJS_CONFIG_PATTERN.md) - Config guide
 
-### Shared Infrastructure
+### 🔧 Infrastructure (packages/ & infrastructure/)
 
-- **[Database](packages/database/README.md)**: QuestDB + MongoDB + Redis + PostgreSQL 🆕
-- **[Schema](packages/schema/README.md)**: Zod schemas and TypeScript types
-
-- **[Algo Worker](apps/algo-worker/README.md)**: Trading engine
-  - [Performance Optimization](apps/algo-worker/docs/PERFORMANCE_OPTIMIZATION.md): 🆕 Worker Threads, GPU inference, zero-allocation patterns
-- **[Training Pipeline](services/training-pipeline/README.md)**: ML model training
-  - [Advanced Validation](services/training-pipeline/docs/ADVANCED_VALIDATION.md): 🆕 CPCV, OFI features, RL execution
-- **[Web Dashboard](apps/web/README.md)**: Quantum Investments and Trades
-  - [Authentication](apps/web/docs/AUTHENTICATION.md): Auth state management with Context Provider
-  - [Data Access Layer](apps/web/docs/DATA_ACCESS_LAYER.md): Secure data fetching with auto org scoping
-- **[Market SDK](packages/market-sdk/README.md)**: Upstox/Yahoo/Binance integration
 - **[Database](packages/database/README.md)**: QuestDB + MongoDB + Redis
-
-### Architecture & API
-
-- **[tRPC Architecture](docs/TRPC_ARCHITECTURE.md)**: 🆕 Comprehensive guide to new tRPC setup (routers in API, types in schema)
-- **[Developer Guide](DEVELOPER_GUIDE.md)**: How to add features, extend the system
-- **[Project Status](PROJECT_STATUS.md)**: Current implementation state
-- **[Documentation Status](DOCUMENTATION_STATUS.md)**: What's documented and what needs work
+  - [MONGODB_REPLICA_SET.md](packages/database/docs/MONGODB_REPLICA_SET.md) - MongoDB setup
+  - [SQL_QUERY_CENTRALIZATION.md](packages/database/docs/SQL_QUERY_CENTRALIZATION.md) - QuestDB patterns
+- **[Market SDK](packages/market-sdk/README.md)**: Upstox/Yahoo/Binance
+  - [UPSTOX_OAUTH_INTEGRATION.md](packages/market-sdk/docs/UPSTOX_OAUTH_INTEGRATION.md) - OAuth
+- **[Infrastructure](infrastructure/docs/)**: Docker, deployment
+  - [PORT_ALLOCATION.md](infrastructure/docs/PORT_ALLOCATION.md) - Port mapping
 
 ---
 
