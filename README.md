@@ -205,6 +205,8 @@ pnpm dev  # Starts on port 3001
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: Event-driven 7-layer system design
 - **[HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](docs/HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md)**: 🆕 LiT, TFT, DRL integration guide (multi-scale prediction system)
+- **[MARKET_STATE_ENCODER.md](docs/MARKET_STATE_ENCODER.md)**: 🆕 **Critical**: Data-model interface (50k signals → 200 numbers) - how models consume multi-instrument data
+- **[MODEL_INVENTORY.md](docs/MODEL_INVENTORY.md)**: 🆕 Complete 12-14 model taxonomy with tier classification and activation patterns
 - **[DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md)**: 🆕 Hybrid local-cloud deployment strategy
 - **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)**: Production roadmap (SEBI compliance, latency optimization)
 - **[WEALTH_MANAGEMENT_SYSTEM.md](docs/WEALTH_MANAGEMENT_SYSTEM.md)**: 🆕 Comprehensive wealth management guide

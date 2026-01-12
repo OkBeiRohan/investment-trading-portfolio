@@ -172,45 +172,93 @@ Each component communicates via a **central event bus**, allowing:
 
 ---
 
-### Layer 2: Feature & Technical Engine
+### Layer 2: Cortex (Feature Engineering + Market State Encoder)
 
-**Purpose**: Transform raw data into model inputs
+**Purpose**: Transform raw multi-instrument data into compressed, model-specific views
 
-**Inputs**: Tick-level data, full depth (20 levels), Greeks
+**Inputs**:
 
-**Feature Categories**:
+- NIFTY FUTURE (OHLCV + LOB depth-20 + trades)
+- 50 NIFTY Constituents (OHLCV + volume + depth)
+- Option Chain (Greeks, IV, OI, volume, LOB for active strikes)
 
-1. **Statistical Features**
-   - Moving averages, Bollinger Bands, RSI
-   - Momentum indicators, volatility (ATR)
-   - Support/resistance levels (Donchian channels)
+**Critical Architecture Component**: 🧠 **Market State Encoder (MSE)**
 
-2. **Microstructure Features**
-   - Bid-ask spread
-   - Order book imbalance
-   - Trade volume spikes
-   - Time-of-day patterns
+> **Key Insight**: Models NEVER see "many instruments". Models see a SINGLE, AGGREGATED, CONTEXTUALIZED STATE.
 
-3. **Option-Centric Features**
-   - Implied volatility surface (skew, term structure)
-   - Greeks for ATM strikes
-   - Synthetic Greeks for multi-leg strategies
+**MSE Responsibilities**:
 
-4. **Cross-Asset Signals**
-   - Leading/lagging from related indexes
-   - Sector indices correlations
+1. Consume all raw feeds (50k+ signals/second)
+2. Maintain sliding windows and caches
+3. Aggregate intelligently (breadth, alignment, flow)
+4. Emit **model-specific views** (not raw data)
 
-**Advanced Pattern Extraction**:
+**MSE Sub-Components**:
 
-- **CNNs**: Process sliding window of order-book levels or OHLCV as "image"
-  - Capture shape-invariant patterns (head-and-shoulder, engulfing)
-- **Autoencoders**: Learn compact latent features from raw data
-- **Transformers**: Consume long sequences of ticks to summarize market context
-  - Parallel attention focuses on relevant history
+1. **IndexAggregator**
+   - Purpose: Collapse 50 constituents → 10 index-level metrics
+   - Outputs: Breadth scores, advance-decline ratio, weighted returns, sectoral alignment
+   - Example: `pct_stocks_above_vwap: 0.72` (36/50 stocks above VWAP)
 
-**Output**: Feature vectors published as events on the bus
+2. **BreadthComputer**
+   - Purpose: Detect false moves vs real participation
+   - Outputs: Participation index, divergence score, correlation to leaders
+   - Critical: Filters ~40% of false futures breakouts
 
-**Latency Target**: <10ms
+3. **AlignmentScorer**
+   - Purpose: Measure sectoral cohesion and correlation
+   - Outputs: Sector alignment score, intra-sector spreads
+   - Example: High alignment (0.85) → strong conviction move
+
+4. **LOBTensorBuilder**
+   - Purpose: Build normalized LOB tensors for LiT model
+   - Input: NIFTY FUTURE LOB depth-20 (NOT spot - spot has no order book)
+   - Output: (T×80) tensor (60 timesteps × [20 bid prices + 20 ask prices + 20 bid sizes + 20 ask sizes])
+   - Normalization: Prices relative to mid, sizes relative to average
+
+5. **RegimeFeatureBuilder**
+   - Purpose: Stack temporal features for TFT model
+   - Output: (T×F) time-series (120 timesteps × 15 features)
+   - Features: Index return, realized vol, breadth, momentum, IV, PCR, etc.
+
+6. **ExecutionStateBuilder**
+   - Purpose: Build execution-specific state for DRL PPO agent
+   - Output: Option LOB + underlying context + order state
+   - Scope: ONLY execution-relevant features (never direction/strategy)
+
+**Feature Categories by Model**:
+
+**LightGBM Features (33 total)**:
+
+- Index Aggregation (10): Breadth, alignment, divergence, participation
+- Futures Features (8): Momentum, RSI, ATR, volume, basis
+- Options Features (10): ATM IV, PCR, skew, Greeks, max pain distance
+- Time Context (5): Minutes from open/close, expiry proximity
+
+**TFT Features (15 per timestep)**:
+
+- Temporal aggregates: Returns, realized vol, breadth, momentum
+- Options flow: IV changes, PCR evolution
+- Microstructure: Spread, range position, volume surges
+- Context: Time-of-day, days-to-expiry
+
+**LiT Features (80 per timestep)**:
+
+- NIFTY FUTURE LOB ONLY (depth-20)
+- 20 bid levels (price + size) + 20 ask levels (price + size)
+- Normalized relative to mid-price
+- Data quality gates: Freshness <2s, spread <0.5%, depth ≥10 levels
+
+**Output**: Model-specific encoded states published as events:
+
+- `LightGBMStateReadyEvent` → Float32Array(33)
+- `TFTStateReadyEvent` → Float32Array(120×15)
+- `LiTStateReadyEvent` → Float32Array(60×80)
+- `ExecutionStateReadyEvent` → Execution-specific object
+
+**Latency Target**: <15ms (including aggregation)
+
+**See**: [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md) for complete implementation details
 
 ---
 

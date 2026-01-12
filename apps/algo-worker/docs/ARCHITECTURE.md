@@ -18,13 +18,20 @@ This implementation follows the comprehensive [Algo Trading Architecture](../../
 - **Output**: Timestamped market events
 - **See**: [layers/01-DATA-INGESTION.md](./layers/01-DATA-INGESTION.md)
 
-### 2. Feature & Technical Engine
+### 2. Cortex (Feature Engineering + Market State Encoder)
 
-- **Service**: `FeatureEngineService`, `FeatureCacheService`
-- **Tech**: TypeScript + TypedArrays, vectorized operations
-- **Features**: 50+ indicators (RSI, MACD, ATR, Greeks, OBI, etc.)
-- **Output**: Feature vectors (Float32Array)
-- **See**: [layers/02-FEATURE-ENGINE.md](./layers/02-FEATURE-ENGINE.md)
+- **Service**: `MarketStateEncoder`, `FeatureEngineService`, `FeatureCacheService`, `IndexAggregator`, `BreadthComputer`, `AlignmentScorer`, `LOBTensorBuilder`, `RegimeFeatureBuilder`, `ExecutionStateBuilder`
+- **Tech**: TypeScript + TypedArrays, vectorized operations, SharedArrayBuffer for zero-copy
+- **Architecture**: Multi-instrument aggregation → model-specific compressed views
+- **Key Principle**: Models NEVER see raw 50+ instruments, they see aggregated state
+- **Inputs**: NIFTY FUTURE (OHLCV + LOB depth-20) + 50 constituents (OHLCV + depth) + Option chain (Greeks + OI + LOB)
+- **Outputs**:
+  - LightGBM: Float32Array(33) - index aggregation + futures + options + time context
+  - TFT: Float32Array(120×15) - temporal aggregates for regime classification
+  - LiT: Float32Array(60×80) - NIFTY FUTURE LOB tensors only
+  - DRL PPO: Execution state (option LOB + underlying + order state)
+- **Data Quality**: Staleness checks, spread validation, depth completeness
+- **See**: [layers/02-CORTEX.md](./layers/02-CORTEX.md), [../../../docs/MARKET_STATE_ENCODER.md](../../../docs/MARKET_STATE_ENCODER.md)
 
 ### 3. Market Structure & Regime Detector
 
