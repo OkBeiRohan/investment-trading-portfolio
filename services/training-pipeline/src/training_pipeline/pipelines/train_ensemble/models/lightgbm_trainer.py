@@ -139,49 +139,54 @@ class LightGBMTrainer:
         features: pd.DataFrame,
         prices: pd.Series,
     ) -> pd.Series:
-        """
-        Create volatility-adjusted labels
+        """Create volatility-adjusted labels with explicit unit handling"""
 
-        This is CRITICAL for proper trading signal generation.
-        Labels based on whether future return exceeds volatility threshold.
-
-        Args:
-            features: Feature DataFrame with ATR
-            prices: Price series
-
-        Returns:
-            Series with labels: 1 (UP), 0 (NEUTRAL), -1 (DOWN)
-        """
-        logger.info(
-            f"Creating volatility-adjusted labels "
-            f"(horizon={self.labeling_config.horizon}, k={self.labeling_config.k})"
-        )
-
-        # Future returns
-        future_returns = (prices.shift(-self.labeling_config.horizon) - prices) / prices
-
-        # Volatility-based threshold
+        # Validate ATR column exists
         if self.labeling_config.atr_column not in features.columns:
             raise ValueError(
-                f"ATR column '{self.labeling_config.atr_column}' not found in features"
+                f"ATR column '{self.labeling_config.atr_column}' not found"
             )
 
-        atr_threshold = (
-            self.labeling_config.k * features[self.labeling_config.atr_column]
-        )
+        # Future returns (dimensionless percentage)
+        future_returns = (prices.shift(-self.labeling_config.horizon) - prices) / prices
 
-        # Label logic (from blueprint)
-        labels = pd.Series(0, index=features.index, dtype=np.int8)  # Default NEUTRAL
+        # ATR threshold (ensure same units as returns)
+        atr = features[self.labeling_config.atr_column]
+
+        # CRITICAL: Explicit unit conversion
+        if self.labeling_config.atr_column == "atr_percent":
+            # Already in percentage form (0.015 = 1.5%)
+            atr_threshold = self.labeling_config.k * atr
+        elif self.labeling_config.atr_column == "atr":
+            # In price points, need to normalize
+            atr_threshold = self.labeling_config.k * (atr / prices)
+        else:
+            raise ValueError(
+                f"Unknown ATR column format: {self.labeling_config.atr_column}. "
+                "Expected 'atr_percent' (normalized) or 'atr' (price points)"
+            )
+
+        # Validate threshold is reasonable
+        if (atr_threshold < 0).any() or (atr_threshold > 0.1).any():
+            raise ValueError(f"ATR threshold out of bounds: {atr_threshold.describe()}")
+
+        # Label logic
+        labels = pd.Series(0, index=features.index, dtype=np.int8)
         labels[future_returns > atr_threshold] = 1  # UP
         labels[future_returns < -atr_threshold] = -1  # DOWN
 
-        # Remove NaN at end (can't compute future returns)
+        # Remove NaN at end
         labels = labels.iloc[: -self.labeling_config.horizon]
 
+        # Log statistics
         label_dist = labels.value_counts(normalize=True)
         logger.info(
             f"Label distribution: UP={label_dist.get(1, 0):.2%}, "
             f"NEUTRAL={label_dist.get(0, 0):.2%}, DOWN={label_dist.get(-1, 0):.2%}"
+        )
+        logger.info(
+            f"ATR threshold stats: mean={atr_threshold.mean():.4f}, "
+            f"std={atr_threshold.std():.4f}"
         )
 
         return labels
