@@ -378,7 +378,7 @@ class LightGBMTrainer:
         Train LightGBM with walk-forward validation
 
         Args:
-            features: Feature DataFrame (~29 features from Market State Encoder)
+            features: Feature DataFrame (33 features from Market State Encoder)
             labels: Volatility-adjusted labels (-1, 0, 1)
             mlflow_run_name: Optional MLflow run name
 
@@ -583,10 +583,10 @@ def validate_features(features: pd.DataFrame) -> pd.DataFrame:
     """
     Validate feature DataFrame matches Market State Encoder v2 specification
 
-    Expected ~29 features from compressed multi-instrument data:
+    Expected 33 features from compressed multi-instrument data:
     - Index Breadth (6) - from 50 NIFTY constituents
-    - NIFTY FUTURE (7) - primary price discovery
-    - Options Aggregate (9) - NOT per-strike
+    - NIFTY FUTURE (9) - primary price discovery
+    - Options Aggregate (11) - NOT per-strike
     - Volatility (4) - regime context
     - Time Context (3)
 
@@ -605,7 +605,7 @@ def validate_features(features: pd.DataFrame) -> pd.DataFrame:
         "advance_decline_ratio",  # e.g., 1.8 (36 up, 14 down)
         "breadth_momentum_5m",  # 5-min momentum breadth
         "breadth_volatility",  # Intra-constituent volatility spread
-        # NIFTY FUTURE (7 features)
+        # NIFTY FUTURE (9 features) - +2 from original
         # Primary price discovery instrument (NOT spot - spot has no volume)
         "fut_price_vs_vwap",  # Normalized distance from VWAP
         "fut_range_position",  # 0.0-1.0 (where in daily range?)
@@ -614,7 +614,9 @@ def validate_features(features: pd.DataFrame) -> pd.DataFrame:
         "fut_atr_percent",  # ATR as % of price (volatility)
         "fut_volume_zscore",  # Volume z-score (participation)
         "fut_oi_change",  # OI change (positioning)
-        # Options Aggregate State (9 features)
+        "fut_rsi_14",  # RSI(14) - momentum oscillator
+        "fut_macd",  # MACD - trend following
+        # Options Aggregate State (11 features) - +2 from original
         # ATM only + market-wide aggregates (NOT per-strike)
         "atm_iv",  # ATM implied volatility
         "atm_iv_change",  # ΔIV (vol expansion/contraction)
@@ -625,6 +627,8 @@ def validate_features(features: pd.DataFrame) -> pd.DataFrame:
         "pcr_oi",  # Put-call ratio (open interest)
         "pcr_volume",  # Put-call ratio (volume)
         "max_pain_distance",  # Distance to max pain (dealer positioning)
+        "charm_atm",  # ATM charm (delta decay) - added
+        "vanna_atm",  # ATM vanna (delta-vol correlation) - added
         # Volatility & Regime Context (4 features)
         "india_vix",  # Market-wide fear gauge
         "realized_vol_5m",  # Short-term realized volatility
@@ -650,7 +654,7 @@ def validate_features(features: pd.DataFrame) -> pd.DataFrame:
 
     logger.info(
         f"Feature validation passed: {len(expected_features)} features "
-        f"(Index Breadth: 6, NIFTY FUTURE: 7, Options: 9, Volatility: 4, Time: 3)"
+        f"(Index Breadth: 6, NIFTY FUTURE: 9, Options: 11, Volatility: 4, Time: 3)"
     )
     return features_ordered
 
