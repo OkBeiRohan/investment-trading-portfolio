@@ -211,6 +211,163 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
         user_id SYMBOL CAPACITY 1000,
         metadata STRING
       ) TIMESTAMP(timestamp) PARTITION BY DAY WAL;`,
+
+      // ========== TRAINING DATA TABLES (For ML Pipeline) ==========
+
+      // Unified tick data for ALL instruments (spot, futures, options, stocks)
+      // Expected: ~10M ticks/day (50 stocks × 1 future × 50 options × ~4K ticks)
+      `CREATE TABLE IF NOT EXISTS market_ticks (
+        timestamp TIMESTAMP,
+        instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
+        instrument_type SYMBOL CAPACITY 10,
+        index_name SYMBOL CAPACITY 20,
+        strike_price DOUBLE,
+        option_type SYMBOL CAPACITY 2,
+        expiry_date TIMESTAMP,
+        stock_symbol SYMBOL CAPACITY 1000,
+        is_nifty50_constituent BOOLEAN,
+        ltp DOUBLE,
+        open DOUBLE,
+        high DOUBLE,
+        low DOUBLE,
+        close DOUBLE,
+        prev_close DOUBLE,
+        volume LONG,
+        open_interest LONG,
+        bid DOUBLE,
+        ask DOUBLE,
+        bid_qty INT,
+        ask_qty INT,
+        upper_circuit DOUBLE,
+        lower_circuit DOUBLE,
+        exchange SYMBOL CAPACITY 5,
+        trade_time TIMESTAMP
+      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+      DEDUP UPSERT KEYS(timestamp, instrument_key);`,
+
+      // 20-level order book depth for all instruments
+      // Expected: ~50M rows/day (10K instruments × 40 levels × 120 updates/instrument)
+      `CREATE TABLE IF NOT EXISTS market_depth_20 (
+        timestamp TIMESTAMP,
+        instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
+        instrument_type SYMBOL CAPACITY 10,
+        index_name SYMBOL CAPACITY 20,
+        side SYMBOL CAPACITY 2,
+        level BYTE,
+        price DOUBLE,
+        quantity INT,
+        orders INT,
+        exchange SYMBOL CAPACITY 5
+      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+      DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);`,
+
+      // LightGBM training features (43 features)
+      // Expected: ~375 rows/day (6.5 hours × 60 minutes)
+      `CREATE TABLE IF NOT EXISTS training_features_lightgbm (
+        timestamp TIMESTAMP,
+        reference_instrument SYMBOL CAPACITY 100,
+        index_name SYMBOL CAPACITY 20,
+        nifty_spot_price DOUBLE,
+        nifty_future_price DOUBLE,
+        spot_future_basis DOUBLE,
+        basis_pct DOUBLE,
+        nifty_future_volume LONG,
+        nifty_spot_volume LONG,
+        nifty_spot_volatility_5m DOUBLE,
+        nifty_spot_volatility_15m DOUBLE,
+        nifty_spot_roc_5m DOUBLE,
+        nifty_spot_momentum_15m DOUBLE,
+        future_sma_9 DOUBLE,
+        future_sma_21 DOUBLE,
+        future_ema_9 DOUBLE,
+        future_rsi_14 DOUBLE,
+        future_atr_14 DOUBLE,
+        future_macd DOUBLE,
+        future_macd_signal DOUBLE,
+        future_macd_histogram DOUBLE,
+        atm_strike DOUBLE,
+        atm_call_iv DOUBLE,
+        atm_put_iv DOUBLE,
+        atm_iv_skew DOUBLE,
+        pcr_oi DOUBLE,
+        pcr_volume DOUBLE,
+        total_call_oi LONG,
+        total_put_oi LONG,
+        max_pain_strike DOUBLE,
+        iv_rank DOUBLE,
+        nifty50_advance_count INT,
+        nifty50_decline_count INT,
+        nifty50_unchanged_count INT,
+        nifty50_advance_decline_ratio DOUBLE,
+        nifty50_avg_return_1m DOUBLE,
+        ofi_1s DOUBLE,
+        ofi_5s DOUBLE,
+        ofi_30s DOUBLE,
+        bid_ask_spread_bps DOUBLE,
+        depth_imbalance_top5 DOUBLE,
+        hour INT,
+        minute INT,
+        seconds_since_market_open INT,
+        seconds_to_market_close INT,
+        is_first_hour BOOLEAN,
+        feature_version STRING,
+        computation_latency_ms INT
+      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+      DEDUP UPSERT KEYS(timestamp, reference_instrument);`,
+
+      // TFT time-series features (for regime detection)
+      // Expected: ~75 rows/day (5-min snapshots)
+      `CREATE TABLE IF NOT EXISTS training_features_tft (
+        timestamp TIMESTAMP,
+        reference_instrument SYMBOL CAPACITY 100,
+        index_name SYMBOL CAPACITY 20,
+        returns_5m STRING,
+        returns_15m STRING,
+        returns_1h STRING,
+        volatility_5m STRING,
+        volatility_15m STRING,
+        volatility_1h STRING,
+        volume_normalized STRING,
+        advance_decline_ratio STRING,
+        nifty50_momentum_distribution STRING,
+        pcr_oi STRING,
+        atm_iv STRING,
+        iv_term_structure STRING,
+        bid_ask_spread STRING,
+        order_flow_imbalance STRING,
+        current_regime STRING,
+        vix_level DOUBLE,
+        market_phase STRING,
+        feature_version STRING,
+        lookback_window INT
+      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+      DEDUP UPSERT KEYS(timestamp, reference_instrument);`,
+
+      // Training labels (supervised learning targets)
+      // Expected: ~375 rows/day (matches feature frequency)
+      `CREATE TABLE IF NOT EXISTS training_labels (
+        timestamp TIMESTAMP,
+        reference_instrument SYMBOL CAPACITY 100,
+        index_name SYMBOL CAPACITY 20,
+        target_return_1m DOUBLE,
+        target_return_5m DOUBLE,
+        target_return_15m DOUBLE,
+        target_return_eod DOUBLE,
+        target_volatility_5m DOUBLE,
+        target_volatility_15m DOUBLE,
+        target_direction_5m STRING,
+        target_volatility_regime_5m STRING,
+        regime_label STRING,
+        regime_confidence DOUBLE,
+        max_drawdown_5m DOUBLE,
+        max_runup_5m DOUBLE,
+        realized_volatility_5m DOUBLE,
+        had_regime_change BOOLEAN,
+        had_spike_event BOOLEAN,
+        label_quality STRING,
+        label_version STRING
+      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+      DEDUP UPSERT KEYS(timestamp, reference_instrument);`,
     ];
 
     // Materialized Views for auto-aggregation (Blueprint requirement)
@@ -292,6 +449,13 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
     } finally {
       client.release();
     }
+  }
+
+  /**
+   * Get ILP sender instance (for direct writes in repositories)
+   */
+  getSender(): Sender | null {
+    return this.sender;
   }
 
   /**
