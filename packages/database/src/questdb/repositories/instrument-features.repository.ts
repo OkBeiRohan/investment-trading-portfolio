@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Pool } from "pg";
 import { InstrumentFeatures1m, InstrumentFeatures1mSchema } from "@repo/schema";
-
+import { loadSqlQueryCached } from "../utils/sql-loader";
 @Injectable()
 export class InstrumentFeaturesRepository {
   private readonly logger = new Logger(InstrumentFeaturesRepository.name);
@@ -41,13 +41,8 @@ export class InstrumentFeaturesRepository {
    * Get latest features for instrument
    */
   async getLatest(instrumentKey: string): Promise<InstrumentFeatures1m | null> {
-    const result = await this.pool.query(
-      `SELECT * FROM instrument_features_1m 
-       WHERE instrument_key = $1 
-       ORDER BY timestamp DESC 
-       LIMIT 1`,
-      [instrumentKey]
-    );
+    const sql = loadSqlQueryCached("instrument-features/get-latest");
+    const result = await this.pool.query(sql, [instrumentKey]);
 
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
@@ -61,14 +56,12 @@ export class InstrumentFeaturesRepository {
     startTime: Date,
     endTime: Date
   ): Promise<InstrumentFeatures1m[]> {
-    const result = await this.pool.query(
-      `SELECT * FROM instrument_features_1m 
-       WHERE instrument_key = $1 
-       AND timestamp >= $2 
-       AND timestamp < $3 
-       ORDER BY timestamp DESC`,
-      [instrumentKey, startTime.toISOString(), endTime.toISOString()]
-    );
+    const sql = loadSqlQueryCached("instrument-features/get-by-time-range");
+    const result = await this.pool.query(sql, [
+      instrumentKey,
+      startTime.toISOString(),
+      endTime.toISOString(),
+    ]);
 
     return result.rows.map((row) => this.mapRow(row));
   }

@@ -7,6 +7,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Pool } from "pg";
 import { MarketCandle, MarketCandleSchema } from "@repo/schema";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 
 @Injectable()
 export class CandlesRepository {
@@ -20,10 +21,12 @@ export class CandlesRepository {
   async insertBatch(candles: MarketCandle[]): Promise<void> {
     if (candles.length === 0) return;
 
-    const values = candles.map(c => {
-      const v = MarketCandleSchema.parse(c);
-      return `('${v.timestamp.toISOString()}', '${v.instrumentKey}', ${v.intervalValue}, '${v.intervalUnit}', ${v.open}, ${v.high}, ${v.low}, ${v.close}, ${v.volume}, ${v.openInterest ?? 'NULL'})`;
-    }).join(',');
+    const values = candles
+      .map((c) => {
+        const v = MarketCandleSchema.parse(c);
+        return `('${v.timestamp.toISOString()}', '${v.instrumentKey}', ${v.intervalValue}, '${v.intervalUnit}', ${v.open}, ${v.high}, ${v.low}, ${v.close}, ${v.volume}, ${v.openInterest ?? "NULL"})`;
+      })
+      .join(",");
 
     const query = `
       INSERT INTO market_candles (
@@ -42,24 +45,22 @@ export class CandlesRepository {
   async findByTimeRange(
     instrumentKey: string,
     intervalValue: number,
-    intervalUnit: 'minute' | 'day',
+    intervalUnit: "minute" | "day",
     startTime: Date,
     endTime: Date,
     limit = 10000
   ): Promise<MarketCandle[]> {
-    const result = await this.pool.query(
-      `SELECT * FROM market_candles 
-       WHERE instrument_key = $1 
-       AND interval_value = $2 
-       AND interval_unit = $3
-       AND timestamp >= $4 
-       AND timestamp < $5
-       ORDER BY timestamp ASC
-       LIMIT $6`,
-      [instrumentKey, intervalValue, intervalUnit, startTime.toISOString(), endTime.toISOString(), limit]
-    );
+    const sql = loadSqlQueryCached("candles/get-by-time-range");
+    const result = await this.pool.query(sql, [
+      instrumentKey,
+      intervalValue,
+      intervalUnit,
+      startTime.toISOString(),
+      endTime.toISOString(),
+      limit,
+    ]);
 
-    return result.rows.map(row => this.mapRow(row));
+    return result.rows.map((row) => this.mapRow(row));
   }
 
   /**
@@ -68,17 +69,14 @@ export class CandlesRepository {
   async findLatest(
     instrumentKey: string,
     intervalValue: number,
-    intervalUnit: 'minute' | 'day'
+    intervalUnit: "minute" | "day"
   ): Promise<MarketCandle | null> {
-    const result = await this.pool.query(
-      `SELECT * FROM market_candles 
-       WHERE instrument_key = $1 
-       AND interval_value = $2
-       AND interval_unit = $3
-       ORDER BY timestamp DESC 
-       LIMIT 1`,
-      [instrumentKey, intervalValue, intervalUnit]
-    );
+    const sql = loadSqlQueryCached("candles/get-latest");
+    const result = await this.pool.query(sql, [
+      instrumentKey,
+      intervalValue,
+      intervalUnit,
+    ]);
 
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
@@ -90,19 +88,18 @@ export class CandlesRepository {
   async existsForRange(
     instrumentKey: string,
     intervalValue: number,
-    intervalUnit: 'minute' | 'day',
+    intervalUnit: "minute" | "day",
     startTime: Date,
     endTime: Date
   ): Promise<boolean> {
-    const result = await this.pool.query(
-      `SELECT count(*) as count FROM market_candles 
-       WHERE instrument_key = $1 
-       AND interval_value = $2
-       AND interval_unit = $3
-       AND timestamp >= $4 
-       AND timestamp < $5`,
-      [instrumentKey, intervalValue, intervalUnit, startTime.toISOString(), endTime.toISOString()]
-    );
+    const sql = loadSqlQueryCached("candles/check-exists");
+    const result = await this.pool.query(sql, [
+      instrumentKey,
+      intervalValue,
+      intervalUnit,
+      startTime.toISOString(),
+      endTime.toISOString(),
+    ]);
 
     return (result.rows[0]?.count || 0) > 0;
   }
@@ -120,11 +117,5 @@ export class CandlesRepository {
       volume: parseFloat(row.volume),
       openInterest: row.open_interest ? parseFloat(row.open_interest) : null,
     };
-  }
-}
-      interval,
-    ]);
-
-    return result.rows[0]?.count || 0;
   }
 }

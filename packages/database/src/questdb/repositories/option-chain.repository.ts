@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Pool } from "pg";
 import { OptionChainSnapshot, OptionChainSnapshotSchema } from "@repo/schema";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 
 @Injectable()
 export class OptionChainRepository {

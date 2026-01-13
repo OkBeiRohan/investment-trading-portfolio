@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Pool } from "pg";
 import { TrainingLabels1m, TrainingLabels1mSchema } from "@repo/schema";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 
 @Injectable()
 export class TrainingLabelsRepository {
@@ -39,14 +40,12 @@ export class TrainingLabelsRepository {
     endTime: Date,
     horizon: number
   ): Promise<TrainingLabels1m[]> {
-    const result = await this.pool.query(
-      `SELECT * FROM training_labels_1m 
-       WHERE timestamp >= $1 
-       AND timestamp < $2 
-       AND horizon_minutes = $3
-       ORDER BY timestamp ASC`,
-      [startTime.toISOString(), endTime.toISOString(), horizon]
-    );
+    const sql = loadSqlQueryCached("training-labels/get-by-time-range");
+    const result = await this.pool.query(sql, [
+      startTime.toISOString(),
+      endTime.toISOString(),
+      horizon,
+    ]);
 
     return result.rows.map((row) => this.mapRow(row));
   }

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Pool } from "pg";
 import { MarketState1m, MarketState1mSchema } from "@repo/schema";
-
+import { loadSqlQueryCached } from "../utils/sql-loader";
 @Injectable()
 export class MarketStateRepository {
   private readonly logger = new Logger(MarketStateRepository.name);
@@ -71,9 +71,8 @@ export class MarketStateRepository {
    * Get latest market state
    */
   async getLatest(): Promise<MarketState1m | null> {
-    const result = await this.pool.query(
-      "SELECT * FROM market_state_1m ORDER BY timestamp DESC LIMIT 1"
-    );
+    const sql = loadSqlQueryCached("market-state/get-latest");
+    const result = await this.pool.query(sql);
 
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
@@ -100,12 +99,8 @@ export class MarketStateRepository {
    * Get last N market states
    */
   async getLastN(count: number): Promise<MarketState1m[]> {
-    const result = await this.pool.query(
-      `SELECT * FROM market_state_1m 
-       ORDER BY timestamp DESC 
-       LIMIT $1`,
-      [count]
-    );
+    const sql = loadSqlQueryCached("market-state/get-last-n");
+    const result = await this.pool.query(sql, [count]);
 
     return result.rows.map((row) => this.mapRow(row)).reverse();
   }

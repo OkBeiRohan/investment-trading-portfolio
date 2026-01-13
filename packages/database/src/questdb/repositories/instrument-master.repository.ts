@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Pool } from "pg";
 import { InstrumentMaster, InstrumentMasterSchema } from "@repo/schema";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 
 @Injectable()
 export class InstrumentMasterRepository {
@@ -73,10 +72,8 @@ export class InstrumentMasterRepository {
    * Get instrument by key
    */
   async getByKey(instrumentKey: string): Promise<InstrumentMaster | null> {
-    const result = await this.pool.query(
-      "SELECT * FROM instrument_master WHERE instrument_key = $1",
-      [instrumentKey]
-    );
+    const sql = loadSqlQueryCached("instrument-master/get-by-key");
+    const result = await this.pool.query(sql, [instrumentKey]);
 
     if (result.rows.length === 0) return null;
 
@@ -87,9 +84,8 @@ export class InstrumentMasterRepository {
    * Get all active instruments
    */
   async getActiveInstruments(): Promise<InstrumentMaster[]> {
-    const result = await this.pool.query(
-      "SELECT * FROM instrument_master WHERE is_expired = false"
-    );
+    const sql = loadSqlQueryCached("instrument-master/get-active");
+    const result = await this.pool.query(sql);
 
     return result.rows.map((row) => this.mapRow(row));
   }
@@ -101,24 +97,13 @@ export class InstrumentMasterRepository {
     underlyingKey: string,
     expiryDate?: Date
   ): Promise<InstrumentMaster[]> {
-    let query = `
-      SELECT * FROM instrument_master 
-      WHERE underlying_key = $1 
-      AND instrument_type = 'OPTION'
-      AND is_expired = false
-    `;
+    const sql = expiryDate
+      ? loadSqlQueryCached("instrument-master/get-options-by-expiry")
+      : loadSqlQueryCached("instrument-master/get-options");
 
-    const params: any[] = [underlyingKey];
-
-    if (expiryDate) {
-      query += " AND expiry = $2";
-      params.push(expiryDate);
-    }
-
-    query += " ORDER BY strike, option_type";
-
-    const result = await this.pool.query(query, params);
-    return result.rows.map((row) => this.mapRow(row));
+    const params = expiryDate ? [underlyingKey, expiryDate] : [underlyingKey];
+    const result = await this.pool.query(sql, params);
+    return result.rows.map((row: any) => this.mapRow(row));
   }
 
   private mapRow(row: any): InstrumentMaster {
