@@ -8,3 +8,4 @@ export * from "./quote.schema";
 export * from "./greeks.schema";
 export * from "./depth.schema";
 export * from "./training.schema";
+export * from "./features.schema";
