@@ -23,6 +23,45 @@ export interface UpstoxHistoricalResponse {
   };
 }
 
+export interface UpstoxMarketQuoteResponse {
+  status: string;
+  data: {
+    [instrumentKey: string]: {
+      instrument_token: string;
+      exchange: string;
+      trading_symbol: string;
+      isin?: string;
+      last_price: number;
+      ohlc: {
+        open: number;
+        high: number;
+        low: number;
+        close: number;
+      };
+      volume: number;
+      average_price: number;
+      oi?: number;
+      net_change: number;
+      lower_circuit_limit: number;
+      upper_circuit_limit: number;
+      last_trade_time: string;
+      oi_day_high?: number;
+      oi_day_low?: number;
+    };
+  };
+}
+
+export interface InstrumentMasterData {
+  instrumentKey: string;
+  exchange: string;
+  segment: string;
+  tradingSymbol: string;
+  name: string;
+  isin?: string;
+  lastPrice?: number;
+  lastUpdated: Date;
+}
+
 @Injectable()
 export class SimpleUpstoxClient {
   private readonly logger = new Logger(SimpleUpstoxClient.name);
@@ -245,5 +284,91 @@ export class SimpleUpstoxClient {
         error: error instanceof Error ? error.message : String(error),
       };
     }
+  }
+
+  /**
+   * Fetch full market quote for instruments
+   * @param instrumentKeys - Array of instrument keys (e.g., ['NSE_INDEX|Nifty 50', 'NSE_EQ|INE002A01018'])
+   * @returns Market quote data for instruments
+   */
+  async getFullMarketQuote(
+    instrumentKeys: string[]
+  ): Promise<InstrumentMasterData[]> {
+    try {
+      // API endpoint: /v2/market-quote/quotes?instrument_key=KEY1&instrument_key=KEY2
+      const params = new URLSearchParams();
+      instrumentKeys.forEach((key) => params.append("instrument_key", key));
+
+      const response = await this.axiosInstance.get<UpstoxMarketQuoteResponse>(
+        `/v2/market-quote/quotes?${params.toString()}`
+      );
+
+      if (response.data.status !== "success" || !response.data.data) {
+        throw new Error("Failed to fetch market quotes");
+      }
+
+      // Transform to InstrumentMasterData
+      return Object.entries(response.data.data).map(([key, quote]) => {
+        // Parse segment from instrument key (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
+        const [segment] = key.split("|");
+        const [exchange] = segment.split("_");
+
+        return {
+          instrumentKey: key,
+          exchange: quote.exchange || exchange,
+          segment: segment,
+          tradingSymbol: quote.trading_symbol,
+          name: quote.trading_symbol, // API doesn't provide full name, use symbol
+          isin: quote.isin,
+          lastPrice: quote.last_price,
+          lastUpdated: new Date(),
+        };
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorDetails = {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          url: error.config?.url,
+        };
+        this.logger.error(
+          `Upstox Market Quote API error: ${JSON.stringify(errorDetails, null, 2)}`
+        );
+        throw new Error(
+          `Market Quote API error: ${error.response?.status} - ${JSON.stringify(error.response?.data || error.message)}`
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch market quotes in batches (max 500 per request)
+   * @param instrumentKeys - Array of instrument keys
+   * @returns All instrument master data
+   */
+  async getFullMarketQuoteBatched(
+    instrumentKeys: string[]
+  ): Promise<InstrumentMasterData[]> {
+    const BATCH_SIZE = 500;
+    const allData: InstrumentMasterData[] = [];
+
+    for (let i = 0; i < instrumentKeys.length; i += BATCH_SIZE) {
+      const batch = instrumentKeys.slice(i, i + BATCH_SIZE);
+      this.logger.log(
+        `Fetching market quotes batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} instruments)`
+      );
+
+      const data = await this.getFullMarketQuote(batch);
+      allData.push(...data);
+
+      // Rate limiting
+      if (i + BATCH_SIZE < instrumentKeys.length) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    return allData;
   }
 }

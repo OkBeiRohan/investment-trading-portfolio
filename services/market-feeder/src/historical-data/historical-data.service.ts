@@ -69,6 +69,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       `Date range: ${threeMonthsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
     );
 
+    // Step 1: Populate instrument_master table
+    await this.populateInstrumentMaster(instruments);
+
     let totalFetched = 0;
     let skipped = 0;
 
@@ -170,6 +173,59 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       startDate,
       endDate,
     );
+  }
+
+  /**
+   * Populate instrument_master table with instrument metadata
+   */
+  private async populateInstrumentMaster(
+    instrumentKeys: string[],
+  ): Promise<void> {
+    try {
+      this.logger.log(
+        `Populating instrument_master for ${instrumentKeys.length} instruments...`,
+      );
+
+      // Fetch market quotes in batches
+      const instrumentData =
+        await this.upstoxClient.getFullMarketQuoteBatched(instrumentKeys);
+
+      // Insert into instrument_master using raw SQL
+      for (const instrument of instrumentData) {
+        const query = `
+          INSERT INTO instrument_master (
+            instrument_key,
+            exchange,
+            segment,
+            instrument_type,
+            tradingsymbol,
+            name,
+            last_updated
+          ) VALUES (
+            '${instrument.instrumentKey.replace(/'/g, "''")}',
+            '${instrument.exchange}',
+            '${instrument.segment}',
+            'EQ',
+            '${instrument.tradingSymbol.replace(/'/g, "''")}',
+            '${instrument.name.replace(/'/g, "''")}',
+            to_timestamp('${instrument.lastUpdated.toISOString()}', 'yyyy-MM-ddTHH:mm:ss.SSSZ')
+          )
+        `;
+
+        await this.candlesRepository['questdb'].query(query);
+      }
+
+      this.logger.log(
+        `✓ Populated ${instrumentData.length} instruments in instrument_master`,
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to populate instrument_master: ${errorMessage}`,
+      );
+      // Don't throw - continue with historical data fetch even if this fails
+    }
   }
 
   /**
