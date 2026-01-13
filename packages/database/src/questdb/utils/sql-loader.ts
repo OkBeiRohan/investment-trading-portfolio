@@ -4,7 +4,6 @@
  */
 
 import { readFileSync } from "fs";
-import { join, dirname } from "path";
 
 /**
  * Load SQL query from @repo/schema/sql/
