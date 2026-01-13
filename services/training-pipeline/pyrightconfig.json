@@ -1,6 +1,13 @@
 {
   "include": ["src"],
   "exclude": ["**/node_modules", "**/__pycache__", "**/.*"],
+  "executionEnvironments": [
+    {
+      "root": "src",
+      "pythonVersion": "3.12",
+      "extraPaths": []
+    }
+  ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,
