@@ -7,7 +7,7 @@
 export * from "./questdb-tables.schema";
 
 // Legacy schemas (kept for backward compatibility)
-// export * from "./candle.schema";
+export * from "./candle.schema";
 // export * from "./quote.schema";
 // export * from "./greeks.schema";
 // export * from "./depth.schema";
