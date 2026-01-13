@@ -7,9 +7,9 @@ import { AppService } from './app.service';
 import { QuestDBModule } from '@repo/database';
 import { UpstoxModule } from '@repo/market-sdk';
 import { HistoricalDataModule } from './historical-data/historical-data.module';
-import { FeatureComputationModule } from './feature-computation';
 import configuration from './config/configuration';
 import { ObservabilityModule } from '@repo/observability';
+import { FeatureComputationModule } from './feature-computation/feature-computation.module';
 
 @Module({
   imports: [

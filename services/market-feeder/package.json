@@ -31,6 +31,7 @@
     "@nestjs/microservices": "^11.1.11",
     "@nestjs/platform-express": "^11.1.11",
     "@nestjs/schedule": "^6.1.0",
+    "@repo/compute-engine": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
     "@repo/observability": "workspace:*",

@@ -1,14 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { join } from 'path';
+import type { JsMarketDataPoint, JsFeatureVector } from '@repo/compute-engine';
 
-const execAsync = promisify(exec);
+// Dynamic import of native module
+let computeEngine: typeof import('@repo/compute-engine') | null = null;
 
 /**
  * Compute Engine Service
  *
- * TypeScript wrapper for Rust compute-engine binary.
+ * Type-safe TypeScript wrapper for Rust compute-engine (NAPI-RS).
  * Handles feature calculation using high-performance Rust code.
  *
  * Features computed (33 total):
@@ -21,20 +20,25 @@ const execAsync = promisify(exec);
 @Injectable()
 export class ComputeEngineService {
   private readonly logger = new Logger(ComputeEngineService.name);
-  private readonly computeEnginePath: string;
+  private isInitialized = false;
 
   constructor() {
-    // Path to compiled Rust binary
-    this.computeEnginePath = join(
-      process.cwd(),
-      '..',
-      '..',
-      'services',
-      'compute-engine',
-      'target',
-      'release',
-      process.platform === 'win32' ? 'compute-engine.exe' : 'compute-engine',
-    );
+    this.initialize();
+  }
+
+  /**
+   * Initialize compute-engine native module
+   */
+  private async initialize(): Promise<void> {
+    try {
+      // Dynamically import native module
+      computeEngine = await import('@repo/compute-engine');
+      this.isInitialized = true;
+      this.logger.log('Compute engine initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to load compute-engine native module', error);
+      throw error;
+    }
   }
 
   /**
@@ -43,41 +47,26 @@ export class ComputeEngineService {
    * @param inputData - Array of market tick/candle data
    * @returns Array of feature vectors (33 features each)
    *
-   * Input format: { timestamp, open, high, low, close, volume, ... }
-   * Output format: { timestamp, feature_0, feature_1, ..., feature_32 }
+   * Type-safe end-to-end: TypeScript types auto-generated from Rust
    */
-  async computeFeatures(inputData: any[]): Promise<any[]> {
+  async computeFeatures(
+    inputData: JsMarketDataPoint[],
+  ): Promise<JsFeatureVector[]> {
+    if (!this.isInitialized || !computeEngine) {
+      await this.initialize();
+    }
+
+    if (!computeEngine) {
+      throw new Error('Compute engine not available');
+    }
+
     try {
       this.logger.debug(
         `Computing features for ${inputData.length} data points`,
       );
 
-      // TODO: Replace with direct Rust binding (NAPI-RS) for zero-copy performance
-      // Current approach: JSON serialization (temporary solution)
-
-      // Write input to temp file
-      const tempInputPath = join(process.cwd(), 'temp_input.json');
-      const tempOutputPath = join(process.cwd(), 'temp_output.json');
-
-      const fs = await import('fs/promises');
-      await fs.writeFile(tempInputPath, JSON.stringify(inputData));
-
-      // Call Rust binary
-      const { stdout, stderr } = await execAsync(
-        `"${this.computeEnginePath}" --input "${tempInputPath}" --output "${tempOutputPath}"`,
-      );
-
-      if (stderr) {
-        this.logger.warn(`Compute engine stderr: ${stderr}`);
-      }
-
-      // Read output
-      const outputData = await fs.readFile(tempOutputPath, 'utf-8');
-      const features = JSON.parse(outputData);
-
-      // Cleanup temp files
-      await fs.unlink(tempInputPath);
-      await fs.unlink(tempOutputPath);
+      // Call Rust function (zero-copy via NAPI-RS)
+      const features = computeEngine.computeFeaturesNapi(inputData);
 
       this.logger.debug(
         `Features computed: ${features.length} rows × 33 features`,
@@ -91,21 +80,9 @@ export class ComputeEngineService {
   }
 
   /**
-   * Health check: Verify compute-engine binary is available
+   * Health check: Verify compute-engine module is loaded
    */
   async healthCheck(): Promise<boolean> {
-    try {
-      const { stdout } = await execAsync(
-        `"${this.computeEnginePath}" --version`,
-      );
-      this.logger.log(`Compute engine version: ${stdout.trim()}`);
-      return true;
-    } catch (error) {
-      this.logger.error(
-        'Compute engine binary not found or not executable',
-        error,
-      );
-      return false;
-    }
+    return this.isInitialized && computeEngine !== null;
   }
 }

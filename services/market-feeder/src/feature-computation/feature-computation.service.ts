@@ -112,7 +112,7 @@ export class FeatureComputationService {
     instrumentKey: string,
     startTime: Date,
     endTime: Date,
-  ): Promise<any[]> {
+  ): Promise<Array<Record<string, unknown>>> {
     // Query combines multiple tables for complete market view
     const query = `
       SELECT
@@ -164,7 +164,7 @@ export class FeatureComputationService {
    */
   private async storeFeatures(
     instrumentKey: string,
-    features: any[],
+    features: Array<{ timestamp: string; [key: string]: number | string }>,
   ): Promise<void> {
     if (features.length === 0) {
       return;
