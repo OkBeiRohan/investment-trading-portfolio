@@ -54,8 +54,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
    * Checks for missing data and fetches from Upstox
    */
   async bootstrapHistoricalData(): Promise<void> {
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
     const today = new Date();
 
@@ -66,7 +66,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       `Bootstrapping historical data for ${instruments.length} instruments`,
     );
     this.logger.log(
-      `Date range: ${oneYearAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
+      `Date range: ${threeMonthsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
     );
 
     let totalFetched = 0;
@@ -77,7 +77,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         // Check if data exists for this instrument
         const hasData = await this.checkDataExists(
           instrumentKey,
-          oneYearAgo,
+          threeMonthsAgo,
           today,
         );
 
@@ -97,7 +97,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
             instrumentKey,
             'minutes',
             1,
-            oneYearAgo,
+            threeMonthsAgo,
             today,
           );
 

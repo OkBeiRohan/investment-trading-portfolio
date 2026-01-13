@@ -34,6 +34,10 @@ export class SimpleUpstoxClient {
 
     if (!accessToken) {
       this.logger.warn("UPSTOX_ACCESS_TOKEN not set in environment");
+    } else {
+      this.logger.log(
+        `Upstox client initialized with token (first 10 chars): ${accessToken.substring(0, 10)}...`
+      );
     }
 
     this.axiosInstance = axios.create({
@@ -43,6 +47,7 @@ export class SimpleUpstoxClient {
         Authorization: `Bearer ${accessToken || ""}`,
         "Api-Version": "3.0",
       },
+      timeout: 30000, // 30 second timeout
     });
   }
 
@@ -70,6 +75,10 @@ export class SimpleUpstoxClient {
 
       if (response.data.status !== "success" || !response.data.data?.candles) {
         throw new Error(`Failed to fetch candles for ${instrumentKey}`);
+      } else {
+        this.logger.log(
+          `Fetched ${response.data.data.candles.length} candles for ${instrumentKey} (${unit}/${interval}) from ${fromDate} to ${toDate}`
+        );
       }
 
       // Transform array format to object format
@@ -89,14 +98,20 @@ export class SimpleUpstoxClient {
           statusText: error.response?.statusText,
           data: error.response?.data,
           url: error.config?.url,
+          code: error.code,
+          message: error.message,
         };
         this.logger.error(
           `Upstox API error details: ${JSON.stringify(errorDetails, null, 2)}`
         );
         throw new Error(
-          `Upstox API error: ${error.response?.status} - ${JSON.stringify(error.response?.data || error.message)}`
+          `Upstox API error: ${error.response?.status || error.code} - ${JSON.stringify(error.response?.data || error.message)}`
         );
       }
+      // Log non-axios errors
+      this.logger.error(
+        `Non-Axios error: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
@@ -157,7 +172,7 @@ export class SimpleUpstoxClient {
 
     while (currentDate <= endDate) {
       const batchEnd = new Date(currentDate);
-      batchEnd.setDate(batchEnd.getDate() + batchSizeDays);
+      batchEnd.setDate(batchEnd.getDate() + batchSizeDays - 1); // Subtract 1 to avoid overlap
 
       const actualEnd = batchEnd > endDate ? endDate : batchEnd;
 
@@ -181,7 +196,7 @@ export class SimpleUpstoxClient {
       // Rate limiting: 250 requests/second, so wait 100ms between requests
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      currentDate.setDate(currentDate.getDate() + batchSizeDays + 1);
+      currentDate.setDate(currentDate.getDate() + batchSizeDays);
     }
 
     return allCandles;
