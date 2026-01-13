@@ -17,6 +17,7 @@ export * from "./multiplexer/types";
 // Providers
 export { UpstoxProvider } from "./providers/upstox/upstox.provider";
 export { UpstoxModule } from "./providers/upstox/upstox.module";
+export { SimpleUpstoxClient } from "./providers/upstox/simple-client";
 export { UpstoxHistoricalAPI } from "./providers/upstox/api/historical.api";
 export { UpstoxHistoricalService } from "./providers/upstox/historical.service";
 export { YahooProvider } from "./providers/yahoo/yahoo.provider";

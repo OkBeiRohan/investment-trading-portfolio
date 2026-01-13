@@ -1,290 +1,189 @@
 /**
- * Historical Data Service
- * Orchestrates historical data fetching with gap detection
- * Uses multi-timeframe strategy for optimal data granularity
+ * Historical Data Bootstrap Service
+ * Checks for missing data and fetches from Upstox V3 API
+ * Fetches 1-minute candles for past 1 year for NIFTY50 ecosystem
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { QuestDBService } from '@repo/database';
-import { UpstoxHistoricalService } from '@repo/market-sdk';
-import { generateFetchPlan, summarizePlan } from './timeframe-strategy';
-
-export interface BackfillRequest {
-  instrumentKeys: string[];
-  intervals?: string[]; // Optional, uses multi-timeframe strategy if omitted
-  fromDate?: string; // YYYY-MM-DD (optional, defaults to 2000-01-01)
-  toDate?: string; // YYYY-MM-DD (optional, defaults to today)
-  useMultiTimeframe?: boolean; // Use automatic timeframe strategy (default: true)
-}
-
-export interface BackfillProgress {
-  totalInstruments: number;
-  completedInstruments: number;
-  currentInstrument: string;
-  totalCandles: number;
-  elapsedMs: number;
-}
+import { CandlesRepository } from '@repo/database';
+import { SimpleUpstoxClient } from '@repo/market-sdk';
+import {
+  NIFTY50_CONSTITUENTS,
+  NIFTY50_INDEX,
+  INDIA_VIX,
+} from './nifty50-instruments';
 
 @Injectable()
-export class HistoricalDataService {
+export class HistoricalDataService implements OnModuleInit {
   private readonly logger = new Logger(HistoricalDataService.name);
+  private upstoxClient: SimpleUpstoxClient | null = null;
 
   constructor(
-    private readonly questdbService: QuestDBService,
-    private readonly upstoxHistoricalService: UpstoxHistoricalService,
+    private readonly candlesRepository: CandlesRepository,
     private readonly configService: ConfigService,
-    private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  /**
-   * Backfill historical data for multiple instruments
-   * Uses multi-timeframe strategy for optimal data granularity
-   * Or uses specified intervals if provided
-   *
-   * @param request Backfill request
-   * @returns Total candles inserted
-   */
-  async backfillHistoricalData(request: BackfillRequest): Promise<number> {
-    const startTime = Date.now();
-    let totalCandles = 0;
-    let completedInstruments = 0;
+  async onModuleInit() {
+    const accessToken = this.configService.get<string>('UPSTOX_ACCESS_TOKEN');
 
-    // Determine if we should use multi-timeframe strategy
-    const useMultiTimeframe = request.useMultiTimeframe ?? !request.intervals;
-
-    if (useMultiTimeframe) {
-      return this.backfillWithStrategy(request);
+    if (!accessToken) {
+      this.logger.warn(
+        'UPSTOX_ACCESS_TOKEN not configured, skipping historical data bootstrap',
+      );
+      return;
     }
 
-    this.logger.log(
-      `Starting backfill for ${request.instrumentKeys.length} instruments, intervals: ${request.intervals?.join(', ')}`,
+    this.upstoxClient = new SimpleUpstoxClient(accessToken);
+
+    // Auto-bootstrap on startup (can be disabled via env var)
+    const autoBootstrap = this.configService.get<string>(
+      'AUTO_BOOTSTRAP_HISTORICAL_DATA',
+      'false',
     );
-
-    // Emit initial progress
-    this.emitProgress({
-      totalInstruments: request.instrumentKeys.length,
-      completedInstruments: 0,
-      currentInstrument: '',
-      totalCandles: 0,
-      elapsedMs: 0,
-    });
-
-    for (const instrumentKey of request.instrumentKeys) {
-      for (const interval of request.intervals || []) {
-        try {
-          // Parse interval (e.g., '5m' -> interval: '5', unit: 'minutes')
-          const { intervalValue, unit } = this.parseInterval(interval);
-
-          // Fetch with gap detection
-          const candles =
-            await this.upstoxHistoricalService.fetchHistoricalCandles(
-              {
-                instrument_key: instrumentKey,
-                interval: intervalValue,
-                unit,
-                from_date: request.fromDate,
-                to_date: request.toDate,
-              },
-              (
-                table: 'market_candles' | 'market_quotes' | 'option_greeks',
-                instrumentKey: string,
-              ) => this.questdbService.getLastTimestamp(table, instrumentKey),
-            );
-
-          if (candles.length > 0) {
-            // Insert into QuestDB
-            await this.questdbService.insertCandles(candles);
-            totalCandles += candles.length;
-
-            this.logger.log(
-              `Inserted ${candles.length} candles for ${instrumentKey} (${interval})`,
-            );
-          } else {
-            this.logger.debug(`No new data for ${instrumentKey} (${interval})`);
-          }
-        } catch (error) {
-          this.logger.error(
-            `Failed to backfill ${instrumentKey} (${interval})`,
-            error,
-          );
-        }
-      }
-
-      completedInstruments++;
-
-      // Emit progress
-      this.emitProgress({
-        totalInstruments: request.instrumentKeys.length,
-        completedInstruments,
-        currentInstrument: instrumentKey,
-        totalCandles,
-        elapsedMs: Date.now() - startTime,
-      });
+    if (autoBootstrap === 'true') {
+      this.logger.log('Auto-bootstrap enabled, checking for missing data...');
+      await this.bootstrapHistoricalData();
     }
-
-    const duration = Date.now() - startTime;
-    this.logger.log(
-      `Backfill completed: ${totalCandles} candles in ${duration}ms`,
-    );
-
-    // Emit completion
-    this.eventEmitter.emit('backfill.completed', {
-      totalInstruments: request.instrumentKeys.length,
-      totalCandles,
-      durationMs: duration,
-    });
-
-    return totalCandles;
   }
 
   /**
-   * Parse interval string to Upstox API format
-   * Examples: '1m' -> {intervalValue: '1', unit: 'minutes'}
-   *          '1h' -> {intervalValue: '1', unit: 'hours'}
-   *          '1d' -> {intervalValue: '1', unit: 'days'}
+   * Bootstrap historical data for NIFTY50 ecosystem
+   * Checks for missing data and fetches from Upstox
    */
-  private parseInterval(interval: string): {
-    intervalValue: string;
-    unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
-  } {
-    const match = interval.match(/^(\d+)([mhdwM])$/);
-    if (!match) {
-      throw new Error(`Invalid interval format: ${interval}`);
+  async bootstrapHistoricalData(): Promise<void> {
+    if (!this.upstoxClient) {
+      throw new Error(
+        'Upstox client not initialized. Set UPSTOX_ACCESS_TOKEN in .env',
+      );
     }
 
-    const [, value, unitChar] = match;
-    const unitMap: Record<
-      string,
-      'minutes' | 'hours' | 'days' | 'weeks' | 'months'
-    > = {
-      m: 'minutes',
-      h: 'hours',
-      d: 'days',
-      w: 'weeks',
-      M: 'months',
-    };
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const today = new Date();
+
+    // Instruments to fetch
+    const instruments = [NIFTY50_INDEX, INDIA_VIX, ...NIFTY50_CONSTITUENTS];
+
+    this.logger.log(
+      `Bootstrapping historical data for ${instruments.length} instruments`,
+    );
+    this.logger.log(
+      `Date range: ${oneYearAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
+    );
+
+    let totalFetched = 0;
+    let skipped = 0;
+
+    for (const instrumentKey of instruments) {
+      try {
+        // Check if data exists for this instrument
+        const hasData = await this.checkDataExists(
+          instrumentKey,
+          oneYearAgo,
+          today,
+        );
+
+        if (hasData) {
+          this.logger.debug(
+            `Data already exists for ${instrumentKey}, skipping`,
+          );
+          skipped++;
+          continue;
+        }
+
+        this.logger.log(`Fetching 1-minute candles for ${instrumentKey}...`);
+
+        // Fetch candles from Upstox
+        const upstoxCandles =
+          await this.upstoxClient.getHistoricalCandlesBatched(
+            instrumentKey,
+            '1minute',
+            oneYearAgo,
+            today,
+          );
+
+        if (upstoxCandles.length === 0) {
+          this.logger.warn(`No data returned for ${instrumentKey}`);
+          continue;
+        }
+
+        // Transform to MarketCandle format
+        const candles = upstoxCandles.map((c) => ({
+          timestamp: new Date(c.timestamp),
+          instrumentKey,
+          intervalValue: 1,
+          intervalUnit: 'minute' as const,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          volume: c.volume,
+          openInterest: c.open_interest || null,
+        }));
+
+        // Insert into QuestDB
+        await this.candlesRepository.insertBatch(candles);
+        totalFetched += candles.length;
+
+        this.logger.log(
+          `✓ Inserted ${candles.length} candles for ${instrumentKey}`,
+        );
+
+        // Rate limiting: wait 500ms between instruments
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } catch (error) {
+        this.logger.error(
+          `Failed to fetch data for ${instrumentKey}`,
+          error.message,
+        );
+      }
+    }
+
+    this.logger.log('='.repeat(60));
+    this.logger.log(`Bootstrap complete:`);
+    this.logger.log(`  - Total instruments: ${instruments.length}`);
+    this.logger.log(`  - Skipped (existing): ${skipped}`);
+    this.logger.log(`  - Fetched: ${instruments.length - skipped}`);
+    this.logger.log(`  - Total candles inserted: ${totalFetched}`);
+    this.logger.log('='.repeat(60));
+  }
+
+  /**
+   * Check if data exists for instrument in QuestDB
+   */
+  private async checkDataExists(
+    instrumentKey: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<boolean> {
+    return this.candlesRepository.existsForRange(
+      instrumentKey,
+      1, // interval_value
+      'minute', // interval_unit
+      startDate,
+      endDate,
+    );
+  }
+
+  /**
+   * Manually trigger bootstrap (for HTTP endpoint)
+   */
+  async triggerBootstrap(): Promise<{ message: string }> {
+    if (!this.upstoxClient) {
+      throw new Error(
+        'Upstox client not initialized. Set UPSTOX_ACCESS_TOKEN in .env',
+      );
+    }
+
+    // Run async without blocking response
+    this.bootstrapHistoricalData().catch((error) => {
+      this.logger.error('Bootstrap failed', error);
+    });
 
     return {
-      intervalValue: value,
-      unit: unitMap[unitChar],
+      message: 'Historical data bootstrap started. Check logs for progress.',
     };
-  }
-
-  /**
-   * Backfill using multi-timeframe strategy
-   * Automatically determines optimal intervals based on date ranges
-   */
-  private async backfillWithStrategy(
-    request: BackfillRequest,
-  ): Promise<number> {
-    const startTime = Date.now();
-    let totalCandles = 0;
-
-    // Generate fetch plan
-    const toDate = request.toDate ? new Date(request.toDate) : new Date();
-    const fromDate = request.fromDate
-      ? new Date(request.fromDate)
-      : new Date('2000-01-01');
-
-    const plan = generateFetchPlan(toDate, fromDate);
-
-    this.logger.log(
-      `Generated multi-timeframe plan for ${request.instrumentKeys.length} instruments:`,
-    );
-    this.logger.log(summarizePlan(plan));
-
-    const totalPhases = plan.length * request.instrumentKeys.length;
-    let completedPhases = 0;
-
-    // Execute plan for each instrument
-    for (const instrumentKey of request.instrumentKeys) {
-      this.logger.log(`Fetching data for ${instrumentKey}...`);
-
-      for (const phase of plan) {
-        try {
-          // Check if data already exists
-          const exists = await this.questdbService.checkDataExists(
-            'market_candles',
-            instrumentKey,
-            phase.startDate,
-            phase.endDate,
-          );
-
-          if (exists) {
-            this.logger.debug(
-              `Skipping ${phase.label} for ${instrumentKey} (already exists)`,
-            );
-            completedPhases++;
-            continue;
-          }
-
-          // Fetch candles
-          const candles =
-            await this.upstoxHistoricalService.fetchHistoricalCandles(
-              {
-                instrument_key: instrumentKey,
-                interval: phase.interval.toString(),
-                unit: phase.unit,
-                from_date: phase.startDate.toISOString().split('T')[0],
-                to_date: phase.endDate.toISOString().split('T')[0],
-              },
-              (table, key) =>
-                this.questdbService.getLastTimestamp(
-                  table as 'market_candles' | 'market_quotes' | 'option_greeks',
-                  key,
-                ),
-            );
-
-          if (candles.length > 0) {
-            await this.questdbService.insertCandles(candles);
-            totalCandles += candles.length;
-
-            this.logger.log(
-              `✓ ${phase.label}: ${candles.length} candles for ${instrumentKey}`,
-            );
-          } else {
-            this.logger.debug(`No data for ${phase.label} - ${instrumentKey}`);
-          }
-        } catch (error) {
-          this.logger.error(
-            `Failed to fetch ${phase.label} for ${instrumentKey}`,
-            error,
-          );
-        }
-
-        completedPhases++;
-
-        // Emit progress
-        this.emitProgress({
-          totalInstruments: request.instrumentKeys.length,
-          completedInstruments: Math.floor(completedPhases / plan.length),
-          currentInstrument: instrumentKey,
-          totalCandles,
-          elapsedMs: Date.now() - startTime,
-        });
-      }
-    }
-
-    const duration = Date.now() - startTime;
-    this.logger.log(
-      `Multi-timeframe backfill completed: ${totalCandles} candles in ${duration}ms`,
-    );
-
-    this.eventEmitter.emit('backfill.completed', {
-      totalInstruments: request.instrumentKeys.length,
-      totalCandles,
-      durationMs: duration,
-    });
-
-    return totalCandles;
-  }
-
-  /**
-   * Emit backfill progress event
-   */
-  private emitProgress(progress: BackfillProgress): void {
-    this.eventEmitter.emit('backfill.progress', progress);
   }
 }
