@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class QuestDBLoader:
     """
     Loads historical features from QuestDB for model training
-    
+
     Features are pre-computed by compute-engine (Rust/NAPI) and stored by market-feeder.
     This loader simply fetches the stored features for training.
     """
@@ -25,7 +25,7 @@ class QuestDBLoader:
     def __init__(self, connection_string: str):
         """
         Initialize QuestDB connection
-        
+
         Args:
             connection_string: PostgreSQL wire protocol connection string
                               e.g., 'postgresql://admin:quest@localhost:8812/qdb'
@@ -41,12 +41,12 @@ class QuestDBLoader:
     ) -> pd.DataFrame:
         """
         Load LightGBM features (33 features from Market State Encoder)
-        
+
         Args:
             start_date: Start of training period
             end_date: End of training period
             symbol: Index symbol (default: NIFTY)
-            
+
         Returns:
             DataFrame with 33 features + timestamp + close_price
         """
@@ -55,7 +55,8 @@ class QuestDBLoader:
             f"from {start_date} to {end_date}"
         )
 
-        query = text("""
+        query = text(
+            """
             SELECT 
                 timestamp,
                 -- Index Breadth (6)
@@ -103,7 +104,8 @@ class QuestDBLoader:
               AND timestamp >= :start_date
               AND timestamp < :end_date
             ORDER BY timestamp ASC
-        """)
+        """
+        )
 
         df = pd.read_sql(
             query,
@@ -112,7 +114,7 @@ class QuestDBLoader:
                 "symbol": symbol,
                 "start_date": start_date,
                 "end_date": end_date,
-            },
+            },  # type: ignore[arg-type]
         )
 
         logger.info(
@@ -130,12 +132,12 @@ class QuestDBLoader:
     ) -> pd.DataFrame:
         """
         Load Temporal Fusion Transformer features (120 timesteps × 15 features)
-        
+
         Returns:
             DataFrame with temporal features
         """
         logger.info(f"Loading TFT features for {symbol} (PLACEHOLDER)")
-        
+
         # TODO: Implement when TFT feature schema finalized
         raise NotImplementedError(
             "TFT feature loading not yet implemented. "
@@ -150,56 +152,49 @@ class QuestDBLoader:
     ) -> pd.DataFrame:
         """
         Load LOB Informed Transformer features (60 snapshots × 80 LOB levels)
-        
+
         Returns:
             DataFrame with LOB tensor data
         """
         logger.info(f"Loading LiT features for {symbol} (PLACEHOLDER)")
-        
+
         # TODO: Implement when LiT feature schema finalized
         raise NotImplementedError(
             "LiT feature loading not yet implemented. "
             "Compute-engine must first define LiT LOB tensor schema."
         )
 
-    def get_available_date_range(self, table: str = "lightgbm_features") -> tuple[datetime, datetime]:
+    def get_available_date_range(
+        self, table: str = "lightgbm_features"
+    ) -> tuple[datetime, datetime]:
         """
         Get available date range in QuestDB
-        
+
         Returns:
             (min_date, max_date)
         """
-        query = text(f"""
+        query = text(
+            f"""
             SELECT 
                 MIN(timestamp) as min_date,
                 MAX(timestamp) as max_date
             FROM {table}
-        """)
+        """
+        )
 
         result = pd.read_sql(query, self.engine)
-        
-        min_date = result['min_date'].iloc[0]
-        max_date = result['max_date'].iloc[0]
-        
+
+        min_date = result["min_date"].iloc[0]
+        max_date = result["max_date"].iloc[0]
+
         logger.info(f"Available data: {min_date} to {max_date}")
-        
+
         return (min_date, max_date)
 
     def close(self):
         """Close database connection"""
         self.engine.dispose()
         logger.info("QuestDB connection closed")
-
-            query_path: Path relative to sql/ directory
-                       (e.g., 'candles/select-by-time-range')
-            use_cache: Whether to use cached queries
-
-        Returns:
-            SQL query string
-
-        Example:
-            sql = loader.load('candles/select-by-time-range')
-        """
         if use_cache and query_path in self._cache:
             return self._cache[query_path]
 
@@ -218,59 +213,3 @@ class QuestDBLoader:
             self._cache[query_path] = sql
 
         return sql
-
-    def list_queries(self) -> list[str]:
-        """
-        List all available SQL queries.
-
-        Returns:
-            List of query paths (e.g., ['candles/select-by-time-range', ...])
-        """
-        queries = []
-        for sql_file in self.sql_dir.rglob("*.sql"):
-            # Convert to relative path and remove .sql extension
-            rel_path = sql_file.relative_to(self.sql_dir)
-            query_path = str(rel_path.with_suffix(""))
-            queries.append(query_path.replace("\\", "/"))  # Normalize path separators
-        return sorted(queries)
-
-    def clear_cache(self) -> None:
-        """Clear the query cache (useful for hot-reloading in development)."""
-        self._cache.clear()
-
-
-# Singleton instance for convenience
-_default_loader: Optional[SQLQueryLoader] = None
-
-
-def get_sql_loader() -> SQLQueryLoader:
-    """
-    Get the default SQL query loader instance.
-
-    Returns:
-        Singleton SQLQueryLoader instance
-    """
-    global _default_loader
-    if _default_loader is None:
-        _default_loader = SQLQueryLoader()
-    return _default_loader
-
-
-def load_sql(query_path: str) -> str:
-    """
-    Convenience function to load SQL query.
-
-    Args:
-        query_path: Path relative to sql/ directory
-                   (e.g., 'candles/select-by-time-range')
-
-    Returns:
-        SQL query string
-
-    Example:
-        from training_pipeline.utils.sql_loader import load_sql
-
-        sql = load_sql('candles/select-by-time-range')
-        cursor.execute(sql, [instrument_key, interval, start_time, end_time])
-    """
-    return get_sql_loader().load(query_path)

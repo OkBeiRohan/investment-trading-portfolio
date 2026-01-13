@@ -11,6 +11,8 @@ TODO: Implement TFT when compute-engine provides TFT features
 
 import logging
 
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,13 +23,13 @@ class TFTTrainer:
     TODO: Implement when TFT feature schema finalized in compute-engine
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.warning(
             "TFT trainer is a placeholder - requires TFT features from compute-engine"
         )
         pass
 
-    def train(self, features, labels):
+    def train(self, features: pd.DataFrame, labels: pd.Series) -> None:
         """Train TFT model (PLACEHOLDER)"""
         raise NotImplementedError(
             "TFT trainer not yet implemented - "

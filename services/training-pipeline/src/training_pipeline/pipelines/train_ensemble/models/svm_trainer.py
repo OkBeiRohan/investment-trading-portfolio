@@ -9,6 +9,8 @@ TODO: Implement SVM with RBF kernel
 
 import logging
 
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,10 +21,10 @@ class SVMTrainer:
     TODO: Implement training logic
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.warning("SVM trainer is a placeholder - not yet implemented")
         pass
 
-    def train(self, features, labels):
+    def train(self, features: pd.DataFrame, labels: pd.Series) -> None:
         """Train SVM model (PLACEHOLDER)"""
         raise NotImplementedError("SVM trainer not yet implemented")

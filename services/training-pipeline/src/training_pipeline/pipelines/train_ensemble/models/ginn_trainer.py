@@ -8,6 +8,8 @@ TODO: Implement GINN for non-linear market dynamics
 
 import logging
 
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,10 +20,10 @@ class GINNTrainer:
     TODO: Implement training logic
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.warning("GINN trainer is a placeholder - not yet implemented")
         pass
 
-    def train(self, features, labels):
+    def train(self, features: pd.DataFrame, labels: pd.Series) -> None:
         """Train GINN model (PLACEHOLDER)"""
         raise NotImplementedError("GINN trainer not yet implemented")

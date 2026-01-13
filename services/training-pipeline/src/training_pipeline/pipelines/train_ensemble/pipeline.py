@@ -4,7 +4,9 @@ Train Ensemble Pipeline
 Orchestrates training of all Level-0 models with walk-forward validation
 """
 
-from kedro.pipeline import Pipeline, node
+from typing import Any
+
+from kedro.pipeline import Pipeline, node  # type: ignore
 
 from .nodes import (
     load_training_data,
@@ -14,12 +16,10 @@ from .nodes import (
     train_ginn,
     train_svm,
     train_transformer,
-    train_tft,
-    train_lit,
 )
 
 
-def create_pipeline(**kwargs) -> Pipeline:
+def create_pipeline(**kwargs: Any) -> Pipeline:  # type: ignore[misc]  # type: ignore
     """
     Create train_ensemble pipeline
 

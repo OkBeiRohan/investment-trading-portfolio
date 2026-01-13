@@ -9,11 +9,9 @@ ARCHITECTURE (Updated for compute-engine):
 - training-pipeline LOADS features (no computation) and trains models
 """
 
-from kedro.pipeline import Pipeline
+from kedro.pipeline import Pipeline  # type: ignore
 
-from training_pipeline.pipelines.train_ensemble import (
-    pipeline as train_ensemble_pipeline,
-)
+from training_pipeline.pipelines.train_ensemble import pipeline as train_ensemble_pipeline  # type: ignore
 
 
 def register_pipelines() -> dict[str, Pipeline]:

@@ -9,6 +9,8 @@ TODO: Implement CNN-LSTM for temporal pattern recognition
 
 import logging
 
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,10 +21,10 @@ class CNNLSTMTrainer:
     TODO: Implement training logic
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.warning("CNN-LSTM trainer is a placeholder - not yet implemented")
         pass
 
-    def train(self, features, labels):
+    def train(self, features: pd.DataFrame, labels: pd.Series) -> None:
         """Train CNN-LSTM model (PLACEHOLDER)"""
         raise NotImplementedError("CNN-LSTM trainer not yet implemented")

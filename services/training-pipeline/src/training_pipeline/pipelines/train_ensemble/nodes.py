@@ -221,10 +221,8 @@ def train_tft(
 
     TODO: Implement TFT trainer when TFT features available from compute-engine
     """
-    logger.info(
-        "TFT training (PLACEHOLDER - requires TFT features from compute-engine)"
-    )
-    return {"status": "placeholder", "model": "tft", "tier": 2}
+    logger.info("TFT training (PLACEHOLDER - requires TFT features from compute-engine)")
+    return {"status": "placeholder", "model": "tft", "tier": "2"}
 
 
 def train_lit(
@@ -237,4 +235,24 @@ def train_lit(
     TODO: Implement LiT trainer when LOB tensors available from compute-engine
     """
     logger.info("LiT training (PLACEHOLDER - requires LOB tensors from compute-engine)")
-    return {"status": "placeholder", "model": "lit", "tier": 2}
+    return {"status": "placeholder", "model": "lit", "tier": "2"}
+
+    TODO: Implement TFT trainer when TFT features available from compute-engine
+    """
+    logger.info(
+        "TFT training (PLACEHOLDER - requires TFT features from compute-engine)"
+    )
+    return {"status": "placeholder", "model": "tft", "tier": "2"}
+
+
+def train_lit(
+    lit_data: pd.DataFrame,
+    training_config: Dict[str, Any],
+) -> Dict[str, str]:
+    """
+    Train LOB Informed Transformer (TIER 2, conditional)
+
+    TODO: Implement LiT trainer when LOB tensors available from compute-engine
+    """
+    logger.info("LiT training (PLACEHOLDER - requires LOB tensors from compute-engine)")
+    return {"status": "placeholder", "model": "lit", "tier": "2"}

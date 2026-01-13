@@ -9,6 +9,8 @@ TODO: Implement Transformer for attention-based predictions
 
 import logging
 
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,10 +21,10 @@ class TransformerTrainer:
     TODO: Implement training logic
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.warning("Transformer trainer is a placeholder - not yet implemented")
         pass
 
-    def train(self, features, labels):
+    def train(self, features: pd.DataFrame, labels: pd.Series) -> None:
         """Train Transformer model (PLACEHOLDER)"""
         raise NotImplementedError("Transformer trainer not yet implemented")
