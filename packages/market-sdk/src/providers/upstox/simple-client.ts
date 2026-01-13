@@ -84,8 +84,17 @@ export class SimpleUpstoxClient {
       }));
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        const errorDetails = {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          url: error.config?.url,
+        };
+        this.logger.error(
+          `Upstox API error details: ${JSON.stringify(errorDetails, null, 2)}`
+        );
         throw new Error(
-          `Upstox API error: ${error.response?.status} - ${error.response?.data?.message || error.message}`
+          `Upstox API error: ${error.response?.status} - ${JSON.stringify(error.response?.data || error.message)}`
         );
       }
       throw error;
@@ -176,5 +185,50 @@ export class SimpleUpstoxClient {
     }
 
     return allCandles;
+  }
+
+  /**
+   * Test method to fetch a single batch for debugging
+   * @param instrumentKey - Instrument to test
+   * @param daysBack - How many days back to fetch (default 7)
+   */
+  async testFetch(
+    instrumentKey: string,
+    daysBack: number = 7
+  ): Promise<{
+    success: boolean;
+    candleCount: number;
+    error?: string;
+    sampleCandle?: UpstoxCandleData;
+  }> {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+
+      this.logger.log(
+        `Testing fetch for ${instrumentKey} from ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`
+      );
+
+      const candles = await this.getHistoricalCandles(
+        instrumentKey,
+        "minutes",
+        1,
+        startDate.toISOString().split("T")[0],
+        endDate.toISOString().split("T")[0]
+      );
+
+      return {
+        success: true,
+        candleCount: candles.length,
+        sampleCandle: candles[0],
+      };
+    } catch (error) {
+      return {
+        success: false,
+        candleCount: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 }
