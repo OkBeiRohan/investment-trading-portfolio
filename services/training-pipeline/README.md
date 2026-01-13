@@ -123,21 +123,26 @@ kedro run --pipeline train_ensemble
 
 ## 📁 Project Structure
 
+**CLEAN ARCHITECTURE** (After folder cleanup - Jan 2026):
+
 ```
 training-pipeline/
-├── conf/
+├── conf/               # Kedro configuration
 │   ├── base/
-│   │   ├── catalog.yml          # QuestDB data sources (pre-computed features)
-│   │   ├── parameters.yml       # Model hyperparameters + training config
-│   │   └── logging.yml
+│   │   ├── catalog.yml         # Data sources (QuestDB queries)
+│   │   ├── parameters.yml      # Model hyperparameters
+│   │   └── parameters/
+│   │       ├── ensemble.yml    # Ensemble model configs
+│   │       ├── rl_agent.yml    # RL agent configs
+│   │       └── timesnet.yml    # TimeNet configs
 │   └── local/
-│       └── credentials.yml      # QuestDB/MongoDB credentials (gitignored)
+│       └── credentials.yml     # DB credentials (gitignored)
 ├── src/
+│   ├── experiments/
+│   │   └── mlflow_tracking.py  # MLflow utilities
 │   └── training_pipeline/
 │       ├── pipelines/
-│       │   ├── train_ensemble/  # Level-0 models
-│       │   │   ├── nodes.py     # Training nodes
-│       │   │   ├── pipeline.py  # Pipeline definition
+│       │   ├── train_ensemble/        ✅ Level-0 models (8 models)
 │       │   │   └── models/
 │       │   │       ├── lightgbm_trainer.py    ✅ IMPLEMENTED
 │       │   │       ├── xgboost_trainer.py     ⏳ PLACEHOLDER
@@ -145,23 +150,55 @@ training-pipeline/
 │       │   │       ├── ginn_trainer.py        ⏳ PLACEHOLDER
 │       │   │       ├── svm_trainer.py         ⏳ PLACEHOLDER
 │       │   │       ├── transformer_trainer.py ⏳ PLACEHOLDER
-│       │   │       ├── tft_trainer.py         ⏳ PLACEHOLDER (needs TFT features)
-│       │   │       └── lit_trainer.py         ⏳ PLACEHOLDER (needs LOB tensors)
-│       │   ├── train_meta_learner/  ⏳ PLACEHOLDER
-│       │   └── export_onnx/         ⏳ PLACEHOLDER
+│       │   │       ├── tft_trainer.py         ⏳ PLACEHOLDER
+│       │   │       └── lit_trainer.py         ⏳ PLACEHOLDER
+│       │   ├── train_meta_learner/    ⏳ Level-1 stacking
+│       │   ├── export_onnx/           ⏳ ONNX export
+│       │   └── train_rl_agent/        ⏳ PPO execution agent
 │       ├── utils/
-│       │   ├── sql_loader.py    # QuestDB data loader
-│       │   ├── metrics.py
-│       │   ├── validation.py
-│       │   └── backtesting.py
+│       │   ├── sql_loader.py          # QuestDB loader
+│       │   ├── metrics.py             # Evaluation metrics
+│       │   ├── validation.py          # Walk-forward CV
+│       │   └── backtesting.py         # Strategy backtest
 │       └── types/
-│           └── model_types.py   # Shared type definitions
-├── data/
-│   ├── 06_models/               # Trained models
-│   ├── 07_model_output/         # OOF predictions
-│   └── 08_reporting/            # Metrics & reports
-└── notebooks/                   # Exploratory analysis
+│           └── model_types.py         # Shared types
+├── docs/
+│   ├── FOLDER_STRUCTURE.md            # 📋 DETAILED FOLDER GUIDE
+│   ├── ARCHITECTURE_UPDATE.md
+│   └── pipelines/
+│       ├── TRAIN_ENSEMBLE.md
+│       ├── TRAIN_META_LEARNER.md
+│       ├── EXPORT_ONNX.md
+│       └── TRAIN_RL_AGENT.md
+├── notebooks/          # Exploratory analysis
+└── scripts/
+    └── verify_pipeline.py
 ```
+
+**📋 For detailed folder explanations, see [docs/FOLDER_STRUCTURE.md](docs/FOLDER_STRUCTURE.md)**
+
+**Key Changes (Jan 2026)**:
+
+- ❌ **REMOVED** `pipelines/feature_engineering/` - Features come from compute-engine
+- ❌ **REMOVED** `pipelines/data_ingestion/` - Replaced by sql_loader.py
+- ❌ **REMOVED** `pipelines/train_feature_extractor/` - No feature extraction
+- ❌ **REMOVED** `src/models/` - Duplicate of train_ensemble/models/
+- ❌ **REMOVED** `notebooks/02_feature_analysis.ipynb` - Analyze in compute-engine
+  │ │ └── export_onnx/ ⏳ PLACEHOLDER
+  │ ├── utils/
+  │ │ ├── sql_loader.py # QuestDB data loader
+  │ │ ├── metrics.py
+  │ │ ├── validation.py
+  │ │ └── backtesting.py
+  │ └── types/
+  │ └── model_types.py # Shared type definitions
+  ├── data/
+  │ ├── 06_models/ # Trained models
+  │ ├── 07_model_output/ # OOF predictions
+  │ └── 08_reporting/ # Metrics & reports
+  └── notebooks/ # Exploratory analysis
+
+````
 
 ---
 
@@ -201,7 +238,7 @@ training-pipeline/
 
 ```bash
 kedro run --node train_lightgbm
-```
+````
 
 ### Train All Models (Placeholders will log warnings)
 
