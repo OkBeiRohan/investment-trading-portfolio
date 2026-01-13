@@ -5,6 +5,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { QuestDBService } from "../questdb.service";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 import type {
   ITrainingFeaturesLightGBM,
   ITrainingFeaturesLightGBMInsert,
@@ -96,7 +97,7 @@ export class TrainingFeaturesRepository {
         .intColumn("minute", feat.minute)
         .intColumn("seconds_since_market_open", feat.seconds_since_market_open)
         .intColumn("seconds_to_market_close", feat.seconds_to_market_close)
-        .boolColumn("is_first_hour", feat.is_first_hour)
+        .booleanColumn("is_first_hour", feat.is_first_hour)
         .stringColumn("feature_version", feat.feature_version)
         .intColumn("computation_latency_ms", feat.computation_latency_ms)
         .at(
@@ -117,35 +118,43 @@ export class TrainingFeaturesRepository {
   async findLightGBMByTimeRange(
     query: ITrainingFeaturesQuery
   ): Promise<ITrainingFeaturesLightGBM[]> {
-    let sql = `
-      SELECT * FROM training_features_lightgbm
-      WHERE timestamp BETWEEN $1 AND $2
-    `;
+    // Load base SQL from schema
+    let sql = loadSqlQueryCached("training-features/select-lightgbm-base");
 
     const params: any[] = [
       query.start_time.toISOString(),
       query.end_time.toISOString(),
     ];
 
+    // Build dynamic filters
+    const filters: string[] = [];
+
     if (query.reference_instrument) {
-      sql += ` AND reference_instrument = $${params.length + 1}`;
+      filters.push(`reference_instrument = $${params.length + 1}`);
       params.push(query.reference_instrument);
     }
 
     if (query.index_name) {
-      sql += ` AND index_name = $${params.length + 1}`;
+      filters.push(`index_name = $${params.length + 1}`);
       params.push(query.index_name);
     }
 
     if (query.feature_version) {
-      sql += ` AND feature_version = $${params.length + 1}`;
+      filters.push(`feature_version = $${params.length + 1}`);
       params.push(query.feature_version);
     }
 
-    sql += ` ORDER BY timestamp ASC`;
+    // Apply filters if any
+    if (filters.length > 0) {
+      sql = sql.replace(
+        "ORDER BY timestamp ASC;",
+        `AND ${filters.join(" AND ")}\nORDER BY timestamp ASC;`
+      );
+    }
 
+    // Apply limit if specified
     if (query.limit) {
-      sql += ` LIMIT $${params.length + 1}`;
+      sql = sql.replace(";", ` LIMIT $${params.length + 1};`);
       params.push(query.limit);
     }
 
@@ -224,30 +233,38 @@ export class TrainingFeaturesRepository {
   async findTFTByTimeRange(
     query: ITrainingFeaturesQuery
   ): Promise<ITrainingFeaturesTFT[]> {
-    let sql = `
-      SELECT * FROM training_features_tft
-      WHERE timestamp BETWEEN $1 AND $2
-    `;
+    // Load base SQL from schema
+    let sql = loadSqlQueryCached("training-features/select-tft-base");
 
     const params: any[] = [
       query.start_time.toISOString(),
       query.end_time.toISOString(),
     ];
 
+    // Build dynamic filters
+    const filters: string[] = [];
+
     if (query.reference_instrument) {
-      sql += ` AND reference_instrument = $${params.length + 1}`;
+      filters.push(`reference_instrument = $${params.length + 1}`);
       params.push(query.reference_instrument);
     }
 
     if (query.index_name) {
-      sql += ` AND index_name = $${params.length + 1}`;
+      filters.push(`index_name = $${params.length + 1}`);
       params.push(query.index_name);
     }
 
-    sql += ` ORDER BY timestamp ASC`;
+    // Apply filters if any
+    if (filters.length > 0) {
+      sql = sql.replace(
+        "ORDER BY timestamp ASC;",
+        `AND ${filters.join(" AND ")}\nORDER BY timestamp ASC;`
+      );
+    }
 
+    // Apply limit if specified
     if (query.limit) {
-      sql += ` LIMIT $${params.length + 1}`;
+      sql = sql.replace(";", ` LIMIT $${params.length + 1};`);
       params.push(query.limit);
     }
 
@@ -299,8 +316,8 @@ export class TrainingFeaturesRepository {
         .floatColumn("max_drawdown_5m", label.max_drawdown_5m)
         .floatColumn("max_runup_5m", label.max_runup_5m)
         .floatColumn("realized_volatility_5m", label.realized_volatility_5m)
-        .boolColumn("had_regime_change", label.had_regime_change)
-        .boolColumn("had_spike_event", label.had_spike_event)
+        .booleanColumn("had_regime_change", label.had_regime_change)
+        .booleanColumn("had_spike_event", label.had_spike_event)
         .stringColumn("label_quality", label.label_quality)
         .stringColumn("label_version", label.label_version)
         .at(
@@ -321,40 +338,48 @@ export class TrainingFeaturesRepository {
   async findLabelsByTimeRange(
     query: ITrainingLabelsQuery
   ): Promise<ITrainingLabel[]> {
-    let sql = `
-      SELECT * FROM training_labels
-      WHERE timestamp BETWEEN $1 AND $2
-    `;
+    // Load base SQL from schema
+    let sql = loadSqlQueryCached("training-features/select-labels-base");
 
     const params: any[] = [
       query.start_time.toISOString(),
       query.end_time.toISOString(),
     ];
 
+    // Build dynamic filters
+    const filters: string[] = [];
+
     if (query.reference_instrument) {
-      sql += ` AND reference_instrument = $${params.length + 1}`;
+      filters.push(`reference_instrument = $${params.length + 1}`);
       params.push(query.reference_instrument);
     }
 
     if (query.index_name) {
-      sql += ` AND index_name = $${params.length + 1}`;
+      filters.push(`index_name = $${params.length + 1}`);
       params.push(query.index_name);
     }
 
     if (query.label_quality) {
-      sql += ` AND label_quality = $${params.length + 1}`;
+      filters.push(`label_quality = $${params.length + 1}`);
       params.push(query.label_quality);
     }
 
     if (query.label_version) {
-      sql += ` AND label_version = $${params.length + 1}`;
+      filters.push(`label_version = $${params.length + 1}`);
       params.push(query.label_version);
     }
 
-    sql += ` ORDER BY timestamp ASC`;
+    // Apply filters if any
+    if (filters.length > 0) {
+      sql = sql.replace(
+        "ORDER BY timestamp ASC;",
+        `AND ${filters.join(" AND ")}\nORDER BY timestamp ASC;`
+      );
+    }
 
+    // Apply limit if specified
     if (query.limit) {
-      sql += ` LIMIT $${params.length + 1}`;
+      sql = sql.replace(";", ` LIMIT $${params.length + 1};`);
       params.push(query.limit);
     }
 
@@ -378,23 +403,8 @@ export class TrainingFeaturesRepository {
   ): Promise<
     Array<{ features: ITrainingFeaturesLightGBM; labels: ITrainingLabel }>
   > {
-    let sql = `
-      SELECT 
-        f.*,
-        l.target_return_1m,
-        l.target_return_5m,
-        l.target_return_15m,
-        l.target_return_eod,
-        l.target_direction_5m,
-        l.regime_label,
-        l.label_quality
-      FROM training_features_lightgbm f
-      INNER JOIN training_labels l
-        ON f.timestamp = l.timestamp
-        AND f.reference_instrument = l.reference_instrument
-      WHERE f.timestamp BETWEEN $1 AND $2
-        AND f.index_name = $3
-    `;
+    // Load base SQL from schema
+    let sql = loadSqlQueryCached("training-features/select-training-dataset");
 
     const params: any[] = [
       startTime.toISOString(),
@@ -402,17 +412,26 @@ export class TrainingFeaturesRepository {
       indexName,
     ];
 
+    // Build dynamic filters
+    const filters: string[] = [];
+
     if (featureVersion) {
-      sql += ` AND f.feature_version = $${params.length + 1}`;
+      filters.push(`f.feature_version = $${params.length + 1}`);
       params.push(featureVersion);
     }
 
     if (labelVersion) {
-      sql += ` AND l.label_version = $${params.length + 1}`;
+      filters.push(`l.label_version = $${params.length + 1}`);
       params.push(labelVersion);
     }
 
-    sql += ` AND l.label_quality = 'CLEAN' ORDER BY f.timestamp ASC`;
+    // Apply filters if any
+    if (filters.length > 0) {
+      sql = sql.replace(
+        "AND l.label_quality = 'CLEAN'",
+        `AND ${filters.join(" AND ")}\n  AND l.label_quality = 'CLEAN'`
+      );
+    }
 
     const result = await this.questdb.query<any>(sql, params);
 

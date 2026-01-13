@@ -140,293 +140,43 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * 7. Materialized views for auto-aggregation (reduce query-time computation)
    */
   private async createTables(): Promise<void> {
-    const tables = [
-      // Historical candles (OHLCV data) - Raw tick-level data
-      // Expected: 200K candles/day across all instruments and intervals
-      `CREATE TABLE IF NOT EXISTS market_candles (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
-        interval SYMBOL CAPACITY 20,
-        open DOUBLE,
-        high DOUBLE,
-        low DOUBLE,
-        close DOUBLE,
-        volume LONG,
-        open_interest LONG
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key, interval);`,
-
-      // Market quotes (bid/ask snapshots) - High-frequency tick data
-      // Expected: 1M quotes/day (tick-by-tick)
-      `CREATE TABLE IF NOT EXISTS market_quotes (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
-        ltp DOUBLE,
-        bid DOUBLE,
-        ask DOUBLE,
-        bid_qty INT,
-        ask_qty INT,
-        volume LONG,
-        open_interest LONG,
-        upper_circuit DOUBLE,
-        lower_circuit DOUBLE
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key);`,
-
-      // Option Greeks snapshots
-      // Expected: 50K greeks/day (snapshots every 5 minutes for active options)
-      `CREATE TABLE IF NOT EXISTS option_greeks (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
-        delta DOUBLE,
-        gamma DOUBLE,
-        theta DOUBLE,
-        vega DOUBLE,
-        iv DOUBLE,
-        underlying_price DOUBLE
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key);`,
-
-      // Market depth (order book levels)
-      // Expected: 500K depth updates/day (5 levels * 2 sides * 10K updates)
-      `CREATE TABLE IF NOT EXISTS market_depth (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
-        side SYMBOL CAPACITY 2,
-        level BYTE,
-        price DOUBLE,
-        quantity INT,
-        orders INT
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);`,
-
-      // System audit log for distributed tracing
-      // Expected: 100K events/day (all system actions with trace_id)
-      `CREATE TABLE IF NOT EXISTS system_audit (
-        timestamp TIMESTAMP,
-        trace_id SYMBOL CAPACITY 100000 INDEX,
-        service SYMBOL CAPACITY 20,
-        level SYMBOL CAPACITY 10,
-        action SYMBOL CAPACITY 100,
-        user_id SYMBOL CAPACITY 1000,
-        metadata STRING
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL;`,
-
-      // ========== TRAINING DATA TABLES (For ML Pipeline) ==========
-
-      // Unified tick data for ALL instruments (spot, futures, options, stocks)
-      // Expected: ~10M ticks/day (50 stocks × 1 future × 50 options × ~4K ticks)
-      `CREATE TABLE IF NOT EXISTS market_ticks (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
-        instrument_type SYMBOL CAPACITY 10,
-        index_name SYMBOL CAPACITY 20,
-        strike_price DOUBLE,
-        option_type SYMBOL CAPACITY 2,
-        expiry_date TIMESTAMP,
-        stock_symbol SYMBOL CAPACITY 1000,
-        is_nifty50_constituent BOOLEAN,
-        ltp DOUBLE,
-        open DOUBLE,
-        high DOUBLE,
-        low DOUBLE,
-        close DOUBLE,
-        prev_close DOUBLE,
-        volume LONG,
-        open_interest LONG,
-        bid DOUBLE,
-        ask DOUBLE,
-        bid_qty INT,
-        ask_qty INT,
-        upper_circuit DOUBLE,
-        lower_circuit DOUBLE,
-        exchange SYMBOL CAPACITY 5,
-        trade_time TIMESTAMP
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key);`,
-
-      // 20-level order book depth for all instruments
-      // Expected: ~50M rows/day (10K instruments × 40 levels × 120 updates/instrument)
-      `CREATE TABLE IF NOT EXISTS market_depth_20 (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
-        instrument_type SYMBOL CAPACITY 10,
-        index_name SYMBOL CAPACITY 20,
-        side SYMBOL CAPACITY 2,
-        level BYTE,
-        price DOUBLE,
-        quantity INT,
-        orders INT,
-        exchange SYMBOL CAPACITY 5
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);`,
-
-      // LightGBM training features (43 features)
-      // Expected: ~375 rows/day (6.5 hours × 60 minutes)
-      `CREATE TABLE IF NOT EXISTS training_features_lightgbm (
-        timestamp TIMESTAMP,
-        reference_instrument SYMBOL CAPACITY 100,
-        index_name SYMBOL CAPACITY 20,
-        nifty_spot_price DOUBLE,
-        nifty_future_price DOUBLE,
-        spot_future_basis DOUBLE,
-        basis_pct DOUBLE,
-        nifty_future_volume LONG,
-        nifty_spot_volume LONG,
-        nifty_spot_volatility_5m DOUBLE,
-        nifty_spot_volatility_15m DOUBLE,
-        nifty_spot_roc_5m DOUBLE,
-        nifty_spot_momentum_15m DOUBLE,
-        future_sma_9 DOUBLE,
-        future_sma_21 DOUBLE,
-        future_ema_9 DOUBLE,
-        future_rsi_14 DOUBLE,
-        future_atr_14 DOUBLE,
-        future_macd DOUBLE,
-        future_macd_signal DOUBLE,
-        future_macd_histogram DOUBLE,
-        atm_strike DOUBLE,
-        atm_call_iv DOUBLE,
-        atm_put_iv DOUBLE,
-        atm_iv_skew DOUBLE,
-        pcr_oi DOUBLE,
-        pcr_volume DOUBLE,
-        total_call_oi LONG,
-        total_put_oi LONG,
-        max_pain_strike DOUBLE,
-        iv_rank DOUBLE,
-        nifty50_advance_count INT,
-        nifty50_decline_count INT,
-        nifty50_unchanged_count INT,
-        nifty50_advance_decline_ratio DOUBLE,
-        nifty50_avg_return_1m DOUBLE,
-        ofi_1s DOUBLE,
-        ofi_5s DOUBLE,
-        ofi_30s DOUBLE,
-        bid_ask_spread_bps DOUBLE,
-        depth_imbalance_top5 DOUBLE,
-        hour INT,
-        minute INT,
-        seconds_since_market_open INT,
-        seconds_to_market_close INT,
-        is_first_hour BOOLEAN,
-        feature_version STRING,
-        computation_latency_ms INT
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, reference_instrument);`,
-
-      // TFT time-series features (for regime detection)
-      // Expected: ~75 rows/day (5-min snapshots)
-      `CREATE TABLE IF NOT EXISTS training_features_tft (
-        timestamp TIMESTAMP,
-        reference_instrument SYMBOL CAPACITY 100,
-        index_name SYMBOL CAPACITY 20,
-        returns_5m STRING,
-        returns_15m STRING,
-        returns_1h STRING,
-        volatility_5m STRING,
-        volatility_15m STRING,
-        volatility_1h STRING,
-        volume_normalized STRING,
-        advance_decline_ratio STRING,
-        nifty50_momentum_distribution STRING,
-        pcr_oi STRING,
-        atm_iv STRING,
-        iv_term_structure STRING,
-        bid_ask_spread STRING,
-        order_flow_imbalance STRING,
-        current_regime STRING,
-        vix_level DOUBLE,
-        market_phase STRING,
-        feature_version STRING,
-        lookback_window INT
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, reference_instrument);`,
-
-      // Training labels (supervised learning targets)
-      // Expected: ~375 rows/day (matches feature frequency)
-      `CREATE TABLE IF NOT EXISTS training_labels (
-        timestamp TIMESTAMP,
-        reference_instrument SYMBOL CAPACITY 100,
-        index_name SYMBOL CAPACITY 20,
-        target_return_1m DOUBLE,
-        target_return_5m DOUBLE,
-        target_return_15m DOUBLE,
-        target_return_eod DOUBLE,
-        target_volatility_5m DOUBLE,
-        target_volatility_15m DOUBLE,
-        target_direction_5m STRING,
-        target_volatility_regime_5m STRING,
-        regime_label STRING,
-        regime_confidence DOUBLE,
-        max_drawdown_5m DOUBLE,
-        max_runup_5m DOUBLE,
-        realized_volatility_5m DOUBLE,
-        had_regime_change BOOLEAN,
-        had_spike_event BOOLEAN,
-        label_quality STRING,
-        label_version STRING
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, reference_instrument);`,
-    ];
-
-    // Materialized Views for auto-aggregation (Blueprint requirement)
-    const materializedViews = [
-      // 1-minute candles (auto-aggregated from market_quotes)
-      // Reduces query-time computation for dashboard charts
-      `CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_1m AS
-      SELECT
-        timestamp,
-        instrument_key,
-        '1m' as interval,
-        first(ltp) as open,
-        max(ltp) as high,
-        min(ltp) as low,
-        last(ltp) as close,
-        sum(volume) as volume,
-        last(open_interest) as open_interest
-      FROM market_quotes
-      SAMPLE BY 1m
-      ALIGN TO CALENDAR;`,
-
-      // 30-minute candles (auto-aggregated from 1m candles)
-      // For longer-term analysis and backtesting
-      `CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_30m AS
-      SELECT
-        timestamp,
-        instrument_key,
-        '30m' as interval,
-        first(open) as open,
-        max(high) as high,
-        min(low) as low,
-        last(close) as close,
-        sum(volume) as volume,
-        last(open_interest) as open_interest
-      FROM market_candles
-      WHERE interval = '1m'
-      SAMPLE BY 30m
-      ALIGN TO CALENDAR;`,
+    const tableNames = [
+      "market_candles",
+      "market_quotes",
+      "option_greeks",
+      "market_depth",
+      "system_audit",
+      "market_ticks",
+      "market_depth_20",
+      "training_features_lightgbm",
+      "training_features_tft",
+      "training_labels",
     ];
 
     // Create base tables
-    for (const sql of tables) {
+    for (const tableName of tableNames) {
       try {
+        const sql = loadSqlQueryCached(`schema/create_${tableName}`);
         await this.query(sql);
-        const tableName = sql.match(/TABLE IF NOT EXISTS (\w+)/)?.[1];
         this.logger.log(`Table created/verified: ${tableName}`);
       } catch (error) {
-        this.logger.error(`Failed to create table: ${sql}`, error);
+        this.logger.error(`Failed to create table: ${tableName}`, error);
       }
     }
 
     // Create materialized views (after base tables exist)
-    for (const sql of materializedViews) {
+    const viewNames = ["market_candles_1m", "market_candles_30m"];
+
+    for (const viewName of viewNames) {
       try {
+        const sql = loadSqlQueryCached(`schema/create_${viewName}_view`);
         await this.query(sql);
-        const viewName = sql.match(/VIEW IF NOT EXISTS (\w+)/)?.[1];
         this.logger.log(`Materialized view created/verified: ${viewName}`);
       } catch (error) {
-        this.logger.warn(`Failed to create materialized view: ${sql}`, error);
+        this.logger.warn(
+          `Failed to create materialized view: ${viewName}`,
+          error
+        );
         // Non-fatal: views may already exist or require base data
       }
     }
@@ -724,23 +474,10 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
 
     const pgInterval = intervalMap[expectedInterval] || "1 minute";
 
-    const sql = `
-      WITH expected_timestamps AS (
-        SELECT timestamp_sequence($1::timestamp, $2::timestamp, INTERVAL '${pgInterval}') as expected_ts
-      ),
-      actual_data AS (
-        SELECT timestamp
-        FROM ${table}
-        WHERE instrument_key = $3
-          AND timestamp >= $1
-          AND timestamp <= $2
-      )
-      SELECT expected_ts
-      FROM expected_timestamps
-      LEFT JOIN actual_data ON expected_timestamps.expected_ts = actual_data.timestamp
-      WHERE actual_data.timestamp IS NULL
-      ORDER BY expected_ts
-    `;
+    // Load SQL from schema and apply template variables
+    let sql = loadSqlQueryCached("utils/find-missing-ranges");
+    sql = sql.replace("{pgInterval}", pgInterval);
+    sql = sql.replace("{TABLE_NAME}", table);
 
     const result = await this.query<{ expected_ts: string }>(sql, [
       startDate.toISOString(),

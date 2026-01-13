@@ -30,7 +30,7 @@ export class MarketTicksRepository {
     }
 
     for (const tick of ticks) {
-      sender
+      const row = sender
         .table("market_ticks")
         .timestampColumn(
           "timestamp",
@@ -39,20 +39,36 @@ export class MarketTicksRepository {
             : tick.timestamp.getTime() * 1000
         )
         .symbol("instrument_key", tick.instrument_key)
-        .symbol("instrument_type", tick.instrument_type)
-        .symbol("index_name", tick.index_name ?? null)
-        .floatColumn("strike_price", tick.strike_price ?? null)
-        .symbol("option_type", tick.option_type ?? null)
-        .timestampColumn(
+        .symbol("instrument_type", tick.instrument_type);
+
+      // Nullable symbol columns
+      if (tick.index_name !== null && tick.index_name !== undefined) {
+        row.symbol("index_name", tick.index_name);
+      }
+
+      if (tick.strike_price !== null && tick.strike_price !== undefined) {
+        row.floatColumn("strike_price", tick.strike_price);
+      }
+
+      if (tick.option_type !== null && tick.option_type !== undefined) {
+        row.symbol("option_type", tick.option_type);
+      }
+
+      if (tick.expiry_date !== null && tick.expiry_date !== undefined) {
+        row.timestampColumn(
           "expiry_date",
-          tick.expiry_date
-            ? typeof tick.expiry_date === "number"
-              ? tick.expiry_date
-              : tick.expiry_date.getTime() * 1000
-            : null
-        )
-        .symbol("stock_symbol", tick.stock_symbol ?? null)
-        .boolColumn(
+          typeof tick.expiry_date === "number"
+            ? tick.expiry_date
+            : tick.expiry_date.getTime() * 1000
+        );
+      }
+
+      if (tick.stock_symbol !== null && tick.stock_symbol !== undefined) {
+        row.symbol("stock_symbol", tick.stock_symbol);
+      }
+
+      row
+        .booleanColumn(
           "is_nifty50_constituent",
           tick.is_nifty50_constituent ?? false
         )
@@ -62,8 +78,14 @@ export class MarketTicksRepository {
         .floatColumn("low", tick.low)
         .floatColumn("close", tick.close)
         .floatColumn("prev_close", tick.prev_close)
-        .intColumn("volume", tick.volume)
-        .intColumn("open_interest", tick.open_interest ?? null)
+        .intColumn("volume", tick.volume);
+
+      // Nullable numeric column
+      if (tick.open_interest !== null && tick.open_interest !== undefined) {
+        row.intColumn("open_interest", tick.open_interest);
+      }
+
+      row
         .floatColumn("bid", tick.bid)
         .floatColumn("ask", tick.ask)
         .intColumn("bid_qty", tick.bid_qty)
@@ -93,35 +115,43 @@ export class MarketTicksRepository {
    * Query ticks for a time range
    */
   async findByTimeRange(query: IMarketTickQuery): Promise<IMarketTick[]> {
-    let sql = `
-      SELECT * FROM market_ticks
-      WHERE timestamp BETWEEN $1 AND $2
-    `;
+    // Load base SQL from schema
+    let sql = loadSqlQueryCached("market-ticks/select-by-time-range-base");
 
     const params: any[] = [
       query.start_time.toISOString(),
       query.end_time.toISOString(),
     ];
 
+    // Build dynamic filters
+    const filters: string[] = [];
+
     if (query.instrument_key) {
-      sql += ` AND instrument_key = $${params.length + 1}`;
+      filters.push(`instrument_key = $${params.length + 1}`);
       params.push(query.instrument_key);
     }
 
     if (query.instrument_type) {
-      sql += ` AND instrument_type = $${params.length + 1}`;
+      filters.push(`instrument_type = $${params.length + 1}`);
       params.push(query.instrument_type);
     }
 
     if (query.index_name) {
-      sql += ` AND index_name = $${params.length + 1}`;
+      filters.push(`index_name = $${params.length + 1}`);
       params.push(query.index_name);
     }
 
-    sql += ` ORDER BY timestamp DESC`;
+    // Apply filters if any
+    if (filters.length > 0) {
+      sql = sql.replace(
+        "ORDER BY timestamp DESC;",
+        `AND ${filters.join(" AND ")}\nORDER BY timestamp DESC;`
+      );
+    }
 
+    // Apply limit if specified
     if (query.limit) {
-      sql += ` LIMIT $${params.length + 1}`;
+      sql = sql.replace(";", ` LIMIT $${params.length + 1};`);
       params.push(query.limit);
     }
 
@@ -139,12 +169,8 @@ export class MarketTicksRepository {
    * Get latest tick for instrument
    */
   async findLatest(instrumentKey: string): Promise<IMarketTick | null> {
-    const sql = `
-      SELECT * FROM market_ticks
-      WHERE instrument_key = $1
-      ORDER BY timestamp DESC
-      LIMIT 1
-    `;
+    // Load SQL from schema
+    const sql = loadSqlQueryCached("market-ticks/select-latest");
 
     const result = await this.questdb.query<IMarketTick>(sql, [instrumentKey]);
 
@@ -184,11 +210,8 @@ export class MarketTicksRepository {
     startTime: Date,
     endTime: Date
   ): Promise<boolean> {
-    const sql = `
-      SELECT COUNT(*) as count FROM market_ticks
-      WHERE instrument_key = $1
-        AND timestamp BETWEEN $2 AND $3
-    `;
+    // Load SQL from schema
+    const sql = loadSqlQueryCached("market-ticks/count-by-instrument");
 
     const result = await this.questdb.query<{ count: number }>(sql, [
       instrumentKey,
