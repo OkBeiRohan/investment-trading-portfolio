@@ -5,3 +5,4 @@ export * from "./api/orders.api";
 export * from "./api/historical.api";
 export * from "./historical.service";
 export * from "./websocket/market-stream";
+export * from "./simple-client";
