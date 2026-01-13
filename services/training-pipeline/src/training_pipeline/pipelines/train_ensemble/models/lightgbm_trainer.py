@@ -378,7 +378,7 @@ class LightGBMTrainer:
         Train LightGBM with walk-forward validation
 
         Args:
-            features: Feature DataFrame (33 features as per blueprint)
+            features: Feature DataFrame (~29 features from Market State Encoder)
             labels: Volatility-adjusted labels (-1, 0, 1)
             mlflow_run_name: Optional MLflow run name
 
@@ -581,54 +581,59 @@ class LightGBMTrainer:
 
 def validate_features(features: pd.DataFrame) -> pd.DataFrame:
     """
-    Validate feature DataFrame matches blueprint specification
+    Validate feature DataFrame matches Market State Encoder v2 specification
 
-    Expected 33 features in correct order:
-    - Market Structure (8)
-    - Momentum & Trend (8)
-    - Volatility (5)
-    - Options (9)
+    Expected ~29 features from compressed multi-instrument data:
+    - Index Breadth (6) - from 50 NIFTY constituents
+    - NIFTY FUTURE (7) - primary price discovery
+    - Options Aggregate (9) - NOT per-strike
+    - Volatility (4) - regime context
     - Time Context (3)
+
+    CRITICAL: LightGBM is a MACRO model. It does NOT see:
+    - Raw LOBs (that's LiT's job)
+    - Per-stock prices (only breadth aggregates)
+    - Option strike ladders (only ATM + aggregates)
+    - Execution data (that's DRL PPO's job)
     """
     expected_features = [
-        # Market Structure (8)
-        "price_vs_vwap",
-        "price_vs_day_high",
-        "price_vs_day_low",
-        "range_position",
-        "prev_day_high_dist",
-        "prev_day_low_dist",
-        "weekly_high_dist",
-        "weekly_low_dist",
-        # Momentum & Trend (8)
-        "rsi_5",
-        "rsi_14",
-        "rsi_21",
-        "macd_hist",
-        "ema_9_slope",
-        "ema_21_slope",
-        "adx",
-        "roc_5",
-        # Volatility (5)
-        "atr_percent",
-        "realized_vol_5m",
-        "realized_vol_15m",
-        "vol_expansion_ratio",
-        "india_vix",
-        # Options (9)
-        "atm_iv",
-        "atm_iv_change",
-        "delta_atm",
-        "gamma_atm",
-        "vega_atm",
-        "theta_atm",
-        "pcr_oi",
-        "pcr_volume",
-        "max_pain_dist",
-        # Time Context (3)
-        "minutes_from_open",
-        "minutes_to_close",
-        "day_of_week",
+        # Index Breadth (6 features)
+        # Compressed from 50 NIFTY constituents → participation metrics
+        "pct_stocks_above_vwap",  # 0.0-1.0 (e.g., 0.72 = 36/50 bullish)
+        "pct_stocks_above_ema20",  # 0.0-1.0 (trending confirmation)
+        "weighted_return_top10",  # % return of top 10 weighted stocks
+        "advance_decline_ratio",  # e.g., 1.8 (36 up, 14 down)
+        "breadth_momentum_5m",  # 5-min momentum breadth
+        "breadth_volatility",  # Intra-constituent volatility spread
+        # NIFTY FUTURE (7 features)
+        # Primary price discovery instrument (NOT spot - spot has no volume)
+        "fut_price_vs_vwap",  # Normalized distance from VWAP
+        "fut_range_position",  # 0.0-1.0 (where in daily range?)
+        "fut_return_1m",  # 1-min return (momentum)
+        "fut_return_5m",  # 5-min return (trend)
+        "fut_atr_percent",  # ATR as % of price (volatility)
+        "fut_volume_zscore",  # Volume z-score (participation)
+        "fut_oi_change",  # OI change (positioning)
+        # Options Aggregate State (9 features)
+        # ATM only + market-wide aggregates (NOT per-strike)
+        "atm_iv",  # ATM implied volatility
+        "atm_iv_change",  # ΔIV (vol expansion/contraction)
+        "iv_skew",  # OTM put IV - OTM call IV
+        "gamma_atm",  # ATM gamma (curvature)
+        "vega_atm",  # ATM vega (vol sensitivity)
+        "theta_atm",  # ATM theta (time decay)
+        "pcr_oi",  # Put-call ratio (open interest)
+        "pcr_volume",  # Put-call ratio (volume)
+        "max_pain_distance",  # Distance to max pain (dealer positioning)
+        # Volatility & Regime Context (4 features)
+        "india_vix",  # Market-wide fear gauge
+        "realized_vol_5m",  # Short-term realized volatility
+        "realized_vol_15m",  # Medium-term realized volatility
+        "vol_expansion_ratio",  # Realized vol / historical avg
+        # Time Context (3 features)
+        "minutes_from_open",  # 0-375 (9:15 AM - 3:30 PM)
+        "minutes_to_close",  # 375-0
+        "day_of_week",  # 0-4 (Monday-Friday)
     ]
 
     missing = set(expected_features) - set(features.columns)
@@ -640,10 +645,13 @@ def validate_features(features: pd.DataFrame) -> pd.DataFrame:
     if extra:
         logger.warning(f"Extra features (will be ignored): {extra}")
 
-    # Reorder to match blueprint
+    # Reorder to match Market State Encoder v2 schema
     features_ordered = features[expected_features]
 
-    logger.info(f"Feature validation passed: {len(expected_features)} features")
+    logger.info(
+        f"Feature validation passed: {len(expected_features)} features "
+        f"(Index Breadth: 6, NIFTY FUTURE: 7, Options: 9, Volatility: 4, Time: 3)"
+    )
     return features_ordered
 
 
