@@ -5,7 +5,7 @@ Orchestrates training of all Level-0 models (LightGBM, XGBoost, etc.)
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Dict, Any
 
@@ -49,7 +49,7 @@ def load_training_data(
     loader = QuestDBLoader(questdb_connection)
 
     # Get available date range
-    min_date, max_date = loader.get_available_date_range()
+    _, max_date = loader.get_available_date_range()
 
     # Use last N days
     end_date = max_date
@@ -218,24 +218,6 @@ def train_tft(
 ) -> Dict[str, str]:
     """
     Train Temporal Fusion Transformer (TIER 2, conditional)
-
-    TODO: Implement TFT trainer when TFT features available from compute-engine
-    """
-    logger.info("TFT training (PLACEHOLDER - requires TFT features from compute-engine)")
-    return {"status": "placeholder", "model": "tft", "tier": "2"}
-
-
-def train_lit(
-    lit_data: pd.DataFrame,
-    training_config: Dict[str, Any],
-) -> Dict[str, str]:
-    """
-    Train LOB Informed Transformer (TIER 2, conditional)
-
-    TODO: Implement LiT trainer when LOB tensors available from compute-engine
-    """
-    logger.info("LiT training (PLACEHOLDER - requires LOB tensors from compute-engine)")
-    return {"status": "placeholder", "model": "lit", "tier": "2"}
 
     TODO: Implement TFT trainer when TFT features available from compute-engine
     """
