@@ -21,6 +21,7 @@ export class CandlesRepository {
   async insertBatch(candles: MarketCandle[]): Promise<void> {
     if (candles.length === 0) return;
 
+    const sqlPrefix = loadSqlQueryCached("candles/insert-batch-prefix");
     const values = candles
       .map((c) => {
         const v = MarketCandleSchema.parse(c);
@@ -28,13 +29,7 @@ export class CandlesRepository {
       })
       .join(",");
 
-    const query = `
-      INSERT INTO market_candles (
-        timestamp, instrument_key, interval_value, interval_unit,
-        open, high, low, close, volume, open_interest
-      ) VALUES ${values}
-    `;
-
+    const query = `${sqlPrefix} ${values}`;
     await this.pool.query(query);
     this.logger.log(`Inserted ${candles.length} candles`);
   }

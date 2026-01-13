@@ -15,6 +15,7 @@ export class TrainingLabelsRepository {
   async insertBatch(labels: TrainingLabels1m[]): Promise<void> {
     if (labels.length === 0) return;
 
+    const sqlPrefix = loadSqlQueryCached("training-labels/insert-batch-prefix");
     const values = labels
       .map((l) => {
         const v = TrainingLabels1mSchema.parse(l);
@@ -22,12 +23,7 @@ export class TrainingLabelsRepository {
       })
       .join(",");
 
-    const query = `
-      INSERT INTO training_labels_1m (
-        timestamp, horizon_minutes, label, future_return, atr_threshold
-      ) VALUES ${values}
-    `;
-
+    const query = `${sqlPrefix} ${values}`;
     await this.pool.query(query);
     this.logger.log(`Inserted ${labels.length} training labels`);
   }

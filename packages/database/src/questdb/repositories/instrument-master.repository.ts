@@ -14,18 +14,9 @@ export class InstrumentMasterRepository {
    */
   async upsert(instrument: InstrumentMaster): Promise<void> {
     const validated = InstrumentMasterSchema.parse(instrument);
+    const sql = loadSqlQueryCached("instrument-master/insert");
 
-    const query = `
-      INSERT INTO instrument_master (
-        instrument_key, exchange, segment, instrument_type, tradingsymbol,
-        name, expiry, strike, option_type, lot_size, tick_size,
-        underlying_key, is_expired, last_updated
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
-      )
-    `;
-
-    await this.pool.query(query, [
+    await this.pool.query(sql, [
       validated.instrumentKey,
       validated.exchange,
       validated.segment,
@@ -49,6 +40,9 @@ export class InstrumentMasterRepository {
   async bulkInsert(instruments: InstrumentMaster[]): Promise<void> {
     if (instruments.length === 0) return;
 
+    const sqlPrefix = loadSqlQueryCached(
+      "instrument-master/insert-batch-prefix"
+    );
     const values = instruments
       .map((inst) => {
         const v = InstrumentMasterSchema.parse(inst);
@@ -56,14 +50,7 @@ export class InstrumentMasterRepository {
       })
       .join(",");
 
-    const query = `
-      INSERT INTO instrument_master (
-        instrument_key, exchange, segment, instrument_type, tradingsymbol,
-        name, expiry, strike, option_type, lot_size, tick_size,
-        underlying_key, is_expired, last_updated
-      ) VALUES ${values}
-    `;
-
+    const query = `${sqlPrefix} ${values}`;
     await this.pool.query(query);
     this.logger.log(`Inserted ${instruments.length} instruments`);
   }

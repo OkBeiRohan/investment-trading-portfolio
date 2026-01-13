@@ -15,6 +15,7 @@ export class OptionChainRepository {
   async insertBatch(snapshots: OptionChainSnapshot[]): Promise<void> {
     if (snapshots.length === 0) return;
 
+    const sqlPrefix = loadSqlQueryCached("option-chain/insert-batch-prefix");
     const values = snapshots
       .map((s) => {
         const v = OptionChainSnapshotSchema.parse(s);
@@ -22,14 +23,7 @@ export class OptionChainRepository {
       })
       .join(",");
 
-    const query = `
-      INSERT INTO option_chain_snapshot (
-        timestamp, underlying_key, instrument_key, expiry, strike, option_type,
-        last_price, bid_price, ask_price, volume, open_interest,
-        iv, delta, gamma, vega, theta
-      ) VALUES ${values}
-    `;
-
+    const query = `${sqlPrefix} ${values}`;
     await this.pool.query(query);
     this.logger.log(`Inserted ${snapshots.length} option chain snapshots`);
   }
@@ -41,23 +35,15 @@ export class OptionChainRepository {
     underlyingKey: string,
     expiry?: Date
   ): Promise<OptionChainSnapshot[]> {
-    let query = `
-      SELECT * FROM option_chain_snapshot 
-      WHERE underlying_key = $1
-      AND timestamp >= dateadd('m', -5, now())
-    `;
+    const sql = expiry
+      ? loadSqlQueryCached("option-chain/get-latest-chain-by-expiry")
+      : loadSqlQueryCached("option-chain/get-latest-chain");
 
-    const params: any[] = [underlyingKey];
-
-    if (expiry) {
-      query += " AND expiry = $2";
-      params.push(expiry.toISOString());
-    }
-
-    query += " ORDER BY strike, option_type";
-
-    const result = await this.pool.query(query, params);
-    return result.rows.map((row) => this.mapRow(row));
+    const params = expiry
+      ? [underlyingKey, expiry.toISOString()]
+      : [underlyingKey];
+    const result = await this.pool.query(sql, params);
+    return result.rows.map((row: any) => this.mapRow(row));
   }
 
   /**
@@ -67,16 +53,9 @@ export class OptionChainRepository {
     underlyingKey: string,
     spotPrice: number
   ): Promise<OptionChainSnapshot[]> {
-    const result = await this.pool.query(
-      `SELECT * FROM option_chain_snapshot 
-       WHERE underlying_key = $1
-       AND timestamp >= dateadd('m', -5, now())
-       ORDER BY abs(strike - $2), option_type
-       LIMIT 2`,
-      [underlyingKey, spotPrice]
-    );
-
-    return result.rows.map((row) => this.mapRow(row));
+    const sql = loadSqlQueryCached("option-chain/get-atm-options");
+    const result = await this.pool.query(sql, [underlyingKey, spotPrice]);
+    return result.rows.map((row: any) => this.mapRow(row));
   }
 
   private mapRow(row: any): OptionChainSnapshot {

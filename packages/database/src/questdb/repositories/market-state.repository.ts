@@ -13,23 +13,9 @@ export class MarketStateRepository {
    */
   async insert(state: MarketState1m): Promise<void> {
     const v = MarketState1mSchema.parse(state);
+    const sql = loadSqlQueryCached("market-state/insert");
 
-    const query = `
-      INSERT INTO market_state_1m (
-        timestamp, price_vs_vwap, price_vs_day_high, price_vs_day_low, range_position,
-        prev_day_high_dist, prev_day_low_dist, weekly_high_dist, weekly_low_dist,
-        rsi_5, rsi_14, rsi_21, macd_hist, ema_9_slope, ema_21_slope, adx, roc_5,
-        atr_percent, realized_vol_5m, realized_vol_15m, vol_expansion_ratio, india_vix,
-        atm_iv, atm_iv_change, delta_atm, gamma_atm, vega_atm, theta_atm,
-        pcr_oi, pcr_volume, max_pain_dist,
-        minutes_from_open, minutes_to_close, day_of_week
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34
-      )
-    `;
-
-    await this.pool.query(query, [
+    await this.pool.query(sql, [
       v.timestamp,
       v.priceVsVwap,
       v.priceVsDayHigh,
@@ -85,14 +71,13 @@ export class MarketStateRepository {
     startTime: Date,
     endTime: Date
   ): Promise<MarketState1m[]> {
-    const result = await this.pool.query(
-      `SELECT * FROM market_state_1m 
-       WHERE timestamp >= $1 AND timestamp < $2 
-       ORDER BY timestamp ASC`,
-      [startTime.toISOString(), endTime.toISOString()]
-    );
+    const sql = loadSqlQueryCached("market-state/get-by-time-range");
+    const result = await this.pool.query(sql, [
+      startTime.toISOString(),
+      endTime.toISOString(),
+    ]);
 
-    return result.rows.map((row) => this.mapRow(row));
+    return result.rows.map((row: any) => this.mapRow(row));
   }
 
   /**
