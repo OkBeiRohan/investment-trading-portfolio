@@ -178,25 +178,27 @@ training-pipeline/
 **📋 For detailed folder explanations, see [docs/FOLDER_STRUCTURE.md](docs/FOLDER_STRUCTURE.md)**
 
 **Key Changes (Jan 2026)**:
+
 - ❌ **REMOVED** `pipelines/feature_engineering/` - Features come from compute-engine
 - ❌ **REMOVED** `pipelines/data_ingestion/` - Replaced by sql_loader.py
 - ❌ **REMOVED** `pipelines/train_feature_extractor/` - No feature extraction
 - ❌ **REMOVED** `src/models/` - Duplicate of train_ensemble/models/
 - ❌ **REMOVED** `notebooks/02_feature_analysis.ipynb` - Analyze in compute-engine
-│       │   └── export_onnx/         ⏳ PLACEHOLDER
-│       ├── utils/
-│       │   ├── sql_loader.py    # QuestDB data loader
-│       │   ├── metrics.py
-│       │   ├── validation.py
-│       │   └── backtesting.py
-│       └── types/
-│           └── model_types.py   # Shared type definitions
-├── data/
-│   ├── 06_models/               # Trained models
-│   ├── 07_model_output/         # OOF predictions
-│   └── 08_reporting/            # Metrics & reports
-└── notebooks/                   # Exploratory analysis
-```
+  │ │ └── export_onnx/ ⏳ PLACEHOLDER
+  │ ├── utils/
+  │ │ ├── sql_loader.py # QuestDB data loader
+  │ │ ├── metrics.py
+  │ │ ├── validation.py
+  │ │ └── backtesting.py
+  │ └── types/
+  │ └── model_types.py # Shared type definitions
+  ├── data/
+  │ ├── 06_models/ # Trained models
+  │ ├── 07_model_output/ # OOF predictions
+  │ └── 08_reporting/ # Metrics & reports
+  └── notebooks/ # Exploratory analysis
+
+````
 
 ---
 
@@ -236,7 +238,7 @@ training-pipeline/
 
 ```bash
 kedro run --node train_lightgbm
-```
+````
 
 ### Train All Models (Placeholders will log warnings)
 
