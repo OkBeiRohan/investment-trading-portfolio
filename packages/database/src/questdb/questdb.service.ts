@@ -94,6 +94,22 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     try {
+      // Test PostgreSQL connection first
+      try {
+        this.logger.log(
+          `Testing PostgreSQL connection to ${this.config.host}:${this.config.pgPort}...`
+        );
+        const testResult = await this.pool.query("SELECT 1 as test");
+        this.logger.log("PostgreSQL connection successful");
+      } catch (pgError) {
+        this.logger.error(
+          "PostgreSQL connection failed",
+          `Host: ${this.config.host}:${this.config.pgPort}`,
+          `Error: ${pgError instanceof Error ? pgError.message : String(pgError)}`
+        );
+        throw pgError;
+      }
+
       // Create sender options with configuration string
       // Format: protocol::addr=host:port;param1=value1;param2=value2
       let senderOptions = await SenderOptions.fromConfig(
@@ -152,22 +168,58 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
       "training_labels",
     ];
 
+    this.logger.log(
+      `Starting table creation for ${tableNames.length} tables...`
+    );
+
     // Create all tables
     for (const tableName of tableNames) {
       try {
         const sqlFileName = `schema/create_${tableName}`;
 
         const sql = loadSqlQueryCached(sqlFileName);
+        this.logger.debug(`Creating table ${tableName}...`);
+        this.logger.debug(`SQL preview: ${sql.substring(0, 200)}...`);
+
         await this.query(sql);
-        this.logger.log(`Table created/verified: ${tableName}`);
+        this.logger.log(`[OK] Table created/verified: ${tableName}`);
       } catch (error) {
+        // Extract detailed PostgreSQL error information
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const errorCode = (error as any)?.code;
+        const errorDetail = (error as any)?.detail;
+        const errorHint = (error as any)?.hint;
+        const errorPosition = (error as any)?.position;
+        const errorStack = error instanceof Error ? error.stack : undefined;
+
+        const errorInfo = {
+          table: tableName,
+          message: errorMessage,
+          code: errorCode,
+          detail: errorDetail,
+          hint: errorHint,
+          position: errorPosition,
+          sqlFile: `schema/create_${tableName}.sql`,
+        };
+
+        this.logger.error(`[FAILED] Table creation failed: ${tableName}`);
+        this.logger.error(`Error message: ${errorMessage}`);
+        this.logger.error(`Error code: ${errorCode}`);
+        this.logger.error(`Error detail: ${errorDetail}`);
+        this.logger.error(`Error hint: ${errorHint}`);
         this.logger.error(
-          `Failed to create table: ${tableName}`,
-          error instanceof Error ? error.message : String(error),
-          error instanceof Error ? error.stack : undefined
+          `Full error info: ${JSON.stringify(errorInfo, null, 2)}`
         );
+        if (errorStack) {
+          this.logger.error(`Stack trace: ${errorStack}`);
+        }
+
+        // Don't throw - continue creating other tables
       }
     }
+
+    this.logger.log("Table creation process completed");
   }
 
   /**
@@ -184,6 +236,23 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
         rows: result.rows as T[],
         rowCount: result.rowCount || 0,
       };
+    } catch (error) {
+      // Enhanced error logging for database queries
+      const errorInfo = {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        detail: (error as any)?.detail,
+        hint: (error as any)?.hint,
+        position: (error as any)?.position,
+        sql: sql.substring(0, 500), // Log first 500 chars of SQL
+      };
+
+      this.logger.error(
+        "QuestDB query failed",
+        JSON.stringify(errorInfo, null, 2)
+      );
+
+      throw error;
     } finally {
       client.release();
     }
