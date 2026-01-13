@@ -60,6 +60,7 @@ try:
     from training_pipeline.utils.sql_loader import QuestDBLoader
 
     print("  ✅ QuestDBLoader")
+    _ = QuestDBLoader  # Mark as used
 except ImportError as e:
     print(f"  ❌ QuestDBLoader: {e}")
     sys.exit(1)
@@ -70,6 +71,7 @@ try:
     )
 
     print("  ✅ LightGBMTrainer")
+    _ = LightGBMTrainer  # Mark as used
 except ImportError as e:
     print(f"  ❌ LightGBMTrainer: {e}")
     sys.exit(1)

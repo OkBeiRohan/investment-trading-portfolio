@@ -19,7 +19,7 @@ from .nodes import (
 )
 
 
-def create_pipeline(**kwargs: Any) -> Pipeline:  # type: ignore[misc]  # type: ignore
+def create_pipeline(**kwargs: Any) -> Pipeline:  # type: ignore[misc]
     """
     Create train_ensemble pipeline
 
@@ -28,7 +28,7 @@ def create_pipeline(**kwargs: Any) -> Pipeline:  # type: ignore[misc]  # type: i
     2. Train Level-0 models (TIER 1: 6 core + TIER 2: 2 conditional)
     3. Save models and OOF predictions for meta-learner
     """
-    return Pipeline(
+    return Pipeline(  # type: ignore[misc]
         [
             # ================================================================
             # Data Loading
