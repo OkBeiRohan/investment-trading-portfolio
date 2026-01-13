@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { HistoricalDataService } from './historical-data.service';
-import { HistoricalDataBootstrapService } from './historical-data-bootstrap.service';
+import { SimpleUpstoxClient } from '@repo/market-sdk';
+import { HistoricalDataBootstrapService } from './historical-data.service';
 import { HistoricalDataController } from './historical-data.controller';
 
 @Module({
   controllers: [HistoricalDataController],
-  providers: [HistoricalDataService, HistoricalDataBootstrapService],
-  exports: [HistoricalDataService, HistoricalDataBootstrapService],
+  providers: [HistoricalDataBootstrapService, SimpleUpstoxClient],
+  exports: [HistoricalDataBootstrapService],
 })
 export class HistoricalDataModule {}

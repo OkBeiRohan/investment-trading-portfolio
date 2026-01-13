@@ -19,8 +19,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { Pool, type PoolClient } from "pg";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { loadSqlQuery } from "./utils/sql-loader";
 
 export interface QuestDBConfig {
   host: string;
@@ -78,45 +77,71 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Create all tables from SQL files
+   * Create all tables from SQL files using sql-loader
+   * Order matters: create dependencies first
+   *
+   * v2.0 Schema Only - Production Tables
    */
   private async createTables(): Promise<void> {
-    const schemaPath = join(
-      process.cwd(),
-      "packages",
-      "schema",
-      "sql",
-      "schema"
+    this.logger.log("Creating QuestDB v2.0 tables from schema files...");
+
+    // Core tables (no dependencies)
+    await this.createTable(
+      "instrument_master",
+      "schema/create_instrument_master"
     );
 
-    const tableFiles = [
-      "create_instrument_master.sql",
-      "create_market_candles.sql",
-      "create_orderbook_l2_snapshots.sql",
-      "create_instrument_features_1m.sql",
-      "create_option_chain_snapshot.sql",
-      "create_market_state_1m.sql",
-      "create_training_labels_1m.sql",
-      "create_system_audit.sql",
-    ];
+    // Market data tables (depend on instrument_master)
+    await this.createTable("market_candles", "schema/create_market_candles");
+    await this.createTable(
+      "orderbook_l2_snapshots",
+      "schema/create_orderbook_l2_snapshots"
+    );
 
-    this.logger.log(`Creating ${tableFiles.length} tables from SQL files...`);
+    // Feature tables (depend on market data)
+    await this.createTable(
+      "instrument_features_1m",
+      "schema/create_instrument_features_1m"
+    );
+    await this.createTable("market_state_1m", "schema/create_market_state_1m");
 
-    for (const file of tableFiles) {
-      try {
-        const sql = readFileSync(join(schemaPath, file), "utf-8");
-        await this.pool.query(sql);
-        this.logger.log(
-          `✓ Created table: ${file.replace("create_", "").replace(".sql", "")}`
-        );
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        this.logger.error(`✗ Failed to create table from ${file}: ${errorMsg}`);
-        // Continue with other tables
+    // Option tables
+    await this.createTable(
+      "option_chain_snapshot",
+      "schema/create_option_chain_snapshot"
+    );
+
+    // Training tables (v2.0 - 1-minute labels only)
+    await this.createTable(
+      "training_labels_1m",
+      "schema/create_training_labels_1m"
+    );
+
+    this.logger.log("✓ All v2.0 tables created successfully (7 tables)");
+  }
+
+  /**
+   * Create a single table using sql-loader
+   */
+  private async createTable(tableName: string, sqlPath: string): Promise<void> {
+    try {
+      const sql = loadSqlQuery(sqlPath);
+      await this.pool.query(sql);
+      this.logger.log(`✓ Created table: ${tableName}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // Ignore "table already exists" errors
+      if (
+        errorMsg.includes("already exists") ||
+        errorMsg.includes("Duplicate")
+      ) {
+        this.logger.debug(`Table ${tableName} already exists (skipped)`);
+      } else {
+        this.logger.error(`✗ Failed to create table ${tableName}: ${errorMsg}`);
+        throw error; // Fail fast on real errors
       }
     }
-
-    this.logger.log("Table creation completed");
   }
 
   /**

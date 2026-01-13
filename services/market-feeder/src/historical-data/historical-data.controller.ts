@@ -3,18 +3,17 @@
  * REST API for manual backfill operations
  */
 
-import { Controller, Post, Body, Logger, Get } from '@nestjs/common';
-import { HistoricalDataService } from './historical-data.service';
-import { HistoricalDataBootstrapService } from './historical-data-bootstrap.service';
-import type { BackfillRequest } from './historical-data.service';
+import { Controller, Body, Logger, Get, Query } from '@nestjs/common';
+import { HistoricalDataBootstrapService } from './historical-data.service';
+import { SimpleUpstoxClient } from '@repo/market-sdk';
 
 @Controller('historical-data')
 export class HistoricalDataController {
   private readonly logger = new Logger(HistoricalDataController.name);
 
   constructor(
-    private readonly historicalDataService: HistoricalDataService,
-    private readonly bootstrapService: HistoricalDataBootstrapService,
+    private readonly historicalDataService: HistoricalDataBootstrapService,
+    private readonly upstoxClient: SimpleUpstoxClient,
   ) {}
 
   /**
@@ -24,34 +23,30 @@ export class HistoricalDataController {
   @Get('bootstrap')
   async bootstrap() {
     this.logger.log('Bootstrap endpoint called');
-    return this.bootstrapService.triggerBootstrap();
+    return this.historicalDataService.triggerBootstrap();
   }
 
   /**
-   * Manual backfill endpoint
-   * POST /historical-data/backfill
-   *
-   * Body:
-   * {
-   *   "instrumentKeys": ["NSE_FO|67890", "NSE_FO|67891"],
-   *   "intervals": ["1m", "5m", "15m"],
-   *   "fromDate": "2024-01-01",  // optional
-   *   "toDate": "2024-12-14"      // optional
-   * }
+   * Test single instrument fetch
+   * GET /historical-data/test?instrument=NSE_EQ|INE002A01018&days=7
    */
-  @Post('backfill')
-  async backfill(@Body() request: BackfillRequest) {
+  @Get('test')
+  async testInstrument(
+    @Query('instrument') instrument?: string,
+    @Query('days') days?: string,
+  ) {
+    const instrumentKey = instrument || 'NSE_EQ|INE002A01018'; // Default to RELIANCE
+    const daysBack = days ? parseInt(days) : 7;
+
     this.logger.log(
-      `Manual backfill requested: ${request.instrumentKeys.length} instruments, ${request.intervals?.length} intervals`,
+      `Testing fetch for ${instrumentKey}, ${daysBack} days back`,
     );
 
-    const totalCandles =
-      await this.historicalDataService.backfillHistoricalData(request);
+    const result = await this.upstoxClient.testFetch(
+      instrumentKey,
+      daysBack,
+    );
 
-    return {
-      success: true,
-      totalCandles,
-      message: `Backfill completed: ${totalCandles} candles inserted`,
-    };
+    return result;
   }
 }
