@@ -12,15 +12,18 @@ You are working on the **Training Pipeline** - a Kedro-based Python project for 
 
 ## Project Overview
 
-**Purpose**: ML model training, backtesting, and model artifact generation
-**Stack**: Python 3.11+, Kedro, XGBoost, TensorFlow, scikit-learn, ONNX
+**Purpose**: ML model training (ONLY), backtesting, and model artifact generation
+**Stack**: Python 3.11+, Kedro, LightGBM, XGBoost, TensorFlow, scikit-learn, ONNX
 
 **Key Responsibilities**:
 
-- Train ensemble ML models (XGBoost, CNN-LSTM, GINN, SVM, Logistic Regression)
-- Perform walk-forward validation
+- Load pre-computed features from QuestDB (computed by compute-engine)
+- Train ensemble ML models (LightGBM, XGBoost, CNN-LSTM, GINN, SVM, Transformer, TFT, LiT)
+- Perform walk-forward validation (Combinatorial Purged Cross-Validation)
 - Export models to ONNX format for algo-worker
 - Generate training metrics and performance reports
+
+**CRITICAL**: Training-pipeline does NOT compute features. It ONLY loads pre-computed features from QuestDB.
 
 ## Configuration-Aware Training
 
@@ -56,27 +59,41 @@ model.fit(features, labels)
 3. **Confidence Calibration**: Confidence scores must be comparable across instruments
 4. **Missing Data Handling**: If user disables some models, remaining models compensate
 
-### **Feature Engineering Guidelines**
+### **Feature Engineering (Handled by compute-engine)**
+
+**CRITICAL**: Training-pipeline does NOT engineer features. Features are computed by compute-engine (Rust/NAPI).
 
 ```python
-# ✅ GOOD: Generic features (work for all instruments)
-features = [
-    'realized_vol_5d',
-    'realized_vol_10d',
-    'rsi_14',
-    'macd',
-    'atm_iv',
-    'pcr_volume',
-    'vol_skew',
-    # ... 50 total features
-]
+# ❌ BAD: Computing features in training-pipeline
+features = []
+for stock in nifty50_constituents:
+    features.append(compute_rsi(stock.prices))  # DON'T DO THIS!
 
-# ❌ BAD: Instrument-specific features
-features = [
-    'nifty_specific_indicator',  # Won't work for BANKNIFTY
-    'banknifty_only_metric',     # Won't work for NIFTY
-]
+# ✅ GOOD: Loading pre-computed features from QuestDB
+features = loader.load_lightgbm_features(
+    start_date='2023-01-01',
+    end_date='2025-12-31',
+    symbol='NIFTY'
+)
+# Features already computed by compute-engine and stored in QuestDB
 ```
+
+**Why This Matters**:
+
+1. **Zero Train-Serve Skew**: Training uses EXACT same features as production
+2. **Single Source of Truth**: Feature logic defined once in compute-engine
+3. **Type Safety**: Rust types guarantee correct feature schema
+4. **Performance**: Rust computes features <1ms vs Python 10-50ms
+
+**Feature Schema (33 features for LightGBM)**:
+
+- **Index Breadth (6)**: Aggregated from 50 NIFTY constituents
+- **NIFTY FUTURE (9)**: Primary price discovery instrument
+- **Options (11)**: Greeks + IV + PCR from option chain
+- **Volatility (4)**: Historical + implied volatility metrics
+- **Time (3)**: Market timing context
+
+See [MARKET_STATE_ENCODER.md](../../../docs/MARKET_STATE_ENCODER.md) for full feature documentation.
 
 ### **Validation Against User Configs**
 
@@ -101,77 +118,113 @@ for config in user_configs:
 
 ## Architecture Principles
 
-### 1. Kedro Project Structure
+### 1. Kedro Project Structure (Updated - No Feature Engineering)
 
 ```
 training-pipeline/
 ├── conf/
 │   ├── base/
-│   │   ├── catalog.yml          # Data sources configuration
-│   │   ├── parameters.yml       # Model hyperparameters
-│   │   └── pipelines.yml        # Pipeline definitions
+│   │   ├── catalog.yml          # QuestDB data sources (pre-computed features)
+│   │   ├── parameters.yml       # Model hyperparameters + training config
+│   │   └── logging.yml          # Logging configuration
 │   └── local/
-│       └── credentials.yml      # Database credentials (gitignored)
+│       └── credentials.yml      # QuestDB/MongoDB credentials (gitignored)
 ├── src/
 │   └── training_pipeline/
 │       ├── pipelines/
-│       │   ├── data_engineering/
-│       │   ├── model_training/
-│       │   └── model_export/
-│       └── nodes/
-│           ├── feature_engineering.py
-│           ├── model_training.py
-│           └── evaluation.py
+│       │   ├── train_ensemble/  # Level-0 models (LightGBM, XGBoost, etc.)
+│       │   ├── train_meta_learner/  # Level-1 stacking
+│       │   ├── export_onnx/     # ONNX conversion
+│       │   └── backtesting/     # Walk-forward backtest
+│       ├── utils/
+│       │   ├── sql_loader.py    # QuestDB data loader (NOT feature computation)
+│       │   ├── metrics.py       # Evaluation metrics
+│       │   ├── validation.py    # Walk-forward validation
+│       │   └── backtesting.py   # Backtest utilities
+│       └── types/
+│           └── model_types.py   # Shared type definitions
 ├── data/
-│   ├── 01_raw/
-│   ├── 02_intermediate/
-│   ├── 03_primary/
-│   ├── 04_feature/
-│   ├── 05_model_input/
-│   ├── 06_models/
-│   ├── 07_model_output/
-│   └── 08_reporting/
-└── notebooks/
-    └── exploratory/
+│   ├── 06_models/               # Trained models (.pkl, .txt)
+│   ├── 07_model_output/         # OOF predictions (.parquet)
+│   └── 08_reporting/            # Metrics & reports
+└── notebooks/                   # Exploratory analysis
 ```
 
-### 2. Data Sources (Kedro Catalog)
+**Note**: No `01_raw/`, `02_intermediate/`, `03_primary/`, `04_feature/`, or `05_model_input/` folders.
+Why? **Features are pre-computed by compute-engine and loaded directly from QuestDB.**
+
+### 2. Data Sources (Kedro Catalog) - Pre-Computed Features ONLY
 
 **NEVER hardcode database connections. Use Kedro catalog:**
 
 ```yaml
 # conf/base/catalog.yml
 
-# QuestDB - Feature data
-features_raw:
+# QuestDB - Pre-computed LightGBM features (33 features)
+lightgbm_features:
   type: pandas.SQLQueryDataSet
   credentials: questdb
   sql: >
-    SELECT timestamp, symbol, features
-    FROM features
-    WHERE symbol = 'NIFTY50'
-      AND timestamp >= '2023-01-01'
+    SELECT 
+      timestamp,
+      -- Index Breadth (6)
+      pct_stocks_above_vwap, pct_stocks_above_ema20, weighted_return_top10,
+      advance_decline_ratio, breadth_momentum_5m, breadth_volatility,
+      -- NIFTY FUTURE (9)
+      fut_price_vs_vwap, fut_range_position, fut_return_1m, fut_return_5m,
+      fut_atr_percent, fut_volume_zscore, fut_oi_change, fut_rsi_14, fut_macd,
+      -- Options (11)
+      atm_iv, atm_iv_change, iv_skew, gamma_atm, vega_atm, theta_atm,
+      pcr_oi, pcr_volume, max_pain_distance, charm_atm, vanna_atm,
+      -- Volatility (4)
+      india_vix, realized_vol_5m, realized_vol_15m, vol_expansion_ratio,
+      -- Time (3)
+      minutes_from_open, minutes_to_close, day_of_week,
+      -- Target
+      close_price
+    FROM market_state_encoder_output
+    WHERE timestamp >= '2023-01-01'
     ORDER BY timestamp ASC
 
-# MongoDB - Training signals
-training_signals:
+# QuestDB - TFT sequence data (for TFT model) - PLACEHOLDER
+tft_sequence_data:
   type: pandas.SQLQueryDataSet
-  credentials: mongodb
+  credentials: questdb
   sql: >
-    SELECT timestamp, prediction, confidence
-    FROM trading_signals
+    SELECT timestamp, index_return, index_realized_vol, breadth_score,
+           fut_return, fut_volume, atm_iv, iv_change
+    FROM tft_sequence_data
+    WHERE timestamp >= '2023-01-01'
+    ORDER BY timestamp ASC
+
+# QuestDB - LOB tensors (for LiT model) - PLACEHOLDER
+lob_tensors:
+  type: pandas.SQLQueryDataSet
+  credentials: questdb
+  sql: >
+    SELECT timestamp, bid_prices, bid_volumes, ask_prices, ask_volumes
+    FROM lob_snapshots
+    WHERE timestamp >= '2023-01-01'
     ORDER BY timestamp ASC
 
 # Output - Trained models
-xgboost_model:
+lightgbm_model:
   type: pickle.PickleDataSet
-  filepath: data/06_models/xgboost_classifier.pkl
+  filepath: data/06_models/lightgbm.txt
 
-# Output - ONNX models
-xgboost_onnx:
+# Output - OOF predictions (for meta-learner)
+oof_lightgbm:
+  type: pandas.ParquetDataSet
+  filepath: data/07_model_output/oof_lightgbm.parquet
+
+# Output - ONNX models (for algo-worker)
+lightgbm_onnx:
   type: onnx.ONNXDataSet
-  filepath: data/06_models/xgboost_classifier.onnx
+  filepath: data/06_models/lightgbm.onnx
 ```
+
+**Key Insight**: All feature columns come from `market_state_encoder_output` table in QuestDB.
+No feature computation in Python. Training-pipeline is a **pure model training** system.
 
 ### 3. Model Training Nodes
 

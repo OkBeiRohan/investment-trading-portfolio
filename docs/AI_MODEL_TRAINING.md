@@ -1,10 +1,36 @@
-# AI Model Training Guide - Wealth Management System
+# AI Model Training Guide
 
-> **Comprehensive guide for training and deploying AI models used in wealth-analyzer and document-processor services**
+> **Comprehensive guide for training and deploying AI models across the entire system**
 
 ## Overview
 
-The wealth management system uses three key AI models:
+The system uses two categories of AI models:
+
+### A. Algo Trading Models (training-pipeline)
+
+**Purpose**: Volatility prediction for NSE options trading
+
+1. **LightGBM** ✅ - Core directional forecast (33 features)
+2. **XGBoost** ⏳ - Gradient boosting alternative
+3. **CNN-LSTM** ⏳ - Temporal pattern recognition
+4. **GINN** ⏳ - Graph-based non-linear dynamics
+5. **SVM** ⏳ - Support vector machine (RBF kernel)
+6. **Transformer** ⏳ - Attention-based forecasting
+7. **TFT** ⏳ - Temporal Fusion Transformer (regime-based)
+8. **LiT** ⏳ - LOB Informed Transformer (microstructure)
+
+**Training Infrastructure**:
+
+- **Location**: Local GPU (RTX 3060/4090)
+- **Framework**: Python 3.11+, Kedro, LightGBM, XGBoost, TensorFlow
+- **Deployment**: ONNX models for production inference (apps/algo-worker)
+- **Data Source**: QuestDB (pre-computed features from compute-engine)
+
+**See**: [training-pipeline README](../services/training-pipeline/README.md)
+
+### B. Wealth Management Models (wealth-analyzer, document-processor)
+
+**Purpose**: Natural language queries and document parsing
 
 1. **Phi-3** (3.8B parameters) - Local LLM for natural language queries and financial insights
 2. **LayoutLMv3** - Document understanding for structured documents (bank statements, invoices)

@@ -3,5 +3,11 @@
     {
       "mode": "auto"
     }
+  ],
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/services/training-pipeline/src"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/services/training-pipeline/src"
   ]
 }

@@ -2,46 +2,74 @@
 
 > **Kedro-based ML training pipeline for NSE options volatility prediction using walk-forward validation and ensemble stacking.**
 
-Built with Python 3.11+, Kedro, XGBoost, TensorFlow, scikit-learn, and ONNX.
+Built with Python 3.11+, Kedro, LightGBM, XGBoost, TensorFlow, scikit-learn, and ONNX.
 
 ---
 
 ## 🎯 System Overview
 
-Training Pipeline is a **scheduled offline process** that trains ML models for the algo-worker trading engine. It fetches historical market data from QuestDB, performs feature engineering, trains an ensemble of models using walk-forward validation, and exports them to ONNX format for production deployment.
+Training Pipeline is a **scheduled offline process** that trains ML models for the algo-worker trading engine. It fetches historical **pre-computed features** from QuestDB, trains an ensemble of models using walk-forward validation, and exports them to ONNX format for production deployment.
+
+### **Architecture Update (January 2026)**
+
+**CRITICAL CHANGE**: Feature engineering has moved to **compute-engine** (Rust/NAPI).
+
+```
+Old Architecture (Deprecated):
+  QuestDB (Raw Ticks) → training-pipeline (Feature Engineering) → Models
+
+New Architecture (Current):
+  Upstox → market-feeder → compute-engine (Rust Feature Engineering) →
+  QuestDB (Pre-computed Features) → training-pipeline (Model Training ONLY) → ONNX Models
+```
+
+**Why This Change?**
+
+- **Zero Train-Serve Skew**: Models train on EXACT same features algo-worker uses
+- **Zero Duplication**: Feature engineering logic defined once in compute-engine
+- **Type Safety**: Rust types auto-generated to TypeScript via ts-rs
+- **Performance**: <1ms feature computation in Rust vs 10-50ms in Python
+- **Consistency**: Market State Encoder (MSE) runs identically in training and production
 
 ### **Design Principles**
 
-1. **Configuration-Aware Training**: Models must generalize across diverse user preferences (instruments, strategies, permissions)
-2. **Kedro Framework**: Reproducible, modular ML pipelines with data catalog
-3. **Walk-Forward Validation**: Expanding window to prevent lookahead bias
-4. **Ensemble Stacking**: Level-0 base models + Level-1 meta-learner
-5. **ONNX Export**: Hardware-agnostic inference for algo-worker
-6. **MLflow Tracking**: Experiment versioning and model registry
-
-**Why Configuration-Aware?** In production, algo-worker only analyzes what users enable. If no user enables FINNIFTY, the model won't predict for it. Models must be robust enough to handle any combination of user preferences without retraining.
+1. **No Feature Engineering**: Load pre-computed features from QuestDB (computed by compute-engine)
+2. **Configuration-Aware Training**: Models must generalize across diverse user preferences
+3. **Kedro Framework**: Reproducible, modular ML pipelines with data catalog
+4. **Walk-Forward Validation**: Expanding window to prevent lookahead bias
+5. **Ensemble Stacking**: Level-0 base models + Level-1 meta-learner
+6. **ONNX Export**: Hardware-agnostic inference for algo-worker
+7. **MLflow Tracking**: Experiment versioning and model registry
 
 ### **Data Flow**
 
 ```
-QuestDB (Historical Data)
+market-feeder (Real-time)
         ↓
-[Pipeline 1: Data Ingestion]
+compute-engine (Rust/NAPI) - Feature Engineering
         ↓
-[Pipeline 2: Feature Engineering]
+QuestDB (Pre-computed Features)
         ↓
-[Pipeline 3: Train Feature Extractor] (TimesNet, WFTNet)
+[Pipeline 1: Load Features from QuestDB]
         ↓
-[Pipeline 4: Train Ensemble] (Level-0: 6 Core + 4 Optional)
+[Pipeline 2: Train Ensemble] (Level-0: 6 Core + 2 Conditional)
         ↓
-        Core: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
-        Optional: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
+        TIER 1 (Always-On):
+          1. LightGBM ✅ (IMPLEMENTED)
+          2. XGBoost ⏳ (PLACEHOLDER)
+          3. CNN-LSTM ⏳ (PLACEHOLDER)
+          4. GINN ⏳ (PLACEHOLDER)
+          5. SVM ⏳ (PLACEHOLDER)
+          6. Transformer ⏳ (PLACEHOLDER)
+        TIER 2 (Regime-Activated):
+          7. TFT ⏳ (Requires TFT features from compute-engine)
+          8. LiT ⏳ (Requires LOB tensors from compute-engine)
         ↓
-[Pipeline 5: Train Meta-Learner] (Level-1: Logistic Regression)
+[Pipeline 3: Train Meta-Learner] (Level-1: Logistic Regression) ⏳
         ↓
-[Pipeline 6: Export ONNX]
+[Pipeline 4: Export ONNX] ⏳
         ↓
-[Pipeline 7: Backtesting]
+[Pipeline 5: Backtesting] ⏳
         ↓
 Copy to algo-worker/models/ → Production
 ```
@@ -50,23 +78,12 @@ Copy to algo-worker/models/ → Production
 
 ## 🚀 Quick Start
 
-### **Advanced Features**
-
-This pipeline includes cutting-edge validation and features:
-
-- **Combinatorial Purged Cross-Validation (CPCV)**: Eliminate overfitting and lookahead bias
-- **Order Flow Imbalance (OFI)**: Microstructure features for sub-second signals
-- **RL Execution Agent**: Reinforcement learning for optimal order placement
-
-**See [docs/ADVANCED_VALIDATION.md](docs/ADVANCED_VALIDATION.md) for implementation details.**
-
----
-
 ### **Prerequisites**
 
 - Python 3.11+
 - Poetry (dependency management)
-- QuestDB running with historical data (2+ years)
+- QuestDB running with historical features (2+ years)
+  - **IMPORTANT**: Features must be pre-computed by compute-engine and stored by market-feeder
 - MongoDB (for training labels)
 
 ### **Installation**
@@ -92,30 +109,249 @@ kedro run
 ### **Step-by-Step Execution**
 
 ```bash
-# 1. Feature engineering
-kedro run --pipeline feature_engineering
+# 1. Train ensemble (all Level-0 models)
+kedro run --pipeline train_ensemble
 
-# 2. Train feature extractor (optional)
-kedro run --pipeline train_feature_extractor
+# 2. Train meta-learner (Level-1 stacking) - PLACEHOLDER
+# kedro run --pipeline train_meta_learner
+
+# 3. Export to ONNX - PLACEHOLDER
+# kedro run --pipeline export_onnx
+```
+
+---
+
+## 📁 Project Structure
+
+```
+training-pipeline/
+├── conf/
+│   ├── base/
+│   │   ├── catalog.yml          # QuestDB data sources (pre-computed features)
+│   │   ├── parameters.yml       # Model hyperparameters + training config
+│   │   └── logging.yml
+│   └── local/
+│       └── credentials.yml      # QuestDB/MongoDB credentials (gitignored)
+├── src/
+│   └── training_pipeline/
+│       ├── pipelines/
+│       │   ├── train_ensemble/  # Level-0 models
+│       │   │   ├── nodes.py     # Training nodes
+│       │   │   ├── pipeline.py  # Pipeline definition
+│       │   │   └── models/
+│       │   │       ├── lightgbm_trainer.py    ✅ IMPLEMENTED
+│       │   │       ├── xgboost_trainer.py     ⏳ PLACEHOLDER
+│       │   │       ├── cnn_lstm_trainer.py    ⏳ PLACEHOLDER
+│       │   │       ├── ginn_trainer.py        ⏳ PLACEHOLDER
+│       │   │       ├── svm_trainer.py         ⏳ PLACEHOLDER
+│       │   │       ├── transformer_trainer.py ⏳ PLACEHOLDER
+│       │   │       ├── tft_trainer.py         ⏳ PLACEHOLDER (needs TFT features)
+│       │   │       └── lit_trainer.py         ⏳ PLACEHOLDER (needs LOB tensors)
+│       │   ├── train_meta_learner/  ⏳ PLACEHOLDER
+│       │   └── export_onnx/         ⏳ PLACEHOLDER
+│       ├── utils/
+│       │   ├── sql_loader.py    # QuestDB data loader
+│       │   ├── metrics.py
+│       │   ├── validation.py
+│       │   └── backtesting.py
+│       └── types/
+│           └── model_types.py   # Shared type definitions
+├── data/
+│   ├── 06_models/               # Trained models
+│   ├── 07_model_output/         # OOF predictions
+│   └── 08_reporting/            # Metrics & reports
+└── notebooks/                   # Exploratory analysis
+```
+
+---
+
+## 🔬 Implementation Status
+
+### ✅ Completed
+
+- [x] QuestDB data loader (`sql_loader.py::QuestDBLoader`)
+- [x] LightGBM trainer with walk-forward validation
+- [x] 33-feature Market State Encoder v2 schema validation
+- [x] Volatility-adjusted labeling
+- [x] MLflow experiment tracking
+- [x] Out-of-fold prediction storage
+- [x] Kedro pipeline structure
+
+### ⏳ In Progress / Placeholders
+
+- [ ] XGBoost trainer (same 33 features)
+- [ ] CNN-LSTM trainer (sequential modeling)
+- [ ] GINN trainer (graph-based)
+- [ ] SVM trainer (RBF kernel)
+- [ ] Transformer trainer (attention-based)
+- [ ] Meta-learner (Level-1 stacking)
+- [ ] ONNX export pipeline
+- [ ] Backtesting pipeline
+
+### 🔮 Future Work (Requires compute-engine changes)
+
+- [ ] TFT trainer (requires TFT feature schema in compute-engine)
+- [ ] LiT trainer (requires LOB tensor schema in compute-engine)
+
+---
+
+## 🧪 Running Training
+
+### Train LightGBM Only
+
+```bash
+kedro run --node train_lightgbm
+```
+
+### Train All Models (Placeholders will log warnings)
+
+```bash
+kedro run --pipeline train_ensemble
+```
+
+### View MLflow Experiments
+
+```bash
+mlflow ui
+# Open http://localhost:5000
+```
+
+---
+
+## 📊 Model Specifications
+
+### LightGBM (TIER 1 - Core, Always-On) ✅
+
+- **Purpose**: Macro directional prediction (5-15min horizon)
+- **Features**: 33 from Market State Encoder v2
+  - Index Breadth (6): Compressed from 50 NIFTY constituents
+  - NIFTY FUTURE (9): Primary price discovery instrument
+  - Options (11): ATM + market-wide aggregates
+  - Volatility (4): Regime context
+  - Time (3): Intraday position
+- **Architecture**: Gradient-boosted trees with strong regularization
+- **Hyperparameters**:
+  - `num_leaves=31` (conservative, prevents overfitting)
+  - `min_data_in_leaf=80` (high minimum for robustness)
+  - `learning_rate=0.05` (slow learning)
+  - `n_estimators=400` with early stopping
+- **Validation**: 12-fold walk-forward with purge (375 periods) + embargo (375 periods)
+- **Output**: 3-class probabilities (UP, NEUTRAL, DOWN)
+- **Target Metric**: AUC > 0.70, Accuracy > 0.55
+
+### XGBoost, CNN-LSTM, GINN, SVM, Transformer (TIER 1) ⏳
+
+**PLACEHOLDER** - To be implemented with similar structure to LightGBM
+
+### TFT, LiT (TIER 2 - Conditional) ⏳
+
+**PLACEHOLDER** - Requires feature schema definition in compute-engine first
+
+---
+
+## 🔗 Integration with algo-worker
+
+### 1. Feature Consistency
+
+Training uses **exact same features** as production:
+
+- compute-engine computes features (Rust)
+- market-feeder stores in QuestDB
+- algo-worker reads from QuestDB (real-time)
+- training-pipeline reads from QuestDB (historical)
+
+**Result**: Zero train-serve skew
+
+### 2. Model Deployment
+
+```bash
+# After training
+cp data/06_models/lightgbm.txt ../../../apps/algo-worker/models/
+cp onnx/lightgbm.onnx ../../../apps/algo-worker/models/
+
+# algo-worker automatically loads new models on restart
+```
+
+### 3. Type Safety
+
+Feature schemas auto-generated:
+
+```
+compute-engine (Rust) → ts-rs → TypeScript types → @repo/schema
+```
+
+Python validates against same schema.
+
+---
+
+## 📚 Documentation
+
+- [TRAIN_ENSEMBLE.md](docs/pipelines/TRAIN_ENSEMBLE.md) - Ensemble training details
+- [ADVANCED_VALIDATION.md](docs/ADVANCED_VALIDATION.md) - CPCV, OFI, RL patterns
+- [../../docs/MARKET_STATE_ENCODER.md](../../docs/MARKET_STATE_ENCODER.md) - Feature engineering architecture (critical reference)
+- [../../docs/HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](../../docs/HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md) - Full ML system
+
+---
+
+## 🚨 Common Issues
+
+### "Missing features" error
+
+**Cause**: QuestDB doesn't have pre-computed features
+**Solution**: Ensure market-feeder + compute-engine are running and have historical data
+
+### "TFT/LiT not implemented" error
+
+**Expected**: These models require feature schemas not yet defined in compute-engine
+
+### MLflow connection error
+
+```bash
+# Start MLflow server
+mlflow server --host 0.0.0.0 --port 5000
+```
+
+---
+
+## 🔬 Research & References
+
+This implementation is based on:
+
+1. **Walk-Forward Validation**: De Prado (2018) - Advances in Financial Machine Learning
+2. **Volatility-Adjusted Labeling**: Triple-barrier method with ATR thresholds
+3. **Ensemble Stacking**: Wolpert (1992) - Stacked generalization
+4. **Market State Encoder**: Proprietary architecture (50k signals → 200 features)
+
+---
+
+**Last Updated**: January 13, 2026  
+**Status**: Phase 1 Complete (LightGBM), Phase 2 In Progress (Other Models)
 
 # 3. Train ensemble models (Level-0)
+
 kedro run --pipeline train_ensemble
 
 # 4. Train meta-learner (Level-1)
+
 kedro run --pipeline train_meta_learner
 
 # 5. Export to ONNX
+
 kedro run --pipeline export_onnx
 
 # 6. Backtesting
+
 kedro run --pipeline backtesting
 
 # 7. View results in MLflow
+
 mlflow ui
 
 # 8. Copy models to algo-worker
-cp onnx/*.onnx ../algo-worker/models/
-```
+
+cp onnx/\*.onnx ../algo-worker/models/
+
+````
 
 ---
 
@@ -277,7 +513,7 @@ for symbol in instruments:
 # ❌ BAD: Train only on NIFTY LONG_STRADDLE
 train_data = prepare_data('NIFTY', 'LONG_STRADDLE')
 model.fit(train_data)
-```
+````
 
 #### **2. Generic Feature Engineering**
 

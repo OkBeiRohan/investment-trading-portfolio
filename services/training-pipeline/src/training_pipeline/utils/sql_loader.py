@@ -1,63 +1,200 @@
 """
-QuestDB Query Loader for Python Training Pipeline
+QuestDB Data Loader for Training Pipeline
 
-Loads SQL queries from @repo/schema/sql/ directory to ensure
-TypeScript services and Python training pipeline use identical queries.
+Loads pre-computed features from QuestDB (computed by compute-engine)
 """
 
-from pathlib import Path
+import logging
+from datetime import datetime, timedelta
 from typing import Optional
 
+import pandas as pd
+from sqlalchemy import create_engine, text
 
-class SQLQueryLoader:
+logger = logging.getLogger(__name__)
+
+
+class QuestDBLoader:
     """
-    Loader for SQL queries from @repo/schema/sql/ directory.
+    Loads historical features from QuestDB for model training
 
-    Usage:
-        loader = SQLQueryLoader()
-        sql = loader.load('candles/select-by-time-range')
+    Features are pre-computed by compute-engine (Rust/NAPI) and stored by market-feeder.
+    This loader simply fetches the stored features for training.
     """
 
-    def __init__(self, schema_root: Optional[Path] = None):
+    def __init__(self, connection_string: str):
         """
-        Initialize SQL query loader.
+        Initialize QuestDB connection
 
         Args:
-            schema_root: Path to @repo/schema package root.
-                        If None, auto-detects from monorepo structure.
+            connection_string: PostgreSQL wire protocol connection string
+                              e.g., 'postgresql://admin:quest@localhost:8812/qdb'
         """
-        if schema_root is None:
-            # Auto-detect schema root (assumes training-pipeline is in services/)
-            current_file = Path(__file__)
-            monorepo_root = current_file.parent.parent.parent.parent
-            schema_root = monorepo_root / "packages" / "schema"
+        self.engine = create_engine(connection_string)
+        logger.info(f"QuestDB loader initialized")
 
-        self.sql_dir = schema_root / "sql"
-
-        if not self.sql_dir.exists():
-            raise FileNotFoundError(
-                f"SQL directory not found: {self.sql_dir}. "
-                "Ensure @repo/schema package is properly set up."
-            )
-
-        # Cache for loaded queries (performance optimization)
-        self._cache: dict[str, str] = {}
-
-    def load(self, query_path: str, use_cache: bool = True) -> str:
+    def load_lightgbm_features(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        symbol: str = "NIFTY",
+    ) -> pd.DataFrame:
         """
-        Load SQL query from @repo/schema/sql/
+        Load LightGBM features (33 features from Market State Encoder)
 
         Args:
-            query_path: Path relative to sql/ directory
-                       (e.g., 'candles/select-by-time-range')
-            use_cache: Whether to use cached queries
+            start_date: Start of training period
+            end_date: End of training period
+            symbol: Index symbol (default: NIFTY)
 
         Returns:
-            SQL query string
-
-        Example:
-            sql = loader.load('candles/select-by-time-range')
+            DataFrame with 33 features + timestamp + close_price
         """
+        logger.info(
+            f"Loading LightGBM features for {symbol} "
+            f"from {start_date} to {end_date}"
+        )
+
+        query = text(
+            """
+            SELECT 
+                timestamp,
+                -- Index Breadth (6)
+                pct_stocks_above_vwap,
+                pct_stocks_above_ema20,
+                weighted_return_top10,
+                advance_decline_ratio,
+                breadth_momentum_5m,
+                breadth_volatility,
+                -- NIFTY FUTURE (9)
+                fut_price_vs_vwap,
+                fut_range_position,
+                fut_return_1m,
+                fut_return_5m,
+                fut_atr_percent,
+                fut_volume_zscore,
+                fut_oi_change,
+                fut_rsi_14,
+                fut_macd,
+                -- Options (11)
+                atm_iv,
+                atm_iv_change,
+                iv_skew,
+                gamma_atm,
+                vega_atm,
+                theta_atm,
+                pcr_oi,
+                pcr_volume,
+                max_pain_distance,
+                charm_atm,
+                vanna_atm,
+                -- Volatility (4)
+                india_vix,
+                realized_vol_5m,
+                realized_vol_15m,
+                vol_expansion_ratio,
+                -- Time (3)
+                minutes_from_open,
+                minutes_to_close,
+                day_of_week,
+                -- Target (for labeling)
+                close_price
+            FROM lightgbm_features
+            WHERE symbol = :symbol
+              AND timestamp >= :start_date
+              AND timestamp < :end_date
+            ORDER BY timestamp ASC
+        """
+        )
+
+        df = pd.read_sql(
+            query,
+            self.engine,
+            params={
+                "symbol": symbol,
+                "start_date": start_date,
+                "end_date": end_date,
+            },  # type: ignore[arg-type]
+        )
+
+        logger.info(
+            f"Loaded {len(df)} rows with {len(df.columns)} columns "
+            f"(33 features + timestamp + close_price)"
+        )
+
+        return df
+
+    def load_tft_features(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        symbol: str = "NIFTY",
+    ) -> pd.DataFrame:
+        """
+        Load Temporal Fusion Transformer features (120 timesteps × 15 features)
+
+        Returns:
+            DataFrame with temporal features
+        """
+        logger.info(f"Loading TFT features for {symbol} (PLACEHOLDER)")
+
+        # TODO: Implement when TFT feature schema finalized
+        raise NotImplementedError(
+            "TFT feature loading not yet implemented. "
+            "Compute-engine must first define TFT feature schema."
+        )
+
+    def load_lit_features(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        symbol: str = "NIFTY",
+    ) -> pd.DataFrame:
+        """
+        Load LOB Informed Transformer features (60 snapshots × 80 LOB levels)
+
+        Returns:
+            DataFrame with LOB tensor data
+        """
+        logger.info(f"Loading LiT features for {symbol} (PLACEHOLDER)")
+
+        # TODO: Implement when LiT feature schema finalized
+        raise NotImplementedError(
+            "LiT feature loading not yet implemented. "
+            "Compute-engine must first define LiT LOB tensor schema."
+        )
+
+    def get_available_date_range(
+        self, table: str = "lightgbm_features"
+    ) -> tuple[datetime, datetime]:
+        """
+        Get available date range in QuestDB
+
+        Returns:
+            (min_date, max_date)
+        """
+        query = text(
+            f"""
+            SELECT 
+                MIN(timestamp) as min_date,
+                MAX(timestamp) as max_date
+            FROM {table}
+        """
+        )
+
+        result = pd.read_sql(query, self.engine)
+
+        min_date = result["min_date"].iloc[0]
+        max_date = result["max_date"].iloc[0]
+
+        logger.info(f"Available data: {min_date} to {max_date}")
+
+        return (min_date, max_date)
+
+    def close(self):
+        """Close database connection"""
+        self.engine.dispose()
+        logger.info("QuestDB connection closed")
         if use_cache and query_path in self._cache:
             return self._cache[query_path]
 
@@ -76,59 +213,3 @@ class SQLQueryLoader:
             self._cache[query_path] = sql
 
         return sql
-
-    def list_queries(self) -> list[str]:
-        """
-        List all available SQL queries.
-
-        Returns:
-            List of query paths (e.g., ['candles/select-by-time-range', ...])
-        """
-        queries = []
-        for sql_file in self.sql_dir.rglob("*.sql"):
-            # Convert to relative path and remove .sql extension
-            rel_path = sql_file.relative_to(self.sql_dir)
-            query_path = str(rel_path.with_suffix(""))
-            queries.append(query_path.replace("\\", "/"))  # Normalize path separators
-        return sorted(queries)
-
-    def clear_cache(self) -> None:
-        """Clear the query cache (useful for hot-reloading in development)."""
-        self._cache.clear()
-
-
-# Singleton instance for convenience
-_default_loader: Optional[SQLQueryLoader] = None
-
-
-def get_sql_loader() -> SQLQueryLoader:
-    """
-    Get the default SQL query loader instance.
-
-    Returns:
-        Singleton SQLQueryLoader instance
-    """
-    global _default_loader
-    if _default_loader is None:
-        _default_loader = SQLQueryLoader()
-    return _default_loader
-
-
-def load_sql(query_path: str) -> str:
-    """
-    Convenience function to load SQL query.
-
-    Args:
-        query_path: Path relative to sql/ directory
-                   (e.g., 'candles/select-by-time-range')
-
-    Returns:
-        SQL query string
-
-    Example:
-        from training_pipeline.utils.sql_loader import load_sql
-
-        sql = load_sql('candles/select-by-time-range')
-        cursor.execute(sql, [instrument_key, interval, start_time, end_time])
-    """
-    return get_sql_loader().load(query_path)
