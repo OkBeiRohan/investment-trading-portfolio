@@ -15,8 +15,8 @@ import {
 } from './nifty50-instruments';
 
 @Injectable()
-export class HistoricalDataService implements OnModuleInit {
-  private readonly logger = new Logger(HistoricalDataService.name);
+export class HistoricalDataBootstrapService implements OnModuleInit {
+  private readonly logger = new Logger(HistoricalDataBootstrapService.name);
   private upstoxClient: SimpleUpstoxClient | null = null;
 
   constructor(

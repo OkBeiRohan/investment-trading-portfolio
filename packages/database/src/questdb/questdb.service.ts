@@ -81,9 +81,12 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * Create all tables from SQL files
    */
   private async createTables(): Promise<void> {
+    // Resolve from @repo/schema package location
     const schemaPath = join(
-      process.cwd(),
-      "packages",
+      __dirname,
+      "..",
+      "..",
+      "..",
       "schema",
       "sql",
       "schema"

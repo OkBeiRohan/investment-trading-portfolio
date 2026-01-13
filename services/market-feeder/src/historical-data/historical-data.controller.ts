@@ -4,13 +4,15 @@
  */
 
 import { Controller, Body, Logger, Get } from '@nestjs/common';
-import { HistoricalDataService } from './historical-data.service';
+import { HistoricalDataBootstrapService } from './historical-data.service';
 
 @Controller('historical-data')
 export class HistoricalDataController {
   private readonly logger = new Logger(HistoricalDataController.name);
 
-  constructor(private readonly historicalDataService: HistoricalDataService) {}
+  constructor(
+    private readonly historicalDataService: HistoricalDataBootstrapService,
+  ) {}
 
   /**
    * Bootstrap NIFTY50 historical data
