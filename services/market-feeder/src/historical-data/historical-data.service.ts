@@ -120,8 +120,15 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
           openInterest: c.open_interest || null,
         }));
 
-        // Insert into QuestDB
-        await this.candlesRepository.insertBatch(candles);
+        // Insert into QuestDB in chunks to avoid connection timeout
+        const CHUNK_SIZE = 5000;
+        for (let i = 0; i < candles.length; i += CHUNK_SIZE) {
+          const chunk = candles.slice(i, i + CHUNK_SIZE);
+          await this.candlesRepository.insertBatch(chunk);
+          this.logger.debug(
+            `Inserted chunk ${Math.floor(i / CHUNK_SIZE) + 1} (${chunk.length} candles)`,
+          );
+        }
         totalFetched += candles.length;
 
         this.logger.log(
