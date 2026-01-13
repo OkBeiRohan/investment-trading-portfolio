@@ -16,7 +16,6 @@ DROP VIEW IF EXISTS market_candles_1m;
 DROP TABLE IF EXISTS training_labels;
 DROP TABLE IF EXISTS training_features_tft;
 DROP TABLE IF EXISTS training_features_lightgbm;
-DROP TABLE IF EXISTS market_depth_20;
 DROP TABLE IF EXISTS market_ticks;
 
 -- Drop core market data tables

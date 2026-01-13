@@ -26,7 +26,7 @@ const appRouter = t.router({
       country: z.string().length(2).optional().nullable(), // ISO 3166-1 alpha-2
       isActive: z.boolean().default(true),
       isBlocked: z.boolean().default(false),
-      role: z.enum(USER_ROLES).default("Investor"),
+      role: z.enum(["Investor", "Trader", "Admin"] as const).default("Investor"),
       twoFactorEnabled: z.boolean().default(false),
       lastLoginAt: z.date().optional().nullable(),
       passwordChangedAt: z.date().optional().nullable(),
@@ -49,7 +49,7 @@ const appRouter = t.router({
       country: z.string().length(2).optional().nullable(), // ISO 3166-1 alpha-2
       isActive: z.boolean().default(true),
       isBlocked: z.boolean().default(false),
-      role: z.enum(USER_ROLES).default("Investor"),
+      role: z.enum(["Investor", "Trader", "Admin"] as const).default("Investor"),
       twoFactorEnabled: z.boolean().default(false),
       lastLoginAt: z.date().optional().nullable(),
       passwordChangedAt: z.date().optional().nullable(),
@@ -71,7 +71,7 @@ const appRouter = t.router({
       country: z.string().length(2).optional().nullable(), // ISO 3166-1 alpha-2
       isActive: z.boolean().default(true),
       isBlocked: z.boolean().default(false),
-      role: z.enum(USER_ROLES).default("Investor"),
+      role: z.enum(["Investor", "Trader", "Admin"] as const).default("Investor"),
       twoFactorEnabled: z.boolean().default(false),
       lastLoginAt: z.date().optional().nullable(),
       passwordChangedAt: z.date().optional().nullable(),

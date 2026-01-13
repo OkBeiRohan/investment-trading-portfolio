@@ -10,15 +10,18 @@
 -- 1. market_candles - Historical OHLCV data
 -- 2. market_quotes - High-frequency bid/ask quotes
 -- 3. option_greeks - Option Greeks snapshots
--- 4. market_depth - 5-level order book
+-- 4. market_depth - Order book (1-20 levels, variable depth)
 -- 5. system_audit - Distributed tracing logs
 -- 6. market_ticks - Unified tick data (spot/future/option/stock)
--- 7. market_depth_20 - 20-level order book
--- 8. training_features_lightgbm - LightGBM training features
--- 9. training_features_tft - TFT time-series features
--- 10. training_labels - Supervised learning labels
--- 11. market_candles_1m (VIEW) - Auto-aggregated 1-minute candles
--- 12. market_candles_30m (VIEW) - Auto-aggregated 30-minute candles
+-- 7. training_features_lightgbm - LightGBM training features
+-- 8. training_features_tft - TFT time-series features
+-- 9. training_labels - Supervised learning labels
+-- 10. market_candles_1m (VIEW) - Auto-aggregated 1-minute candles
+-- 11. market_candles_30m (VIEW) - Auto-aggregated 30-minute candles
+--
+-- NOTE: This migration is OPTIONAL. The questdb.service.ts automatically
+-- creates all tables on first run. Use this migration only if you want to
+-- manually set up the schema or reset the database.
 
 -- =============================================================================
 -- TABLE 1: market_candles
@@ -77,17 +80,21 @@ DEDUP UPSERT KEYS(timestamp, instrument_key);
 
 -- =============================================================================
 -- TABLE 4: market_depth
--- Order book levels (5 levels)
--- Expected: 500K depth updates/day (5 levels × 2 sides × 10K updates)
+-- Order book levels (1-20 levels, stores whatever is available)
+-- Expected: 500K-2M depth updates/day (5-20 levels × 2 sides × 10K updates)
+-- Min 5 levels always available, 90% chance of getting 20 levels
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS market_depth (
   timestamp TIMESTAMP,
-  instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
+  instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
+  instrument_type SYMBOL CAPACITY 10,
+  index_name SYMBOL CAPACITY 20,
   side SYMBOL CAPACITY 2,
   level BYTE,
   price DOUBLE,
   quantity INT,
-  orders INT
+  orders INT,
+  exchange SYMBOL CAPACITY 5
 ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
 DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);
 
@@ -145,26 +152,7 @@ CREATE TABLE IF NOT EXISTS market_ticks (
 DEDUP UPSERT KEYS(timestamp, instrument_key);
 
 -- =============================================================================
--- TABLE 7: market_depth_20
--- 20-level order book depth for all instruments
--- Expected: ~50M rows/day (10K instruments × 40 levels × 120 updates/instrument)
--- =============================================================================
-CREATE TABLE IF NOT EXISTS market_depth_20 (
-  timestamp TIMESTAMP,
-  instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
-  instrument_type SYMBOL CAPACITY 10,
-  index_name SYMBOL CAPACITY 20,
-  side SYMBOL CAPACITY 2,
-  level BYTE,
-  price DOUBLE,
-  quantity INT,
-  orders INT,
-  exchange SYMBOL CAPACITY 5
-) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);
-
--- =============================================================================
--- TABLE 8: training_features_lightgbm
+-- TABLE 7: training_features_lightgbm
 -- LightGBM training features (43 features)
 -- Expected: ~375 rows/day (6.5 hours × 60 minutes)
 -- =============================================================================
@@ -288,44 +276,44 @@ DEDUP UPSERT KEYS(timestamp, reference_instrument);
 -- VIEW 1: market_candles_1m
 -- Auto-aggregated 1-minute candles from market_quotes
 -- Reduces query-time computation for dashboard charts
+-- NOTE: Will be auto-created by questdb.service.ts
 -- =============================================================================
--- NOTE: Uncomment after market_quotes has data
--- CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_1m AS
--- SELECT
---   timestamp,
---   instrument_key,
---   '1m' as interval,
---   first(ltp) as open,
---   max(ltp) as high,
---   min(ltp) as low,
---   last(ltp) as close,
---   sum(volume) as volume,
---   last(open_interest) as open_interest
--- FROM market_quotes
--- SAMPLE BY 1m
--- ALIGN TO CALENDAR;
+CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_1m AS
+SELECT
+  timestamp,
+  instrument_key,
+  '1m' as interval,
+  first(ltp) as open,
+  max(ltp) as high,
+  min(ltp) as low,
+  last(ltp) as close,
+  sum(volume) as volume,
+  last(open_interest) as open_interest
+FROM market_quotes
+SAMPLE BY 1m
+ALIGN TO CALENDAR;
 
 -- =============================================================================
 -- VIEW 2: market_candles_30m
 -- Auto-aggregated 30-minute candles from 1m candles
 -- For longer-term analysis and backtesting
+-- NOTE: Will be auto-created by questdb.service.ts
 -- =============================================================================
--- NOTE: Uncomment after market_candles has 1m interval data
--- CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_30m AS
--- SELECT
---   timestamp,
---   instrument_key,
---   '30m' as interval,
---   first(open) as open,
---   max(high) as high,
---   min(low) as low,
---   last(close) as close,
---   sum(volume) as volume,
---   last(open_interest) as open_interest
--- FROM market_candles
--- WHERE interval = '1m'
--- SAMPLE BY 30m
--- ALIGN TO CALENDAR;
+CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_30m AS
+SELECT
+  timestamp,
+  instrument_key,
+  '30m' as interval,
+  first(open) as open,
+  max(high) as high,
+  min(low) as low,
+  last(close) as close,
+  sum(volume) as volume,
+  last(open_interest) as open_interest
+FROM market_candles
+WHERE interval = '1m'
+SAMPLE BY 30m
+ALIGN TO CALENDAR;
 
 -- =============================================================================
 -- VERIFICATION QUERIES
@@ -348,13 +336,21 @@ DEDUP UPSERT KEYS(timestamp, reference_instrument);
 -- =============================================================================
 -- MIGRATION COMPLETE
 -- =============================================================================
--- Tables created: 10
--- Views created: 0 (commented out, enable after data ingestion)
+-- Tables created: 9
+-- Views created: 2 (materialized views enabled)
 -- Total execution time: ~5 seconds
+--
+-- IMPORTANT: This migration is OPTIONAL!
+-- The questdb.service.ts automatically creates all tables when you first
+-- run any service that uses @repo/database (e.g., market-feeder, algo-worker).
+--
+-- Only run this migration if you want to:
+-- - Manually set up the schema before starting services
+-- - Reset/recreate the database schema
+-- - Verify the exact schema being used
 --
 -- Next steps:
 -- 1. Verify tables: SELECT table_name FROM tables();
 -- 2. Check storage: SELECT sum(diskSize) FROM table_partitions();
 -- 3. Start data ingestion via market-feeder service
--- 4. Enable materialized views after data is available
 -- =============================================================================

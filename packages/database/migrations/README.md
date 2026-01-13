@@ -2,12 +2,24 @@
 
 This directory contains SQL migration scripts for QuestDB schema management.
 
+## ⚠️ IMPORTANT: Migrations are OPTIONAL
+
+**The `questdb.service.ts` automatically creates all tables when you first run any service** (e.g., `market-feeder`, `algo-worker`).
+
+**You only need to run these migrations if you want to:**
+
+- Manually set up the schema before starting services
+- Reset/recreate the database schema
+- Verify the exact schema being used
+
+**For normal development:** Just start your services and the tables will be created automatically! ✅
+
 ## Available Migrations
 
-| Migration                | Description            | Tables Created      |
-| ------------------------ | ---------------------- | ------------------- |
-| `001_initial_schema.sql` | Initial schema setup   | 10 tables + 2 views |
-| `001_rollback.sql`       | Rollback migration 001 | Drops all tables    |
+| Migration                | Description            | Tables Created     |
+| ------------------------ | ---------------------- | ------------------ |
+| `001_initial_schema.sql` | Initial schema setup   | 9 tables + 2 views |
+| `001_rollback.sql`       | Rollback migration 001 | Drops all tables   |
 
 ## How to Run
 
@@ -69,10 +81,11 @@ SELECT table_name FROM tables();
 -- market_depth
 -- system_audit
 -- market_ticks
--- market_depth_20
 -- training_features_lightgbm
 -- training_features_tft
 -- training_labels
+-- market_candles_1m (view)
+-- market_candles_30m (view)
 
 -- Check table row counts
 SELECT
@@ -104,32 +117,31 @@ To completely reset the database:
 
 ### Core Market Data Tables
 
-| Table            | Purpose               | Expected Volume |
-| ---------------- | --------------------- | --------------- |
-| `market_candles` | OHLCV historical data | 200K/day        |
-| `market_quotes`  | Bid/ask tick data     | 1M/day          |
-| `option_greeks`  | Greeks snapshots      | 50K/day         |
-| `market_depth`   | 5-level order book    | 500K/day        |
-| `system_audit`   | Distributed tracing   | 100K/day        |
+| Table            | Purpose                           | Expected Volume |
+| ---------------- | --------------------------------- | --------------- |
+| `market_candles` | OHLCV historical data             | 200K/day        |
+| `market_quotes`  | Bid/ask tick data                 | 1M/day          |
+| `option_greeks`  | Greeks snapshots                  | 50K/day         |
+| `market_depth`   | Order book (1-20 levels flexible) | 500K-2M/day     |
+| `system_audit`   | Distributed tracing               | 100K/day        |
 
 ### Training Data Tables
 
 | Table                        | Purpose                     | Expected Volume |
 | ---------------------------- | --------------------------- | --------------- |
 | `market_ticks`               | Unified tick data           | 10M/day         |
-| `market_depth_20`            | 20-level order book         | 50M/day         |
 | `training_features_lightgbm` | LightGBM features (43 cols) | 375/day         |
 | `training_features_tft`      | TFT features                | 75/day          |
 | `training_labels`            | Supervised labels           | 375/day         |
 
-### Materialized Views (Optional)
+### Materialized Views (Auto-Created)
 
 | View                 | Purpose                     | Source           |
 | -------------------- | --------------------------- | ---------------- |
 | `market_candles_1m`  | Auto-aggregated 1m candles  | `market_quotes`  |
 | `market_candles_30m` | Auto-aggregated 30m candles | `market_candles` |
 
-**Note**: Materialized views are commented out in the migration. Enable them after you have data in the source tables.
+**Note**: Materialized views are automatically created by `questdb.service.ts` and included in the migration.
 
 ## Storage Estimates
 

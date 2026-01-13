@@ -147,7 +147,6 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
       "market_depth",
       "system_audit",
       "market_ticks",
-      "market_depth_20",
       "training_features_lightgbm",
       "training_features_tft",
       "training_labels",
