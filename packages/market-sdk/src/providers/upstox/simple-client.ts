@@ -3,6 +3,7 @@
  * Fetches historical candles using Upstox V3 API
  */
 
+import { Injectable, Logger } from "@nestjs/common";
 import axios, { AxiosInstance } from "axios";
 
 export interface UpstoxCandleData {
@@ -22,16 +23,24 @@ export interface UpstoxHistoricalResponse {
   };
 }
 
+@Injectable()
 export class SimpleUpstoxClient {
+  private readonly logger = new Logger(SimpleUpstoxClient.name);
   private readonly axiosInstance: AxiosInstance;
   private readonly baseUrl = "https://api.upstox.com";
 
-  constructor(private readonly accessToken: string) {
+  constructor() {
+    const accessToken = process.env.UPSTOX_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      this.logger.warn("UPSTOX_ACCESS_TOKEN not set in environment");
+    }
+
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken || ""}`,
         "Api-Version": "2.0",
       },
     });

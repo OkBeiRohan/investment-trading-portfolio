@@ -35,25 +35,14 @@ interface CandleInsert {
 @Injectable()
 export class HistoricalDataBootstrapService implements OnModuleInit {
   private readonly logger = new Logger(HistoricalDataBootstrapService.name);
-  private upstoxClient: SimpleUpstoxClient | null = null;
 
   constructor(
     private readonly candlesRepository: CandlesRepository,
     private readonly configService: ConfigService,
+    private readonly upstoxClient: SimpleUpstoxClient,
   ) {}
 
   async onModuleInit() {
-    const accessToken = this.configService.get<string>('UPSTOX_ACCESS_TOKEN');
-
-    if (!accessToken) {
-      this.logger.warn(
-        'UPSTOX_ACCESS_TOKEN not configured, skipping historical data bootstrap',
-      );
-      return;
-    }
-
-    this.upstoxClient = new SimpleUpstoxClient(accessToken);
-
     // Auto-bootstrap on startup (can be disabled via env var)
     const autoBootstrap = this.configService.get<string>(
       'AUTO_BOOTSTRAP_HISTORICAL_DATA',
@@ -70,12 +59,6 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
    * Checks for missing data and fetches from Upstox
    */
   async bootstrapHistoricalData(): Promise<void> {
-    if (!this.upstoxClient) {
-      throw new Error(
-        'Upstox client not initialized. Set UPSTOX_ACCESS_TOKEN in .env',
-      );
-    }
-
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
@@ -190,12 +173,6 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
    * Manually trigger bootstrap (for HTTP endpoint)
    */
   triggerBootstrap(): { message: string } {
-    if (!this.upstoxClient) {
-      throw new Error(
-        'Upstox client not initialized. Set UPSTOX_ACCESS_TOKEN in .env',
-      );
-    }
-
     // Run async without blocking response
     void this.bootstrapHistoricalData().catch((error) => {
       const errorMessage =
