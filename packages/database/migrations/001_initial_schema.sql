@@ -7,7 +7,7 @@
 -- Execution time: ~5 seconds
 --
 -- Tables created:
--- 1. market_candles - Historical OHLCV data
+-- 1. market_candles - Historical OHLCV data (supports all intervals: 1m, 5m, 30m, 1h, 1d, etc.)
 -- 2. market_quotes - High-frequency bid/ask quotes
 -- 3. option_greeks - Option Greeks snapshots
 -- 4. market_depth - Order book (1-20 levels, variable depth)
@@ -16,8 +16,6 @@
 -- 7. training_features_lightgbm - LightGBM training features
 -- 8. training_features_tft - TFT time-series features
 -- 9. training_labels - Supervised learning labels
--- 10. market_candles_1m - Aggregated 1-minute candles (populated by app)
--- 11. market_candles_30m - Aggregated 30-minute candles (populated by app)
 --
 -- NOTE: This migration is OPTIONAL. The questdb.service.ts automatically
 -- creates all tables on first run. Use this migration only if you want to
@@ -269,52 +267,6 @@ CREATE TABLE IF NOT EXISTS training_labels (
 DEDUP UPSERT KEYS(timestamp, reference_instrument);
 
 -- =============================================================================
--- AGGREGATED CANDLE TABLES (Application-Managed)
--- =============================================================================
--- NOTE: QuestDB doesn't support auto-refreshing materialized views.
--- These are regular tables that must be populated by the application.
--- The market-feeder service should run periodic jobs to populate these tables
--- using the SQL scripts in packages/schema/sql/utils/populate-*.sql
-
--- =============================================================================
--- TABLE 10: market_candles_1m
--- 1-minute candles aggregated from market_quotes
--- Populated by: packages/schema/sql/utils/populate-market-candles-1m.sql
--- Refresh frequency: Every 5 minutes
--- =============================================================================
-CREATE TABLE IF NOT EXISTS market_candles_1m (
-  timestamp TIMESTAMP,
-  instrument_key SYMBOL CAPACITY 1000,
-  interval SYMBOL CAPACITY 10,
-  open DOUBLE,
-  high DOUBLE,
-  low DOUBLE,
-  close DOUBLE,
-  volume LONG,
-  open_interest LONG
-) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-DEDUP UPSERT KEYS(timestamp, instrument_key);
-
--- =============================================================================
--- TABLE 11: market_candles_30m
--- 30-minute candles aggregated from 1-minute candles
--- Populated by: packages/schema/sql/utils/populate-market-candles-30m.sql
--- Refresh frequency: Every 30 minutes
--- =============================================================================
-CREATE TABLE IF NOT EXISTS market_candles_30m (
-  timestamp TIMESTAMP,
-  instrument_key SYMBOL CAPACITY 1000,
-  interval SYMBOL CAPACITY 10,
-  open DOUBLE,
-  high DOUBLE,
-  low DOUBLE,
-  close DOUBLE,
-  volume LONG,
-  open_interest LONG
-) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-DEDUP UPSERT KEYS(timestamp, instrument_key);
-
--- =============================================================================
 -- VERIFICATION QUERIES
 -- =============================================================================
 
@@ -335,7 +287,7 @@ DEDUP UPSERT KEYS(timestamp, instrument_key);
 -- =============================================================================
 -- MIGRATION COMPLETE
 -- =============================================================================
--- Tables created: 11 (9 base tables + 2 aggregated candle tables)
+-- Tables created: 9
 -- Total execution time: ~5 seconds
 --
 -- IMPORTANT: This migration is OPTIONAL!
@@ -351,7 +303,7 @@ DEDUP UPSERT KEYS(timestamp, instrument_key);
 -- 1. Verify tables: SELECT table_name FROM tables();
 -- 2. Check storage: SELECT sum(diskSize) FROM table_partitions();
 -- 3. Start data ingestion via market-feeder service
--- 4. Set up periodic jobs to populate aggregated candle tables:
---    - market_candles_1m (every 5 minutes)
---    - market_candles_30m (every 30 minutes)
+-- 4. Set up periodic jobs to populate aggregated candles:
+--    - Run populate-market-candles-1m.sql every 5 minutes (inserts into market_candles with interval='1m')
+--    - Run populate-market-candles-30m.sql every 30 minutes (inserts into market_candles with interval='30m')
 -- =============================================================================

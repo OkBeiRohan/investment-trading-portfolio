@@ -8,10 +8,6 @@
 --
 -- Run this script in QuestDB console (http://localhost:9000)
 
--- Drop aggregated candle tables first
-DROP TABLE IF EXISTS market_candles_30m;
-DROP TABLE IF EXISTS market_candles_1m;
-
 -- Drop training tables
 DROP TABLE IF EXISTS training_labels;
 DROP TABLE IF EXISTS training_features_tft;

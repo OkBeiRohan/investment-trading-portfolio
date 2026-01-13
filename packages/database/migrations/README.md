@@ -18,7 +18,7 @@ This directory contains SQL migration scripts for QuestDB schema management.
 
 | Migration                | Description            | Tables Created   |
 | ------------------------ | ---------------------- | ---------------- |
-| `001_initial_schema.sql` | Initial schema setup   | 11 tables        |
+| `001_initial_schema.sql` | Initial schema setup   | 9 tables         |
 | `001_rollback.sql`       | Rollback migration 001 | Drops all tables |
 
 ## How to Run
@@ -75,7 +75,7 @@ After running the migration, verify the schema:
 SELECT table_name FROM tables();
 
 -- Expected output:
--- market_candles
+-- market_candles (supports all intervals: 1m, 5m, 30m, 1h, 1d, etc.)
 -- market_quotes
 -- option_greeks
 -- market_depth
@@ -84,8 +84,6 @@ SELECT table_name FROM tables();
 -- training_features_lightgbm
 -- training_features_tft
 -- training_labels
--- market_candles_1m (aggregated table, populated by app)
--- market_candles_30m (aggregated table, populated by app)
 
 -- Check table row counts
 SELECT
@@ -134,14 +132,7 @@ To completely reset the database:
 | `training_features_tft`      | TFT features                | 75/day          |
 | `training_labels`            | Supervised labels           | 375/day         |
 
-### Materialized Views (Auto-Created)
-
-| View                 | Purpose                              | Source              |
-| -------------------- | ------------------------------------ | ------------------- |
-| `market_candles_1m`  | Aggregated 1m candles (app-managed)  | `market_quotes`     |
-| `market_candles_30m` | Aggregated 30m candles (app-managed) | `market_candles_1m` |
-
-**Note**: These are regular tables populated by the application using periodic jobs. See `packages/schema/sql/utils/populate-*.sql` for aggregation queries.
+**Note**: The `market_candles` table uses an `interval` SYMBOL column to store candles of all timeframes (1m, 5m, 30m, 1h, 1d, etc.) in a single table. Use the aggregation scripts in `packages/schema/sql/utils/populate-*.sql` to generate candles from tick data.
 
 ## Storage Estimates
 
@@ -233,9 +224,9 @@ After running the migration:
    - `pnpm --filter market-feeder dev` (historical data fetching)
    - `pnpm --filter algo-worker dev` (feature computation)
 3. ✅ **Backfill data**: See `services/market-feeder/docs/MULTI_TIMEFRAME_STRATEGY.md`
-4. ✅ **Set up aggregation jobs**: Create periodic jobs to populate candle tables:
-   - Run `populate-market-candles-1m.sql` every 5 minutes
-   - Run `populate-market-candles-30m.sql` every 30 minutes
+4. ✅ **Set up aggregation jobs**: Create periodic jobs to populate aggregated candles into `market_candles` table:
+   - Run `populate-market-candles-1m.sql` every 5 minutes (inserts with interval='1m')
+   - Run `populate-market-candles-30m.sql` every 30 minutes (inserts with interval='30m')
 
 ---
 

@@ -150,23 +150,12 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
       "training_features_lightgbm",
       "training_features_tft",
       "training_labels",
-      "market_candles_1m",
-      "market_candles_30m",
     ];
 
     // Create all tables
     for (const tableName of tableNames) {
       try {
-        // Check if this is a "view" table (aggregated candles)
-        const isAggregatedCandle =
-          tableName.includes("_view") ||
-          tableName === "market_candles_1m" ||
-          tableName === "market_candles_30m";
-
-        const sqlFileName =
-          isAggregatedCandle && !tableName.includes("_view")
-            ? `schema/create_${tableName}_view`
-            : `schema/create_${tableName}`;
+        const sqlFileName = `schema/create_${tableName}`;
 
         const sql = loadSqlQueryCached(sqlFileName);
         await this.query(sql);

@@ -1,7 +1,7 @@
--- Populate 1-minute candles from market_quotes
+-- Populate 1-minute candles from market_quotes into market_candles table
 -- Run this query periodically (e.g., every 5 minutes) to refresh aggregated data
 -- This query aggregates the last 2 hours of data to avoid full table scans
-INSERT INTO market_candles_1m
+INSERT INTO market_candles
 SELECT
   timestamp,
   instrument_key,
