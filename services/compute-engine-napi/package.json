@@ -1,11 +1,12 @@
 {
   "name": "@repo/compute-engine",
   "version": "1.0.0",
-  "description": "Template project for writing node package with napi-rs",
+  "description": "High-performance feature computation engine for algorithmic trading",
   "main": "index.js",
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/napi-rs/package-template.git"
+    "url": "git+https://github.com/OkBeiRohan/investment-trading-portfolio.git"
   },
   "license": "MIT",
   "browser": "browser.js",
