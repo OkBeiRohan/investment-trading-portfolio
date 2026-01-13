@@ -23,7 +23,7 @@ export class ComputeEngineService {
   private isInitialized = false;
 
   constructor() {
-    this.initialize();
+    void this.initialize();
   }
 
   /**
