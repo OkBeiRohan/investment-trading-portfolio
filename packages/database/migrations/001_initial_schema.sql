@@ -83,35 +83,53 @@ DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);
 
 -- =============================================================================
 -- TABLE 4: instrument_features_1m
--- Derived intraday features per instrument
+-- Per-instrument features (BEFORE aggregation into market_state_1m)
+-- NOT fed directly to LightGBM - used for market state aggregation
 -- Expected: 200K rows/day (50 instruments × 390 minutes × 1 row)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS instrument_features_1m (
   timestamp TIMESTAMP,
   instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
   
-  -- Price structure
+  -- ========== PRICE & STRUCTURE ==========
+  last_price DOUBLE,                                   -- Current price
   vwap DOUBLE,                                         -- Volume-weighted average price (session-aware)
+  price_vs_vwap DOUBLE,                                -- (price - vwap) / vwap
+  
+  day_high DOUBLE,                                     -- Day high
+  day_low DOUBLE,                                      -- Day low
+  price_vs_day_high DOUBLE,                            -- (price - day_high) / day_high
+  price_vs_day_low DOUBLE,                             -- (price - day_low) / day_low
+  range_position DOUBLE,                               -- (price - day_low) / (day_high - day_low)
+  
+  prev_day_high_dist DOUBLE,                           -- Distance from previous day high
+  prev_day_low_dist DOUBLE,                            -- Distance from previous day low
+  weekly_high_dist DOUBLE,                             -- Distance from weekly high
+  weekly_low_dist DOUBLE,                              -- Distance from weekly low
+  
+  -- ========== MOMENTUM & TREND ==========
+  rsi_5 DOUBLE,                                        -- RSI (5-period)
+  rsi_14 DOUBLE,                                       -- RSI (14-period)
+  rsi_21 DOUBLE,                                       -- RSI (21-period)
+  macd_hist DOUBLE,                                    -- MACD histogram
+  ema_9 DOUBLE,                                        -- 9-period EMA
+  ema_21 DOUBLE,                                       -- 21-period EMA
+  ema_9_slope DOUBLE,                                  -- 9-period EMA slope
+  ema_21_slope DOUBLE,                                 -- 21-period EMA slope
+  adx DOUBLE,                                          -- Average Directional Index
+  roc_5 DOUBLE,                                        -- Rate of change (5-period)
+  
+  -- ========== VOLATILITY ==========
   atr DOUBLE,                                          -- Average True Range (14-period)
   atr_percent DOUBLE,                                  -- ATR as % of price
-  
-  -- Volatility
   realized_vol_5m DOUBLE,                              -- 5-min realized volatility
   realized_vol_15m DOUBLE,                             -- 15-min realized volatility
   vol_expansion_ratio DOUBLE,                          -- Short-term vol / long-term vol
   
-  -- Momentum
-  rsi_5 DOUBLE,                                        -- RSI (5-period)
-  rsi_14 DOUBLE,                                       -- RSI (14-period)
-  macd_hist DOUBLE,                                    -- MACD histogram
-  ema_9_slope DOUBLE,                                  -- 9-period EMA slope
-  ema_21_slope DOUBLE,                                 -- 21-period EMA slope
-  
-  -- Range context
-  day_high_dist DOUBLE,                                -- Distance from day high (%)
-  day_low_dist DOUBLE,                                 -- Distance from day low (%)
-  weekly_high_dist DOUBLE,                             -- Distance from weekly high (%)
-  weekly_low_dist DOUBLE                               -- Distance from weekly low (%)
+  -- ========== TIME CONTEXT ==========
+  minutes_from_open INT,                               -- Minutes since 9:15 AM
+  minutes_to_close INT,                                -- Minutes until 3:30 PM
+  day_of_week INT                                      -- 1=Monday, 7=Sunday
 ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
 DEDUP UPSERT KEYS(timestamp, instrument_key);
 
@@ -146,38 +164,55 @@ DEDUP UPSERT KEYS(timestamp, underlying_key, instrument_key);
 
 -- =============================================================================
 -- TABLE 6: market_state_1m
--- Market State Encoder output - THIS feeds LightGBM
+-- Market State Encoder output - THIS feeds LightGBM (33 features)
 -- Compresses 50 constituents + futures + options into one state vector
 -- Expected: 390 rows/day (1 per minute during market hours)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS market_state_1m (
   timestamp TIMESTAMP,
   
-  -- Aggregated index state (from spot)
-  index_return_1m DOUBLE,                              -- 1-min return
-  index_trend_strength DOUBLE,                         -- ADX or similar
-  index_volatility DOUBLE,                             -- Realized volatility
+  -- ========== MARKET STRUCTURE (8) ==========
+  price_vs_vwap DOUBLE,                                -- Weighted avg of 50 stocks + index future
+  price_vs_day_high DOUBLE,                            -- Distance from day high
+  price_vs_day_low DOUBLE,                             -- Distance from day low
+  range_position DOUBLE,                               -- Position within daily range
+  prev_day_high_dist DOUBLE,                           -- Distance from previous day high
+  prev_day_low_dist DOUBLE,                            -- Distance from previous day low
+  weekly_high_dist DOUBLE,                             -- Distance from weekly high
+  weekly_low_dist DOUBLE,                              -- Distance from weekly low
   
-  -- Breadth (from 50 constituents)
-  advancers_ratio DOUBLE,                              -- % stocks up vs down
-  decline_strength DOUBLE,                             -- Average decline magnitude
-  sector_dispersion DOUBLE,                            -- Cross-sectional volatility
+  -- ========== MOMENTUM & TREND (8) ==========
+  rsi_5 DOUBLE,                                        -- Median RSI (5-period) of constituents
+  rsi_14 DOUBLE,                                       -- Median RSI (14-period) of constituents
+  rsi_21 DOUBLE,                                       -- Median RSI (21-period) of constituents
+  macd_hist DOUBLE,                                    -- Index MACD histogram
+  ema_9_slope DOUBLE,                                  -- Index 9-period EMA slope
+  ema_21_slope DOUBLE,                                 -- Index 21-period EMA slope
+  adx DOUBLE,                                          -- Mean ADX of top 10 weighted stocks
+  roc_5 DOUBLE,                                        -- Index rate of change (5-period)
   
-  -- Futures context
-  fut_basis DOUBLE,                                    -- Future - Spot (absolute)
-  fut_oi_change DOUBLE,                                -- Change in open interest
+  -- ========== VOLATILITY (5) ==========
+  atr_percent DOUBLE,                                  -- Index ATR as % of price
+  realized_vol_5m DOUBLE,                              -- 5-min realized volatility
+  realized_vol_15m DOUBLE,                             -- 15-min realized volatility
+  vol_expansion_ratio DOUBLE,                          -- Short-term vol / long-term vol
+  india_vix DOUBLE,                                    -- India VIX (if available, else NULL)
   
-  -- Options summary
+  -- ========== OPTIONS (9) ==========
   atm_iv DOUBLE,                                       -- At-the-money implied volatility
-  atm_iv_change DOUBLE,                                -- Change in ATM IV
+  atm_iv_change DOUBLE,                                -- Change in ATM IV (1-min)
+  delta_atm DOUBLE,                                    -- ATM delta (average of CE/PE)
+  gamma_atm DOUBLE,                                    -- ATM gamma
+  vega_atm DOUBLE,                                     -- ATM vega
+  theta_atm DOUBLE,                                    -- ATM theta
   pcr_oi DOUBLE,                                       -- Put-call ratio (open interest)
   pcr_volume DOUBLE,                                   -- Put-call ratio (volume)
   max_pain_dist DOUBLE,                                -- Distance from max pain strike
   
-  -- Time context
+  -- ========== TIME CONTEXT (3) ==========
   minutes_from_open INT,                               -- Minutes since 9:15 AM
   minutes_to_close INT,                                -- Minutes until 3:30 PM
-  day_of_week INT                                      -- 1=Monday, 5=Friday
+  day_of_week INT                                      -- 1=Monday, 7=Sunday
 ) TIMESTAMP(timestamp) PARTITION BY DAY WAL;
 
 -- =============================================================================

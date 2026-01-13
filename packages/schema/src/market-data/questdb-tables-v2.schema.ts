@@ -8,6 +8,9 @@
  * 3. Instrument identity matches Upstox instrument_key
  * 4. Time-series first (timestamp is king)
  * 5. Training must be reproducible from DB alone
+ *
+ * NOTE: SQL CREATE TABLE statements are in packages/schema/sql/schema/
+ * Import them in QuestDB service using sql-loader utility.
  */
 
 import { z } from "zod";
@@ -35,25 +38,6 @@ export const InstrumentMasterSchema = z.object({
 });
 
 export type InstrumentMaster = z.infer<typeof InstrumentMasterSchema>;
-
-export const CREATE_TABLE_INSTRUMENT_MASTER = `
-CREATE TABLE IF NOT EXISTS instrument_master (
-  instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
-  exchange SYMBOL CAPACITY 10,
-  segment SYMBOL CAPACITY 10,
-  instrument_type SYMBOL CAPACITY 10,
-  tradingsymbol SYMBOL CAPACITY 50,
-  name STRING,
-  expiry DATE,
-  strike DOUBLE,
-  option_type SYMBOL CAPACITY 2,
-  lot_size INT,
-  tick_size DOUBLE,
-  underlying_key SYMBOL CAPACITY 50000,
-  is_expired BOOLEAN,
-  last_updated TIMESTAMP
-);
-`;
 
 // ============================================
 // TABLE 2: market_candles
@@ -121,35 +105,52 @@ DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);
 
 // ============================================
 // TABLE 4: instrument_features_1m
-// Derived intraday features per instrument
+// Per-instrument features (BEFORE aggregation)
 // ============================================
 
 export const InstrumentFeatures1mSchema = z.object({
   timestamp: z.date(),
   instrumentKey: z.string(),
 
-  // Price structure
+  // ========== PRICE & STRUCTURE ==========
+  lastPrice: z.number(), // Current price
   vwap: z.number(), // Volume-weighted average price
+  priceVsVwap: z.number(), // (price - vwap) / vwap
+
+  dayHigh: z.number(), // Day high
+  dayLow: z.number(), // Day low
+  priceVsDayHigh: z.number(), // (price - day_high) / day_high
+  priceVsDayLow: z.number(), // (price - day_low) / day_low
+  rangePosition: z.number(), // (price - day_low) / (day_high - day_low)
+
+  prevDayHighDist: z.number(), // Distance from previous day high
+  prevDayLowDist: z.number(), // Distance from previous day low
+  weeklyHighDist: z.number(), // Distance from weekly high
+  weeklyLowDist: z.number(), // Distance from weekly low
+
+  // ========== MOMENTUM & TREND ==========
+  rsi5: z.number(), // RSI (5-period)
+  rsi14: z.number(), // RSI (14-period)
+  rsi21: z.number(), // RSI (21-period)
+  macdHist: z.number(), // MACD histogram
+  ema9: z.number(), // 9-period EMA
+  ema21: z.number(), // 21-period EMA
+  ema9Slope: z.number(), // 9-period EMA slope
+  ema21Slope: z.number(), // 21-period EMA slope
+  adx: z.number(), // Average Directional Index
+  roc5: z.number(), // Rate of change (5-period)
+
+  // ========== VOLATILITY ==========
   atr: z.number(), // Average True Range (14-period)
   atrPercent: z.number(), // ATR as % of price
-
-  // Volatility
   realizedVol5m: z.number(), // 5-min realized volatility
   realizedVol15m: z.number(), // 15-min realized volatility
   volExpansionRatio: z.number(), // Short-term vol / long-term vol
 
-  // Momentum
-  rsi5: z.number(), // RSI (5-period)
-  rsi14: z.number(), // RSI (14-period)
-  macdHist: z.number(), // MACD histogram
-  ema9Slope: z.number(), // 9-period EMA slope
-  ema21Slope: z.number(), // 21-period EMA slope
-
-  // Range context
-  dayHighDist: z.number(), // Distance from day high (%)
-  dayLowDist: z.number(), // Distance from day low (%)
-  weeklyHighDist: z.number(), // Distance from weekly high (%)
-  weeklyLowDist: z.number(), // Distance from weekly low (%)
+  // ========== TIME CONTEXT ==========
+  minutesFromOpen: z.number().int(), // Minutes since 9:15 AM
+  minutesToClose: z.number().int(), // Minutes until 3:30 PM
+  dayOfWeek: z.number().int().min(1).max(7), // 1=Monday, 7=Sunday
 });
 
 export type InstrumentFeatures1m = z.infer<typeof InstrumentFeatures1mSchema>;
@@ -158,21 +159,36 @@ export const CREATE_TABLE_INSTRUMENT_FEATURES_1M = `
 CREATE TABLE IF NOT EXISTS instrument_features_1m (
   timestamp TIMESTAMP,
   instrument_key SYMBOL CAPACITY 50000 NOCACHE INDEX,
+  last_price DOUBLE,
   vwap DOUBLE,
+  price_vs_vwap DOUBLE,
+  day_high DOUBLE,
+  day_low DOUBLE,
+  price_vs_day_high DOUBLE,
+  price_vs_day_low DOUBLE,
+  range_position DOUBLE,
+  prev_day_high_dist DOUBLE,
+  prev_day_low_dist DOUBLE,
+  weekly_high_dist DOUBLE,
+  weekly_low_dist DOUBLE,
+  rsi_5 DOUBLE,
+  rsi_14 DOUBLE,
+  rsi_21 DOUBLE,
+  macd_hist DOUBLE,
+  ema_9 DOUBLE,
+  ema_21 DOUBLE,
+  ema_9_slope DOUBLE,
+  ema_21_slope DOUBLE,
+  adx DOUBLE,
+  roc_5 DOUBLE,
   atr DOUBLE,
   atr_percent DOUBLE,
   realized_vol_5m DOUBLE,
   realized_vol_15m DOUBLE,
   vol_expansion_ratio DOUBLE,
-  rsi_5 DOUBLE,
-  rsi_14 DOUBLE,
-  macd_hist DOUBLE,
-  ema_9_slope DOUBLE,
-  ema_21_slope DOUBLE,
-  day_high_dist DOUBLE,
-  day_low_dist DOUBLE,
-  weekly_high_dist DOUBLE,
-  weekly_low_dist DOUBLE
+  minutes_from_open INT,
+  minutes_to_close INT,
+  day_of_week INT
 ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
 DEDUP UPSERT KEYS(timestamp, instrument_key);
 `;
@@ -231,34 +247,51 @@ DEDUP UPSERT KEYS(timestamp, underlying_key, instrument_key);
 
 // ============================================
 // TABLE 6: market_state_1m
-// Market State Encoder output - feeds LightGBM
+// Market State Encoder output - feeds LightGBM (33 features)
 // ============================================
 
 export const MarketState1mSchema = z.object({
   timestamp: z.date(),
 
-  // Aggregated index state
-  indexReturn1m: z.number(), // 1-min return
-  indexTrendStrength: z.number(), // ADX or similar
-  indexVolatility: z.number(), // Realized volatility
+  // ========== MARKET STRUCTURE (8) ==========
+  priceVsVwap: z.number(), // Weighted avg of 50 stocks + index future
+  priceVsDayHigh: z.number(), // Distance from day high
+  priceVsDayLow: z.number(), // Distance from day low
+  rangePosition: z.number(), // Position within daily range
+  prevDayHighDist: z.number(), // Distance from previous day high
+  prevDayLowDist: z.number(), // Distance from previous day low
+  weeklyHighDist: z.number(), // Distance from weekly high
+  weeklyLowDist: z.number(), // Distance from weekly low
 
-  // Breadth (from 50 constituents)
-  advancersRatio: z.number(), // % stocks up vs down
-  declineStrength: z.number(), // Average decline magnitude
-  sectorDispersion: z.number(), // Cross-sectional volatility
+  // ========== MOMENTUM & TREND (8) ==========
+  rsi5: z.number(), // Median RSI (5-period) of constituents
+  rsi14: z.number(), // Median RSI (14-period) of constituents
+  rsi21: z.number(), // Median RSI (21-period) of constituents
+  macdHist: z.number(), // Index MACD histogram
+  ema9Slope: z.number(), // Index 9-period EMA slope
+  ema21Slope: z.number(), // Index 21-period EMA slope
+  adx: z.number(), // Mean ADX of top 10 weighted stocks
+  roc5: z.number(), // Index rate of change (5-period)
 
-  // Futures context
-  futBasis: z.number(), // Future - Spot (absolute)
-  futOiChange: z.number(), // Change in open interest
+  // ========== VOLATILITY (5) ==========
+  atrPercent: z.number(), // Index ATR as % of price
+  realizedVol5m: z.number(), // 5-min realized volatility
+  realizedVol15m: z.number(), // 15-min realized volatility
+  volExpansionRatio: z.number(), // Short-term vol / long-term vol
+  indiaVix: z.number().nullable(), // India VIX (if available, else NULL)
 
-  // Options summary
+  // ========== OPTIONS (9) ==========
   atmIv: z.number(), // At-the-money implied volatility
-  atmIvChange: z.number(), // Change in ATM IV
+  atmIvChange: z.number(), // Change in ATM IV (1-min)
+  deltaAtm: z.number(), // ATM delta (average of CE/PE)
+  gammaAtm: z.number(), // ATM gamma
+  vegaAtm: z.number(), // ATM vega
+  thetaAtm: z.number(), // ATM theta
   pcrOi: z.number(), // Put-call ratio (open interest)
   pcrVolume: z.number(), // Put-call ratio (volume)
   maxPainDist: z.number(), // Distance from max pain strike
 
-  // Time context
+  // ========== TIME CONTEXT (3) ==========
   minutesFromOpen: z.number().int(), // Minutes since 9:15 AM
   minutesToClose: z.number().int(), // Minutes until 3:30 PM
   dayOfWeek: z.number().int().min(1).max(7), // 1=Monday, 7=Sunday
@@ -269,16 +302,33 @@ export type MarketState1m = z.infer<typeof MarketState1mSchema>;
 export const CREATE_TABLE_MARKET_STATE_1M = `
 CREATE TABLE IF NOT EXISTS market_state_1m (
   timestamp TIMESTAMP,
-  index_return_1m DOUBLE,
-  index_trend_strength DOUBLE,
-  index_volatility DOUBLE,
-  advancers_ratio DOUBLE,
-  decline_strength DOUBLE,
-  sector_dispersion DOUBLE,
-  fut_basis DOUBLE,
-  fut_oi_change DOUBLE,
+  price_vs_vwap DOUBLE,
+  price_vs_day_high DOUBLE,
+  price_vs_day_low DOUBLE,
+  range_position DOUBLE,
+  prev_day_high_dist DOUBLE,
+  prev_day_low_dist DOUBLE,
+  weekly_high_dist DOUBLE,
+  weekly_low_dist DOUBLE,
+  rsi_5 DOUBLE,
+  rsi_14 DOUBLE,
+  rsi_21 DOUBLE,
+  macd_hist DOUBLE,
+  ema_9_slope DOUBLE,
+  ema_21_slope DOUBLE,
+  adx DOUBLE,
+  roc_5 DOUBLE,
+  atr_percent DOUBLE,
+  realized_vol_5m DOUBLE,
+  realized_vol_15m DOUBLE,
+  vol_expansion_ratio DOUBLE,
+  india_vix DOUBLE,
   atm_iv DOUBLE,
   atm_iv_change DOUBLE,
+  delta_atm DOUBLE,
+  gamma_atm DOUBLE,
+  vega_atm DOUBLE,
+  theta_atm DOUBLE,
   pcr_oi DOUBLE,
   pcr_volume DOUBLE,
   max_pain_dist DOUBLE,
