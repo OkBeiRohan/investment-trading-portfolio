@@ -263,6 +263,263 @@ pub struct LightGBMOutput {
   pub model_version: String,
 }
 
+// ============================================
+// MODEL 2: TFT (Temporal Fusion Transformer)
+// ============================================
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct TFTSequencePoint {
+  pub timestamp: i64,
+  pub index_return: f64,
+  pub index_realized_vol: f64,
+  pub breadth_score: f64,
+  pub fut_return: f64,
+  pub fut_volume: f64,
+  pub atm_iv: f64,
+  pub iv_change: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct TFTInput {
+  pub sequence: Vec<TFTSequencePoint>, // e.g., last 60 timesteps
+  pub day_of_week: i32,
+  pub minutes_from_open: i32,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct TFTOutput {
+  pub expected_high: f64,
+  pub expected_low: f64,
+  pub expected_range: f64,
+  pub regime: String, // "trend", "range", "chop"
+  pub confidence: f64,
+  pub inference_time_ms: f64,
+  pub model_version: String,
+}
+
+// ============================================
+// MODEL 3: LiT (Limit Order Book Transformer)
+// ============================================
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct LOBSnapshot {
+  pub timestamp: i64,
+  pub bids: Vec<BidAskLevel>, // 20 levels
+  pub asks: Vec<BidAskLevel>, // 20 levels
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct LiTInput {
+  pub lob_sequence: Vec<LOBSnapshot>, // e.g., last 100 snapshots at 100ms intervals
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct LiTOutput {
+  pub micro_up_prob: f64,
+  pub micro_down_prob: f64,
+  pub micro_flat_prob: f64,
+  pub inference_time_ms: f64,
+  pub model_version: String,
+}
+
+// ============================================
+// MODEL 4: Meta-Learner (Signal Fusion)
+// ============================================
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct MetaLearnerVolatilityState {
+  pub atm_iv: f64,
+  pub iv_skew: f64,
+  pub india_vix: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct MetaLearnerInput {
+  pub lightgbm_probs: LightGBMOutput,
+  pub tft_regime: TFTOutput,
+  pub lit_micro_probs: LiTOutput,
+  pub volatility_state: MetaLearnerVolatilityState,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct MetaLearnerOutput {
+  pub final_direction: String, // "bullish", "bearish", "neutral"
+  pub confidence_score: f64,
+  pub trade_allowed: bool,
+  pub reason: String,
+  pub inference_time_ms: f64,
+  pub model_version: String,
+}
+
+// ============================================
+// MODEL 5: Strike & Position Selector
+// ============================================
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct OptionChainEntry {
+  pub strike_price: f64,
+  pub option_type: String, // "CE" or "PE"
+  pub ltp: f64,
+  pub delta: f64,
+  pub gamma: f64,
+  pub iv: f64,
+  pub bid: f64,
+  pub ask: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct StrikeSelectorInput {
+  pub available_balance: f64,
+  pub risk_per_trade: f64,
+  pub expected_move: f64,
+  pub direction: String, // "bullish" or "bearish"
+  pub option_chain: Vec<OptionChainEntry>,
+  pub max_delta: Option<f64>,
+  pub min_gamma: Option<f64>,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct StrikeSelectorOutput {
+  pub selected_strike: f64,
+  pub option_type: String,
+  pub lot_count: i32,
+  pub expected_rr: f64,
+  pub net_delta: f64,
+  pub net_gamma: f64,
+  pub total_cost: f64,
+  pub max_loss: f64,
+  pub computation_time_ms: f64,
+}
+
+// ============================================
+// MODEL 6: PPO Execution Agent (RL)
+// ============================================
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct LOBState {
+  pub bids: Vec<BidAskLevel>,
+  pub asks: Vec<BidAskLevel>,
+  pub ltp: f64,
+  pub spread: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct FutureLOBContext {
+  pub ltp: f64,
+  pub bid_ask_spread: f64,
+  pub lob_imbalance: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct PPOExecutionInput {
+  pub option_lob: LOBState,
+  pub future_lob: FutureLOBContext,
+  pub remaining_qty: f64,
+  pub time_to_expiry: f64,
+  pub urgency: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct PPOExecutionOutput {
+  pub limit_price_offset: f64,
+  pub slice_qty: f64,
+  pub wait_or_execute: String, // "wait" or "execute"
+  pub inference_time_ms: f64,
+  pub model_version: String,
+}
+
+// ============================================
+// MODEL 7: Exit & Position Manager
+// ============================================
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct CurrentPosition {
+  pub strike_price: f64,
+  pub option_type: String,
+  pub quantity: f64,
+  pub entry_price: f64,
+  pub current_price: f64,
+  pub unrealized_pnl: f64,
+  pub unrealized_pnl_pct: f64,
+  pub position_duration: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct GreekDecay {
+  pub current_delta: f64,
+  pub current_gamma: f64,
+  pub current_theta: f64,
+  pub theta_decay_per_hour: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct ExitLiquidity {
+  pub bid_qty: f64,
+  pub ask_qty: f64,
+  pub spread: f64,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct ExitManagerInput {
+  pub position: CurrentPosition,
+  pub lightgbm_probs: LightGBMOutput,
+  pub lit_exhaustion_signal: f64,
+  pub tft_regime_change: bool,
+  pub greek_decay: GreekDecay,
+  pub exit_liquidity: ExitLiquidity,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
+pub struct ExitManagerOutput {
+  pub action: String, // "hold", "partial_exit", "full_exit", "reverse"
+  pub exit_qty: Option<f64>,
+  pub reason: String,
+  pub new_direction: Option<String>,
+  pub computation_time_ms: f64,
+}
+
 #[cfg(test)]
 mod tests;
 

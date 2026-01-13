@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * Raw Market Data Types (NO ZOD - Internal use only)
  * Represents live data feeds from broker (Upstox/Binance)

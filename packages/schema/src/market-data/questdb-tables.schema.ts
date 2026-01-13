@@ -349,6 +349,250 @@ CREATE TABLE IF NOT EXISTS training_labels (
 `;
 
 // ============================================
+// TABLE 7: tft_sequence_data
+// Stores time-series sequences for TFT model
+// ============================================
+
+export const tftSequenceDataSchema = z.object({
+  timestamp: z.number(),
+  indexReturn: z.number(),
+  indexRealizedVol: z.number(),
+  breadthScore: z.number(),
+  futReturn: z.number(),
+  futVolume: z.number(),
+  atmIv: z.number(),
+  ivChange: z.number(),
+});
+
+export type TFTSequenceData = z.infer<typeof tftSequenceDataSchema>;
+
+export const CREATE_TABLE_TFT_SEQUENCE_DATA = `
+CREATE TABLE IF NOT EXISTS tft_sequence_data (
+  timestamp TIMESTAMP,
+  indexReturn DOUBLE,
+  indexRealizedVol DOUBLE,
+  breadthScore DOUBLE,
+  futReturn DOUBLE,
+  futVolume LONG,
+  atmIv DOUBLE,
+  ivChange DOUBLE
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// ============================================
+// TABLE 8: lit_lob_snapshots
+// Stores raw LOB snapshots for LiT model
+// ============================================
+
+export const litLobSnapshotSchema = z.object({
+  timestamp: z.number(),
+
+  // Serialized 20-level bid/ask data
+  bids: z.string(), // JSON array of {price, quantity}
+  asks: z.string(), // JSON array of {price, quantity}
+
+  // Snapshot ID for sequence tracking
+  snapshotId: z.number(), // Auto-incrementing
+});
+
+export type LiTLOBSnapshot = z.infer<typeof litLobSnapshotSchema>;
+
+export const CREATE_TABLE_LIT_LOB_SNAPSHOTS = `
+CREATE TABLE IF NOT EXISTS lit_lob_snapshots (
+  timestamp TIMESTAMP,
+  bids STRING,
+  asks STRING,
+  snapshotId LONG
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// ============================================
+// TABLE 9: model_predictions_detailed
+// Stores individual model predictions with full output
+// ============================================
+
+// LightGBM predictions
+export const lightgbmPredictionSchema = z.object({
+  timestamp: z.number(),
+  pUp: z.number(),
+  pNeutral: z.number(),
+  pDown: z.number(),
+  inferenceTimeMs: z.number(),
+  modelVersion: z.string().max(20),
+});
+
+export type LightGBMPrediction = z.infer<typeof lightgbmPredictionSchema>;
+
+export const CREATE_TABLE_LIGHTGBM_PREDICTIONS = `
+CREATE TABLE IF NOT EXISTS lightgbm_predictions (
+  timestamp TIMESTAMP,
+  pUp DOUBLE,
+  pNeutral DOUBLE,
+  pDown DOUBLE,
+  inferenceTimeMs DOUBLE,
+  modelVersion STRING
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// TFT predictions
+export const tftPredictionSchema = z.object({
+  timestamp: z.number(),
+  expectedHigh: z.number(),
+  expectedLow: z.number(),
+  expectedRange: z.number(),
+  regime: z.string().max(10), // SYMBOL
+  confidence: z.number(),
+  inferenceTimeMs: z.number(),
+  modelVersion: z.string().max(20),
+});
+
+export type TFTPrediction = z.infer<typeof tftPredictionSchema>;
+
+export const CREATE_TABLE_TFT_PREDICTIONS = `
+CREATE TABLE IF NOT EXISTS tft_predictions (
+  timestamp TIMESTAMP,
+  expectedHigh DOUBLE,
+  expectedLow DOUBLE,
+  expectedRange DOUBLE,
+  regime SYMBOL,
+  confidence DOUBLE,
+  inferenceTimeMs DOUBLE,
+  modelVersion STRING
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// LiT predictions
+export const litPredictionSchema = z.object({
+  timestamp: z.number(),
+  microUpProb: z.number(),
+  microDownProb: z.number(),
+  microFlatProb: z.number(),
+  inferenceTimeMs: z.number(),
+  modelVersion: z.string().max(20),
+});
+
+export type LiTPrediction = z.infer<typeof litPredictionSchema>;
+
+export const CREATE_TABLE_LIT_PREDICTIONS = `
+CREATE TABLE IF NOT EXISTS lit_predictions (
+  timestamp TIMESTAMP,
+  microUpProb DOUBLE,
+  microDownProb DOUBLE,
+  microFlatProb DOUBLE,
+  inferenceTimeMs DOUBLE,
+  modelVersion STRING
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// Meta-Learner predictions
+export const metaLearnerPredictionSchema = z.object({
+  timestamp: z.number(),
+  finalDirection: z.string().max(10), // SYMBOL
+  confidenceScore: z.number(),
+  tradeAllowed: z.boolean(),
+  reason: z.string(),
+  inferenceTimeMs: z.number(),
+  modelVersion: z.string().max(20),
+});
+
+export type MetaLearnerPrediction = z.infer<typeof metaLearnerPredictionSchema>;
+
+export const CREATE_TABLE_META_LEARNER_PREDICTIONS = `
+CREATE TABLE IF NOT EXISTS meta_learner_predictions (
+  timestamp TIMESTAMP,
+  finalDirection SYMBOL,
+  confidenceScore DOUBLE,
+  tradeAllowed BOOLEAN,
+  reason STRING,
+  inferenceTimeMs DOUBLE,
+  modelVersion STRING
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// Strike Selector outputs
+export const strikeSelectorOutputTableSchema = z.object({
+  timestamp: z.number(),
+  selectedStrike: z.number(),
+  optionType: z.string().max(2), // SYMBOL
+  lotCount: z.number(),
+  expectedRR: z.number(),
+  netDelta: z.number(),
+  netGamma: z.number(),
+  totalCost: z.number(),
+  maxLoss: z.number(),
+  computationTimeMs: z.number(),
+});
+
+export type StrikeSelectorOutputTable = z.infer<
+  typeof strikeSelectorOutputTableSchema
+>;
+
+export const CREATE_TABLE_STRIKE_SELECTOR_OUTPUTS = `
+CREATE TABLE IF NOT EXISTS strike_selector_outputs (
+  timestamp TIMESTAMP,
+  selectedStrike DOUBLE,
+  optionType SYMBOL,
+  lotCount INT,
+  expectedRR DOUBLE,
+  netDelta DOUBLE,
+  netGamma DOUBLE,
+  totalCost DOUBLE,
+  maxLoss DOUBLE,
+  computationTimeMs DOUBLE
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// PPO Execution decisions
+export const ppoExecutionOutputTableSchema = z.object({
+  timestamp: z.number(),
+  limitPriceOffset: z.number(),
+  sliceQty: z.number(),
+  waitOrExecute: z.string().max(10), // SYMBOL
+  inferenceTimeMs: z.number(),
+  modelVersion: z.string().max(20),
+});
+
+export type PPOExecutionOutputTable = z.infer<
+  typeof ppoExecutionOutputTableSchema
+>;
+
+export const CREATE_TABLE_PPO_EXECUTION_OUTPUTS = `
+CREATE TABLE IF NOT EXISTS ppo_execution_outputs (
+  timestamp TIMESTAMP,
+  limitPriceOffset DOUBLE,
+  sliceQty DOUBLE,
+  waitOrExecute SYMBOL,
+  inferenceTimeMs DOUBLE,
+  modelVersion STRING
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// Exit Manager decisions
+export const exitManagerOutputTableSchema = z.object({
+  timestamp: z.number(),
+  action: z.string().max(20), // SYMBOL
+  exitQty: z.number().optional(),
+  reason: z.string(),
+  newDirection: z.string().max(10).optional(), // SYMBOL
+  computationTimeMs: z.number(),
+});
+
+export type ExitManagerOutputTable = z.infer<
+  typeof exitManagerOutputTableSchema
+>;
+
+export const CREATE_TABLE_EXIT_MANAGER_OUTPUTS = `
+CREATE TABLE IF NOT EXISTS exit_manager_outputs (
+  timestamp TIMESTAMP,
+  action SYMBOL,
+  exitQty DOUBLE,
+  reason STRING,
+  newDirection SYMBOL,
+  computationTimeMs DOUBLE
+) TIMESTAMP(timestamp) PARTITION BY DAY;
+`;
+
+// ============================================
 // All table creation statements
 // ============================================
 
@@ -359,4 +603,13 @@ export const ALL_TABLE_CREATION_STATEMENTS = [
   CREATE_TABLE_MARKET_STATE_ENCODER_OUTPUT,
   CREATE_TABLE_MODEL_PREDICTIONS,
   CREATE_TABLE_TRAINING_LABELS,
+  CREATE_TABLE_TFT_SEQUENCE_DATA,
+  CREATE_TABLE_LIT_LOB_SNAPSHOTS,
+  CREATE_TABLE_LIGHTGBM_PREDICTIONS,
+  CREATE_TABLE_TFT_PREDICTIONS,
+  CREATE_TABLE_LIT_PREDICTIONS,
+  CREATE_TABLE_META_LEARNER_PREDICTIONS,
+  CREATE_TABLE_STRIKE_SELECTOR_OUTPUTS,
+  CREATE_TABLE_PPO_EXECUTION_OUTPUTS,
+  CREATE_TABLE_EXIT_MANAGER_OUTPUTS,
 ];
