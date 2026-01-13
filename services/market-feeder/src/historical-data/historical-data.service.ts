@@ -1,6 +1,7 @@
 /**
  * Historical Data Service
  * Orchestrates historical data fetching with gap detection
+ * Uses multi-timeframe strategy for optimal data granularity
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -8,12 +9,19 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QuestDBService } from '@repo/database';
 import { UpstoxHistoricalService } from '@repo/market-sdk';
+import {
+  generateFetchPlan,
+  summarizePlan,
+  estimateTotalCandles,
+  type TimeframePlan,
+} from './timeframe-strategy';
 
 export interface BackfillRequest {
   instrumentKeys: string[];
-  intervals: string[];
-  fromDate?: string; // YYYY-MM-DD (optional, uses gap detection)
+  intervals?: string[]; // Optional, uses multi-timeframe strategy if omitted
+  fromDate?: string; // YYYY-MM-DD (optional, defaults to 2000-01-01)
   toDate?: string; // YYYY-MM-DD (optional, defaults to today)
+  useMultiTimeframe?: boolean; // Use automatic timeframe strategy (default: true)
 }
 
 export interface BackfillProgress {
@@ -37,7 +45,8 @@ export class HistoricalDataService {
 
   /**
    * Backfill historical data for multiple instruments
-   * Uses gap detection to fetch only missing data
+   * Uses multi-timeframe strategy for optimal data granularity
+   * Or uses specified intervals if provided
    *
    * @param request Backfill request
    * @returns Total candles inserted
@@ -46,6 +55,13 @@ export class HistoricalDataService {
     const startTime = Date.now();
     let totalCandles = 0;
     let completedInstruments = 0;
+
+    // Determine if we should use multi-timeframe strategy
+    const useMultiTimeframe = request.useMultiTimeframe ?? !request.intervals;
+
+    if (useMultiTimeframe) {
+      return this.backfillWithStrategy(request);
+    }
 
     this.logger.log(
       `Starting backfill for ${request.instrumentKeys.length} instruments, intervals: ${request.intervals.join(', ')}`,
@@ -159,6 +175,111 @@ export class HistoricalDataService {
       intervalValue: value,
       unit: unitMap[unitChar],
     };
+  }
+
+  /**
+   * Backfill using multi-timeframe strategy
+   * Automatically determines optimal intervals based on date ranges
+   */
+  private async backfillWithStrategy(
+    request: BackfillRequest,
+  ): Promise<number> {
+    const startTime = Date.now();
+    let totalCandles = 0;
+
+    // Generate fetch plan
+    const toDate = request.toDate ? new Date(request.toDate) : new Date();
+    const fromDate = request.fromDate
+      ? new Date(request.fromDate)
+      : new Date('2000-01-01');
+
+    const plan = generateFetchPlan(toDate, fromDate);
+
+    this.logger.log(
+      `Generated multi-timeframe plan for ${request.instrumentKeys.length} instruments:`,
+    );
+    this.logger.log(summarizePlan(plan));
+
+    const totalPhases = plan.length * request.instrumentKeys.length;
+    let completedPhases = 0;
+
+    // Execute plan for each instrument
+    for (const instrumentKey of request.instrumentKeys) {
+      this.logger.log(`Fetching data for ${instrumentKey}...`);
+
+      for (const phase of plan) {
+        try {
+          // Check if data already exists
+          const exists = await this.questdbService.checkDataExists(
+            'market_candles',
+            instrumentKey,
+            phase.startDate,
+            phase.endDate,
+          );
+
+          if (exists) {
+            this.logger.debug(
+              `Skipping ${phase.label} for ${instrumentKey} (already exists)`,
+            );
+            completedPhases++;
+            continue;
+          }
+
+          // Fetch candles
+          const candles =
+            await this.upstoxHistoricalService.fetchHistoricalCandles(
+              {
+                instrument_key: instrumentKey,
+                interval: phase.interval.toString(),
+                unit: phase.unit,
+                from_date: phase.startDate.toISOString().split('T')[0],
+                to_date: phase.endDate.toISOString().split('T')[0],
+              },
+              (table, key) => this.questdbService.getLastTimestamp(table, key),
+            );
+
+          if (candles.length > 0) {
+            await this.questdbService.insertCandles(candles);
+            totalCandles += candles.length;
+
+            this.logger.log(
+              `✓ ${phase.label}: ${candles.length} candles for ${instrumentKey}`,
+            );
+          } else {
+            this.logger.debug(`No data for ${phase.label} - ${instrumentKey}`);
+          }
+        } catch (error) {
+          this.logger.error(
+            `Failed to fetch ${phase.label} for ${instrumentKey}`,
+            error,
+          );
+        }
+
+        completedPhases++;
+
+        // Emit progress
+        this.emitProgress({
+          totalInstruments: request.instrumentKeys.length,
+          completedInstruments: Math.floor(completedPhases / plan.length),
+          currentInstrument: instrumentKey,
+          totalCandles,
+          elapsedMs: Date.now() - startTime,
+        });
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    this.logger.log(
+      `Multi-timeframe backfill completed: ${totalCandles} candles in ${duration}ms`,
+    );
+
+    this.eventEmitter.emit('backfill.completed', {
+      totalInstruments: request.instrumentKeys.length,
+      totalCandles,
+      durationMs: duration,
+    });
+
+    return totalCandles;
   }
 
   /**
