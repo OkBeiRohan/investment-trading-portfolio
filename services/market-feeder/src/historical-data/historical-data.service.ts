@@ -4,15 +4,33 @@
  * Fetches 1-minute candles for past 1 year for NIFTY50 ecosystem
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CandlesRepository } from '@repo/database';
-import { SimpleUpstoxClient } from '@repo/market-sdk';
+import { SimpleUpstoxClient, type UpstoxCandleData } from '@repo/market-sdk';
 import {
   NIFTY50_CONSTITUENTS,
   NIFTY50_INDEX,
   INDIA_VIX,
 } from './nifty50-instruments';
+
+interface CandleInsert {
+  timestamp: Date;
+  instrumentKey: string;
+  intervalValue: number;
+  intervalUnit: 'minute' | 'second' | 'day';
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  openInterest: number | null;
+}
 
 @Injectable()
 export class HistoricalDataBootstrapService implements OnModuleInit {
@@ -97,20 +115,20 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
         // Fetch candles from Upstox
         const upstoxCandles =
-          await this.upstoxClient.getHistoricalCandlesBatched(
+          (await this.upstoxClient.getHistoricalCandlesBatched(
             instrumentKey,
             '1minute',
             oneYearAgo,
             today,
-          );
+          )) as UpstoxCandleData[];
 
-        if (upstoxCandles.length === 0) {
+        if (!upstoxCandles || upstoxCandles.length === 0) {
           this.logger.warn(`No data returned for ${instrumentKey}`);
           continue;
         }
 
         // Transform to MarketCandle format
-        const candles = upstoxCandles.map((c) => ({
+        const candles: CandleInsert[] = upstoxCandles.map((c) => ({
           timestamp: new Date(c.timestamp),
           instrumentKey,
           intervalValue: 1,
@@ -134,9 +152,10 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         // Rate limiting: wait 500ms between instruments
         await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         this.logger.error(
-          `Failed to fetch data for ${instrumentKey}`,
-          error.message,
+          `Failed to fetch data for ${instrumentKey}: ${errorMessage}`,
         );
       }
     }
@@ -170,7 +189,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
   /**
    * Manually trigger bootstrap (for HTTP endpoint)
    */
-  async triggerBootstrap(): Promise<{ message: string }> {
+  triggerBootstrap(): { message: string } {
     if (!this.upstoxClient) {
       throw new Error(
         'Upstox client not initialized. Set UPSTOX_ACCESS_TOKEN in .env',
@@ -178,8 +197,10 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     }
 
     // Run async without blocking response
-    this.bootstrapHistoricalData().catch((error) => {
-      this.logger.error('Bootstrap failed', error);
+    void this.bootstrapHistoricalData().catch((error) => {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Bootstrap failed: ${errorMessage}`);
     });
 
     return {

@@ -81,17 +81,60 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * Create all tables from SQL files
    */
   private async createTables(): Promise<void> {
-    // Resolve from @repo/schema package location
-    const schemaPath = join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      "schema",
-      "sql",
-      "schema"
-    );
+    let schemaPath: string;
 
+    // Try multiple resolution strategies
+    try {
+      // Strategy 1: Resolve from built package
+      const schemaPackagePath = require.resolve("@repo/schema/package.json");
+      schemaPath = join(schemaPackagePath, "..", "sql", "schema");
+      this.logger.debug(`Using @repo/schema package: ${schemaPath}`);
+    } catch {
+      // Strategy 2: Traverse up from __dirname to find monorepo root
+      let currentDir = __dirname;
+      let monorepoRoot: string | null = null;
+
+      // Go up max 10 levels to find package.json with workspaces
+      for (let i = 0; i < 10; i++) {
+        const parentDir = join(currentDir, "..");
+        try {
+          const pkgPath = join(parentDir, "package.json");
+          const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+          if (pkg.workspaces || pkg.name === "investment-trading-portfolio") {
+            monorepoRoot = parentDir;
+            break;
+          }
+        } catch {
+          // Continue searching
+        }
+        currentDir = parentDir;
+      }
+
+      if (monorepoRoot) {
+        schemaPath = join(monorepoRoot, "packages", "schema", "sql", "schema");
+        this.logger.debug(`Using monorepo root: ${schemaPath}`);
+      } else {
+        // Strategy 3: Hardcoded fallback (development only)
+        schemaPath = join(
+          __dirname,
+          "..",
+          "..",
+          "..",
+          "..",
+          "..",
+          "packages",
+          "schema",
+          "sql",
+          "schema"
+        );
+        this.logger.warn(`Using hardcoded fallback: ${schemaPath}`);
+      }
+    }
+
+    await this.executeTableCreation(schemaPath);
+  }
+
+  private async executeTableCreation(schemaPath: string): Promise<void> {
     const tableFiles = [
       "create_instrument_master.sql",
       "create_market_candles.sql",
@@ -104,10 +147,12 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
     ];
 
     this.logger.log(`Creating ${tableFiles.length} tables from SQL files...`);
+    this.logger.log(`Schema path: ${schemaPath}`);
 
     for (const file of tableFiles) {
       try {
-        const sql = readFileSync(join(schemaPath, file), "utf-8");
+        const filePath = join(schemaPath, file);
+        const sql = readFileSync(filePath, "utf-8");
         await this.pool.query(sql);
         this.logger.log(
           `✓ Created table: ${file.replace("create_", "").replace(".sql", "")}`
