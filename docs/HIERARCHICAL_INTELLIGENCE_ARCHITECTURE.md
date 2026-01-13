@@ -814,36 +814,77 @@ if drl_agent_slippage > benchmark_slippage * 1.2:
 
 ## Training Pipeline Updates
 
+### Architecture (January 2026)
+
+**Location**: `services/training-pipeline/`
+
+**Key Design**: **ZERO Feature Engineering** in training-pipeline
+
+```
+market-feeder (Real-time) →
+compute-engine (Rust Feature Engineering) →
+QuestDB (Pre-computed Features) →
+training-pipeline (Model Training ONLY) →
+ONNX Models →
+algo-worker (Production Inference)
+```
+
+### Implementation Status
+
+**TIER 1 - Core (Always-On)**:
+
+- ✅ LightGBM (33 features) - IMPLEMENTED with walk-forward validation
+- ⏳ XGBoost - PLACEHOLDER (same 33 features)
+- ⏳ CNN-LSTM - PLACEHOLDER (sequential modeling)
+- ⏳ GINN - PLACEHOLDER (graph-based)
+- ⏳ SVM - PLACEHOLDER (RBF kernel)
+- ⏳ Transformer - PLACEHOLDER (attention-based)
+
+**TIER 2 - Regime-Activated**:
+
+- ⏳ TFT (Temporal Fusion Transformer) - Requires TFT feature schema in compute-engine
+- ⏳ LiT (LOB Informed Transformer) - Requires LOB tensor schema in compute-engine
+
+**Meta-Learner (Level-1)**:
+
+- ⏳ Contextual gating network - PLACEHOLDER
+
 ### Required Changes
 
 **New Pipelines** (to be created):
 
 1. **`train_lit`**: LiT model training
-   - Input: Historical LOB depth-20 data
+   - **Status**: PLACEHOLDER created, needs implementation
+   - Input: Historical LOB depth-20 data from QuestDB
    - Labels: Price movements (10s-1min)
    - Output: ONNX model for production
 
 2. **`train_tft`**: TFT model training
-   - Input: Time-series (price, vol, IV, Greeks)
+   - **Status**: PLACEHOLDER created, needs implementation
+   - Input: Time-series (price, vol, IV, Greeks) from QuestDB
    - Labels: Multi-task (regime, vol forecast, price bounds)
    - Output: ONNX model for production
 
 3. **`train_meta_learner`**: Contextual gating network
-   - Input: Stacked Level-0 predictions + market state
+   - **Status**: Pipeline created, needs implementation
+   - Input: Stacked Level-0 predictions (OOF) + market state
    - Labels: Historical ground truth
    - Loss: Cross-entropy + Brier score
    - Output: ONNX model for production
 
 4. **`train_drl_execution`**: PPO agent training
+   - **Status**: Pipeline created, needs implementation
    - Phase 1: Offline pre-training (market replay)
    - Phase 2: Online fine-tuning (paper trading)
    - Output: PyTorch model checkpoint
 
 **Updated Pipelines**:
 
-- **`train_ensemble`**: Keep LightGBM/XGBoost as-is
-- **`export_onnx`**: Add LiT + TFT + Meta-Learner exports
-- **`backtesting`**: Add multi-model backtesting
+- ✅ **`train_ensemble`**: LightGBM implemented, 5 others placeholders
+- ⏳ **`export_onnx`**: Add LiT + TFT + Meta-Learner exports
+- ⏳ **`backtesting`**: Add multi-model backtesting
+
+**See**: [training-pipeline README](../services/training-pipeline/README.md), [ARCHITECTURE_UPDATE.md](../services/training-pipeline/docs/ARCHITECTURE_UPDATE.md)
 
 ---
 

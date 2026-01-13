@@ -19,16 +19,17 @@ Old Architecture (Deprecated):
   QuestDB (Raw Ticks) → training-pipeline (Feature Engineering) → Models
 
 New Architecture (Current):
-  QuestDB (Raw Ticks) → market-feeder → compute-engine (Feature Engineering) →
-  QuestDB (Pre-computed Features) → training-pipeline (Model Training) → ONNX Models
+  Upstox → market-feeder → compute-engine (Rust Feature Engineering) →
+  QuestDB (Pre-computed Features) → training-pipeline (Model Training ONLY) → ONNX Models
 ```
 
 **Why This Change?**
 
+- **Zero Train-Serve Skew**: Models train on EXACT same features algo-worker uses
 - **Zero Duplication**: Feature engineering logic defined once in compute-engine
-- **Training = Production**: Models train on exact same features algo-worker uses
 - **Type Safety**: Rust types auto-generated to TypeScript via ts-rs
 - **Performance**: <1ms feature computation in Rust vs 10-50ms in Python
+- **Consistency**: Market State Encoder (MSE) runs identically in training and production
 
 ### **Design Principles**
 
