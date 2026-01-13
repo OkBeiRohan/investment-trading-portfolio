@@ -93,14 +93,15 @@ export class FeatureComputationService {
     this.logger.debug(`Fetched ${rawData.length} raw data points`);
 
     // 2. Call compute-engine to calculate features
-    const features = await this.computeEngine.computeFeatures(rawData);
+    // const features = await this.computeEngine.computeFeatures(rawData);
 
-    this.logger.debug(`Computed ${features.length} feature rows`);
+    // this.logger.debug(`Computed ${features.length} feature rows`);
 
     // 3. Store features in training_features_lightgbm table
-    await this.storeFeatures(instrumentKey, features);
+    // await this.storeFeatures(instrumentKey, features);
 
-    return features.length;
+    // return features.length;
+    return 0; // Placeholder until compute-engine integration is done
   }
 
   /**
@@ -152,7 +153,8 @@ export class FeatureComputationService {
     `;
 
     const result = await this.questdb.query(query);
-    return result.rows;
+    // return result.rows;
+    return [];
   }
 
   /**

@@ -3,15 +3,29 @@
  * REST API for manual backfill operations
  */
 
-import { Controller, Post, Body, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Logger, Get } from '@nestjs/common';
 import { HistoricalDataService } from './historical-data.service';
+import { HistoricalDataBootstrapService } from './historical-data-bootstrap.service';
 import type { BackfillRequest } from './historical-data.service';
 
 @Controller('historical-data')
 export class HistoricalDataController {
   private readonly logger = new Logger(HistoricalDataController.name);
 
-  constructor(private readonly historicalDataService: HistoricalDataService) {}
+  constructor(
+    private readonly historicalDataService: HistoricalDataService,
+    private readonly bootstrapService: HistoricalDataBootstrapService,
+  ) {}
+
+  /**
+   * Bootstrap NIFTY50 historical data
+   * GET /historical-data/bootstrap
+   */
+  @Get('bootstrap')
+  async bootstrap() {
+    this.logger.log('Bootstrap endpoint called');
+    return this.bootstrapService.triggerBootstrap();
+  }
 
   /**
    * Manual backfill endpoint

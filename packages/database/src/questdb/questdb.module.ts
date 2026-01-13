@@ -1,33 +1,46 @@
 /**
- * QuestDB Module
+ * QuestDB Module v2.0
  * NestJS module for QuestDB time-series database integration
- * Provides production service and repositories for market data
+ * Production schema aligned with Upstox V3 APIs
  */
 
 import { Global, Module } from "@nestjs/common";
+import { Pool } from "pg";
 import { QuestDBService } from "./questdb.service";
 import {
   CandlesRepository,
-  QuotesRepository,
-  GreeksRepository,
-  DepthRepository,
+  InstrumentMasterRepository,
+  InstrumentFeaturesRepository,
+  MarketStateRepository,
+  OptionChainRepository,
+  TrainingLabelsRepository,
 } from "./repositories";
 
 @Global()
 @Module({
   providers: [
     QuestDBService,
+    {
+      provide: Pool,
+      useFactory: (questdb: QuestDBService) => questdb.getPool(),
+      inject: [QuestDBService],
+    },
     CandlesRepository,
-    QuotesRepository,
-    GreeksRepository,
-    DepthRepository,
+    InstrumentMasterRepository,
+    InstrumentFeaturesRepository,
+    MarketStateRepository,
+    OptionChainRepository,
+    TrainingLabelsRepository,
   ],
   exports: [
     QuestDBService,
+    Pool,
     CandlesRepository,
-    QuotesRepository,
-    GreeksRepository,
-    DepthRepository,
+    InstrumentMasterRepository,
+    InstrumentFeaturesRepository,
+    MarketStateRepository,
+    OptionChainRepository,
+    TrainingLabelsRepository,
   ],
 })
 export class QuestDBModule {}

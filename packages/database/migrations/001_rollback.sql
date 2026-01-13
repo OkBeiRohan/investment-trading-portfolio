@@ -1,25 +1,29 @@
 -- QuestDB Rollback Script
--- Version: 1.0.0
+-- Version: 2.0.0
 -- Date: January 13, 2026
--- Description: Rollback initial schema setup
+-- Description: Rollback production-grade schema setup
 --
 -- WARNING: This will drop all tables and their data!
 -- Only run this if you want to completely reset the database.
 --
 -- Run this script in QuestDB console (http://localhost:9000)
 
--- Drop training tables
-DROP TABLE IF EXISTS training_labels;
-DROP TABLE IF EXISTS training_features_tft;
-DROP TABLE IF EXISTS training_features_lightgbm;
-DROP TABLE IF EXISTS market_ticks;
-
--- Drop core market data tables
+-- Drop tables in reverse dependency order
 DROP TABLE IF EXISTS system_audit;
-DROP TABLE IF EXISTS market_depth;
-DROP TABLE IF EXISTS option_greeks;
-DROP TABLE IF EXISTS market_quotes;
+DROP TABLE IF EXISTS training_labels_1m;
+DROP TABLE IF EXISTS market_state_1m;
+DROP TABLE IF EXISTS option_chain_snapshot;
+DROP TABLE IF EXISTS instrument_features_1m;
+DROP TABLE IF EXISTS orderbook_l2_snapshots;
 DROP TABLE IF EXISTS market_candles;
+DROP TABLE IF EXISTS instrument_master;
 
 -- Verify all tables are dropped
 -- SELECT table_name FROM tables();
+
+-- =============================================================================
+-- ROLLBACK COMPLETE
+-- =============================================================================
+-- All production tables have been dropped.
+-- Re-run 001_initial_schema.sql to recreate the schema.
+-- =============================================================================

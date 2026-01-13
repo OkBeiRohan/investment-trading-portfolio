@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { JsMarketDataPoint, JsFeatureVector } from '@repo/compute-engine';
+// import type { JsMarketDataPoint, JsFeatureVector } from 'compute-engine';
 
 // Dynamic import of native module
-let computeEngine: typeof import('@repo/compute-engine') | null = null;
+// let computeEngine: typeof import('compute-engine') | null = null;
 
 /**
  * Compute Engine Service
@@ -23,23 +23,23 @@ export class ComputeEngineService {
   private isInitialized = false;
 
   constructor() {
-    void this.initialize();
+    // void this.initialize();
   }
 
   /**
    * Initialize compute-engine native module
    */
-  private async initialize(): Promise<void> {
-    try {
-      // Dynamically import native module
-      computeEngine = await import('@repo/compute-engine');
-      this.isInitialized = true;
-      this.logger.log('Compute engine initialized successfully');
-    } catch (error) {
-      this.logger.error('Failed to load compute-engine native module', error);
-      throw error;
-    }
-  }
+  // private async initialize(): Promise<void> {
+  //   try {
+  //     // Dynamically import native module
+  //     computeEngine = await import('@repo/compute-engine');
+  //     this.isInitialized = true;
+  //     this.logger.log('Compute engine initialized successfully');
+  //   } catch (error) {
+  //     this.logger.error('Failed to load compute-engine native module', error);
+  //     throw error;
+  //   }
+  // }
 
   /**
    * Compute features for a batch of market data
@@ -49,40 +49,40 @@ export class ComputeEngineService {
    *
    * Type-safe end-to-end: TypeScript types auto-generated from Rust
    */
-  async computeFeatures(
-    inputData: JsMarketDataPoint[],
-  ): Promise<JsFeatureVector[]> {
-    if (!this.isInitialized || !computeEngine) {
-      await this.initialize();
-    }
+  // async computeFeatures(
+  //   inputData: JsMarketDataPoint[],
+  // ): Promise<JsFeatureVector[]> {
+  //   if (!this.isInitialized || !computeEngine) {
+  //     await this.initialize();
+  //   }
 
-    if (!computeEngine) {
-      throw new Error('Compute engine not available');
-    }
+  //   if (!computeEngine) {
+  //     throw new Error('Compute engine not available');
+  //   }
 
-    try {
-      this.logger.debug(
-        `Computing features for ${inputData.length} data points`,
-      );
+  //   try {
+  //     this.logger.debug(
+  //       `Computing features for ${inputData.length} data points`,
+  //     );
 
-      // Call Rust function (zero-copy via NAPI-RS)
-      const features = computeEngine.computeFeaturesNapi(inputData);
+  //     // Call Rust function (zero-copy via NAPI-RS)
+  //     const features = computeEngine.computeFeaturesNapi(inputData);
 
-      this.logger.debug(
-        `Features computed: ${features.length} rows × 33 features`,
-      );
+  //     this.logger.debug(
+  //       `Features computed: ${features.length} rows × 33 features`,
+  //     );
 
-      return features;
-    } catch (error) {
-      this.logger.error('Feature computation failed', error);
-      throw error;
-    }
-  }
+  //     return features;
+  //   } catch (error) {
+  //     this.logger.error('Feature computation failed', error);
+  //     throw error;
+  //   }
+  // }
 
   /**
    * Health check: Verify compute-engine module is loaded
    */
-  async healthCheck(): Promise<boolean> {
-    return this.isInitialized && computeEngine !== null;
-  }
+  // async healthCheck(): Promise<boolean> {
+  //   return this.isInitialized && computeEngine !== null;
+  // }
 }

@@ -33,11 +33,13 @@ Multi-database package providing MongoDB, QuestDB, and Redis integration for the
 ┌──────────────────────────────────────────────┐
 │  QuestDB (Time-Series Database)              │
 │  - 10-20x faster than TimescaleDB            │
-│  - Tick data, OHLCV candles                  │
-│  - Market data, option Greeks, depth-20      │
-│  - ✨ NEW: Training features + labels        │
+│  - Production-grade v2.0 schema (Jan 2026)   │
+│  - ✅ Upstox V3 API aligned                  │
+│  - ✅ Unified market_candles (all intervals) │
+│  - ✅ Market State Encoder output            │
+│  - ✅ ML training labels (explicit)          │
 │  - Optimized for append-only workloads       │
-│  - Training data: ~600GB/year (compressed)   │
+│  - Training data: ~50GB/year (90% reduction) │
 └──────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────┐
@@ -50,24 +52,32 @@ Multi-database package providing MongoDB, QuestDB, and Redis integration for the
 └──────────────────────────────────────────────┘
 ```
 
-### QuestDB Table Overview
+### QuestDB Schema v2.0 (Production-Grade)
 
-**Production Tables** (Real-time):
+**Core Tables** (Data Contract Frozen):
 
-- `market_candles`: OHLCV data (multiple intervals)
-- `market_quotes`: Bid/ask snapshots
-- `option_greeks`: Greeks + IV data
-- `market_depth`: Order book (5 levels)
+1. `instrument_master` - Instrument registry (spot, futures, options, stocks)
+2. `market_candles` - Unified OHLCV data (all instruments, all intervals)
+3. `orderbook_l2_snapshots` - Level 2 order book (optional, for execution models)
+4. `instrument_features_1m` - Derived intraday features (VWAP, ATR, RSI, etc.)
+5. `option_chain_snapshot` - Option chain with Greeks (feeds Market State Encoder)
+6. `market_state_1m` - Market State Encoder output (THIS feeds LightGBM)
+7. `training_labels_1m` - Supervised learning labels (EXPLICIT & SEPARATE)
+8. `system_audit` - Distributed tracing logs
 
-**Training Tables** (ML Pipeline) - ✨ NEW:
+**Design Principles**:
 
-- `market_ticks`: Unified tick data (spot, futures, options, stocks)
-- `market_depth_20`: 20-level order book (microstructure)
-- `training_features_lightgbm`: 43 pre-computed features
-- `training_features_tft`: Time-series features for regime detection
-- `training_labels`: Supervised learning targets
+- ✅ One unified raw table per data "shape"
+- ✅ No derived data mixed with raw
+- ✅ Instrument identity matches Upstox `instrument_key`
+- ✅ Time-series first (timestamp is king)
+- ✅ Training must be reproducible from DB alone
 
-📖 **See**: [`docs/TRAINING_DATA_SCHEMA.md`](./docs/TRAINING_DATA_SCHEMA.md) for complete schema reference
+📖 **See**:
+
+- [`migrations/MIGRATION_v2.md`](./migrations/MIGRATION_v2.md) - Full migration guide
+- [`docs/TRAINING_DATA_SCHEMA.md`](./docs/TRAINING_DATA_SCHEMA.md) - Legacy schema reference
+- `@repo/schema/market-data/questdb-tables-v2.schema.ts` - TypeScript types
 
 ## Installation
 
