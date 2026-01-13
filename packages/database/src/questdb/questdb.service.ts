@@ -137,7 +137,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * 4. WAL enabled for write-ahead logging (durability)
    * 5. NOCACHE for high-cardinality symbols (>10K unique values)
    * 6. INDEX only on frequently filtered columns
-   * 7. Materialized views for auto-aggregation (reduce query-time computation)
+   * 7. Aggregated candle tables (populated by application, not automatic)
    */
   private async createTables(): Promise<void> {
     const tableNames = [
@@ -150,33 +150,33 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
       "training_features_lightgbm",
       "training_features_tft",
       "training_labels",
+      "market_candles_1m",
+      "market_candles_30m",
     ];
 
-    // Create base tables
+    // Create all tables
     for (const tableName of tableNames) {
       try {
-        const sql = loadSqlQueryCached(`schema/create_${tableName}`);
+        // Check if this is a "view" table (aggregated candles)
+        const isAggregatedCandle =
+          tableName.includes("_view") ||
+          tableName === "market_candles_1m" ||
+          tableName === "market_candles_30m";
+
+        const sqlFileName =
+          isAggregatedCandle && !tableName.includes("_view")
+            ? `schema/create_${tableName}_view`
+            : `schema/create_${tableName}`;
+
+        const sql = loadSqlQueryCached(sqlFileName);
         await this.query(sql);
         this.logger.log(`Table created/verified: ${tableName}`);
       } catch (error) {
-        this.logger.error(`Failed to create table: ${tableName}`, error);
-      }
-    }
-
-    // Create materialized views (after base tables exist)
-    const viewNames = ["market_candles_1m", "market_candles_30m"];
-
-    for (const viewName of viewNames) {
-      try {
-        const sql = loadSqlQueryCached(`schema/create_${viewName}_view`);
-        await this.query(sql);
-        this.logger.log(`Materialized view created/verified: ${viewName}`);
-      } catch (error) {
-        this.logger.warn(
-          `Failed to create materialized view: ${viewName}`,
-          error
+        this.logger.error(
+          `Failed to create table: ${tableName}`,
+          error instanceof Error ? error.message : String(error),
+          error instanceof Error ? error.stack : undefined
         );
-        // Non-fatal: views may already exist or require base data
       }
     }
   }

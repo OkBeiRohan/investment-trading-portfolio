@@ -16,8 +16,8 @@
 -- 7. training_features_lightgbm - LightGBM training features
 -- 8. training_features_tft - TFT time-series features
 -- 9. training_labels - Supervised learning labels
--- 10. market_candles_1m (VIEW) - Auto-aggregated 1-minute candles
--- 11. market_candles_30m (VIEW) - Auto-aggregated 30-minute candles
+-- 10. market_candles_1m - Aggregated 1-minute candles (populated by app)
+-- 11. market_candles_30m - Aggregated 30-minute candles (populated by app)
 --
 -- NOTE: This migration is OPTIONAL. The questdb.service.ts automatically
 -- creates all tables on first run. Use this migration only if you want to
@@ -269,51 +269,50 @@ CREATE TABLE IF NOT EXISTS training_labels (
 DEDUP UPSERT KEYS(timestamp, reference_instrument);
 
 -- =============================================================================
--- MATERIALIZED VIEWS (Auto-Aggregation)
+-- AGGREGATED CANDLE TABLES (Application-Managed)
 -- =============================================================================
+-- NOTE: QuestDB doesn't support auto-refreshing materialized views.
+-- These are regular tables that must be populated by the application.
+-- The market-feeder service should run periodic jobs to populate these tables
+-- using the SQL scripts in packages/schema/sql/utils/populate-*.sql
 
 -- =============================================================================
--- VIEW 1: market_candles_1m
--- Auto-aggregated 1-minute candles from market_quotes
--- Reduces query-time computation for dashboard charts
--- NOTE: Will be auto-created by questdb.service.ts
+-- TABLE 10: market_candles_1m
+-- 1-minute candles aggregated from market_quotes
+-- Populated by: packages/schema/sql/utils/populate-market-candles-1m.sql
+-- Refresh frequency: Every 5 minutes
 -- =============================================================================
-CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_1m AS
-SELECT
-  timestamp,
-  instrument_key,
-  '1m' as interval,
-  first(ltp) as open,
-  max(ltp) as high,
-  min(ltp) as low,
-  last(ltp) as close,
-  sum(volume) as volume,
-  last(open_interest) as open_interest
-FROM market_quotes
-SAMPLE BY 1m
-ALIGN TO CALENDAR;
+CREATE TABLE IF NOT EXISTS market_candles_1m (
+  timestamp TIMESTAMP,
+  instrument_key SYMBOL CAPACITY 1000,
+  interval SYMBOL CAPACITY 10,
+  open DOUBLE,
+  high DOUBLE,
+  low DOUBLE,
+  close DOUBLE,
+  volume LONG,
+  open_interest LONG
+) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+DEDUP UPSERT KEYS(timestamp, instrument_key);
 
 -- =============================================================================
--- VIEW 2: market_candles_30m
--- Auto-aggregated 30-minute candles from 1m candles
--- For longer-term analysis and backtesting
--- NOTE: Will be auto-created by questdb.service.ts
+-- TABLE 11: market_candles_30m
+-- 30-minute candles aggregated from 1-minute candles
+-- Populated by: packages/schema/sql/utils/populate-market-candles-30m.sql
+-- Refresh frequency: Every 30 minutes
 -- =============================================================================
-CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_30m AS
-SELECT
-  timestamp,
-  instrument_key,
-  '30m' as interval,
-  first(open) as open,
-  max(high) as high,
-  min(low) as low,
-  last(close) as close,
-  sum(volume) as volume,
-  last(open_interest) as open_interest
-FROM market_candles
-WHERE interval = '1m'
-SAMPLE BY 30m
-ALIGN TO CALENDAR;
+CREATE TABLE IF NOT EXISTS market_candles_30m (
+  timestamp TIMESTAMP,
+  instrument_key SYMBOL CAPACITY 1000,
+  interval SYMBOL CAPACITY 10,
+  open DOUBLE,
+  high DOUBLE,
+  low DOUBLE,
+  close DOUBLE,
+  volume LONG,
+  open_interest LONG
+) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+DEDUP UPSERT KEYS(timestamp, instrument_key);
 
 -- =============================================================================
 -- VERIFICATION QUERIES
@@ -336,8 +335,7 @@ ALIGN TO CALENDAR;
 -- =============================================================================
 -- MIGRATION COMPLETE
 -- =============================================================================
--- Tables created: 9
--- Views created: 2 (materialized views enabled)
+-- Tables created: 11 (9 base tables + 2 aggregated candle tables)
 -- Total execution time: ~5 seconds
 --
 -- IMPORTANT: This migration is OPTIONAL!
@@ -353,4 +351,7 @@ ALIGN TO CALENDAR;
 -- 1. Verify tables: SELECT table_name FROM tables();
 -- 2. Check storage: SELECT sum(diskSize) FROM table_partitions();
 -- 3. Start data ingestion via market-feeder service
+-- 4. Set up periodic jobs to populate aggregated candle tables:
+--    - market_candles_1m (every 5 minutes)
+--    - market_candles_30m (every 30 minutes)
 -- =============================================================================

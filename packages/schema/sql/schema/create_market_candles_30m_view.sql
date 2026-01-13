@@ -1,17 +1,17 @@
--- 30-minute candles (auto-aggregated from 1m candles)
+-- 30-minute candles (aggregated from 1m candles)
 -- For longer-term analysis and backtesting
-CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_30m AS
-SELECT
-  timestamp,
-  instrument_key,
-  '30m' as interval,
-  first(open) as open,
-  max(high) as high,
-  min(low) as low,
-  last(close) as close,
-  sum(volume) as volume,
-  last(open_interest) as open_interest
-FROM market_candles
-WHERE interval = '1m'
-SAMPLE BY 30m
-ALIGN TO CALENDAR;
+-- NOTE: QuestDB doesn't support traditional materialized views
+-- This is a regular table that needs to be populated via INSERT FROM SELECT
+-- The application should periodically refresh this data
+CREATE TABLE IF NOT EXISTS market_candles_30m (
+  timestamp TIMESTAMP,
+  instrument_key SYMBOL CAPACITY 1000,
+  interval SYMBOL CAPACITY 10,
+  open DOUBLE,
+  high DOUBLE,
+  low DOUBLE,
+  close DOUBLE,
+  volume LONG,
+  open_interest LONG
+) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+DEDUP UPSERT KEYS(timestamp, instrument_key);

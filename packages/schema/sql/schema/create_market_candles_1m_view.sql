@@ -1,16 +1,17 @@
 -- 1-minute candles (auto-aggregated from market_quotes)
 -- Reduces query-time computation for dashboard charts
-CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_1m AS
-SELECT
-  timestamp,
-  instrument_key,
-  '1m' as interval,
-  first(ltp) as open,
-  max(ltp) as high,
-  min(ltp) as low,
-  last(ltp) as close,
-  sum(volume) as volume,
-  last(open_interest) as open_interest
-FROM market_quotes
-SAMPLE BY 1m
-ALIGN TO CALENDAR;
+-- NOTE: QuestDB doesn't support traditional materialized views
+-- This is a regular table that needs to be populated via INSERT FROM SELECT
+-- The application should periodically refresh this data
+CREATE TABLE IF NOT EXISTS market_candles_1m (
+  timestamp TIMESTAMP,
+  instrument_key SYMBOL CAPACITY 1000,
+  interval SYMBOL CAPACITY 10,
+  open DOUBLE,
+  high DOUBLE,
+  low DOUBLE,
+  close DOUBLE,
+  volume LONG,
+  open_interest LONG
+) TIMESTAMP(timestamp) PARTITION BY DAY WAL
+DEDUP UPSERT KEYS(timestamp, instrument_key);

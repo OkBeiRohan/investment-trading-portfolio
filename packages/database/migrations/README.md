@@ -16,10 +16,10 @@ This directory contains SQL migration scripts for QuestDB schema management.
 
 ## Available Migrations
 
-| Migration                | Description            | Tables Created     |
-| ------------------------ | ---------------------- | ------------------ |
-| `001_initial_schema.sql` | Initial schema setup   | 9 tables + 2 views |
-| `001_rollback.sql`       | Rollback migration 001 | Drops all tables   |
+| Migration                | Description            | Tables Created   |
+| ------------------------ | ---------------------- | ---------------- |
+| `001_initial_schema.sql` | Initial schema setup   | 11 tables        |
+| `001_rollback.sql`       | Rollback migration 001 | Drops all tables |
 
 ## How to Run
 
@@ -84,8 +84,8 @@ SELECT table_name FROM tables();
 -- training_features_lightgbm
 -- training_features_tft
 -- training_labels
--- market_candles_1m (view)
--- market_candles_30m (view)
+-- market_candles_1m (aggregated table, populated by app)
+-- market_candles_30m (aggregated table, populated by app)
 
 -- Check table row counts
 SELECT
@@ -136,12 +136,12 @@ To completely reset the database:
 
 ### Materialized Views (Auto-Created)
 
-| View                 | Purpose                     | Source           |
-| -------------------- | --------------------------- | ---------------- |
-| `market_candles_1m`  | Auto-aggregated 1m candles  | `market_quotes`  |
-| `market_candles_30m` | Auto-aggregated 30m candles | `market_candles` |
+| View                 | Purpose                              | Source              |
+| -------------------- | ------------------------------------ | ------------------- |
+| `market_candles_1m`  | Aggregated 1m candles (app-managed)  | `market_quotes`     |
+| `market_candles_30m` | Aggregated 30m candles (app-managed) | `market_candles_1m` |
 
-**Note**: Materialized views are automatically created by `questdb.service.ts` and included in the migration.
+**Note**: These are regular tables populated by the application using periodic jobs. See `packages/schema/sql/utils/populate-*.sql` for aggregation queries.
 
 ## Storage Estimates
 
@@ -233,7 +233,9 @@ After running the migration:
    - `pnpm --filter market-feeder dev` (historical data fetching)
    - `pnpm --filter algo-worker dev` (feature computation)
 3. ✅ **Backfill data**: See `services/market-feeder/docs/MULTI_TIMEFRAME_STRATEGY.md`
-4. ✅ **Enable views**: Uncomment materialized views in migration after data ingestion
+4. ✅ **Set up aggregation jobs**: Create periodic jobs to populate candle tables:
+   - Run `populate-market-candles-1m.sql` every 5 minutes
+   - Run `populate-market-candles-30m.sql` every 30 minutes
 
 ---
 
