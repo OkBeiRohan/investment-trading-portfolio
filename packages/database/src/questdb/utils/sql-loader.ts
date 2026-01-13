@@ -12,7 +12,7 @@ import { readFileSync } from "fs";
  */
 export function loadSqlQuery(queryPath: string): string {
   const sqlPath = queryPath.endsWith(".sql") ? queryPath : `${queryPath}.sql`;
-  const fullPath = require.resolve(`@repo/schema/sql$/{sqlPath}`);
+  const fullPath = require.resolve(`@repo/schema/sql/${sqlPath}`);
 
   return readFileSync(fullPath, "utf-8");
 }
