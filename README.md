@@ -99,6 +99,25 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 
 **See [DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md) for full details.**
 
+### Compute Engine (Rust/NAPI)
+
+**High-performance feature computation for ML models**:
+
+- **Market State Encoder (MSE)**: Compresses 50,000+ signals/second into 33-200 features
+- **End-to-end Type Safety**: Rust types auto-generated to TypeScript via ts-rs (zero manual sync)
+- **7 Model Contracts**:
+  1. LightGBM (33 features) - Macro direction
+  2. TFT (time-series) - Regime & volatility forecasting
+  3. LiT (raw LOB) - Microstructure signals
+  4. Meta-Learner - Signal fusion
+  5. Strike Selector - Position sizing
+  6. PPO Execution - Optimal order placement
+  7. Exit Manager - Position management
+- **Performance**: <1ms MSE computation, 100K+ QuestDB writes/sec with batching
+- **Flow**: Market Feeder → Compute Engine (NAPI) → QuestDB → Training Pipeline
+
+**See [COMPUTE_ENGINE_INTEGRATION.md](docs/COMPUTE_ENGINE_INTEGRATION.md) for integration guide.**
+
 ```mermaid
 graph TD
     subgraph "Event-Driven Core"

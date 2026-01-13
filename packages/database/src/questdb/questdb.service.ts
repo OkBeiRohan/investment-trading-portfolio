@@ -94,6 +94,22 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     try {
+      // Test PostgreSQL connection first
+      try {
+        this.logger.log(
+          `Testing PostgreSQL connection to ${this.config.host}:${this.config.pgPort}...`
+        );
+        const testResult = await this.pool.query("SELECT 1 as test");
+        this.logger.log("PostgreSQL connection successful");
+      } catch (pgError) {
+        this.logger.error(
+          "PostgreSQL connection failed",
+          `Host: ${this.config.host}:${this.config.pgPort}`,
+          `Error: ${pgError instanceof Error ? pgError.message : String(pgError)}`
+        );
+        throw pgError;
+      }
+
       // Create sender options with configuration string
       // Format: protocol::addr=host:port;param1=value1;param2=value2
       let senderOptions = await SenderOptions.fromConfig(
@@ -137,142 +153,73 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * 4. WAL enabled for write-ahead logging (durability)
    * 5. NOCACHE for high-cardinality symbols (>10K unique values)
    * 6. INDEX only on frequently filtered columns
-   * 7. Materialized views for auto-aggregation (reduce query-time computation)
+   * 7. Aggregated candle tables (populated by application, not automatic)
    */
   private async createTables(): Promise<void> {
-    const tables = [
-      // Historical candles (OHLCV data) - Raw tick-level data
-      // Expected: 200K candles/day across all instruments and intervals
-      `CREATE TABLE IF NOT EXISTS market_candles (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
-        interval SYMBOL CAPACITY 20,
-        open DOUBLE,
-        high DOUBLE,
-        low DOUBLE,
-        close DOUBLE,
-        volume LONG,
-        open_interest LONG
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key, interval);`,
-
-      // Market quotes (bid/ask snapshots) - High-frequency tick data
-      // Expected: 1M quotes/day (tick-by-tick)
-      `CREATE TABLE IF NOT EXISTS market_quotes (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
-        ltp DOUBLE,
-        bid DOUBLE,
-        ask DOUBLE,
-        bid_qty INT,
-        ask_qty INT,
-        volume LONG,
-        open_interest LONG,
-        upper_circuit DOUBLE,
-        lower_circuit DOUBLE
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key);`,
-
-      // Option Greeks snapshots
-      // Expected: 50K greeks/day (snapshots every 5 minutes for active options)
-      `CREATE TABLE IF NOT EXISTS option_greeks (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
-        delta DOUBLE,
-        gamma DOUBLE,
-        theta DOUBLE,
-        vega DOUBLE,
-        iv DOUBLE,
-        underlying_price DOUBLE
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key);`,
-
-      // Market depth (order book levels)
-      // Expected: 500K depth updates/day (5 levels * 2 sides * 10K updates)
-      `CREATE TABLE IF NOT EXISTS market_depth (
-        timestamp TIMESTAMP,
-        instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
-        side SYMBOL CAPACITY 2,
-        level BYTE,
-        price DOUBLE,
-        quantity INT,
-        orders INT
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
-      DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);`,
-
-      // System audit log for distributed tracing
-      // Expected: 100K events/day (all system actions with trace_id)
-      `CREATE TABLE IF NOT EXISTS system_audit (
-        timestamp TIMESTAMP,
-        trace_id SYMBOL CAPACITY 100000 INDEX,
-        service SYMBOL CAPACITY 20,
-        level SYMBOL CAPACITY 10,
-        action SYMBOL CAPACITY 100,
-        user_id SYMBOL CAPACITY 1000,
-        metadata STRING
-      ) TIMESTAMP(timestamp) PARTITION BY DAY WAL;`,
+    const tableNames = [
+      "market_candles",
+      "market_quotes",
+      "option_greeks",
+      "market_depth",
+      "system_audit",
+      "market_ticks",
+      "training_features_lightgbm",
+      "training_features_tft",
+      "training_labels",
     ];
 
-    // Materialized Views for auto-aggregation (Blueprint requirement)
-    const materializedViews = [
-      // 1-minute candles (auto-aggregated from market_quotes)
-      // Reduces query-time computation for dashboard charts
-      `CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_1m AS
-      SELECT
-        timestamp,
-        instrument_key,
-        '1m' as interval,
-        first(ltp) as open,
-        max(ltp) as high,
-        min(ltp) as low,
-        last(ltp) as close,
-        sum(volume) as volume,
-        last(open_interest) as open_interest
-      FROM market_quotes
-      SAMPLE BY 1m
-      ALIGN TO CALENDAR;`,
+    this.logger.log(
+      `Starting table creation for ${tableNames.length} tables...`
+    );
 
-      // 30-minute candles (auto-aggregated from 1m candles)
-      // For longer-term analysis and backtesting
-      `CREATE MATERIALIZED VIEW IF NOT EXISTS market_candles_30m AS
-      SELECT
-        timestamp,
-        instrument_key,
-        '30m' as interval,
-        first(open) as open,
-        max(high) as high,
-        min(low) as low,
-        last(close) as close,
-        sum(volume) as volume,
-        last(open_interest) as open_interest
-      FROM market_candles
-      WHERE interval = '1m'
-      SAMPLE BY 30m
-      ALIGN TO CALENDAR;`,
-    ];
-
-    // Create base tables
-    for (const sql of tables) {
+    // Create all tables
+    for (const tableName of tableNames) {
       try {
+        const sqlFileName = `schema/create_${tableName}`;
+
+        const sql = loadSqlQueryCached(sqlFileName);
+        this.logger.debug(`Creating table ${tableName}...`);
+        this.logger.debug(`SQL preview: ${sql.substring(0, 200)}...`);
+
         await this.query(sql);
-        const tableName = sql.match(/TABLE IF NOT EXISTS (\w+)/)?.[1];
-        this.logger.log(`Table created/verified: ${tableName}`);
+        this.logger.log(`[OK] Table created/verified: ${tableName}`);
       } catch (error) {
-        this.logger.error(`Failed to create table: ${sql}`, error);
+        // Extract detailed PostgreSQL error information
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const errorCode = (error as any)?.code;
+        const errorDetail = (error as any)?.detail;
+        const errorHint = (error as any)?.hint;
+        const errorPosition = (error as any)?.position;
+        const errorStack = error instanceof Error ? error.stack : undefined;
+
+        const errorInfo = {
+          table: tableName,
+          message: errorMessage,
+          code: errorCode,
+          detail: errorDetail,
+          hint: errorHint,
+          position: errorPosition,
+          sqlFile: `schema/create_${tableName}.sql`,
+        };
+
+        this.logger.error(`[FAILED] Table creation failed: ${tableName}`);
+        this.logger.error(`Error message: ${errorMessage}`);
+        this.logger.error(`Error code: ${errorCode}`);
+        this.logger.error(`Error detail: ${errorDetail}`);
+        this.logger.error(`Error hint: ${errorHint}`);
+        this.logger.error(
+          `Full error info: ${JSON.stringify(errorInfo, null, 2)}`
+        );
+        if (errorStack) {
+          this.logger.error(`Stack trace: ${errorStack}`);
+        }
+
+        // Don't throw - continue creating other tables
       }
     }
 
-    // Create materialized views (after base tables exist)
-    for (const sql of materializedViews) {
-      try {
-        await this.query(sql);
-        const viewName = sql.match(/VIEW IF NOT EXISTS (\w+)/)?.[1];
-        this.logger.log(`Materialized view created/verified: ${viewName}`);
-      } catch (error) {
-        this.logger.warn(`Failed to create materialized view: ${sql}`, error);
-        // Non-fatal: views may already exist or require base data
-      }
-    }
+    this.logger.log("Table creation process completed");
   }
 
   /**
@@ -289,9 +236,33 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
         rows: result.rows as T[],
         rowCount: result.rowCount || 0,
       };
+    } catch (error) {
+      // Enhanced error logging for database queries
+      const errorInfo = {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        detail: (error as any)?.detail,
+        hint: (error as any)?.hint,
+        position: (error as any)?.position,
+        sql: sql.substring(0, 500), // Log first 500 chars of SQL
+      };
+
+      this.logger.error(
+        "QuestDB query failed",
+        JSON.stringify(errorInfo, null, 2)
+      );
+
+      throw error;
     } finally {
       client.release();
     }
+  }
+
+  /**
+   * Get ILP sender instance (for direct writes in repositories)
+   */
+  getSender(): Sender | null {
+    return this.sender;
   }
 
   /**
@@ -560,23 +531,10 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
 
     const pgInterval = intervalMap[expectedInterval] || "1 minute";
 
-    const sql = `
-      WITH expected_timestamps AS (
-        SELECT timestamp_sequence($1::timestamp, $2::timestamp, INTERVAL '${pgInterval}') as expected_ts
-      ),
-      actual_data AS (
-        SELECT timestamp
-        FROM ${table}
-        WHERE instrument_key = $3
-          AND timestamp >= $1
-          AND timestamp <= $2
-      )
-      SELECT expected_ts
-      FROM expected_timestamps
-      LEFT JOIN actual_data ON expected_timestamps.expected_ts = actual_data.timestamp
-      WHERE actual_data.timestamp IS NULL
-      ORDER BY expected_ts
-    `;
+    // Load SQL from schema and apply template variables
+    let sql = loadSqlQueryCached("utils/find-missing-ranges");
+    sql = sql.replace("{pgInterval}", pgInterval);
+    sql = sql.replace("{TABLE_NAME}", table);
 
     const result = await this.query<{ expected_ts: string }>(sql, [
       startDate.toISOString(),

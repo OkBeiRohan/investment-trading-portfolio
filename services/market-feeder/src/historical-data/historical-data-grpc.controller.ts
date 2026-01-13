@@ -47,7 +47,7 @@ export class HistoricalDataGrpcController {
 
   constructor(
     private readonly historicalDataService: HistoricalDataService,
-    private readonly telemetryService: TelemetryService,
+    // private readonly telemetryService: TelemetryService,
   ) {}
 
   @GrpcMethod('HistoricalDataService')
@@ -89,11 +89,11 @@ export class HistoricalDataGrpcController {
     _call: ServerDuplexStream<any, any>,
   ): Observable<BackfillProgress> {
     const subject = new Subject<BackfillProgress>();
-    const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';
+    // const traceId = this.telemetryService.getCurrentTraceId() || 'no-trace';
 
-    this.logger.log(
-      `gRPC StreamBackfillProgress started (trace_id: ${traceId})`,
-    );
+    // this.logger.log(
+    //   `gRPC StreamBackfillProgress started (trace_id: ${traceId})`,
+    // );
 
     void (async () => {
       try {

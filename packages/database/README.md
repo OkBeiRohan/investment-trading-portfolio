@@ -34,9 +34,10 @@ Multi-database package providing MongoDB, QuestDB, and Redis integration for the
 │  QuestDB (Time-Series Database)              │
 │  - 10-20x faster than TimescaleDB            │
 │  - Tick data, OHLCV candles                  │
-│  - Market data, option Greeks                │
-│  - Engineered features                       │
+│  - Market data, option Greeks, depth-20      │
+│  - ✨ NEW: Training features + labels        │
 │  - Optimized for append-only workloads       │
+│  - Training data: ~600GB/year (compressed)   │
 └──────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────┐
@@ -48,6 +49,25 @@ Multi-database package providing MongoDB, QuestDB, and Redis integration for the
 │  - WebSocket connection state                │
 └──────────────────────────────────────────────┘
 ```
+
+### QuestDB Table Overview
+
+**Production Tables** (Real-time):
+
+- `market_candles`: OHLCV data (multiple intervals)
+- `market_quotes`: Bid/ask snapshots
+- `option_greeks`: Greeks + IV data
+- `market_depth`: Order book (5 levels)
+
+**Training Tables** (ML Pipeline) - ✨ NEW:
+
+- `market_ticks`: Unified tick data (spot, futures, options, stocks)
+- `market_depth_20`: 20-level order book (microstructure)
+- `training_features_lightgbm`: 43 pre-computed features
+- `training_features_tft`: Time-series features for regime detection
+- `training_labels`: Supervised learning targets
+
+📖 **See**: [`docs/TRAINING_DATA_SCHEMA.md`](./docs/TRAINING_DATA_SCHEMA.md) for complete schema reference
 
 ## Installation
 

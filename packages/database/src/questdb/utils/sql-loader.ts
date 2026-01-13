@@ -4,6 +4,7 @@
  */
 
 import { readFileSync } from "fs";
+import { join, dirname } from "path";
 
 /**
  * Load SQL query from @repo/schema/sql/
@@ -11,7 +12,15 @@ import { readFileSync } from "fs";
  * @returns SQL query string
  */
 export function loadSqlQuery(queryPath: string): string {
-  const fullPath = require.resolve(`@repo/schema/sql/${queryPath}.sql`);
+  const sqlPath = queryPath.endsWith(".sql") ? queryPath : `${queryPath}.sql`;
+
+  // Resolve the @repo/schema package location
+  const schemaPackagePath = require.resolve("@repo/schema");
+  const schemaRootPath = dirname(dirname(schemaPackagePath)); // Go up from dist/index.js to package root
+
+  // Construct path to SQL file
+  const fullPath = join(schemaRootPath, "sql", sqlPath);
+
   return readFileSync(fullPath, "utf-8");
 }
 

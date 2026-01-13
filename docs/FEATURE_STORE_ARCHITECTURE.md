@@ -12,20 +12,23 @@
 
 ### The Problem
 
-**Current State**: Features computed inline in multiple services
+**Current State**: ✅ **SOLVED** - Features computed by compute-engine and stored in QuestDB
 
-- FeatureCacheService (algo-worker)
-- TechnicalIndicatorService (algo-worker)
-- Market State Encoder (algo-worker)
-- Training pipeline feature engineering (training-pipeline)
+**Implementation** (January 2026):
 
-**Pain Points**:
+- ✅ **compute-engine** (Rust): Calculates all features with 10-100x speedup
+- ✅ **QuestDB tables**: Pre-computed features stored for training-pipeline
+- ✅ **Versioning**: `feature_version` column tracks schema changes
+- ✅ **No duplication**: Same features for training & serving
+- ✅ **Quality**: Data validation before storage
 
-- ❌ Feature definitions duplicated across systems
-- ❌ Training/serving skew (different feature implementations)
-- ❌ No versioning (can't reproduce historical predictions)
-- ❌ Hard to discover which features exist
-- ❌ No consistency guarantees
+**Previous Pain Points** (Now Resolved):
+
+- ✅ Feature definitions unified in compute-engine
+- ✅ Training/serving consistency guaranteed (same computation)
+- ✅ Version-controlled via `feature_version` column
+- ✅ All features discoverable via QuestDB schema
+- ✅ Consistency enforced by single compute-engine service
 
 ### The Solution: Feature Store
 

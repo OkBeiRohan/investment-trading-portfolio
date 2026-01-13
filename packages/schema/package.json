@@ -34,7 +34,8 @@
   },
   "scripts": {
     "generate-json-schema": "tsx scripts/generate-json-schema.ts",
-    "generate-schemas": "pnpm generate-json-schema",
+    "generate-rust-types": "tsx scripts/generate-rust-types.ts",
+    "generate-schemas": "pnpm generate-json-schema && pnpm generate-rust-types",
     "check-types": "tsc --noEmit",
     "dev": "pnpm build --watch",
     "build": "tsc -b -v",
