@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Verify training pipeline compilation and imports
 
@@ -71,7 +70,7 @@ try:
     )
 
     print("  ✅ LightGBMTrainer")
-    _ = LightGBMTrainer  # Mark as used
+    _l = LightGBMTrainer  # Mark as used
 except ImportError as e:
     print(f"  ❌ LightGBMTrainer: {e}")
     sys.exit(1)
