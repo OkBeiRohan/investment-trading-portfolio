@@ -41,27 +41,31 @@ export class SimpleUpstoxClient {
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${accessToken || ""}`,
-        "Api-Version": "2.0",
+        "Api-Version": "3.0",
       },
     });
   }
 
   /**
-   * Fetch historical candle data
-   * @param instrumentKey - e.g., 'NSE_INDEX|Nifty 50', 'NSE_EQ|RELIANCE'
-   * @param interval - '1minute', '30minute', '1day'
+   * Fetch historical candle data using V3 API
+   * @param instrumentKey - e.g., 'NSE_INDEX|Nifty 50', 'NSE_EQ|INE002A01018' (ISIN format)
+   * @param unit - 'minutes', 'hours', 'days', 'weeks', 'months'
+   * @param interval - For minutes: 1-300, hours: 1-5, days/weeks/months: 1
    * @param fromDate - ISO date string (YYYY-MM-DD)
    * @param toDate - ISO date string (YYYY-MM-DD)
    */
   async getHistoricalCandles(
     instrumentKey: string,
-    interval: string,
+    unit: "minutes" | "hours" | "days" | "weeks" | "months",
+    interval: number,
     fromDate: string,
     toDate: string
   ): Promise<UpstoxCandleData[]> {
     try {
+      // V3 API endpoint: /v3/historical-candle/:instrument_key/:unit/:interval/:to_date/:from_date
+      const encodedKey = encodeURIComponent(instrumentKey);
       const response = await this.axiosInstance.get<UpstoxHistoricalResponse>(
-        `/v2/historical-candle/${instrumentKey}/${interval}/${toDate}/${fromDate}`
+        `/v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`
       );
 
       if (response.data.status !== "success" || !response.data.data?.candles) {
@@ -89,17 +93,56 @@ export class SimpleUpstoxClient {
   }
 
   /**
-   * Fetch historical candles in batches (Upstox limits to ~1000 candles per request)
-   * For 1-minute data, fetch in 1-day batches
+   * Fetch historical candles in batches based on V3 API constraints
+   *
+   * Data availability (from V3 API docs):
+   * - minutes (1-300): Available from Jan 2022
+   *   - 1-15 min intervals: Max 1 month per request
+   *   - >15 min intervals: Max 1 quarter per request
+   * - hours (1-5): Available from Jan 2022, max 1 quarter per request
+   * - days: Available from Jan 2000, max 1 decade per request
+   * - weeks/months: Available from Jan 2000, no limit
+   *
+   * @param instrumentKey - e.g., 'NSE_INDEX|Nifty 50', 'NSE_EQ|INE002A01018'
+   * @param unit - 'minutes', 'hours', 'days', 'weeks', 'months'
+   * @param interval - Interval value (1-300 for minutes, 1-5 for hours, 1 for others)
+   * @param startDate - Start date (will be clamped to Jan 2022 for minutes/hours)
+   * @param endDate - End date
    */
   async getHistoricalCandlesBatched(
     instrumentKey: string,
-    interval: string,
+    unit: "minutes" | "hours" | "days" | "weeks" | "months",
+    interval: number,
     startDate: Date,
     endDate: Date
   ): Promise<UpstoxCandleData[]> {
+    // Enforce data availability constraints
+    const minDate = new Date("2022-01-01");
+    if ((unit === "minutes" || unit === "hours") && startDate < minDate) {
+      this.logger.warn(
+        `Requested start date ${startDate.toISOString().split("T")[0]} is before Jan 2022. Clamping to 2022-01-01.`
+      );
+      startDate = minDate;
+    }
+
     const allCandles: UpstoxCandleData[] = [];
-    const batchSizeDays = interval === "1minute" ? 1 : 30; // 1 day for 1min, 30 days for others
+
+    // Determine batch size based on unit and interval
+    let batchSizeDays: number;
+    if (unit === "minutes") {
+      // 1-15 min: 1 month, >15 min: 1 quarter (90 days)
+      batchSizeDays = interval <= 15 ? 30 : 90;
+    } else if (unit === "hours") {
+      batchSizeDays = 90; // 1 quarter
+    } else if (unit === "days") {
+      batchSizeDays = 3650; // 1 decade
+    } else {
+      // weeks/months: no limit, fetch all at once
+      batchSizeDays =
+        Math.ceil(
+          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        ) + 1;
+    }
 
     let currentDate = new Date(startDate);
 
@@ -112,12 +155,13 @@ export class SimpleUpstoxClient {
       const fromDateStr = currentDate.toISOString().split("T")[0];
       const toDateStr = actualEnd.toISOString().split("T")[0];
 
-      console.log(
-        `Fetching ${instrumentKey} from ${fromDateStr} to ${toDateStr}`
+      this.logger.log(
+        `Fetching ${instrumentKey} (${unit}/${interval}) from ${fromDateStr} to ${toDateStr}`
       );
 
       const candles = await this.getHistoricalCandles(
         instrumentKey,
+        unit,
         interval,
         fromDateStr,
         toDateStr

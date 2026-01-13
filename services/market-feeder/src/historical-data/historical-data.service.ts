@@ -12,7 +12,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CandlesRepository } from '@repo/database';
-import { SimpleUpstoxClient, type UpstoxCandleData } from '@repo/market-sdk';
+import { SimpleUpstoxClient } from '@repo/market-sdk';
 import {
   NIFTY50_CONSTITUENTS,
   NIFTY50_INDEX,
@@ -96,14 +96,15 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
         this.logger.log(`Fetching 1-minute candles for ${instrumentKey}...`);
 
-        // Fetch candles from Upstox
+        // Fetch candles from Upstox V3 API
         const upstoxCandles =
-          (await this.upstoxClient.getHistoricalCandlesBatched(
+          await this.upstoxClient.getHistoricalCandlesBatched(
             instrumentKey,
-            '1minute',
+            'minutes',
+            1,
             oneYearAgo,
             today,
-          )) as UpstoxCandleData[];
+          );
 
         if (!upstoxCandles || upstoxCandles.length === 0) {
           this.logger.warn(`No data returned for ${instrumentKey}`);

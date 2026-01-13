@@ -1,6 +1,14 @@
 /**
  * NIFTY 50 Constituent Stocks
  * Updated as of January 2026
+ *
+ * Instrument Key Formats (Upstox V3 API):
+ * - Equity: NSE_EQ|SYMBOL (e.g., 'NSE_EQ|RELIANCE')
+ * - Index: NSE_INDEX|Name (e.g., 'NSE_INDEX|Nifty 50')
+ * - Futures: NSE_FO|TOKEN|DD-MM-YYYY (e.g., 'NSE_FO|54452|24-04-2025')
+ *
+ * Note: V3 API also supports ISIN format for equities (e.g., 'NSE_EQ|INE002A01018')
+ * but symbol format is more readable and equally valid.
  */
 
 export const NIFTY50_CONSTITUENTS = [
