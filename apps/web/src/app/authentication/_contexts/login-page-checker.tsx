@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { createContext, PropsWithChildren, useContext, useState } from "react";
 import { StoreCallbackUrl } from "./store-callback-url";
+import OneTapAuth from "../_components/onetap";
 
 interface ILoginPageCheckerContext {
   isLoginPage: boolean;
@@ -29,7 +30,12 @@ export default function LoginPageCheckerProvider(props: PropsWithChildren) {
     <LoginPageCheckerContext
       value={{ isLoginPage, showForm, getStarted: () => setShowForm(true) }}
     >
-      {isLoginPage && <StoreCallbackUrl />}
+      {isLoginPage && (
+        <>
+          <StoreCallbackUrl />
+          <OneTapAuth />
+        </>
+      )}
       {props.children}
     </LoginPageCheckerContext>
   );

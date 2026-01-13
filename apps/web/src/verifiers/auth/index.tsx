@@ -26,7 +26,7 @@ export default function AuthVerifier() {
       !data &&
       !isPending &&
       !isRefetching &&
-      !publicPaths.includes(pathname)
+      !publicPaths.some((publicPath) => pathname.startsWith(publicPath))
     ) {
       signOut();
     }

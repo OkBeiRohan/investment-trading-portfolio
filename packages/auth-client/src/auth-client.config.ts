@@ -27,7 +27,11 @@ export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
       genericOAuthClient(),
       anonymousClient(),
       phoneNumberClient(),
-      twoFactorClient(),
+      twoFactorClient({
+        onTwoFactorRedirect() {
+          window.location.href = "/authentication/2fa";
+        },
+      }),
       passkeyClient(),
       magicLinkClient(),
       deviceAuthorizationClient(),

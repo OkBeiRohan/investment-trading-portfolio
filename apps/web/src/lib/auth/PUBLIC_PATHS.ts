@@ -1,14 +1,9 @@
-const publicPaths = [
-  "/authentication/login",
-  "/authentication/register",
-  "/authentication/forgot-password",
-  "/authentication/reset-password",
-  "/authentication/verify-email",
-  "/authentication/verify-phone",
-  "/authentication/magic-link",
-  "/authentication/passkey",
-  "/authentication/2fa",
-  "/authentication/email-otp",
-];
+/**
+ * List of public paths that do not require authentication
+ *
+ * These paths are used in the proxy middleware and auth verifiers
+ * Only include top-level paths (e.g., "/authentication", not "/authentication/login")
+ */
+const publicPaths = ["/authentication"];
 
 export default publicPaths;

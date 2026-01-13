@@ -50,7 +50,8 @@ export async function loginAction(
     }
 
     // Check if 2FA verification is required
-    const requiresTwoFactor = data?.redirect === true;
+    const requiresTwoFactor =
+      data?.redirect === true || "twoFactorRedirect" in data;
 
     // Use centralized auth success handler (handles callback URL from sessionStorage)
     handleAuthSuccess(requiresTwoFactor);

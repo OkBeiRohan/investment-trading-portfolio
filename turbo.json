@@ -33,7 +33,8 @@
         "PORT",
         "REDIS_URL",
         "TRUSTED_ORIGINS",
-        "QUESTDB_URL"
+        "QUESTDB_URL",
+        "SENTRY_AUTH_TOKEN"
       ]
     },
     "build:dev": {
