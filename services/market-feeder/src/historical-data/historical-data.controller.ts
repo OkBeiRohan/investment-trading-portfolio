@@ -28,7 +28,7 @@ export class HistoricalDataController {
   @Post('backfill')
   async backfill(@Body() request: BackfillRequest) {
     this.logger.log(
-      `Manual backfill requested: ${request.instrumentKeys.length} instruments, ${request.intervals.length} intervals`,
+      `Manual backfill requested: ${request.instrumentKeys.length} instruments, ${request.intervals?.length} intervals`,
     );
 
     const totalCandles =

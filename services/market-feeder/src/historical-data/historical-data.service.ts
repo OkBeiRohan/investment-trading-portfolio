@@ -9,12 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { QuestDBService } from '@repo/database';
 import { UpstoxHistoricalService } from '@repo/market-sdk';
-import {
-  generateFetchPlan,
-  summarizePlan,
-  estimateTotalCandles,
-  type TimeframePlan,
-} from './timeframe-strategy';
+import { generateFetchPlan, summarizePlan } from './timeframe-strategy';
 
 export interface BackfillRequest {
   instrumentKeys: string[];
@@ -64,7 +59,7 @@ export class HistoricalDataService {
     }
 
     this.logger.log(
-      `Starting backfill for ${request.instrumentKeys.length} instruments, intervals: ${request.intervals.join(', ')}`,
+      `Starting backfill for ${request.instrumentKeys.length} instruments, intervals: ${request.intervals?.join(', ')}`,
     );
 
     // Emit initial progress
@@ -77,7 +72,7 @@ export class HistoricalDataService {
     });
 
     for (const instrumentKey of request.instrumentKeys) {
-      for (const interval of request.intervals) {
+      for (const interval of request.intervals || []) {
         try {
           // Parse interval (e.g., '5m' -> interval: '5', unit: 'minutes')
           const { intervalValue, unit } = this.parseInterval(interval);
@@ -235,7 +230,11 @@ export class HistoricalDataService {
                 from_date: phase.startDate.toISOString().split('T')[0],
                 to_date: phase.endDate.toISOString().split('T')[0],
               },
-              (table, key) => this.questdbService.getLastTimestamp(table, key),
+              (table, key) =>
+                this.questdbService.getLastTimestamp(
+                  table as 'market_candles' | 'market_quotes' | 'option_greeks',
+                  key,
+                ),
             );
 
           if (candles.length > 0) {
