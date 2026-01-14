@@ -6,8 +6,9 @@
 
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CandlesRepository } from '@repo/database';
+import { CandlesRepository, InstrumentMasterRepository } from '@repo/database';
 import { SimpleUpstoxClient } from '@repo/market-sdk';
+import { type InstrumentMaster } from '@repo/schema';
 import {
   NIFTY50_CONSTITUENTS,
   NIFTY50_INDEX,
@@ -33,6 +34,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
   constructor(
     private readonly candlesRepository: CandlesRepository,
+    private readonly instrumentMasterRepository: InstrumentMasterRepository,
     private readonly configService: ConfigService,
     private readonly upstoxClient: SimpleUpstoxClient,
   ) {}
@@ -55,7 +57,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
    */
   async bootstrapHistoricalData(): Promise<void> {
     const twoYearsAgo = new Date();
-    twoYearsAg
+    twoYearsAgo.setMonth(twoYearsAgo.getMonth() - 24);
 
     const today = new Date();
 
@@ -66,7 +68,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       `Bootstrapping historical data for ${instruments.length} instruments`,
     );
     this.logger.log(
-      `Date range: ${threeMonthsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
+      `Date range: ${twoYearsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
     );
 
     // Step 1: Populate instrument_master table
@@ -80,7 +82,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         // Check if data exists for this instrument
         const hasData = await this.checkDataExists(
           instrumentKey,
-          threeMonthsAgo,
+          twoYearsAgo,
           today,
         );
 
@@ -100,7 +102,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
             instrumentKey,
             'minutes',
             1,
-            threeMonthsAgo,
+            twoYearsAgo,
             today,
           );
 
@@ -190,33 +192,29 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       const instrumentData =
         await this.upstoxClient.getFullMarketQuoteBatched(instrumentKeys);
 
-      // Insert into instrument_master using raw SQL
-      for (const instrument of instrumentData) {
-        const query = `
-          INSERT INTO instrument_master (
-            instrument_key,
-            exchange,
-            segment,
-            instrument_type,
-            tradingsymbol,
-            name,
-            last_updated
-          ) VALUES (
-            '${instrument.instrumentKey.replace(/'/g, "''")}',
-            '${instrument.exchange}',
-            '${instrument.segment}',
-            'EQ',
-            '${instrument.tradingSymbol.replace(/'/g, "''")}',
-            '${instrument.name.replace(/'/g, "''")}',
-            to_timestamp('${instrument.lastUpdated.toISOString()}', 'yyyy-MM-ddTHH:mm:ss.SSSZ')
-          )
-        `;
+      // Transform to InstrumentMaster format
+      const instruments: InstrumentMaster[] = instrumentData.map((inst) => ({
+        instrumentKey: inst.instrumentKey,
+        exchange: inst.exchange as 'NSE' | 'BSE' | 'MCX',
+        segment: inst.segment as 'INDEX' | 'EQ' | 'FO' | 'COMMODITY',
+        instrumentType: 'STOCK' as const, // All NIFTY50 constituents are stocks
+        tradingsymbol: inst.tradingSymbol,
+        name: inst.name,
+        expiry: null, // Stocks don't expire
+        strike: null, // Stocks don't have strike
+        optionType: null, // Not an option
+        lotSize: 1, // Equity default
+        tickSize: 0.05, // NSE equity default
+        underlyingKey: null, // Stocks are underlyings themselves
+        isExpired: false,
+        lastUpdated: inst.lastUpdated,
+      }));
 
-        await this.candlesRepository['questdb'].query(query);
-      }
+      // Use repository bulk insert instead of raw SQL
+      await this.instrumentMasterRepository.bulkInsert(instruments);
 
       this.logger.log(
-        `✓ Populated ${instrumentData.length} instruments in instrument_master`,
+        `✓ Populated ${instruments.length} instruments in instrument_master`,
       );
     } catch (error) {
       const errorMessage =
