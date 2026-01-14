@@ -48,6 +48,10 @@ export const NIFTY50_INDEX = 'NSE_INDEX|Nifty 50';
 export const INDIA_VIX = 'NSE_INDEX|India VIX';
 
 // NIFTY50 futures - current month
-export const NIFTY50_FUTURES_CURRENT = 'NSE_FO|NIFTY'; // Will need expiry appended
+export const NIFTY50_FUTURES_CURRENT = 'NSE_FO|49229'; // Will need expiry appended
 
-export const NIFTY50_FUTURES = [];
+export const NIFTY50_FUTURES = [
+  'NSE_FO|49229', // 26 Jan 2026
+  'NSE_FO|59182', // 24 Feb 2026
+  'NSE_FO|51714', // 30 Mar 2026
+];
