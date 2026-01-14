@@ -1,5 +1,6 @@
 export const UPSTOX_CONSTANTS = {
   API: {
+    BASE_URL: "https://api.upstox.com",
     BASE_URL_V2: "https://api.upstox.com/v2",
     BASE_URL_V3: "https://api.upstox.com/v3",
     AUTH_URL: "https://api.upstox.com/v2/login/authorization/dialog",
