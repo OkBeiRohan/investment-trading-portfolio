@@ -1,6 +1,6 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "ui": "stream",
+  "ui": "tui",
   "concurrency": "16",
   "globalEnv": ["NODE_ENV"],
   "tasks": {
