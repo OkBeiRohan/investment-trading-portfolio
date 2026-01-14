@@ -4,7 +4,6 @@
  */
 
 import { Injectable, Logger } from "@nestjs/common";
-import axios, { AxiosInstance } from "axios";
 import got, { Got } from "got";
 
 export interface UpstoxCandleData {
@@ -112,7 +111,7 @@ export class SimpleUpstoxClient {
       // V3 API endpoint: /v3/historical-candle/:instrument_key/:unit/:interval/:to_date/:from_date
       const encodedKey = encodeURIComponent(instrumentKey);
       const response = await this.api.get<UpstoxHistoricalResponse>(
-        `/v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`
+        `v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`
       );
 
       if (response.body.status !== "success" || !response.body.data?.candles) {
@@ -134,25 +133,9 @@ export class SimpleUpstoxClient {
         open_interest: candle[6],
       }));
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const errorDetails = {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          url: error.config?.url,
-          code: error.code,
-          message: error.message,
-        };
-        this.logger.error(
-          `Upstox API error details: ${JSON.stringify(errorDetails, null, 2)}`
-        );
-        throw new Error(
-          `Upstox API error: ${error.response?.status || error.code} - ${JSON.stringify(error.response?.data || error.message)}`
-        );
-      }
       // Log non-axios errors
       this.logger.error(
-        `Non-Axios error: ${error instanceof Error ? error.message : String(error)}`
+        `Error: ${error instanceof Error ? error.message : String(error)}`
       );
       throw error;
     }
@@ -303,7 +286,7 @@ export class SimpleUpstoxClient {
       instrumentKeys.forEach((key) => params.append("instrument_key", key));
 
       const response = await this.api.get<UpstoxMarketQuoteResponse>(
-        `/v2/market-quote/quotes?${params.toString()}`
+        `v2/market-quote/quotes?${params.toString()}`
       );
 
       if (response.body.status !== "success" || !response.body.data) {
@@ -328,20 +311,6 @@ export class SimpleUpstoxClient {
         };
       });
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const errorDetails = {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          url: error.config?.url,
-        };
-        this.logger.error(
-          `Upstox Market Quote API error: ${JSON.stringify(errorDetails, null, 2)}`
-        );
-        throw new Error(
-          `Market Quote API error: ${error.response?.status} - ${JSON.stringify(error.response?.data || error.message)}`
-        );
-      }
       throw error;
     }
   }
