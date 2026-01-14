@@ -1,10 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
-import { otelSDK, OtelLogger } from '@repo/observability';
+import { Logger } from '@nestjs/common';
+// import { otelSDK, OtelLogger } from '@repo/observability';
 
 async function bootstrap() {
-  otelSDK.start();
+  // otelSDK.start();
 
   try {
     const grpcPort = parseInt(process.env.GRPC_PORT || '50052', 10);
@@ -23,8 +24,8 @@ async function bootstrap() {
       },
     );
 
-    const logger = app.get(OtelLogger);
-    app.useLogger(logger);
+    const logger = app.get(Logger);
+    // app.useLogger(logger);
 
     app.enableShutdownHooks();
 
