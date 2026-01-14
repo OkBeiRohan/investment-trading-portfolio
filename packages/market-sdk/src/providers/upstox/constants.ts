@@ -47,3 +47,32 @@ export const UPSTOX_CONSTANTS = {
 
 export type UpstoxInterval = keyof typeof UPSTOX_CONSTANTS.INTERVALS;
 export type UpstoxSegment = keyof typeof UPSTOX_CONSTANTS.SEGMENTS;
+
+// Re-export for cleaner imports
+export const UPSTOX_API_URLS = {
+  LIVE: UPSTOX_CONSTANTS.API.BASE_URL_V2,
+  SANDBOX: "https://api-hft.upstox.com/v2", // Sandbox URL
+};
+
+export const UPSTOX_ENDPOINTS = {
+  // Market Data
+  QUOTES: "/market-quote/quotes",
+  FULL_MARKET_QUOTE: "/market-quote/ltp",
+  OPTION_CHAIN: "/option/chain",
+
+  // Historical Data
+  HISTORICAL_CANDLES: "/historical-candle",
+  INTRADAY_CANDLES: "/historical-candle/intraday",
+
+  // Orders
+  PLACE_ORDER: "/order/place",
+  MODIFY_ORDER: "/order/modify",
+  CANCEL_ORDER: "/order/cancel",
+  ORDER_BOOK: "/order/retrieve-all",
+  ORDER_DETAILS: "/order/history",
+
+  // Portfolio
+  POSITIONS: "/portfolio/long-term-holdings",
+  HOLDINGS: "/portfolio/short-term-holdings",
+  FUNDS: "/user/get-funds-and-margin",
+};
