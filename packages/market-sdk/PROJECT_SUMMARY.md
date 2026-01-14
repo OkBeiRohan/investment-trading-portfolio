@@ -341,11 +341,11 @@ Follow the implementation guide for step-by-step instructions:
 - [x] Complete Upstox provider with cascading modules
 - [x] Repository-Service pattern implementation
 - [x] Sandbox/Live mode switching
-- [ ] WebSocket multiplexer
+- [x] WebSocket multiplexer (connection pooling, priority subscriptions)
 - [ ] 90%+ test coverage
 - [ ] Production deployment
 
-**You now have a production-ready market SDK with 60% implementation complete!** 🚀
+**You now have a production-ready market SDK with 80% implementation complete!** 🚀
 
 ## 📊 Implementation Progress
 

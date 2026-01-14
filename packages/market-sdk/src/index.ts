@@ -46,6 +46,21 @@ export * from "./utils/retry.util";
 export * from "./multiplexer/multiplexer.service";
 export * from "./multiplexer/types";
 
+// WebSocket
+export { WebSocketModule } from "./websocket/websocket.module";
+export { SocketPoolService } from "./websocket/socket-pool.service";
+export type {
+  PooledSocket,
+  SocketPoolConfig,
+} from "./websocket/socket-pool.service";
+export {
+  SubscriptionManagerService,
+  SubscriptionPriority,
+} from "./websocket/subscription-manager.service";
+export type { Subscription } from "./websocket/subscription-manager.service";
+export { HeartbeatService } from "./websocket/heartbeat.service";
+export type { HeartbeatConfig } from "./websocket/heartbeat.service";
+
 // Providers
 export { UpstoxProvider } from "./providers/upstox/upstox.provider";
 export { UpstoxModule } from "./providers/upstox/upstox.module";
