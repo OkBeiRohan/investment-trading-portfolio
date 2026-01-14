@@ -58,12 +58,31 @@ class LightGBMConfig(BaseModel):
     gpu_platform_id: int = Field(default=0, ge=0)
     gpu_device_id: int = Field(default=0, ge=0)
 
+    # Class weighting (handle label imbalance)
+    class_weight: Optional[dict[int, float]] = Field(
+        default=None,
+        description="Class weights for imbalanced labels. "
+        "Example: {0: 1.2, 1: 0.6, 2: 1.2} penalizes false UP/DOWN more than NEUTRAL",
+    )
+
+    # Monotonic constraints (optional, advanced)
+    monotone_constraints: Optional[list[int]] = Field(
+        default=None,
+        description="Feature-wise monotonic constraints. "
+        "1 = increasing, -1 = decreasing, 0 = no constraint. "
+        "Example: [1, 0, 1, ...] for 33 features ensures fut_return_5m → UP probability",
+    )
+
     class Config:
         frozen = True
 
     def to_dict(self) -> dict[str, object]:
         """Convert to dict for LightGBM with proper types"""
-        return self.model_dump()
+        config = self.model_dump(exclude_none=True)
+        # LightGBM expects 'class_weight' as 'balanced' or dict
+        if self.class_weight is not None:
+            config["class_weight"] = self.class_weight
+        return config
 
 
 class LabelingConfig(BaseModel):
@@ -133,11 +152,42 @@ class LightGBMTrainer:
 
     Features:
     - Walk-forward validation with purging/embargoing
-    - Volatility-adjusted labeling
+    - Volatility-adjusted labeling with dynamic k
     - Production-safe hyperparameters
     - Multi-class classification (UP, NEUTRAL, DOWN)
+    - Class weighting for imbalanced labels
+    - Label entropy monitoring for regime detection
     - MLflow experiment tracking
     - Out-of-fold predictions for meta-learner
+
+    CRITICAL: Probabilistic Prediction Model
+    =====================================
+    This model outputs PROBABILITIES, not trade signals.
+
+    Model output: [P(DOWN), P(NEUTRAL), P(UP)]
+    Example: [0.15, 0.35, 0.50] = 50% UP, 35% NEUTRAL, 15% DOWN
+
+    ⚠️  DO NOT trade directly on argmax(probabilities)!
+
+    Proper downstream usage (in strategy layer):
+    ```python
+    probs = model.predict_proba(features)
+    p_up, p_neutral, p_down = probs[0, 2], probs[0, 1], probs[0, 0]
+
+    # Explicit NO-TRADE threshold
+    if p_up > 0.65:
+        signal = "BUY_CALL"
+    elif p_down > 0.65:
+        signal = "BUY_PUT"
+    else:
+        signal = "NO_TRADE"  # Low confidence
+    ```
+
+    Why this matters:
+    - P(UP)=0.35, P(NEUTRAL)=0.33, P(DOWN)=0.32 → NO TRADE (low confidence)
+    - P(UP)=0.70, P(NEUTRAL)=0.20, P(DOWN)=0.10 → TRADE (high confidence)
+    - Avoids overtrading in choppy markets
+    - Preserves capital during low-conviction regimes
     """
 
     def __init__(
@@ -161,6 +211,56 @@ class LightGBMTrainer:
         self.model: Optional[lgb.LGBMClassifier] = None
         self.oof_predictions: Optional[npt.NDArray[np.float64]] = None
         self.fold_metrics: list[FoldMetrics] = []
+
+    @staticmethod
+    def compute_class_weights(
+        labels: pd.Series,
+        up_down_multiplier: float = 1.5,
+    ) -> dict[int, float]:
+        """
+        Automatically compute class weights from label distribution
+
+        Strategy:
+        - DOWN/UP get higher weight (we want to predict directional moves correctly)
+        - NEUTRAL gets lower weight (many labels, less critical)
+
+        Args:
+            labels: Label series (-1=DOWN, 0=NEUTRAL, 1=UP)
+            up_down_multiplier: How much more to weight UP/DOWN vs NEUTRAL
+
+        Returns:
+            Dict mapping encoded labels (0, 1, 2) to weights
+
+        Example:
+            If labels are 20% DOWN, 60% NEUTRAL, 20% UP:
+            - NEUTRAL weight = 1.0 (baseline)
+            - DOWN/UP weight = 1.5 (50% more important)
+        """
+        label_counts = labels.value_counts(normalize=True)
+
+        # Get proportions
+        p_down = label_counts.get(-1, 0.33)
+        p_neutral = label_counts.get(0, 0.33)
+        p_up = label_counts.get(1, 0.33)
+
+        # Inverse frequency weighting, then apply multiplier
+        neutral_weight = 1.0  # Baseline
+        down_weight = (p_neutral / p_down) * up_down_multiplier if p_down > 0 else 1.0
+        up_weight = (p_neutral / p_up) * up_down_multiplier if p_up > 0 else 1.0
+
+        # Map to encoded labels (0=DOWN, 1=NEUTRAL, 2=UP)
+        weights = {
+            0: float(down_weight),
+            1: float(neutral_weight),
+            2: float(up_weight),
+        }
+
+        logger.info(
+            f"Computed class weights: "
+            f"DOWN={weights[0]:.2f}, NEUTRAL={weights[1]:.2f}, UP={weights[2]:.2f}"
+        )
+
+        return weights
 
     def calculate_dynamic_k(self, features: pd.DataFrame) -> pd.Series:
         """
@@ -220,6 +320,38 @@ class LightGBMTrainer:
         )
 
         return k_values
+
+    def _calculate_label_entropy(self, labels: pd.Series) -> float:
+        """
+        Calculate Shannon entropy of label distribution
+
+        Entropy = -Σ(p * log(p))
+
+        Why this matters:
+        - Sudden entropy drops → regime break detected
+        - Detects labeling bugs or market shifts
+        - High entropy (balanced labels) = good
+        - Low entropy (all same label) = potential issue
+
+        Args:
+            labels: Label series (-1, 0, 1)
+
+        Returns:
+            Entropy in bits (range: 0 to log2(3) ≈ 1.585)
+
+        Examples:
+            - Perfect balance (33%, 33%, 33%) → 1.585 (max entropy)
+            - All NEUTRAL (0%, 100%, 0%) → 0.0 (min entropy)
+            - 80% NEUTRAL (10%, 80%, 10%) → 0.922 (low, potential issue)
+        """
+        label_counts = labels.value_counts(normalize=True)
+        # Handle any labels not present (shouldn't happen but be safe)
+        probs = [label_counts.get(label, 0.0) for label in [-1, 0, 1]]
+
+        # Shannon entropy with base 2 (bits)
+        entropy = -sum(p * np.log2(p) if p > 0 else 0 for p in probs)
+
+        return float(entropy)
 
     def create_volatility_adjusted_labels(
         self,
@@ -376,6 +508,22 @@ class LightGBMTrainer:
             Trained model and fold metrics
         """
         logger.info(f"Training fold {fold}: Train={len(X_train)}, Val={len(X_val)}")
+
+        # Calculate and log label entropy for training set
+        train_entropy = self._calculate_label_entropy(y_train)
+        val_entropy = self._calculate_label_entropy(y_val)
+        logger.info(
+            f"Fold {fold} label entropy: Train={train_entropy:.3f}, Val={val_entropy:.3f} "
+            f"(max=1.585 for balanced labels)"
+        )
+
+        # Warn on low entropy (regime break or labeling issue)
+        if train_entropy < 1.0 or val_entropy < 1.0:
+            logger.warning(
+                f"⚠️  Low entropy detected in fold {fold}! "
+                f"This may indicate regime break or labeling issue. "
+                f"Consider inspecting label distribution."
+            )
 
         # Convert labels to 0, 1, 2 for multiclass
         y_train_encoded = y_train + 1  # -1 → 0, 0 → 1, 1 → 2
@@ -701,6 +849,59 @@ def validate_features(features: pd.DataFrame) -> pd.DataFrame:
     - Per-stock prices (only breadth aggregates)
     - Option strike ladders (only ATM + aggregates)
     - Execution data (that's DRL PPO's job)
+
+    MONOTONIC CONSTRAINTS (OPTIONAL):
+    ================================
+    To enforce domain knowledge, you can specify monotone_constraints in LightGBMConfig.
+    This ensures certain features always push predictions in expected directions.
+
+    Example constraints (must be list of 33 integers: 1, -1, or 0):
+    - 1: Feature INCREASES UP probability (e.g., fut_return_5m)
+    - -1: Feature DECREASES UP probability (e.g., high atm_iv_change → more NEUTRAL)
+    - 0: No constraint (let model learn freely)
+
+    Suggested constraints:
+    ```python
+    monotone_constraints = [
+        0,   # pct_stocks_above_vwap (complex, let model learn)
+        1,   # pct_stocks_above_ema20 (more trending = more directional)
+        1,   # weighted_return_top10 (positive = UP bias)
+        0,   # advance_decline_ratio (complex)
+        1,   # breadth_momentum_5m (positive momentum = UP)
+        0,   # breadth_volatility
+        1,   # fut_price_vs_vwap (above VWAP = bullish)
+        1,   # fut_range_position (high in range = UP)
+        1,   # fut_return_1m (positive = UP)
+        1,   # fut_return_5m (positive = UP)
+        0,   # fut_atr_percent (higher vol = more NEUTRAL, but nonlinear)
+        0,   # fut_volume_zscore
+        0,   # fut_oi_change
+        0,   # fut_rsi_14 (nonlinear)
+        1,   # fut_macd (positive = UP)
+        0,   # atm_iv (complex)
+        0,   # atm_iv_change (spike = NEUTRAL, but nonlinear)
+        0,   # iv_skew
+        0,   # gamma_atm
+        0,   # vega_atm
+        0,   # theta_atm
+        0,   # pcr_oi
+        0,   # pcr_volume
+        0,   # max_pain_distance
+        0,   # charm_atm
+        0,   # vanna_atm
+        0,   # india_vix (higher = more NEUTRAL, but handled by dynamic k)
+        0,   # realized_vol_5m
+        0,   # realized_vol_15m
+        0,   # vol_expansion_ratio
+        0,   # minutes_from_open
+        0,   # minutes_to_close
+        0,   # day_of_week
+    ]
+    ```
+
+    ⚠️  WARNING: Monotonic constraints reduce model flexibility.
+    Only use if you have strong domain intuition.
+    Start with None, add constraints only if needed.
     """
     expected_features = [
         # Index Breadth (6 features)
@@ -805,6 +1006,17 @@ if __name__ == "__main__":
         device="gpu",
         gpu_platform_id=0,
         gpu_device_id=0,
+        # Class weighting: penalize false UP/DOWN more than NEUTRAL
+        # Many labels will be NEUTRAL, so down-weight it
+        class_weight={
+            0: 1.2,  # DOWN (important to get right)
+            1: 0.6,  # NEUTRAL (many of these, less critical)
+            2: 1.2,  # UP (important to get right)
+        },
+        # Monotonic constraints (optional): enforce domain knowledge
+        # Example: fut_return_5m should increase UP probability
+        # Set to None to disable, or list of 33 values (1, -1, 0) per feature
+        monotone_constraints=None,
     )
 
     # Option 1: Fixed k (traditional approach)
