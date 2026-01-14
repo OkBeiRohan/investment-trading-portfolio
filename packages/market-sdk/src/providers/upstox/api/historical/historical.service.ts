@@ -19,6 +19,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import axios, { AxiosInstance } from "axios";
+import { HistoricalApiRepository } from "./historical.repository";
 
 export interface HistoricalCandleRequest {
   instrument_key: string;
@@ -114,12 +115,12 @@ class TokenBucket {
 }
 
 @Injectable()
-export class UpstoxHistoricalAPI {
-  private readonly logger = new Logger(UpstoxHistoricalAPI.name);
+export class UpstoxHistoricalAPIService {
+  private readonly logger = new Logger(UpstoxHistoricalAPIService.name);
   private client: AxiosInstance | null = null;
   private readonly rateLimiter: TokenBucket;
 
-  constructor() {
+  constructor(private readonly historicalRepository: HistoricalApiRepository) {
     // Rate limit: 50 requests/second (Upstox limit)
     this.rateLimiter = new TokenBucket(50, 50 / 1000); // 50 tokens, refill at 50/1000 = 0.05 tokens/ms
   }

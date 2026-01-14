@@ -1,6 +1,6 @@
 import { HttpModuleOptions, HttpModuleOptionsFactory } from "@nestjs/axios";
 import { Injectable } from "@nestjs/common";
-import { UPSTOX_CONSTANTS } from "../constants";
+import { UPSTOX_CONSTANTS } from "../../constants";
 
 @Injectable()
 export default class UpstoxHttpConfigService implements HttpModuleOptionsFactory {

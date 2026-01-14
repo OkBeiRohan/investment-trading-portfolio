@@ -22,7 +22,7 @@ export {
   type UpstoxCandleData,
   type UpstoxHistoricalResponse,
 } from "./providers/upstox/simple-client";
-export { UpstoxHistoricalAPI } from "./providers/upstox/api/historical.api";
+export { UpstoxHistoricalAPI } from "./providers/upstox/api/historical/historical.service";
 export { UpstoxHistoricalService } from "./providers/upstox/historical.service";
 export { YahooProvider } from "./providers/yahoo/yahoo.provider";
 export { BinanceProvider } from "./providers/binance/binance.provider";
