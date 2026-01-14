@@ -72,8 +72,36 @@ class LabelingConfig(BaseModel):
     horizon: int = Field(
         default=5, ge=1, description="Forward-looking horizon (minutes)"
     )
-    k: float = Field(default=1.0, gt=0.0, description="Multiplier for ATR threshold")
+    k: float = Field(
+        default=1.0,
+        gt=0.0,
+        description="Multiplier for ATR threshold (used if use_dynamic_k=False)",
+    )
     atr_column: str = Field(default="atr_percent", description="ATR feature name")
+
+    # Dynamic k parameters
+    use_dynamic_k: bool = Field(
+        default=False, description="Whether to calculate k dynamically from India VIX"
+    )
+    k_base: float = Field(
+        default=1.0, gt=0.0, description="Base k value when VIX is at vix_reference"
+    )
+    k_min: float = Field(
+        default=0.5, gt=0.0, description="Minimum k value (caps at low volatility)"
+    )
+    k_max: float = Field(
+        default=2.0, gt=0.0, description="Maximum k value (caps at high volatility)"
+    )
+    vix_reference: float = Field(
+        default=15.0,
+        gt=0.0,
+        description="Reference VIX level for k_base (typical: 15-20)",
+    )
+    vix_scaling: float = Field(
+        default=0.05,
+        gt=0.0,
+        description="How sensitive k is to VIX changes (k increases by this per VIX point)",
+    )
 
     class Config:
         frozen = True
@@ -134,12 +162,80 @@ class LightGBMTrainer:
         self.oof_predictions: Optional[npt.NDArray[np.float64]] = None
         self.fold_metrics: list[FoldMetrics] = []
 
+    def calculate_dynamic_k(self, features: pd.DataFrame) -> pd.Series:
+        """
+        Calculate dynamic k values based on India VIX
+
+        Strategy:
+        - When VIX is high → larger k (wider threshold to avoid noise)
+        - When VIX is low → smaller k (tighter threshold to capture moves)
+
+        Formula: k = k_base + vix_scaling * (india_vix - vix_reference)
+        Clamped to [k_min, k_max]
+
+        Args:
+            features: Feature DataFrame containing 'india_vix' column
+
+        Returns:
+            Series of k values for each timestamp
+
+        Example:
+            - VIX = 15 (reference), k = 1.0 (base)
+            - VIX = 20 (+5 points), k = 1.0 + 0.05*5 = 1.25
+            - VIX = 30 (+15 points), k = 1.0 + 0.05*15 = 1.75
+            - VIX = 10 (-5 points), k = 1.0 - 0.05*5 = 0.75
+        """
+        if "india_vix" not in features.columns:
+            raise ValueError(
+                "india_vix column not found in features. "
+                "Required for dynamic k calculation."
+            )
+
+        india_vix = features["india_vix"]
+
+        # Calculate k based on VIX deviation from reference
+        k_values = self.labeling_config.k_base + self.labeling_config.vix_scaling * (
+            india_vix - self.labeling_config.vix_reference
+        )
+
+        # Clamp to min/max bounds
+        k_values = k_values.clip(
+            lower=self.labeling_config.k_min, upper=self.labeling_config.k_max
+        )
+
+        # Log statistics
+        logger.info(
+            f"Dynamic k statistics: "
+            f"mean={k_values.mean():.3f}, "
+            f"std={k_values.std():.3f}, "
+            f"min={k_values.min():.3f}, "
+            f"max={k_values.max():.3f}"
+        )
+        logger.info(
+            f"VIX statistics: "
+            f"mean={india_vix.mean():.2f}, "
+            f"std={india_vix.std():.2f}, "
+            f"min={india_vix.min():.2f}, "
+            f"max={india_vix.max():.2f}"
+        )
+
+        return k_values
+
     def create_volatility_adjusted_labels(
         self,
         features: pd.DataFrame,
         prices: pd.Series,
     ) -> pd.Series:
-        """Create volatility-adjusted labels with explicit unit handling"""
+        """
+        Create volatility-adjusted labels with dynamic or fixed k
+
+        Args:
+            features: Feature DataFrame (must contain india_vix if use_dynamic_k=True)
+            prices: Price series for calculating returns
+
+        Returns:
+            Label series (-1=DOWN, 0=NEUTRAL, 1=UP)
+        """
 
         # Validate ATR column exists
         if self.labeling_config.atr_column not in features.columns:
@@ -150,16 +246,26 @@ class LightGBMTrainer:
         # Future returns (dimensionless percentage)
         future_returns = (prices.shift(-self.labeling_config.horizon) - prices) / prices
 
-        # ATR threshold (ensure same units as returns)
+        # ATR (ensure same units as returns)
         atr = features[self.labeling_config.atr_column]
+
+        # Calculate k (either fixed or dynamic)
+        if self.labeling_config.use_dynamic_k:
+            k_values = self.calculate_dynamic_k(features)
+            logger.info("Using dynamic k based on India VIX")
+        else:
+            k_values = pd.Series(
+                self.labeling_config.k, index=features.index, dtype=np.float64
+            )
+            logger.info(f"Using fixed k={self.labeling_config.k}")
 
         # CRITICAL: Explicit unit conversion
         if self.labeling_config.atr_column == "atr_percent":
             # Already in percentage form (0.015 = 1.5%)
-            atr_threshold = self.labeling_config.k * atr
+            atr_threshold = k_values * atr
         elif self.labeling_config.atr_column == "atr":
             # In price points, need to normalize
-            atr_threshold = self.labeling_config.k * (atr / prices)
+            atr_threshold = k_values * (atr / prices)
         else:
             raise ValueError(
                 f"Unknown ATR column format: {self.labeling_config.atr_column}. "
@@ -701,10 +807,24 @@ if __name__ == "__main__":
         gpu_device_id=0,
     )
 
-    labeling_config = LabelingConfig(
-        horizon=5,  # 5 minutes
+    # Option 1: Fixed k (traditional approach)
+    labeling_config_fixed = LabelingConfig(
+        horizon=5,
         k=1.0,
         atr_column="atr_percent",
+        use_dynamic_k=False,
+    )
+
+    # Option 2: Dynamic k based on VIX (RECOMMENDED - adapts to market conditions)
+    labeling_config = LabelingConfig(
+        horizon=5,
+        atr_column="atr_percent",
+        use_dynamic_k=True,
+        k_base=1.0,  # Base k when VIX = 15
+        k_min=0.5,  # Min k (low volatility)
+        k_max=2.0,  # Max k (high volatility)
+        vix_reference=15.0,  # Typical VIX level
+        vix_scaling=0.05,  # +0.05 k per VIX point
     )
 
     # Initialize trainer
