@@ -3,23 +3,47 @@ import {
   MarketQuote,
   OptionGreeks,
   Order,
-  // OrderParams,
+  OrderParams,
   Position,
   Holding,
 } from "@repo/schema";
 
+/**
+ * Base provider configuration
+ */
 export interface ProviderConfig {
   apiKey?: string;
   apiSecret?: string;
-  environment?: string;
+  environment?: "SANDBOX" | "LIVE";
+  baseUrl?: string;
+  timeout?: number;
+  retries?: number;
   [key: string]: any;
 }
 
+/**
+ * Base provider interface - all providers must implement
+ */
 export interface IProvider {
   readonly name: string;
   readonly version: string;
+  readonly supportedFeatures: ProviderFeatures;
+
   initialize(config: ProviderConfig): Promise<void>;
   healthCheck(): Promise<boolean>;
+  disconnect?(): Promise<void>;
+}
+
+/**
+ * Provider capability flags
+ */
+export interface ProviderFeatures {
+  marketData: boolean;
+  historicalData: boolean;
+  orders: boolean;
+  portfolio: boolean;
+  websocket: boolean;
+  optionChain: boolean;
 }
 
 export interface IMarketDataProvider extends IProvider {
@@ -41,7 +65,7 @@ export interface IOrderProvider extends IProvider {
   ): Promise<Order>;
   modifyOrder(
     userId: string,
-    orderId: string,
+    orderId: string
     // modifications: Partial<OrderParams>
   ): Promise<Order>;
   cancelOrder(userId: string, orderId: string): Promise<{ success: boolean }>;
