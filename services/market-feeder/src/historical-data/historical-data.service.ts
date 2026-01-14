@@ -54,8 +54,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
    * Checks for missing data and fetches from Upstox
    */
   async bootstrapHistoricalData(): Promise<void> {
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const twoYearsAgo = new Date();
+    twoYearsAg
 
     const today = new Date();
 

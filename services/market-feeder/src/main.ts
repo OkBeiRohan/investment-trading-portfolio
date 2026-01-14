@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
-import { Logger } from '@nestjs/common';
 // import { otelSDK, OtelLogger } from '@repo/observability';
 
 async function bootstrap() {
@@ -24,13 +23,13 @@ async function bootstrap() {
       },
     );
 
-    const logger = app.get(Logger);
+    // const logger = app.get(Logger);
     // app.useLogger(logger);
 
     app.enableShutdownHooks();
 
     await app.listen();
-    logger.log(`gRPC microservice running on port ${grpcPort}`);
+    console.log(`gRPC microservice running on port ${grpcPort}`);
   } catch (error) {
     console.error('Failed to start Market Feeder', error);
     process.exit(1);
