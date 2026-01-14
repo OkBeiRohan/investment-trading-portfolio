@@ -1,14 +1,11 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /**
  * Script to generate nifty50-constituents.json from ind_nifty50list.csv
- * Run: pnpm tsx src/historical-data/generate-nifty50-json.ts
+ * Run: node src/historical-data/generate-nifty50-json.ts
  */
 
 import { readFileSync, writeFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { join } from 'path';
 
 interface Constituent {
   companyName: string;
@@ -30,7 +27,6 @@ interface Nifty50Data {
 
 function parseCSV(csvContent: string): Constituent[] {
   const lines = csvContent.trim().split('\n');
-  const headers = lines[0].split(',');
 
   const constituents: Constituent[] = [];
 
@@ -64,8 +60,14 @@ function parseCSV(csvContent: string): Constituent[] {
 }
 
 function main() {
-  const csvPath = join(__dirname, 'ind_nifty50list.csv');
-  const jsonPath = join(__dirname, 'nifty50-constituents.json');
+  const csvPath = join(
+    process.cwd(),
+    'src/historical-data/ind_nifty50list.csv',
+  );
+  const jsonPath = join(
+    process.cwd(),
+    'src/historical-data/nifty50-constituents.json',
+  );
 
   console.log('Reading CSV file...');
   const csvContent = readFileSync(csvPath, 'utf-8');
