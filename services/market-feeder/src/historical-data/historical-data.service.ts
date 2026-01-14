@@ -4,11 +4,6 @@
  * Fetches 1-minute candles for past 1 year for NIFTY50 ecosystem
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CandlesRepository } from '@repo/database';
@@ -59,8 +54,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
    * Checks for missing data and fetches from Upstox
    */
   async bootstrapHistoricalData(): Promise<void> {
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
     const today = new Date();
 
@@ -71,8 +66,11 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       `Bootstrapping historical data for ${instruments.length} instruments`,
     );
     this.logger.log(
-      `Date range: ${oneYearAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
+      `Date range: ${threeMonthsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
     );
+
+    // Step 1: Populate instrument_master table
+    await this.populateInstrumentMaster(instruments);
 
     let totalFetched = 0;
     let skipped = 0;
@@ -82,7 +80,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         // Check if data exists for this instrument
         const hasData = await this.checkDataExists(
           instrumentKey,
-          oneYearAgo,
+          threeMonthsAgo,
           today,
         );
 
@@ -102,7 +100,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
             instrumentKey,
             'minutes',
             1,
-            oneYearAgo,
+            threeMonthsAgo,
             today,
           );
 
@@ -125,8 +123,15 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
           openInterest: c.open_interest || null,
         }));
 
-        // Insert into QuestDB
-        await this.candlesRepository.insertBatch(candles);
+        // Insert into QuestDB in chunks to avoid connection timeout
+        const CHUNK_SIZE = 5000;
+        for (let i = 0; i < candles.length; i += CHUNK_SIZE) {
+          const chunk = candles.slice(i, i + CHUNK_SIZE);
+          await this.candlesRepository.insertBatch(chunk);
+          this.logger.debug(
+            `Inserted chunk ${Math.floor(i / CHUNK_SIZE) + 1} (${chunk.length} candles)`,
+          );
+        }
         totalFetched += candles.length;
 
         this.logger.log(
@@ -168,6 +173,59 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       startDate,
       endDate,
     );
+  }
+
+  /**
+   * Populate instrument_master table with instrument metadata
+   */
+  private async populateInstrumentMaster(
+    instrumentKeys: string[],
+  ): Promise<void> {
+    try {
+      this.logger.log(
+        `Populating instrument_master for ${instrumentKeys.length} instruments...`,
+      );
+
+      // Fetch market quotes in batches
+      const instrumentData =
+        await this.upstoxClient.getFullMarketQuoteBatched(instrumentKeys);
+
+      // Insert into instrument_master using raw SQL
+      for (const instrument of instrumentData) {
+        const query = `
+          INSERT INTO instrument_master (
+            instrument_key,
+            exchange,
+            segment,
+            instrument_type,
+            tradingsymbol,
+            name,
+            last_updated
+          ) VALUES (
+            '${instrument.instrumentKey.replace(/'/g, "''")}',
+            '${instrument.exchange}',
+            '${instrument.segment}',
+            'EQ',
+            '${instrument.tradingSymbol.replace(/'/g, "''")}',
+            '${instrument.name.replace(/'/g, "''")}',
+            to_timestamp('${instrument.lastUpdated.toISOString()}', 'yyyy-MM-ddTHH:mm:ss.SSSZ')
+          )
+        `;
+
+        await this.candlesRepository['questdb'].query(query);
+      }
+
+      this.logger.log(
+        `✓ Populated ${instrumentData.length} instruments in instrument_master`,
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to populate instrument_master: ${errorMessage}`,
+      );
+      // Don't throw - continue with historical data fetch even if this fails
+    }
   }
 
   /**

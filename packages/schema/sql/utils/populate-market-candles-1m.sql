@@ -5,7 +5,8 @@ INSERT INTO market_candles
 SELECT
   timestamp,
   instrument_key,
-  '1m' as interval,
+  1 as interval_value,
+  'minute' as interval_unit,
   first(ltp) as open,
   max(ltp) as high,
   min(ltp) as low,

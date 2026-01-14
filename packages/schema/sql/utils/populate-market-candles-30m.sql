@@ -5,7 +5,8 @@ INSERT INTO market_candles
 SELECT
   timestamp,
   instrument_key,
-  '30m' as interval,
+  30 as interval_value,
+  'minute' as interval_unit,
   first(open) as open,
   max(high) as high,
   min(low) as low,
@@ -13,7 +14,8 @@ SELECT
   sum(volume) as volume,
   last(open_interest) as open_interest
 FROM market_candles
-WHERE interval = '1m'
+WHERE interval_value = 1
+  AND interval_unit = 'minute'
   AND timestamp >= dateadd('h', -24, now())
 SAMPLE BY 30m
 ALIGN TO CALENDAR;
