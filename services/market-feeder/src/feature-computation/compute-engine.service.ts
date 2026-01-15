@@ -44,7 +44,7 @@ export class ComputeEngineService {
       // Rust internally: updates cache → computes dependencies → parallel features
       const result = this.computeEngineAdapter.computeFeatures(input);
 
-      this.logger.debug(`Features computed in ${result.totalDurationMicros}µs`);
+      // this.logger.debug(`Features computed in ${result.totalDurationMicros}µs`);
 
       return result;
     } catch (error) {
