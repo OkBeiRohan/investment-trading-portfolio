@@ -188,30 +188,41 @@ export class SimpleUpstoxClient {
 
     const allCandles: UpstoxCandleData[] = [];
 
-    // Determine batch size based on unit and interval
-    let batchSizeDays: number;
-    if (unit === 'minutes') {
-      // 1-15 min: 1 month, >15 min: 1 quarter (90 days)
-      batchSizeDays = interval <= 15 ? 30 : 90;
-    } else if (unit === 'hours') {
-      batchSizeDays = 90; // 1 quarter
-    } else if (unit === 'days') {
-      batchSizeDays = 3650; // 1 decade
-    } else {
-      // weeks/months: no limit, fetch all at once
-      batchSizeDays =
-        Math.ceil(
-          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
-        ) + 1;
-    }
-
     const currentDate = new Date(startDate);
 
     while (currentDate <= endDate) {
-      const batchEnd = new Date(currentDate);
-      batchEnd.setDate(batchEnd.getDate() + batchSizeDays - 1); // Subtract 1 to avoid overlap
+      let batchEnd: Date;
 
-      const actualEnd = batchEnd > endDate ? endDate : batchEnd;
+      // Calculate batch end based on API constraints (CALENDAR-BASED, not day count)
+      if (unit === 'minutes' && interval <= 15) {
+        // 1 calendar month for 1-15 min intervals
+        batchEnd = new Date(currentDate);
+        batchEnd.setMonth(batchEnd.getMonth() + 1);
+        batchEnd.setDate(batchEnd.getDate() - 1); // Last day of the month
+      } else if ((unit === 'minutes' && interval > 15) || unit === 'hours') {
+        // 1 quarter (3 calendar months) for >15 min or hourly
+        batchEnd = new Date(currentDate);
+        batchEnd.setMonth(batchEnd.getMonth() + 3);
+        batchEnd.setDate(batchEnd.getDate() - 1);
+      } else if (unit === 'days') {
+        // 1 decade (10 years)
+        batchEnd = new Date(currentDate);
+        batchEnd.setFullYear(batchEnd.getFullYear() + 10);
+        batchEnd.setDate(batchEnd.getDate() - 1);
+      } else {
+        // weeks/months: no limit, use endDate
+        batchEnd = new Date(endDate);
+      }
+
+      let actualEnd = batchEnd > endDate ? endDate : batchEnd;
+
+      // CRITICAL: Also clamp actualEnd to today to prevent UDAPI1148 "Invalid date range" errors
+      if (actualEnd > today) {
+        this.logger.warn(
+          `Batch end date ${actualEnd.toISOString().split('T')[0]} exceeds today. Clamping to ${today.toISOString().split('T')[0]}.`,
+        );
+        actualEnd = today;
+      }
 
       const fromDateStr = currentDate.toISOString().split('T')[0];
       const toDateStr = actualEnd.toISOString().split('T')[0];
@@ -269,7 +280,9 @@ export class SimpleUpstoxClient {
       // Rate limiting: 250 requests/second, so wait 100ms between requests
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      currentDate.setDate(currentDate.getDate() + batchSizeDays);
+      // Move to next batch start (1 day after current batch end)
+      currentDate.setTime(actualEnd.getTime());
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     return allCandles;
@@ -344,20 +357,21 @@ export class SimpleUpstoxClient {
       }
 
       // Transform to InstrumentMasterData
-      return Object.values(response.data.data).map((quote) => {
+      return Object.entries(response.data.data).map(([key, quote]) => {
         // Parse segment from instrument key (e.g. NSE_EQ:HDFCLIFE) or from instrument_token (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
 
         const [exchange, segment] = quote.instrument_token
           .split('|')[0]
           .split('_');
         const isin = quote.instrument_token.split('|')[1];
+        const symbol = key.split(':')[0];
 
         return {
           instrumentKey: quote.instrument_token,
           exchange: exchange,
           segment: segment,
-          tradingSymbol: quote.symbol,
-          name: quote.symbol, // API doesn't provide full name, use symbol
+          tradingSymbol: quote.symbol || symbol,
+          name: quote.symbol || symbol, // API doesn't provide full name, use symbol
           isin: isin,
           lastPrice: quote.last_price,
           lastUpdated: new Date(),
