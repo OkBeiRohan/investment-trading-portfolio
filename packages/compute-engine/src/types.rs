@@ -27,7 +27,7 @@ pub struct FutureTick {
 
 /// Single tick data for NIFTY 50 constituent
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/generated/")]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
 #[napi(object)]
 pub struct ConstituentTick {
   pub symbol: String,
@@ -39,7 +39,7 @@ pub struct ConstituentTick {
 
 /// Single option tick data
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/generated/")]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
 #[napi(object)]
 pub struct OptionTick {
   pub strike: f64,
@@ -56,7 +56,7 @@ pub struct OptionTick {
 
 /// Complete feature computation input (passed directly from Node.js)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/generated/")]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
 #[napi(object)]
 pub struct FeatureInput {
   pub timestamp: i64, // Unix timestamp in milliseconds
@@ -72,7 +72,7 @@ pub struct FeatureInput {
 
 /// Complete feature output (33 features + timestamp = 34 fields) - returned directly to Node.js
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/generated/")]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
 #[napi(object)]
 pub struct FeatureOutput {
   pub timestamp: i64,
@@ -123,7 +123,7 @@ pub struct FeatureOutput {
 
 /// Per-feature timing log
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/generated/")]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
 #[napi(object)]
 pub struct FeatureTimingLog {
   pub feature_name: String,
@@ -132,7 +132,7 @@ pub struct FeatureTimingLog {
 
 /// Complete computation result with features and timings (returned directly to Node.js)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/generated/")]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
 #[napi(object)]
 pub struct ComputeResult {
   pub features: FeatureOutput,
@@ -265,7 +265,7 @@ mod tests {
     FeatureTimingLog::export().unwrap();
     ComputeResult::export().unwrap();
 
-    println!("✅ TypeScript bindings exported to packages/schema/src/compute-engine/generated/");
+    println!("✅ TypeScript bindings exported to packages/schema/src/compute-engine/");
   }
 }
 // ============================================
