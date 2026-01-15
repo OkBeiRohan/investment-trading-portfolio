@@ -13,6 +13,7 @@ import {
   NIFTY50_CONSTITUENTS,
   NIFTY50_FUTURES,
   NIFTY50_INDEX,
+  REMOVED_NIFTY50_CONSTITUENTS,
 } from './nifty50-instruments';
 import { ExpiredFutureContract, SimpleUpstoxClient } from './simple-client';
 import { isAxiosError } from 'axios';
@@ -51,7 +52,12 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     const today = new Date();
 
     // Instruments to fetch
-    const instruments = [NIFTY50_INDEX, INDIA_VIX, ...NIFTY50_CONSTITUENTS];
+    const instruments = [
+      NIFTY50_INDEX,
+      INDIA_VIX,
+      ...NIFTY50_CONSTITUENTS,
+      ...REMOVED_NIFTY50_CONSTITUENTS.map((c) => c.instrumentKey),
+    ];
 
     this.logger.log(
       `Bootstrapping historical data for ${instruments.length} instruments + futures`,
@@ -62,7 +68,13 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     // Step 1: Populate instrument_master table
     await this.populateInstrumentMaster([NIFTY50_INDEX, INDIA_VIX], 'SPOT');
-    await this.populateInstrumentMaster(NIFTY50_CONSTITUENTS, 'STOCK');
+    await this.populateInstrumentMaster(
+      [
+        ...NIFTY50_CONSTITUENTS,
+        ...REMOVED_NIFTY50_CONSTITUENTS.map((c) => c.instrumentKey),
+      ],
+      'STOCK',
+    );
 
     // Step 2: Fetch NIFTY50 futures dynamically based on expiries in the date range
     const { activeFutures, expiredContracts } =
