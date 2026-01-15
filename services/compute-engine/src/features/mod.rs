@@ -171,6 +171,13 @@ pub mod options;
 pub mod time_context;
 pub mod volatility;
 
+// Re-export all feature structs
+pub use index_breadth::*;
+pub use nifty_future::*;
+pub use options::*;
+pub use time_context::*;
+pub use volatility::*;
+
 // ============================================
 // TESTS
 // ============================================
