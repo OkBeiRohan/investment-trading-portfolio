@@ -40,7 +40,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     private readonly upstoxClient: SimpleUpstoxClient,
   ) {}
 
-  async onModuleInit() {
+  onModuleInit() {
     // Auto-bootstrap on startup (can be disabled via env var)
     const autoBootstrap = this.configService.get<string>(
       'AUTO_BOOTSTRAP_HISTORICAL_DATA',
@@ -48,7 +48,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     );
     if (autoBootstrap === 'true') {
       this.logger.log('Auto-bootstrap enabled, checking for missing data...');
-      await this.bootstrapHistoricalData();
+      void this.bootstrapHistoricalData();
     }
   }
 
@@ -223,12 +223,14 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         `✓ Populated ${instruments.length} instruments in instrument_master`,
       );
     } catch (error) {
+      this.logger.error(error);
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(
         `Failed to populate instrument_master: ${errorMessage}`,
       );
-      // Don't throw - continue with historical data fetch even if this fails
+
+      throw error;
     }
   }
 
