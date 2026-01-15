@@ -21,7 +21,7 @@ export class HistoricalDataController {
    * GET /historical-data/bootstrap
    */
   @Get('bootstrap')
-  async bootstrap() {
+  bootstrap() {
     this.logger.log('Bootstrap endpoint called');
     return this.historicalDataService.triggerBootstrap();
   }
