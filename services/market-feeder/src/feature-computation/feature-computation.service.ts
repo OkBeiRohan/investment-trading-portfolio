@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { QuestDBService } from '@repo/database';
+import {
+  CandlesRepository,
+  InstrumentFeaturesRepository,
+  MarketStateRepository,
+} from '@repo/database';
 import { ComputeEngineService } from './compute-engine.service';
+import { Candle } from '@repo/schema';
 
 /**
  * Feature Computation Service
@@ -20,8 +25,10 @@ export class FeatureComputationService {
   private readonly logger = new Logger(FeatureComputationService.name);
 
   constructor(
-    private readonly questdb: QuestDBService,
     private readonly computeEngine: ComputeEngineService,
+    private readonly candleRepository: CandlesRepository,
+    private readonly featuresRepository: InstrumentFeaturesRepository,
+    private readonly marketStateRepository: MarketStateRepository,
   ) {}
 
   /**
@@ -93,7 +100,7 @@ export class FeatureComputationService {
     this.logger.debug(`Fetched ${rawData.length} raw data points`);
 
     // 2. Call compute-engine to calculate features
-    // const features = await this.computeEngine.computeFeatures(rawData);
+    const features = await this.computeEngine.computeFeatures(rawData);
 
     // this.logger.debug(`Computed ${features.length} feature rows`);
 
@@ -101,7 +108,7 @@ export class FeatureComputationService {
     // await this.storeFeatures(instrumentKey, features);
 
     // return features.length;
-    return 0; // Placeholder until compute-engine integration is done
+    return features.total_duration_micros; // Placeholder until compute-engine integration is done
   }
 
   /**
@@ -113,48 +120,16 @@ export class FeatureComputationService {
     instrumentKey: string,
     startTime: Date,
     endTime: Date,
-  ): Promise<Array<Record<string, unknown>>> {
-    // Query combines multiple tables for complete market view
-    const query = `
-      SELECT
-        t.timestamp,
-        t.last_price,
-        t.volume,
-        t.open_interest,
-        c.open,
-        c.high,
-        c.low,
-        c.close,
-        q.bid_price,
-        q.ask_price,
-        q.bid_quantity,
-        q.ask_quantity,
-        g.delta,
-        g.gamma,
-        g.vega,
-        g.theta,
-        g.implied_volatility
-      FROM market_ticks t
-      LEFT JOIN market_candles c
-        ON t.instrument_key = c.instrument_key
-        AND c.interval = '5m'
-        AND t.timestamp >= c.timestamp
-        AND t.timestamp < c.timestamp + INTERVAL '5' MINUTE
-      LEFT JOIN market_quotes q
-        ON t.instrument_key = q.instrument_key
-        AND t.timestamp = q.timestamp
-      LEFT JOIN option_greeks g
-        ON t.instrument_key = g.instrument_key
-        AND t.timestamp = g.timestamp
-      WHERE t.instrument_key = '${instrumentKey}'
-        AND t.timestamp >= '${startTime.toISOString()}'
-        AND t.timestamp < '${endTime.toISOString()}'
-      ORDER BY t.timestamp ASC
-    `;
+  ): Promise<Candle[]> {
+    const candles = await this.candleRepository.findByTimeRange(
+      instrumentKey,
+      1,
+      'minute',
+      startTime,
+      endTime,
+    );
 
-    const result = await this.questdb.query(query);
-    // return result.rows;
-    return [];
+    return candles;
   }
 
   /**
@@ -164,44 +139,13 @@ export class FeatureComputationService {
    * - timestamp, instrument_key
    * - 33 features (feature_0 to feature_32)
    */
-  private async storeFeatures(
+  private storeFeatures(
     instrumentKey: string,
     features: Array<{ timestamp: string; [key: string]: number | string }>,
-  ): Promise<void> {
+  ): void {
     if (features.length === 0) {
       return;
     }
-
-    // Build batch insert query
-    const values = features
-      .map((row) => {
-        const featureCols = Array.from(
-          { length: 33 },
-          (_, i) => row[`feature_${i}`] || 0,
-        ).join(',');
-        return `('${row.timestamp}', '${instrumentKey}', ${featureCols})`;
-      })
-      .join(',\n  ');
-
-    const featureColumns = Array.from(
-      { length: 33 },
-      (_, i) => `feature_${i}`,
-    ).join(', ');
-
-    const query = `
-      INSERT INTO training_features_lightgbm (
-        timestamp,
-        instrument_key,
-        ${featureColumns}
-      ) VALUES
-      ${values}
-    `;
-
-    await this.questdb.query(query);
-
-    this.logger.debug(
-      `Stored ${features.length} feature rows for ${instrumentKey}`,
-    );
   }
 
   /**
