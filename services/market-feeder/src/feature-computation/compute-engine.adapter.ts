@@ -16,10 +16,10 @@
  * - No manual module initialization required
  */
 
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
-  type FeatureInput,
-  type ComputeResult,
+  FeatureInput,
+  ComputeResult,
   validateFeatureInput,
   validateComputeResult,
 } from '@repo/schema';
@@ -36,6 +36,8 @@ import { computeFeatures } from '@repo/compute-engine';
  * - No need for manual initialization (Rust uses Lazy static)
  * - Cache is managed internally in Rust global state
  */
+
+@Injectable()
 export class ComputeEngineAdapter {
   private readonly logger = new Logger(ComputeEngineAdapter.name);
 
@@ -66,7 +68,7 @@ export class ComputeEngineAdapter {
       const resultJson: string = computeFeatures(inputJson);
 
       // Deserialize and validate result
-      const result = JSON.parse(resultJson) as unknown;
+      const result = JSON.parse(resultJson) as ComputeResult;
       const validatedResult = validateComputeResult(result);
 
       // Performance monitoring

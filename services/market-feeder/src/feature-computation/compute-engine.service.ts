@@ -18,14 +18,11 @@ import type { FeatureInput, ComputeResult } from '@repo/schema';
 @Injectable()
 export class ComputeEngineService {
   private readonly logger = new Logger(ComputeEngineService.name);
-  private readonly adapter: ComputeEngineAdapter;
 
-  constructor() {
-    this.adapter = new ComputeEngineAdapter();
-
+  constructor(private readonly computeEngineAdapter: ComputeEngineAdapter) {
     // NAPI-RS 3.0: Module auto-loads on first require
     // No explicit initialization needed
-    if (this.adapter.isReady()) {
+    if (this.computeEngineAdapter.isReady()) {
       this.logger.log('Compute engine service ready');
     } else {
       this.logger.warn('Compute engine module not loaded');
@@ -47,7 +44,7 @@ export class ComputeEngineService {
     try {
       // Call adapter (synchronous call to Rust NAPI function)
       // Rust internally: updates cache → computes dependencies → parallel features
-      const result = this.adapter.computeFeatures(input);
+      const result = this.computeEngineAdapter.computeFeatures(input);
 
       this.logger.debug(
         `Features computed in ${result.total_duration_micros}µs`,
