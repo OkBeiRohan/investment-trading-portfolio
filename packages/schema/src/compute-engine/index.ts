@@ -125,13 +125,13 @@ export type ComputeResult = z.infer<typeof ComputeResultSchema>;
 /**
  * Validate feature input before passing to compute engine
  */
-export function validateFeatureInput(input: unknown): FeatureInput {
+export function validateFeatureInput(input: FeatureInput): FeatureInput {
   return FeatureInputSchema.parse(input);
 }
 
 /**
  * Validate compute result after receiving from compute engine
  */
-export function validateComputeResult(result: unknown): ComputeResult {
+export function validateComputeResult(result: ComputeResult): ComputeResult {
   return ComputeResultSchema.parse(result);
 }
