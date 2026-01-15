@@ -110,6 +110,20 @@ pub fn compute_constituent_ema20s(cache: &HistoricalCache, symbols: &[String]) -
     .collect()
 }
 
+/// Compute EMA12 for NIFTY Future from cache (for MACD)
+pub fn compute_nifty_future_ema12(cache: &HistoricalCache) -> f64 {
+  let history = cache.get_nifty_future_pv();
+  let prices: Vec<f64> = history.iter().map(|t| t.price).collect();
+  compute_ema(&prices, 12)
+}
+
+/// Compute EMA26 for NIFTY Future from cache (for MACD)
+pub fn compute_nifty_future_ema26(cache: &HistoricalCache) -> f64 {
+  let history = cache.get_nifty_future_pv();
+  let prices: Vec<f64> = history.iter().map(|t| t.price).collect();
+  compute_ema(&prices, 26)
+}
+
 // ============================================
 // ATR (Average True Range)
 // ============================================
@@ -337,6 +351,47 @@ pub fn compute_realized_vol_15m(cache: &HistoricalCache) -> f64 {
 }
 
 // ============================================
+// CACHE-BASED LOOKBACK METRICS
+// ============================================
+
+/// Compute 1-minute return from cache
+pub fn compute_nifty_future_return_1m(cache: &HistoricalCache, current_price: f64) -> f64 {
+  if let Some(price_1m_ago) = cache.get_nifty_future_price_n_ago(1) {
+    (current_price - price_1m_ago) / price_1m_ago
+  } else {
+    0.0
+  }
+}
+
+/// Compute 5-minute return from cache
+pub fn compute_nifty_future_return_5m(cache: &HistoricalCache, current_price: f64) -> f64 {
+  if let Some(price_5m_ago) = cache.get_nifty_future_price_n_ago(5) {
+    (current_price - price_5m_ago) / price_5m_ago
+  } else {
+    0.0
+  }
+}
+
+/// Compute volume z-score from cache statistics
+pub fn compute_nifty_future_volume_zscore(cache: &HistoricalCache, current_volume: f64) -> f64 {
+  let (mean, std) = cache.get_nifty_future_volume_stats();
+  if std > 0.0 {
+    (current_volume - mean) / std
+  } else {
+    0.0
+  }
+}
+
+/// Compute OI change from 1 period ago
+pub fn compute_nifty_future_oi_change(cache: &HistoricalCache, current_oi: f64) -> f64 {
+  if let Some(oi_1m_ago) = cache.get_nifty_future_oi_n_ago(1) {
+    current_oi - oi_1m_ago
+  } else {
+    0.0
+  }
+}
+
+// ============================================
 // DEFAULT IMPLEMENTATION FOR OPTION GREEKS
 // ============================================
 
@@ -373,6 +428,8 @@ pub fn compute_all_dependencies(
     nifty_future_vwap: compute_nifty_future_vwap(cache),
     constituent_vwaps: compute_constituent_vwaps(cache, &constituent_symbols),
     nifty_future_ema20: compute_nifty_future_ema20(cache),
+    nifty_future_ema12: compute_nifty_future_ema12(cache),
+    nifty_future_ema26: compute_nifty_future_ema26(cache),
     constituent_ema20s: compute_constituent_ema20s(cache, &constituent_symbols),
     nifty_future_atr: compute_nifty_future_atr(cache),
     nifty_future_rsi_14: compute_nifty_future_rsi_14(cache),
@@ -380,6 +437,13 @@ pub fn compute_all_dependencies(
     atm_put_greeks: aggregate_atm_put_greeks(input),
     realized_vol_5m: compute_realized_vol_5m(cache),
     realized_vol_15m: compute_realized_vol_15m(cache),
+    nifty_future_return_1m: compute_nifty_future_return_1m(cache, input.nifty_future.ltp),
+    nifty_future_return_5m: compute_nifty_future_return_5m(cache, input.nifty_future.ltp),
+    nifty_future_volume_zscore: compute_nifty_future_volume_zscore(
+      cache,
+      input.nifty_future.volume,
+    ),
+    nifty_future_oi_change: compute_nifty_future_oi_change(cache, input.nifty_future.open_interest),
   }
 }
 

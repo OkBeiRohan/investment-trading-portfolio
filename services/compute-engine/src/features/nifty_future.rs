@@ -67,11 +67,8 @@ impl Feature for FutReturn1m {
     "nifty_future"
   }
 
-  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
-    // Simple intraday return as placeholder
-    // TODO: Use cache.get_nifty_future_pv().last_n(1) for 1-minute lookback
-    let ret = (input.nifty_future.ltp - input.nifty_future.open) / input.nifty_future.open;
-    FeatureValue::Scalar(ret)
+  fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    FeatureValue::Scalar(deps.nifty_future_return_1m)
   }
 }
 
@@ -90,11 +87,8 @@ impl Feature for FutReturn5m {
     "nifty_future"
   }
 
-  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
-    // Simple intraday return as placeholder
-    // TODO: Use cache.get_nifty_future_pv().last_n(5) for 5-minute lookback
-    let ret = (input.nifty_future.ltp - input.nifty_future.open) / input.nifty_future.open;
-    FeatureValue::Scalar(ret)
+  fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    FeatureValue::Scalar(deps.nifty_future_return_5m)
   }
 }
 
@@ -134,16 +128,8 @@ impl Feature for FutVolumeZscore {
     "nifty_future"
   }
 
-  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
-    // Placeholder: return normalized volume
-    // TODO: Calculate (volume - mean_volume) / std_volume using cache statistics
-    // For now, return log of volume as proxy for normalized measure
-    let normalized = if input.nifty_future.volume > 0.0 {
-      (input.nifty_future.volume.ln() - 13.0) / 2.0 // Rough normalization
-    } else {
-      0.0
-    };
-    FeatureValue::Scalar(normalized)
+  fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    FeatureValue::Scalar(deps.nifty_future_volume_zscore)
   }
 }
 
@@ -162,11 +148,8 @@ impl Feature for FutOiChange {
     "nifty_future"
   }
 
-  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
-    // Placeholder: return absolute OI
-    // TODO: Calculate current_oi - previous_oi using cache
-    // For now, return OI normalized by 1M
-    FeatureValue::Scalar(input.nifty_future.open_interest / 1_000_000.0)
+  fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    FeatureValue::Scalar(deps.nifty_future_oi_change)
   }
 }
 
@@ -205,12 +188,10 @@ impl Feature for FutMacd {
     "nifty_future"
   }
 
-  fn compute(&self, _input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+  fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
     // MACD = EMA12 - EMA26
-    // Note: We'll need to add EMA12 and EMA26 to ComputedDependencies
-    // For now, using placeholder calculation
-    // TODO: Add compute_nifty_future_ema12() and compute_nifty_future_ema26() to dependencies
-    FeatureValue::Scalar(0.0) // Will be: deps.nifty_future_ema12 - deps.nifty_future_ema26
+    let macd = deps.nifty_future_ema12 - deps.nifty_future_ema26;
+    FeatureValue::Scalar(macd)
   }
 }
 
@@ -244,13 +225,13 @@ mod tests {
   #[test]
   fn test_fut_return_1m() {
     let input = create_test_input();
-    let deps = ComputedDependencies::default();
+    let mut deps = ComputedDependencies::default();
+    deps.nifty_future_return_1m = 0.00257; // 1-minute return from cache
     let feature = FutReturn1m;
 
     let result = feature.compute(&input, &deps);
 
     if let FeatureValue::Scalar(val) = result {
-      // Expected: (19500 - 19450) / 19450 ≈ 0.00257
       assert!((val - 0.00257).abs() < 0.0001);
     }
   }
@@ -258,14 +239,14 @@ mod tests {
   #[test]
   fn test_fut_return_5m() {
     let input = create_test_input();
-    let deps = ComputedDependencies::default();
+    let mut deps = ComputedDependencies::default();
+    deps.nifty_future_return_5m = 0.00512; // 5-minute return from cache
     let feature = FutReturn5m;
 
     let result = feature.compute(&input, &deps);
 
     if let FeatureValue::Scalar(val) = result {
-      // Same as 1m return for now
-      assert!((val - 0.00257).abs() < 0.0001);
+      assert!((val - 0.00512).abs() < 0.0001);
     }
   }
 
@@ -285,14 +266,14 @@ mod tests {
   #[test]
   fn test_fut_oi_change() {
     let input = create_test_input();
-    let deps = ComputedDependencies::default();
+    let mut deps = ComputedDependencies::default();
+    deps.nifty_future_oi_change = 10000.0; // OI change from cache
     let feature = FutOiChange;
 
     let result = feature.compute(&input, &deps);
 
     if let FeatureValue::Scalar(val) = result {
-      // Expected: 5000000 / 1000000 = 5.0
-      assert!((val - 5.0).abs() < 0.01);
+      assert!((val - 10000.0).abs() < 0.01);
     }
   }
 }

@@ -18,6 +18,8 @@ pub struct ComputedDependencies {
 
   // Moving averages
   pub nifty_future_ema20: f64,
+  pub nifty_future_ema12: f64, // For MACD
+  pub nifty_future_ema26: f64, // For MACD
   pub constituent_ema20s: Vec<f64>,
 
   // Volatility indicators
@@ -31,6 +33,12 @@ pub struct ComputedDependencies {
   // Volatility metrics
   pub realized_vol_5m: f64,
   pub realized_vol_15m: f64,
+
+  // Cache-based lookback metrics
+  pub nifty_future_return_1m: f64,     // 1-minute return
+  pub nifty_future_return_5m: f64,     // 5-minute return
+  pub nifty_future_volume_zscore: f64, // Volume z-score
+  pub nifty_future_oi_change: f64,     // OI change from 1 period ago
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +57,8 @@ impl Default for ComputedDependencies {
       nifty_future_vwap: 0.0,
       constituent_vwaps: vec![],
       nifty_future_ema20: 0.0,
+      nifty_future_ema12: 0.0,
+      nifty_future_ema26: 0.0,
       constituent_ema20s: vec![],
       nifty_future_atr: 0.0,
       nifty_future_rsi_14: 50.0,
@@ -56,6 +66,10 @@ impl Default for ComputedDependencies {
       atm_put_greeks: OptionGreeks::default(),
       realized_vol_5m: 0.0,
       realized_vol_15m: 0.0,
+      nifty_future_return_1m: 0.0,
+      nifty_future_return_5m: 0.0,
+      nifty_future_volume_zscore: 0.0,
+      nifty_future_oi_change: 0.0,
     }
   }
 }
@@ -238,6 +252,8 @@ mod tests {
       nifty_future_vwap: 19480.0,
       constituent_vwaps: vec![],
       nifty_future_ema20: 19470.0,
+      nifty_future_ema12: 19475.0,
+      nifty_future_ema26: 19465.0,
       constituent_ema20s: vec![],
       nifty_future_atr: 150.0,
       nifty_future_rsi_14: 55.0,
@@ -259,6 +275,10 @@ mod tests {
       },
       realized_vol_5m: 0.012,
       realized_vol_15m: 0.015,
+      nifty_future_return_1m: 0.0001,
+      nifty_future_return_5m: 0.0005,
+      nifty_future_volume_zscore: 1.2,
+      nifty_future_oi_change: 10000.0,
     };
 
     let (value, log) = feature.compute_timed(&input, &deps);

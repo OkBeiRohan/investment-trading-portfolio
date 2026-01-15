@@ -95,6 +95,46 @@ impl HistoricalCache {
     self.nifty_future_ohlc.clear();
     self.constituent_pv.clear();
   }
+
+  /// Get NIFTY future price from N periods ago
+  pub fn get_nifty_future_price_n_ago(&self, n: usize) -> Option<f64> {
+    let history = self.nifty_future_pv.iter().collect::<Vec<_>>();
+    if n >= history.len() {
+      return None;
+    }
+    let index = history.len() - 1 - n;
+    Some(history[index].price)
+  }
+
+  /// Get NIFTY future open interest from N periods ago
+  pub fn get_nifty_future_oi_n_ago(&self, n: usize) -> Option<f64> {
+    let history = self.nifty_future_ohlc.iter().collect::<Vec<_>>();
+    if n >= history.len() {
+      return None;
+    }
+    // Note: OI is stored as close in OhlcTick for simplicity
+    let index = history.len() - 1 - n;
+    Some(history[index].close)
+  }
+
+  /// Get NIFTY future volume statistics (mean, std dev) over last 20 periods
+  pub fn get_nifty_future_volume_stats(&self) -> (f64, f64) {
+    let volumes: Vec<f64> = self
+      .nifty_future_pv
+      .iter()
+      .take(20)
+      .map(|t| t.volume)
+      .collect();
+
+    if volumes.is_empty() {
+      return (0.0, 0.0);
+    }
+
+    let mean = volumes.iter().sum::<f64>() / volumes.len() as f64;
+    let variance = volumes.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / volumes.len() as f64;
+
+    (mean, variance.sqrt())
+  }
 }
 
 // ============================================
