@@ -126,18 +126,51 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         );
 
         // DEMO VERSION: Fetch and insert directly in client (see SimpleUpstoxClient.getHistoricalCandlesBatched)
-        const upstoxCandles =
-          await this.upstoxClient.getHistoricalCandlesBatched(
+        let upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
+          instrumentKey,
+          'minutes',
+          1,
+          twoYearsAgo,
+          today,
+        );
+
+        if (!upstoxCandles || upstoxCandles.length === 0) {
+          this.logger.warn(`No data returned for ${instrumentKey}`);
+
+          // try again with 5 minute interval
+          this.logger.log(
+            `Retrying with 5 minute interval for ${instrumentKey}...`,
+          );
+          upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
             instrumentKey,
             'minutes',
-            1,
+            5,
             twoYearsAgo,
             today,
           );
 
-        if (!upstoxCandles || upstoxCandles.length === 0) {
-          this.logger.warn(`No data returned for ${instrumentKey}`);
-          continue;
+          if (!upstoxCandles || upstoxCandles.length === 0) {
+            // try again with 30 minute interval
+            this.logger.warn(
+              `No data returned for ${instrumentKey} at 5 minute interval either, skipping.`,
+            );
+
+            upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
+              instrumentKey,
+              'minutes',
+              30,
+              twoYearsAgo,
+              today,
+            );
+
+            if (!upstoxCandles || upstoxCandles.length === 0) {
+              this.logger.error(
+                `No data returned for ${instrumentKey} at 30 minute interval either, skipping.`,
+              );
+
+              continue;
+            }
+          }
         }
 
         totalFetched += upstoxCandles.length;
