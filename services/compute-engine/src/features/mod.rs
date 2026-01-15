@@ -1,139 +1,291 @@
-use crate::{ComputeError, MarketDataPoint, FeatureVector, Result};
-use chrono::{Datelike, Timelike};
+//! Feature computation trait and shared dependencies
+//! All feature implementations must implement the Feature trait
 
-pub mod market_structure;
-pub mod momentum;
-pub mod volatility;
+use crate::types::{FeatureInput, FeatureTimingLog};
+use std::time::Instant;
+
+// ============================================
+// SHARED COMPUTED DEPENDENCIES
+// ============================================
+
+/// Computed dependencies shared across features
+/// These are calculated ONCE in Phase 2, then passed to all features
+#[derive(Debug, Clone)]
+pub struct ComputedDependencies {
+  // VWAP calculations (computed from historical cache)
+  pub nifty_future_vwap: f64,
+  pub constituent_vwaps: Vec<f64>, // Indexed same as input.constituents
+
+  // Moving averages
+  pub nifty_future_ema20: f64,
+  pub nifty_future_ema12: f64, // For MACD
+  pub nifty_future_ema26: f64, // For MACD
+  pub constituent_ema20s: Vec<f64>,
+
+  // Volatility indicators
+  pub nifty_future_atr: f64,
+  pub nifty_future_rsi_14: f64,
+
+  // Options Greeks aggregates
+  pub atm_call_greeks: OptionGreeks,
+  pub atm_put_greeks: OptionGreeks,
+
+  // Volatility metrics
+  pub realized_vol_5m: f64,
+  pub realized_vol_15m: f64,
+
+  // Cache-based lookback metrics
+  pub nifty_future_return_1m: f64,     // 1-minute return
+  pub nifty_future_return_5m: f64,     // 5-minute return
+  pub nifty_future_volume_zscore: f64, // Volume z-score
+  pub nifty_future_oi_change: f64,     // OI change from 1 period ago
+}
+
+#[derive(Debug, Clone)]
+pub struct OptionGreeks {
+  pub delta: f64,
+  pub gamma: f64,
+  pub vega: f64,
+  pub theta: f64,
+  pub charm: f64, // Second-order Greek
+  pub vanna: f64, // Second-order Greek
+}
+
+impl Default for ComputedDependencies {
+  fn default() -> Self {
+    Self {
+      nifty_future_vwap: 0.0,
+      constituent_vwaps: vec![],
+      nifty_future_ema20: 0.0,
+      nifty_future_ema12: 0.0,
+      nifty_future_ema26: 0.0,
+      constituent_ema20s: vec![],
+      nifty_future_atr: 0.0,
+      nifty_future_rsi_14: 50.0,
+      atm_call_greeks: OptionGreeks::default(),
+      atm_put_greeks: OptionGreeks::default(),
+      realized_vol_5m: 0.0,
+      realized_vol_15m: 0.0,
+      nifty_future_return_1m: 0.0,
+      nifty_future_return_5m: 0.0,
+      nifty_future_volume_zscore: 0.0,
+      nifty_future_oi_change: 0.0,
+    }
+  }
+}
+
+// ============================================
+// FEATURE TRAIT
+// ============================================
+
+/// Trait that all feature implementations must implement
+/// Allows modular addition of new features
+pub trait Feature: Send + Sync {
+  /// Unique identifier for this feature
+  fn name(&self) -> &'static str;
+
+  /// Category for organization (index_breadth, nifty_future, options, volatility, time_context)
+  fn category(&self) -> &'static str;
+
+  /// Compute the feature value
+  /// Returns f64 for scalar features, Vec<f64> for multi-value features
+  fn compute(&self, input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue;
+
+  /// Compute with timing (default implementation)
+  fn compute_timed(
+    &self,
+    input: &FeatureInput,
+    deps: &ComputedDependencies,
+  ) -> (FeatureValue, FeatureTimingLog) {
+    let start = Instant::now();
+    let value = self.compute(input, deps);
+    let duration = start.elapsed();
+
+    let log = FeatureTimingLog {
+      feature_name: self.name().to_string(),
+      duration_micros: duration.as_micros() as i64,
+    };
+
+    (value, log)
+  }
+}
+
+/// Feature computation result (supports scalar and vector features)
+#[derive(Debug, Clone)]
+pub enum FeatureValue {
+  Scalar(f64),
+  Vector(Vec<f64>),
+  Integer(i32),
+}
+
+impl FeatureValue {
+  pub fn as_scalar(&self) -> f64 {
+    match self {
+      FeatureValue::Scalar(v) => *v,
+      _ => panic!("Expected scalar feature value"),
+    }
+  }
+
+  pub fn as_integer(&self) -> i32 {
+    match self {
+      FeatureValue::Integer(v) => *v,
+      _ => panic!("Expected integer feature value"),
+    }
+  }
+}
+
+// ============================================
+// FEATURE REGISTRY
+// ============================================
+
+/// Registry of all available features
+pub struct FeatureRegistry {
+  features: Vec<Box<dyn Feature>>,
+}
+
+impl FeatureRegistry {
+  pub fn new() -> Self {
+    Self {
+      features: Vec::new(),
+    }
+  }
+
+  /// Register a new feature
+  pub fn register<F: Feature + 'static>(&mut self, feature: F) {
+    self.features.push(Box::new(feature));
+  }
+
+  /// Get all registered features
+  pub fn features(&self) -> &[Box<dyn Feature>] {
+    &self.features
+  }
+
+  /// Get feature by name
+  pub fn get_feature(&self, name: &str) -> Option<&Box<dyn Feature>> {
+    self.features.iter().find(|f| f.name() == name)
+  }
+
+  /// Get features by category
+  pub fn get_features_by_category(&self, category: &str) -> Vec<&Box<dyn Feature>> {
+    self
+      .features
+      .iter()
+      .filter(|f| f.category() == category)
+      .collect()
+  }
+}
+
+// ============================================
+// MODULE EXPORTS
+// ============================================
+
+pub mod index_breadth;
+pub mod nifty_future;
 pub mod options;
 pub mod time_context;
+pub mod volatility;
 
-use market_structure::*;
-use momentum::*;
-use volatility::*;
-use options::*;
-use time_context::*;
+// Re-export all feature structs
+pub use index_breadth::*;
+pub use nifty_future::*;
+pub use options::*;
+pub use time_context::*;
+pub use volatility::*;
 
-/// Main feature computation function
-/// 
-/// Takes a time-series of market data points and returns computed features for each point.
-/// Requires sufficient historical data for windowed calculations (minimum 21 periods).
-pub fn compute_features(data: &[MarketDataPoint]) -> Result<Vec<FeatureVector>> {
-    if data.len() < 21 {
-        return Err(ComputeError::InsufficientData {
-            required: 21,
-            actual: data.len(),
-        });
-    }
-
-    let mut features = Vec::with_capacity(data.len());
-
-    // Process each data point
-    for (i, point) in data.iter().enumerate() {
-        // Get historical window for this point
-        let start_idx = i.saturating_sub(20); // Need at least 21 points for RSI_21
-        let window = &data[start_idx..=i];
-
-        let feature = FeatureVector {
-            timestamp: point.timestamp,
-            
-            // Market Structure
-            price_vs_vwap: compute_price_vs_vwap(window),
-            price_vs_day_high: compute_price_vs_day_high(window),
-            price_vs_day_low: compute_price_vs_day_low(window),
-            range_position: compute_range_position(window),
-            prev_day_high_dist: compute_prev_day_high_dist(window),
-            prev_day_low_dist: compute_prev_day_low_dist(window),
-            weekly_high_dist: compute_weekly_high_dist(window),
-            weekly_low_dist: compute_weekly_low_dist(window),
-            
-            // Momentum & Trend
-            rsi_5: compute_rsi(window, 5),
-            rsi_14: compute_rsi(window, 14),
-            rsi_21: compute_rsi(window, 21),
-            macd_hist: compute_macd_histogram(window),
-            ema_9_slope: compute_ema_slope(window, 9),
-            ema_21_slope: compute_ema_slope(window, 21),
-            adx: compute_adx(window, 14),
-            roc_5: compute_roc(window, 5),
-            
-            // Volatility
-            atr_percent: compute_atr_percent(window, 14),
-            realized_vol_5m: compute_realized_volatility(window, 5),
-            realized_vol_15m: compute_realized_volatility(window, 15),
-            vol_expansion_ratio: compute_vol_expansion_ratio(window),
-            india_vix: point.implied_volatility.unwrap_or(0.0), // From market data
-            
-            // Options
-            atm_iv: point.implied_volatility.unwrap_or(0.0),
-            atm_iv_change: compute_iv_change(window),
-            delta_atm: point.delta.unwrap_or(0.0),
-            gamma_atm: point.gamma.unwrap_or(0.0),
-            vega_atm: point.vega.unwrap_or(0.0),
-            theta_atm: point.theta.unwrap_or(0.0),
-            pcr_oi: compute_pcr_oi(window),
-            pcr_volume: compute_pcr_volume(window),
-            max_pain_dist: compute_max_pain_distance(window),
-            
-            // Time Context
-            minutes_from_open: compute_minutes_from_open(&point.timestamp),
-            minutes_to_close: compute_minutes_to_close(&point.timestamp),
-            day_of_week: point.timestamp.weekday().num_days_from_monday() as f64,
-        };
-
-        features.push(feature);
-    }
-
-    Ok(features)
-}
+// ============================================
+// TESTS
+// ============================================
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use chrono::Utc;
+  use super::*;
+  use crate::types::{FeatureInput, FutureTick};
 
-    fn create_sample_data(n: usize) -> Vec<MarketDataPoint> {
-        (0..n)
-            .map(|i| MarketDataPoint {
-                timestamp: Utc::now(),
-                last_price: 19500.0 + (i as f64) * 10.0,
-                volume: 1000.0,
-                open_interest: Some(10000.0),
-                open: Some(19500.0),
-                high: Some(19600.0),
-                low: Some(19400.0),
-                close: Some(19500.0 + (i as f64) * 10.0),
-                bid_price: Some(19499.0),
-                ask_price: Some(19501.0),
-                bid_quantity: Some(100.0),
-                ask_quantity: Some(100.0),
-                delta: Some(0.5),
-                gamma: Some(0.01),
-                vega: Some(50.0),
-                theta: Some(-10.0),
-                implied_volatility: Some(0.15),
-            })
-            .collect()
+  struct DummyFeature;
+
+  impl Feature for DummyFeature {
+    fn name(&self) -> &'static str {
+      "dummy_feature"
     }
 
-    #[test]
-    fn test_compute_features() {
-        let data = create_sample_data(50);
-        let features = compute_features(&data).unwrap();
-
-        assert_eq!(features.len(), 50);
-        
-        // Check feature bounds
-        for feature in &features {
-            assert!(feature.rsi_5 >= 0.0 && feature.rsi_5 <= 100.0);
-            assert!(feature.rsi_14 >= 0.0 && feature.rsi_14 <= 100.0);
-            assert!(feature.rsi_21 >= 0.0 && feature.rsi_21 <= 100.0);
-        }
+    fn category(&self) -> &'static str {
+      "test"
     }
 
-    #[test]
-    fn test_insufficient_data() {
-        let data = create_sample_data(10);
-        let result = compute_features(&data);
-        assert!(result.is_err());
+    fn compute(&self, _input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+      FeatureValue::Scalar(42.0)
     }
+  }
+
+  #[test]
+  fn test_feature_registry() {
+    let mut registry = FeatureRegistry::new();
+    registry.register(DummyFeature);
+
+    assert_eq!(registry.features().len(), 1);
+
+    let feature = registry.get_feature("dummy_feature").unwrap();
+    assert_eq!(feature.name(), "dummy_feature");
+    assert_eq!(feature.category(), "test");
+  }
+
+  #[test]
+  fn test_feature_compute_timed() {
+    let feature = DummyFeature;
+    let input = FeatureInput {
+      timestamp: 1234567890,
+      nifty_future: FutureTick {
+        ltp: 19500.0,
+        open: 19450.0,
+        high: 19550.0,
+        low: 19400.0,
+        close: 19500.0,
+        volume: 1000000.0,
+        open_interest: 5000000.0,
+      },
+      constituents: vec![],
+      options: vec![],
+      india_vix: Some(15.5),
+    };
+
+    let deps = ComputedDependencies {
+      nifty_future_vwap: 19480.0,
+      constituent_vwaps: vec![],
+      nifty_future_ema20: 19470.0,
+      nifty_future_ema12: 19475.0,
+      nifty_future_ema26: 19465.0,
+      constituent_ema20s: vec![],
+      nifty_future_atr: 150.0,
+      nifty_future_rsi_14: 55.0,
+      atm_call_greeks: OptionGreeks {
+        delta: 0.5,
+        gamma: 0.001,
+        vega: 50.0,
+        theta: -10.0,
+        charm: -0.0001,
+        vanna: 0.002,
+      },
+      atm_put_greeks: OptionGreeks {
+        delta: -0.5,
+        gamma: 0.001,
+        vega: 50.0,
+        theta: -10.0,
+        charm: -0.0001,
+        vanna: 0.002,
+      },
+      realized_vol_5m: 0.012,
+      realized_vol_15m: 0.015,
+      nifty_future_return_1m: 0.0001,
+      nifty_future_return_5m: 0.0005,
+      nifty_future_volume_zscore: 1.2,
+      nifty_future_oi_change: 10000.0,
+    };
+
+    let (value, log) = feature.compute_timed(&input, &deps);
+
+    assert_eq!(value.as_scalar(), 42.0);
+    assert_eq!(log.feature_name, "dummy_feature");
+    // Duration may be 0 for very fast operations
+    assert!(log.duration_micros >= 0);
+  }
 }

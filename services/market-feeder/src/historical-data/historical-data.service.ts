@@ -14,7 +14,7 @@ import {
   NIFTY50_FUTURES,
   NIFTY50_INDEX,
 } from './nifty50-instruments';
-import { SimpleUpstoxClient } from './simple-client';
+import { ExpiredFutureContract, SimpleUpstoxClient } from './simple-client';
 import { isAxiosError } from 'axios';
 
 @Injectable()
@@ -51,15 +51,10 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     const today = new Date();
 
     // Instruments to fetch
-    const instruments = [
-      NIFTY50_INDEX,
-      INDIA_VIX,
-      ...NIFTY50_CONSTITUENTS,
-      ...NIFTY50_FUTURES,
-    ];
+    const instruments = [NIFTY50_INDEX, INDIA_VIX, ...NIFTY50_CONSTITUENTS];
 
     this.logger.log(
-      `Bootstrapping historical data for ${instruments.length} instruments`,
+      `Bootstrapping historical data for ${instruments.length} instruments + futures`,
     );
     this.logger.log(
       `Date range: ${twoYearsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
@@ -67,71 +62,77 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     // Step 1: Populate instrument_master table
     await this.populateInstrumentMaster([NIFTY50_INDEX, INDIA_VIX], 'SPOT');
-    await this.populateInstrumentMaster(NIFTY50_FUTURES, 'FUTURE');
     await this.populateInstrumentMaster(NIFTY50_CONSTITUENTS, 'STOCK');
 
-    // Step 2: Fetch and insert historical candles
+    // Step 2: Fetch NIFTY50 futures dynamically based on expiries in the date range
+    const { activeFutures, expiredContracts } =
+      await this.getFuturesForDateRange(NIFTY50_INDEX, twoYearsAgo, today);
+
+    this.logger.log(
+      `Found ${activeFutures.length} active futures + ${expiredContracts.length} expired futures`,
+    );
+
+    // Populate instrument_master for active futures (fetch from market quote API)
+    await this.populateInstrumentMaster(activeFutures, 'FUTURE');
+
+    // Populate instrument_master for expired futures (use already-fetched contract data)
+    await this.populateExpiredFutures(expiredContracts);
+
+    // Combine all futures for candle fetching
+    const allFutureKeys = [
+      ...activeFutures,
+      ...expiredContracts.map((c) => c.instrument_key),
+    ];
+    instruments.push(...allFutureKeys);
+
+    // Step 3: Fetch and insert historical candles
 
     let totalFetched = 0;
     let skipped = 0;
 
     for (const instrumentKey of instruments) {
       try {
-        this.logger.log(`Checking for missing data for ${instrumentKey}...`);
+        this.logger.log(`Checking if data exists for ${instrumentKey}...`);
 
-        // Find gaps in existing data
-        const gaps = await this.findMissingDataGaps(
+        // Simple check: if any data exists, skip
+        const hasData = await this.hasDataInRange(
           instrumentKey,
           twoYearsAgo,
           today,
         );
 
-        if (gaps.length === 0) {
+        if (hasData) {
           this.logger.log(
-            `✓ Complete data already exists for ${instrumentKey}, skipping`,
+            `✓ Data already exists for ${instrumentKey}, skipping`,
           );
           skipped++;
           continue;
         }
 
         this.logger.log(
-          `Found ${gaps.length} gap(s) in data for ${instrumentKey}`,
+          `No data found for ${instrumentKey}, fetching from ${twoYearsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}...`,
         );
 
-        // Fetch each gap
-        for (const gap of gaps) {
-          this.logger.log(
-            `Fetching 1-minute candles for ${instrumentKey} from ${gap.start.toISOString().split('T')[0]} to ${gap.end.toISOString().split('T')[0]}...`,
+        // DEMO VERSION: Fetch and insert directly in client (see SimpleUpstoxClient.getHistoricalCandlesBatched)
+        const upstoxCandles =
+          await this.upstoxClient.getHistoricalCandlesBatched(
+            instrumentKey,
+            'minutes',
+            1,
+            twoYearsAgo,
+            today,
           );
 
-          // DEMO VERSION: Fetch and insert directly in client (see SimpleUpstoxClient.getHistoricalCandlesBatched)
-          const upstoxCandles =
-            await this.upstoxClient.getHistoricalCandlesBatched(
-              instrumentKey,
-              'minutes',
-              1,
-              gap.start,
-              gap.end,
-            );
-
-          if (!upstoxCandles || upstoxCandles.length === 0) {
-            this.logger.warn(
-              `No data returned for ${instrumentKey} gap ${gap.start.toISOString().split('T')[0]} to ${gap.end.toISOString().split('T')[0]}`,
-            );
-            continue;
-          }
-
-          totalFetched += upstoxCandles.length;
-
-          this.logger.log(
-            `✓ Fetched and inserted ${upstoxCandles.length} candles for gap`,
-          );
-
-          // Rate limiting: wait 500ms between gaps
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        if (!upstoxCandles || upstoxCandles.length === 0) {
+          this.logger.warn(`No data returned for ${instrumentKey}`);
+          continue;
         }
 
-        this.logger.log(`✓ Completed filling gaps for ${instrumentKey}`);
+        totalFetched += upstoxCandles.length;
+
+        this.logger.log(
+          `✓ Fetched and inserted ${upstoxCandles.length} candles for ${instrumentKey}`,
+        );
 
         // Rate limiting: wait 500ms between instruments
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -154,91 +155,167 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
   }
 
   /**
-   * Check for missing candle data and return gaps that need to be filled
-   * @returns Array of date ranges [startDate, endDate] that have missing data
+   * Simple check if candle data already exists for the instrument in the given time range
+   * @returns true if data exists, false otherwise
    */
-  private async findMissingDataGaps(
+  private async hasDataInRange(
     instrumentKey: string,
     startDate: Date,
     endDate: Date,
-  ): Promise<Array<{ start: Date; end: Date }>> {
-    // Fetch all existing candles for this range
+  ): Promise<boolean> {
     const existingCandles = await this.candlesRepository.findByTimeRange(
       instrumentKey,
       1, // interval_value
       'minute', // interval_unit
       startDate,
       endDate,
-      1000000, // Large limit to get all candles
+      1, // Just check if ANY candle exists
     );
 
-    if (existingCandles.length === 0) {
-      // No data at all, return entire range
-      return [{ start: startDate, end: endDate }];
-    }
+    return existingCandles.length > 0;
+  }
 
-    // Create a set of existing timestamps for fast lookup
-    const existingTimestamps = new Set(
-      existingCandles.map((c) => c.timestamp.getTime()),
-    );
+  /**
+   * Get all NIFTY50 futures (active and expired) for a date range
+   * @returns Object with active futures keys and expired contract details
+   */
+  private async getFuturesForDateRange(
+    underlyingKey: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<{
+    activeFutures: string[];
+    expiredContracts: ExpiredFutureContract[];
+  }> {
+    try {
+      // Fetch all expiries (last 6 months available from API)
+      const allExpiries = await this.upstoxClient.getExpiries(underlyingKey);
 
-    // Find gaps in the data
-    const gaps: Array<{ start: Date; end: Date }> = [];
-    let gapStart: Date | null = null;
+      this.logger.log(
+        `Found ${allExpiries.length} total expiries for ${underlyingKey}`,
+      );
 
-    const current = new Date(startDate);
-    current.setHours(0, 0, 0, 0);
+      // Filter expiries that fall within our date range
+      const relevantExpiries = allExpiries.filter((expiryStr) => {
+        const expiryDate = new Date(expiryStr);
+        // Include if expiry is within range OR if expiry is after startDate (was active during period)
+        return expiryDate >= startDate && expiryDate <= endDate;
+      });
 
-    while (current <= endDate) {
-      // Skip weekends (Saturday = 6, Sunday = 0)
-      if (current.getDay() === 0 || current.getDay() === 6) {
-        current.setDate(current.getDate() + 1);
-        continue;
+      this.logger.log(
+        `${relevantExpiries.length} expiries fall within the target date range`,
+      );
+
+      const expiredContracts: ExpiredFutureContract[] = [];
+
+      // For each expiry, fetch the contract details
+      for (const expiry of relevantExpiries) {
+        const contract = await this.upstoxClient.getExpiredFutureContract(
+          underlyingKey,
+          expiry,
+        );
+
+        if (contract) {
+          expiredContracts.push(contract);
+          this.logger.debug(
+            `Added future: ${contract.trading_symbol} (${contract.instrument_key})`,
+          );
+        }
+
+        // Rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      // Check market hours (NSE: 9:15 AM to 3:30 PM)
-      const marketOpen = new Date(current);
-      marketOpen.setHours(9, 15, 0, 0);
-      const marketClose = new Date(current);
-      marketClose.setHours(15, 30, 0, 0);
+      this.logger.log(`Added ${NIFTY50_FUTURES.length} active futures`);
 
-      const checkTime = new Date(marketOpen);
-      let dayHasMissingData = false;
+      return {
+        activeFutures: NIFTY50_FUTURES,
+        expiredContracts,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error fetching futures for date range: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      // Fallback to hardcoded futures if API fails
+      return {
+        activeFutures: NIFTY50_FUTURES,
+        expiredContracts: [],
+      };
+    }
+  }
 
-      // Check each minute in market hours
-      while (checkTime <= marketClose) {
-        if (!existingTimestamps.has(checkTime.getTime())) {
-          dayHasMissingData = true;
-          break;
-        }
-        checkTime.setMinutes(checkTime.getMinutes() + 1);
-      }
-
-      if (dayHasMissingData) {
-        if (!gapStart) {
-          gapStart = new Date(current);
-          gapStart.setHours(0, 0, 0, 0);
-        }
-      } else {
-        if (gapStart) {
-          // End of gap
-          const gapEnd = new Date(current);
-          gapEnd.setDate(gapEnd.getDate() - 1);
-          gapEnd.setHours(23, 59, 59, 999);
-          gaps.push({ start: gapStart, end: gapEnd });
-          gapStart = null;
-        }
-      }
-
-      current.setDate(current.getDate() + 1);
+  /**
+   * Populate instrument_master for expired futures from already-fetched contract data
+   */
+  private async populateExpiredFutures(contracts: any[]): Promise<void> {
+    if (contracts.length === 0) {
+      return;
     }
 
-    // Handle case where gap extends to the end
-    if (gapStart) {
-      gaps.push({ start: gapStart, end: new Date(endDate) });
-    }
+    try {
+      // Check which instruments already exist
+      const existingInstruments = await Promise.all(
+        contracts.map(async (contract) => {
+          const exists = await this.instrumentMasterRepository.getByKey(
+            contract.instrument_key,
+          );
+          return exists ? contract.instrument_key : null;
+        }),
+      );
 
-    return gaps;
+      const toInsert = contracts.filter(
+        (contract, idx) => existingInstruments[idx] === null,
+      );
+
+      if (toInsert.length === 0) {
+        this.logger.log(
+          `✓ All ${contracts.length} expired futures already exist in instrument_master, skipping`,
+        );
+        return;
+      }
+
+      this.logger.log(
+        `Populating instrument_master for ${toInsert.length} expired futures (${contracts.length - toInsert.length} already exist)...`,
+      );
+
+      // Transform expired contract data to InstrumentMaster format
+      const instruments: InstrumentMaster[] = toInsert.map((contract) => ({
+        instrumentKey: contract.instrument_key,
+        exchange: 'NSE',
+        segment: 'FO',
+        instrumentType: 'FUTURE',
+        tradingsymbol: contract.trading_symbol,
+        name: contract.name || contract.trading_symbol,
+        expiry: contract.expiry ? new Date(contract.expiry) : null,
+        strike: null,
+        optionType: null,
+        lotSize: contract.lot_size || 25, // NIFTY default
+        tickSize: contract.tick_size || 0.05,
+        underlyingKey: contract.underlying_key || NIFTY50_INDEX,
+        isExpired: true,
+        lastUpdated: new Date(),
+      }));
+
+      const success =
+        await this.instrumentMasterRepository.bulkInsert(instruments);
+
+      if (success)
+        this.logger.log(
+          `✓ Populated ${instruments.length} expired futures in instrument_master`,
+        );
+      else
+        this.logger.warn(
+          `✗ Failed to populate some expired futures in instrument_master`,
+        );
+    } catch (error) {
+      this.logger.error(
+        `Failed to populate expired futures: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   /**
@@ -249,13 +326,32 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     type: 'STOCK' | 'SPOT' | 'FUTURE' | 'OPTION',
   ): Promise<void> {
     try {
+      // Check which instruments already exist
+      const existingInstruments = await Promise.all(
+        instrumentKeys.map(async (key) => {
+          const exists = await this.instrumentMasterRepository.getByKey(key);
+          return exists ? key : null;
+        }),
+      );
+
+      const toFetch = instrumentKeys.filter(
+        (key, idx) => existingInstruments[idx] === null,
+      );
+
+      if (toFetch.length === 0) {
+        this.logger.log(
+          `✓ All ${instrumentKeys.length} instruments already exist in instrument_master, skipping`,
+        );
+        return;
+      }
+
       this.logger.log(
-        `Populating instrument_master for ${instrumentKeys.length} instruments...`,
+        `Populating instrument_master for ${toFetch.length} new instruments (${instrumentKeys.length - toFetch.length} already exist)...`,
       );
 
       // Fetch market quotes in batches
       const instrumentData =
-        await this.upstoxClient.getFullMarketQuoteBatched(instrumentKeys);
+        await this.upstoxClient.getFullMarketQuoteBatched(toFetch);
 
       // Transform to InstrumentMaster format
       const instruments: InstrumentMaster[] = instrumentData.map((inst) => ({

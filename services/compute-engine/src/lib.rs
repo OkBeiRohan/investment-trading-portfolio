@@ -1,150 +1,95 @@
 #![deny(clippy::all)]
 
-mod types;
-mod mse;
+// Parallel feature computation system
+// Phase 1: Core infrastructure (types, trait, cache) - COMPLETE
+// Phase 2: Shared dependencies (VWAP, EMA, ATR, RSI, Greeks) - COMPLETE
+// Phase 3: 33 feature implementations - COMPLETE
+// Phase 4: Parallel execution with Rayon - IN PROGRESS
+
+// Feature computation system
+mod cache;
+mod dependencies;
 mod features;
+mod processor;
+mod types;
+
+// Re-export public types
+pub use cache::{HistoricalCache, OhlcTick, PriceVolumeTick};
+pub use types::*;
 
 use napi_derive::napi;
-use types::*;
-use mse::{compute_market_state as mse_compute, HistoricalDataCache};
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
-/// Compute Market State from raw market snapshot
+use processor::FeatureProcessor;
+
+// Global instances for processor and cache
+static PROCESSOR: Lazy<FeatureProcessor> = Lazy::new(|| FeatureProcessor::new());
+static CACHE: Lazy<Mutex<HistoricalCache>> = Lazy::new(|| Mutex::new(HistoricalCache::new(26)));
+
+/// Compute all 33 features in parallel
 ///
-/// This is the MAIN entry point for feature computation.
-/// Takes raw multi-instrument data and outputs compressed MarketState.
+/// # Performance
+/// - Phase 1 (dependencies): ~2ms sequential
+/// - Phase 2 (parallel features): ~150µs with Rayon
+/// - Total target: <5ms
+///
+/// # Input
+/// JSON string conforming to FeatureInput schema
+///
+/// # Output
+/// JSON string conforming to ComputeResult schema
 #[napi]
-pub fn compute_market_state(snapshot: MarketSnapshot) -> MarketState {
-  // TODO: Maintain HistoricalDataCache in TypeScript side
-  let cache = HistoricalDataCache::new();
-  mse_compute(&snapshot, &cache, None)
-}
+pub fn compute_features(input_json: String) -> napi::Result<String> {
+  // Deserialize input
+  let input = types::FeatureInput::from_json(&input_json)
+    .map_err(|e| napi::Error::from_reason(format!("Failed to parse input JSON: {}", e)))?;
 
-/// Extract LightGBM input features from MarketState
-#[napi]
-pub fn extract_lightgbm_input(state: MarketState) -> LightGBMInput {
-  LightGBMInput {
-    // Macro
-    pct_stocks_above_vwap: state.macro_state.pct_stocks_above_vwap,
-    pct_stocks_above_ema20: state.macro_state.pct_stocks_above_ema20,
-    weighted_return_top10: state.macro_state.weighted_return_top10,
-    advance_decline_ratio: state.macro_state.advance_decline_ratio,
-    breadth_momentum_5m: state.macro_state.breadth_momentum_5m,
-    breadth_volatility: state.macro_state.breadth_volatility,
+  // Update cache (thread-safe)
+  {
+    let mut cache = CACHE
+      .lock()
+      .map_err(|e| napi::Error::from_reason(format!("Failed to acquire cache lock: {}", e)))?;
 
-    // Micro
-    fut_price_vs_vwap: state.micro_state.fut_price_vs_vwap,
-    fut_range_position: state.micro_state.fut_range_position,
-    fut_return_1m: state.micro_state.fut_return_1m,
-    fut_return_5m: state.micro_state.fut_return_5m,
-    fut_atr_percent: state.micro_state.fut_atr_percent,
-    fut_volume_zscore: state.micro_state.fut_volume_zscore,
-    fut_oi_change: state.micro_state.fut_oi_change,
+    // Convert FutureTick to cache types
+    let pv_tick = cache::PriceVolumeTick {
+      timestamp: input.timestamp,
+      price: input.nifty_future.ltp,
+      volume: input.nifty_future.volume,
+    };
 
-    // Volatility
-    atm_iv: state.volatility_state.atm_iv,
-    atm_iv_change: state.volatility_state.atm_iv_change,
-    iv_skew: state.volatility_state.iv_skew,
-    gamma_atm: state.volatility_state.gamma_atm,
-    vega_atm: state.volatility_state.vega_atm,
-    theta_atm: state.volatility_state.theta_atm,
-    pcr_oi: state.volatility_state.pcr_oi,
-    pcr_volume: state.volatility_state.pcr_volume,
-    max_pain_distance: state.volatility_state.max_pain_distance,
-    india_vix: state.volatility_state.india_vix,
-    realized_vol_5m: state.volatility_state.realized_vol_5m,
-    vol_expansion_ratio: state.volatility_state.vol_expansion_ratio,
+    let ohlc_tick = cache::OhlcTick {
+      timestamp: input.timestamp,
+      open: input.nifty_future.open,
+      high: input.nifty_future.high,
+      low: input.nifty_future.low,
+      close: input.nifty_future.close,
+    };
 
-    // Context
-    minutes_from_open: state.minutes_from_open,
-    minutes_to_close: state.minutes_to_close,
-    day_of_week: state.day_of_week,
+    cache.add_nifty_future_tick(pv_tick, ohlc_tick);
+
+    // Convert ConstituentTick to cache types
+    for constituent in &input.constituents {
+      let pv_tick = cache::PriceVolumeTick {
+        timestamp: input.timestamp,
+        price: constituent.ltp,
+        volume: constituent.volume,
+      };
+      cache.add_constituent_tick(constituent.symbol.clone(), pv_tick);
+    }
   }
+
+  // Compute all features in parallel
+  let cache = CACHE
+    .lock()
+    .map_err(|e| napi::Error::from_reason(format!("Failed to acquire cache lock: {}", e)))?;
+
+  let start = std::time::Instant::now();
+  let result = PROCESSOR.compute_all(&input, &cache);
+  let _duration = start.elapsed(); // Already measured in processor
+
+  // Serialize result
+  result
+    .to_json()
+    .map_err(|e| napi::Error::from_reason(format!("Failed to serialize result: {}", e)))
 }
-
-/// Extract TFT input from sequence of market states
-/// Note: In TypeScript, you'll need to call this with a pre-built sequence
-#[napi]
-pub fn build_tft_sequence_point(
-  index_return: f64,
-  index_realized_vol: f64,
-  breadth_score: f64,
-  fut_return: f64,
-  fut_volume: f64,
-  atm_iv: f64,
-  iv_change: f64,
-  timestamp: i64,
-) -> TFTSequencePoint {
-  TFTSequencePoint {
-    timestamp,
-    index_return,
-    index_realized_vol,
-    breadth_score,
-    fut_return,
-    fut_volume,
-    atm_iv,
-    iv_change,
-  }
-}
-
-/// Extract LOB snapshot from market snapshot
-#[napi]
-pub fn extract_lob_snapshot(snapshot: MarketSnapshot) -> LOBSnapshot {
-  LOBSnapshot {
-    timestamp: snapshot.timestamp,
-    bids: snapshot.nifty_future.bids,
-    asks: snapshot.nifty_future.asks,
-  }
-}
-
-/// Extract option chain entry from option tick
-#[napi]
-pub fn extract_option_chain_entry(option: OptionTick) -> OptionChainEntry {
-  OptionChainEntry {
-    strike_price: option.strike_price,
-    option_type: option.option_type,
-    ltp: option.ltp,
-    delta: option.delta,
-    gamma: option.gamma,
-    iv: option.iv,
-    bid: option.bid,
-    ask: option.ask,
-  }
-}
-
-/// Extract LOB state from option tick
-#[napi]
-pub fn extract_lob_state(option: OptionTick) -> LOBState {
-  let spread = option.ask - option.bid;
-
-  LOBState {
-    bids: option.bids,
-    asks: option.asks,
-    ltp: option.ltp,
-    spread,
-  }
-}
-
-/// Extract future LOB context from NIFTY future tick
-#[napi]
-pub fn extract_future_lob_context(future: NiftyFutureTick) -> FutureLOBContext {
-  let bid = future.bids.get(0).map(|b| b.price).unwrap_or(0.0);
-  let ask = future.asks.get(0).map(|a| a.price).unwrap_or(0.0);
-  let bid_ask_spread = ask - bid;
-
-  let bid_qty: f64 = future.bids.iter().map(|b| b.quantity).sum();
-  let ask_qty: f64 = future.asks.iter().map(|a| a.quantity).sum();
-  let lob_imbalance = (bid_qty - ask_qty) / (bid_qty + ask_qty);
-
-  FutureLOBContext {
-    ltp: future.ltp,
-    bid_ask_spread,
-    lob_imbalance,
-  }
-}
-
-/// Legacy function (for backward compatibility)
-#[napi]
-pub fn plus_100(input: u32) -> u32 {
-  input + 100
-}
-

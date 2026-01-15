@@ -1,29 +1,119 @@
-use chrono::{DateTime, Datelike, Timelike, Utc};
+//! Time context features (3 features)
+//! Intraday time-based features
 
-/// Compute minutes from market open (9:15 AM IST)
-pub fn compute_minutes_from_open(timestamp: &DateTime<Utc>) -> f64 {
-    let market_open_hour = 9;
-    let market_open_minute = 15;
+use crate::features::{ComputedDependencies, Feature, FeatureValue};
+use crate::types::FeatureInput;
+use chrono::{DateTime, Datelike, Local, NaiveTime, Timelike};
 
-    let current_hour = timestamp.hour();
-    let current_minute = timestamp.minute();
+// ============================================
+// MARKET HOURS CONSTANTS
+// ============================================
 
-    let minutes_since_midnight = current_hour * 60 + current_minute;
-    let open_minutes_since_midnight = market_open_hour * 60 + market_open_minute;
+const MARKET_OPEN_HOUR: u32 = 9;
+const MARKET_OPEN_MINUTE: u32 = 15;
+const MARKET_CLOSE_HOUR: u32 = 15;
+const MARKET_CLOSE_MINUTE: u32 = 30;
 
-    (minutes_since_midnight as i32 - open_minutes_since_midnight as i32) as f64
+// ============================================
+// FEATURE: MINUTES_FROM_OPEN
+// ============================================
+
+pub struct MinutesFromOpen;
+
+impl Feature for MinutesFromOpen {
+    fn name(&self) -> &'static str {
+        "minutes_from_open"
+    }
+
+    fn category(&self) -> &'static str {
+        "time_context"
+    }
+
+    fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+        let timestamp = DateTime::from_timestamp_millis(input.timestamp)
+            .unwrap_or_else(|| DateTime::<Local>::from(Local::now()).into());
+
+        let market_open = NaiveTime::from_hms_opt(MARKET_OPEN_HOUR, MARKET_OPEN_MINUTE, 0)
+            .unwrap();
+
+        let current_time = NaiveTime::from_hms_opt(
+            timestamp.hour(),
+            timestamp.minute(),
+            timestamp.second()
+        ).unwrap();
+
+        let minutes_from_open = if current_time >= market_open {
+            let duration = current_time.signed_duration_since(market_open);
+            duration.num_minutes() as i32
+        } else {
+            0
+        };
+
+        FeatureValue::Integer(minutes_from_open)
+    }
 }
 
-/// Compute minutes to market close (3:30 PM IST)
-pub fn compute_minutes_to_close(timestamp: &DateTime<Utc>) -> f64 {
-    let market_close_hour = 15;
-    let market_close_minute = 30;
+// ============================================
+// FEATURE: MINUTES_TO_CLOSE
+// ============================================
 
-    let current_hour = timestamp.hour();
-    let current_minute = timestamp.minute();
+pub struct MinutesToClose;
 
-    let minutes_since_midnight = current_hour * 60 + current_minute;
-    let close_minutes_since_midnight = market_close_hour * 60 + market_close_minute;
+impl Feature for MinutesToClose {
+    fn name(&self) -> &'static str {
+        "minutes_to_close"
+    }
 
-    (close_minutes_since_midnight as i32 - minutes_since_midnight as i32) as f64
+    fn category(&self) -> &'static str {
+        "time_context"
+    }
+
+    fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+        let timestamp = DateTime::from_timestamp_millis(input.timestamp)
+            .unwrap_or_else(|| DateTime::<Local>::from(Local::now()).into());
+
+        let market_close = NaiveTime::from_hms_opt(MARKET_CLOSE_HOUR, MARKET_CLOSE_MINUTE, 0)
+            .unwrap();
+
+        let current_time = NaiveTime::from_hms_opt(
+            timestamp.hour(),
+            timestamp.minute(),
+            timestamp.second()
+        ).unwrap();
+
+        let minutes_to_close = if current_time <= market_close {
+            let duration = market_close.signed_duration_since(current_time);
+            duration.num_minutes() as i32
+        } else {
+            0
+        };
+
+        FeatureValue::Integer(minutes_to_close)
+    }
+}
+
+// ============================================
+// FEATURE: DAY_OF_WEEK
+// ============================================
+
+pub struct DayOfWeek;
+
+impl Feature for DayOfWeek {
+    fn name(&self) -> &'static str {
+        "day_of_week"
+    }
+
+    fn category(&self) -> &'static str {
+        "time_context"
+    }
+
+    fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+        let timestamp = DateTime::from_timestamp_millis(input.timestamp)
+            .unwrap_or_else(|| DateTime::<Local>::from(Local::now()).into());
+
+        // Monday = 1, Sunday = 7
+        let day = timestamp.weekday().number_from_monday() as i32;
+
+        FeatureValue::Integer(day)
+    }
 }

@@ -8,6 +8,7 @@ onlyBuiltDependencies:
   - '@parcel/watcher'
   - '@sentry-internal/node-cpu-profiler'
   - '@sentry/cli'
+  - bufferutil
   - esbuild
   - grpc-tools
   - msgpackr-extract
