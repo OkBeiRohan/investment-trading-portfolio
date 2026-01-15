@@ -1075,15 +1075,15 @@ importers:
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@repo/market-sdk':
-        specifier: workspace:*
-        version: link:../../packages/market-sdk
       '@repo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
       '@repo/schema':
         specifier: workspace:*
         version: link:../../packages/schema
+      got:
+        specifier: ^14.6.6
+        version: 14.6.6
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2

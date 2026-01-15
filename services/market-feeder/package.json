@@ -32,9 +32,9 @@
     "@nestjs/platform-express": "^11.1.11",
     "@nestjs/schedule": "^6.1.0",
     "@repo/database": "workspace:*",
-    "@repo/market-sdk": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/schema": "workspace:*",
+    "got": "^14.6.6",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },

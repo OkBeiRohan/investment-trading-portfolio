@@ -3,8 +3,8 @@
  * Fetches historical candles using Upstox V3 API
  */
 
-import { Injectable, Logger } from "@nestjs/common";
-import got, { Got } from "got";
+import { Injectable, Logger } from '@nestjs/common';
+import got, { Got } from 'got';
 
 export interface UpstoxCandleData {
   timestamp: string;
@@ -66,29 +66,29 @@ export interface InstrumentMasterData {
 export class SimpleUpstoxClient {
   private readonly logger = new Logger(SimpleUpstoxClient.name);
   private readonly api: Got;
-  private readonly baseUrl = "https://api.upstox.com";
+  private readonly baseUrl = 'https://api.upstox.com';
 
   constructor() {
     const accessToken = process.env.UPSTOX_ACCESS_TOKEN;
 
     if (!accessToken) {
-      this.logger.warn("UPSTOX_ACCESS_TOKEN not set in environment");
+      this.logger.warn('UPSTOX_ACCESS_TOKEN not set in environment');
     } else {
       this.logger.log(
-        `Upstox client initialized with token (first 10 chars): ${accessToken.substring(0, 10)}...`
+        `Upstox client initialized with token (first 10 chars): ${accessToken.substring(0, 10)}...`,
       );
     }
 
     this.api = got.extend({
       prefixUrl: this.baseUrl,
       headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken || ""}`,
-        "Api-Version": "3.0",
+        Accept: 'application/json',
+        Authorization: `Bearer ${accessToken || ''}`,
+        'Api-Version': '3.0',
       },
       throwHttpErrors: true,
       timeout: { request: 30000 },
-      responseType: "json",
+      responseType: 'json',
     });
   }
 
@@ -102,23 +102,23 @@ export class SimpleUpstoxClient {
    */
   async getHistoricalCandles(
     instrumentKey: string,
-    unit: "minutes" | "hours" | "days" | "weeks" | "months",
+    unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months',
     interval: number,
     fromDate: string,
-    toDate: string
+    toDate: string,
   ): Promise<UpstoxCandleData[]> {
     try {
       // V3 API endpoint: /v3/historical-candle/:instrument_key/:unit/:interval/:to_date/:from_date
       const encodedKey = encodeURIComponent(instrumentKey);
       const response = await this.api.get<UpstoxHistoricalResponse>(
-        `v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`
+        `v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`,
       );
 
-      if (response.body.status !== "success" || !response.body.data?.candles) {
+      if (response.body.status !== 'success' || !response.body.data?.candles) {
         throw new Error(`Failed to fetch candles for ${instrumentKey}`);
       } else {
         this.logger.log(
-          `Fetched ${response.body.data.candles.length} candles for ${instrumentKey} (${unit}/${interval}) from ${fromDate} to ${toDate}`
+          `Fetched ${response.body.data.candles.length} candles for ${instrumentKey} (${unit}/${interval}) from ${fromDate} to ${toDate}`,
         );
       }
 
@@ -135,7 +135,7 @@ export class SimpleUpstoxClient {
     } catch (error) {
       // Log non-axios errors
       this.logger.error(
-        `Error: ${error instanceof Error ? error.message : String(error)}`
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
       );
       throw error;
     }
@@ -160,16 +160,16 @@ export class SimpleUpstoxClient {
    */
   async getHistoricalCandlesBatched(
     instrumentKey: string,
-    unit: "minutes" | "hours" | "days" | "weeks" | "months",
+    unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months',
     interval: number,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<UpstoxCandleData[]> {
     // Enforce data availability constraints
-    const minDate = new Date("2022-01-01");
-    if ((unit === "minutes" || unit === "hours") && startDate < minDate) {
+    const minDate = new Date('2022-01-01');
+    if ((unit === 'minutes' || unit === 'hours') && startDate < minDate) {
       this.logger.warn(
-        `Requested start date ${startDate.toISOString().split("T")[0]} is before Jan 2022. Clamping to 2022-01-01.`
+        `Requested start date ${startDate.toISOString().split('T')[0]} is before Jan 2022. Clamping to 2022-01-01.`,
       );
       startDate = minDate;
     }
@@ -178,18 +178,18 @@ export class SimpleUpstoxClient {
 
     // Determine batch size based on unit and interval
     let batchSizeDays: number;
-    if (unit === "minutes") {
+    if (unit === 'minutes') {
       // 1-15 min: 1 month, >15 min: 1 quarter (90 days)
       batchSizeDays = interval <= 15 ? 30 : 90;
-    } else if (unit === "hours") {
+    } else if (unit === 'hours') {
       batchSizeDays = 90; // 1 quarter
-    } else if (unit === "days") {
+    } else if (unit === 'days') {
       batchSizeDays = 3650; // 1 decade
     } else {
       // weeks/months: no limit, fetch all at once
       batchSizeDays =
         Math.ceil(
-          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
         ) + 1;
     }
 
@@ -201,11 +201,11 @@ export class SimpleUpstoxClient {
 
       const actualEnd = batchEnd > endDate ? endDate : batchEnd;
 
-      const fromDateStr = currentDate.toISOString().split("T")[0];
-      const toDateStr = actualEnd.toISOString().split("T")[0];
+      const fromDateStr = currentDate.toISOString().split('T')[0];
+      const toDateStr = actualEnd.toISOString().split('T')[0];
 
       this.logger.log(
-        `Fetching ${instrumentKey} (${unit}/${interval}) from ${fromDateStr} to ${toDateStr}`
+        `Fetching ${instrumentKey} (${unit}/${interval}) from ${fromDateStr} to ${toDateStr}`,
       );
 
       const candles = await this.getHistoricalCandles(
@@ -213,7 +213,7 @@ export class SimpleUpstoxClient {
         unit,
         interval,
         fromDateStr,
-        toDateStr
+        toDateStr,
       );
 
       allCandles.push(...candles);
@@ -234,7 +234,7 @@ export class SimpleUpstoxClient {
    */
   async testFetch(
     instrumentKey: string,
-    daysBack: number = 7
+    daysBack: number = 7,
   ): Promise<{
     success: boolean;
     candleCount: number;
@@ -247,15 +247,15 @@ export class SimpleUpstoxClient {
       startDate.setDate(startDate.getDate() - daysBack);
 
       this.logger.log(
-        `Testing fetch for ${instrumentKey} from ${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`
+        `Testing fetch for ${instrumentKey} from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`,
       );
 
       const candles = await this.getHistoricalCandles(
         instrumentKey,
-        "minutes",
+        'minutes',
         1,
-        startDate.toISOString().split("T")[0],
-        endDate.toISOString().split("T")[0]
+        startDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0],
       );
 
       return {
@@ -278,26 +278,26 @@ export class SimpleUpstoxClient {
    * @returns Market quote data for instruments
    */
   async getFullMarketQuote(
-    instrumentKeys: string[]
+    instrumentKeys: string[],
   ): Promise<InstrumentMasterData[]> {
     try {
       // API endpoint: /v2/market-quote/quotes?instrument_key=KEY1&instrument_key=KEY2
       const params = new URLSearchParams();
-      instrumentKeys.forEach((key) => params.append("instrument_key", key));
+      instrumentKeys.forEach((key) => params.append('instrument_key', key));
 
       const response = await this.api.get<UpstoxMarketQuoteResponse>(
-        `v2/market-quote/quotes?${params.toString()}`
+        `v2/market-quote/quotes?${params.toString()}`,
       );
 
-      if (response.body.status !== "success" || !response.body.data) {
-        throw new Error("Failed to fetch market quotes");
+      if (response.body.status !== 'success' || !response.body.data) {
+        throw new Error('Failed to fetch market quotes');
       }
 
       // Transform to InstrumentMasterData
       return Object.entries(response.body.data).map(([key, quote]) => {
         // Parse segment from instrument key (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
-        const [segment] = key.split("|");
-        const [exchange] = segment.split("_");
+        const [segment] = key.split('|');
+        const [exchange] = segment.split('_');
 
         return {
           instrumentKey: key,
@@ -321,7 +321,7 @@ export class SimpleUpstoxClient {
    * @returns All instrument master data
    */
   async getFullMarketQuoteBatched(
-    instrumentKeys: string[]
+    instrumentKeys: string[],
   ): Promise<InstrumentMasterData[]> {
     const BATCH_SIZE = 500;
     const allData: InstrumentMasterData[] = [];
@@ -329,7 +329,7 @@ export class SimpleUpstoxClient {
     for (let i = 0; i < instrumentKeys.length; i += BATCH_SIZE) {
       const batch = instrumentKeys.slice(i, i + BATCH_SIZE);
       this.logger.log(
-        `Fetching market quotes batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} instruments)`
+        `Fetching market quotes batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} instruments)`,
       );
 
       const data = await this.getFullMarketQuote(batch);

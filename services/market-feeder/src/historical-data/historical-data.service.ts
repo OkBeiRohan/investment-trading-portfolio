@@ -7,7 +7,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CandlesRepository, InstrumentMasterRepository } from '@repo/database';
-import { SimpleUpstoxClient } from '@repo/market-sdk';
 import { type InstrumentMaster } from '@repo/schema';
 import {
   NIFTY50_CONSTITUENTS,
@@ -15,6 +14,7 @@ import {
   NIFTY50_FUTURES_CURRENT,
   INDIA_VIX,
 } from './nifty50-instruments';
+import { SimpleUpstoxClient } from './simple-client';
 
 interface CandleInsert {
   timestamp: Date;
