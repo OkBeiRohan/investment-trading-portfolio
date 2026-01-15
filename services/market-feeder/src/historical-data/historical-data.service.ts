@@ -12,6 +12,7 @@ import { type InstrumentMaster } from '@repo/schema';
 import {
   NIFTY50_CONSTITUENTS,
   NIFTY50_INDEX,
+  NIFTY50_FUTURES_CURRENT,
   INDIA_VIX,
 } from './nifty50-instruments';
 
@@ -62,7 +63,12 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     const today = new Date();
 
     // Instruments to fetch
-    const instruments = [NIFTY50_INDEX, INDIA_VIX, ...NIFTY50_CONSTITUENTS];
+    const instruments = [
+      NIFTY50_INDEX,
+      INDIA_VIX,
+      NIFTY50_FUTURES_CURRENT,
+      ...NIFTY50_CONSTITUENTS,
+    ];
 
     this.logger.log(
       `Bootstrapping historical data for ${instruments.length} instruments`,
