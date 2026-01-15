@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { FeatureComputationService } from './feature-computation.service';
@@ -17,7 +17,7 @@ import { FeatureComputationService } from './feature-computation.service';
  * Note: Always computes for Nifty 50 index (uses constituent data internally)
  */
 @Injectable()
-export class FeatureComputationScheduler {
+export class FeatureComputationScheduler implements OnModuleInit {
   private readonly logger = new Logger(FeatureComputationScheduler.name);
   private readonly enabled: boolean;
 
@@ -35,6 +35,23 @@ export class FeatureComputationScheduler {
     } else {
       this.logger.log('Feature computation scheduler disabled');
     }
+  }
+
+  onModuleInit() {
+    if (
+      !this.configService.get<boolean>(
+        'AUTO_BOOTSTRAP_FEATURE_COMPUTATION',
+        false,
+      )
+    )
+      return;
+
+    this.logger.log('Starting Feature Computation Scheduler...');
+
+    void this.triggerManualComputation(
+      new Date('2023-01-01T00:00:00Z'),
+      new Date(),
+    );
   }
 
   /**
