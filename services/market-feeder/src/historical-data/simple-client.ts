@@ -70,6 +70,41 @@ export interface InstrumentMasterData {
   lastUpdated: Date;
 }
 
+export interface ExpiriesResponse {
+  status: string;
+  data: string[]; // Array of expiry dates in YYYY-MM-DD format
+}
+
+export interface ExpiredFutureContract {
+  name: string;
+  segment: string;
+  exchange: string;
+  expiry: string;
+  instrument_key: string; // expired_instrument_key format: NSE_FO|54452|24-04-2025
+  exchange_token: string;
+  trading_symbol: string;
+  tick_size: number;
+  lot_size: number;
+  instrument_type: string;
+  freeze_quantity: number;
+  underlying_key: string;
+  underlying_type: string;
+  underlying_symbol: string;
+  minimum_lot: number;
+}
+
+export interface ExpiredFutureContractsResponse {
+  status: string;
+  data: ExpiredFutureContract[];
+}
+
+export interface ExpiredHistoricalCandleResponse {
+  status: string;
+  data: {
+    candles: [string, number, number, number, number, number, number?][];
+  };
+}
+
 @Injectable()
 export class SimpleUpstoxClient {
   private readonly logger = new Logger(SimpleUpstoxClient.name);
@@ -154,13 +189,153 @@ export class SimpleUpstoxClient {
    * - days: Available from Jan 2000, max 1 decade per request
    * - weeks/months: Available from Jan 2000, no limit
    *
-   * @param instrumentKey - e.g., 'NSE_INDEX|Nifty 50', 'NSE_EQ|INE002A01018'
+   * For expired contracts (format: NSE_FO|TOKEN|DD-MM-YYYY), uses expired API
+   *
+   * @param instrumentKey - e.g., 'NSE_INDEX|Nifty 50', 'NSE_EQ|INE002A01018', 'NSE_FO|54452|24-04-2025'
    * @param unit - 'minutes', 'hours', 'days', 'weeks', 'months'
    * @param interval - Interval value (1-300 for minutes, 1-5 for hours, 1 for others)
    * @param startDate - Start date (will be clamped to Jan 2022 for minutes/hours)
    * @param endDate - End date
    */
   async getHistoricalCandlesBatched(
+    instrumentKey: string,
+    unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months',
+    interval: number,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<UpstoxCandleData[]> {
+    // Check if this is an expired futures contract (format: NSE_FO|TOKEN|DD-MM-YYYY)
+    const isExpiredContract = instrumentKey.split('|').length === 3;
+
+    if (isExpiredContract) {
+      return this.getExpiredCandlesBatched(
+        instrumentKey,
+        unit,
+        interval,
+        startDate,
+        endDate,
+      );
+    }
+
+    // Regular instrument - use V3 API
+    return this.getRegularCandlesBatched(
+      instrumentKey,
+      unit,
+      interval,
+      startDate,
+      endDate,
+    );
+  }
+
+  /**
+   * Fetch historical candles for expired contracts using expired instruments API
+   * Expired API only supports: 1minute, 3minute, 5minute, 15minute, 30minute, day
+   */
+  private async getExpiredCandlesBatched(
+    expiredInstrumentKey: string,
+    unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months',
+    interval: number,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<UpstoxCandleData[]> {
+    // Map to expired API interval format
+    let expiredInterval: '1minute' | '30minute' | 'day';
+    if (unit === 'minutes') {
+      if (interval === 1) expiredInterval = '1minute';
+      else if (interval === 30) expiredInterval = '30minute';
+      else {
+        this.logger.warn(
+          `Expired API doesn't support ${interval} minute interval, using 1minute`,
+        );
+        expiredInterval = '1minute';
+      }
+    } else if (unit === 'days') {
+      expiredInterval = 'day';
+    } else {
+      this.logger.warn(
+        `Expired API doesn't support ${unit} unit, using 1minute`,
+      );
+      expiredInterval = '1minute';
+    }
+
+    const allCandles: UpstoxCandleData[] = [];
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    if (endDate > today) {
+      endDate = today;
+    }
+
+    // For expired API, batch by month (no specific limit documented, being conservative)
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const batchEnd = new Date(currentDate);
+      batchEnd.setMonth(batchEnd.getMonth() + 1);
+      batchEnd.setDate(batchEnd.getDate() - 1);
+
+      let actualEnd = batchEnd > endDate ? endDate : batchEnd;
+      if (actualEnd > today) {
+        actualEnd = today;
+      }
+
+      const fromDateStr = currentDate.toISOString().split('T')[0];
+      const toDateStr = actualEnd.toISOString().split('T')[0];
+
+      this.logger.log(
+        `Fetching EXPIRED ${expiredInstrumentKey} (${expiredInterval}) from ${fromDateStr} to ${toDateStr}`,
+      );
+
+      const candles = await this.getExpiredHistoricalCandles(
+        expiredInstrumentKey,
+        expiredInterval,
+        fromDateStr,
+        toDateStr,
+      );
+
+      allCandles.push(...candles);
+
+      // Insert directly to QuestDB after each batch
+      if (candles.length > 0) {
+        const candleInserts = candles.map((c) => ({
+          timestamp: new Date(c.timestamp),
+          instrumentKey: expiredInstrumentKey,
+          intervalValue: interval,
+          intervalUnit: 'minute' as const,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          volume: c.volume,
+          openInterest: c.open_interest || null,
+        }));
+
+        const CHUNK_SIZE = 5000;
+        for (let i = 0; i < candleInserts.length; i += CHUNK_SIZE) {
+          const chunk = candleInserts.slice(i, i + CHUNK_SIZE);
+          await this.candlesRepository.insertBatch(chunk);
+          this.logger.debug(
+            `Inserted chunk ${Math.floor(i / CHUNK_SIZE) + 1} (${chunk.length} candles) for ${expiredInstrumentKey}`,
+          );
+        }
+        this.logger.log(
+          `✓ Inserted ${candleInserts.length} candles to QuestDB for ${expiredInstrumentKey}`,
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      currentDate.setTime(actualEnd.getTime());
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return allCandles;
+  }
+
+  /**
+   * Fetch historical candles for regular instruments using V3 API
+   */
+  private async getRegularCandlesBatched(
     instrumentKey: string,
     unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months',
     interval: number,
@@ -384,6 +559,138 @@ export class SimpleUpstoxClient {
         }`,
       );
 
+      throw error;
+    }
+  }
+
+  /**
+   * Get all expiries for an underlying instrument (e.g., NIFTY50)
+   * Returns up to 6 months of historical expiries
+   * @param instrumentKey - Underlying instrument key (e.g., 'NSE_INDEX|Nifty 50')
+   * @returns Array of expiry dates in YYYY-MM-DD format
+   */
+  async getExpiries(instrumentKey: string): Promise<string[]> {
+    try {
+      const encodedKey = encodeURIComponent(instrumentKey);
+      const response = await firstValueFrom(
+        this.api.get<ExpiriesResponse>(
+          `/v2/expired-instruments/expiries?instrument_key=${encodedKey}`,
+        ),
+      );
+
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error('Failed to fetch expiries');
+      }
+
+      this.logger.log(
+        `Fetched ${response.data.data.length} expiries for ${instrumentKey}`,
+      );
+
+      return response.data.data;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching expiries: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get expired future contract for a specific expiry date
+   * @param instrumentKey - Underlying instrument key (e.g., 'NSE_INDEX|Nifty 50')
+   * @param expiryDate - Expiry date in YYYY-MM-DD format
+   * @returns Expired future contract details
+   */
+  async getExpiredFutureContract(
+    instrumentKey: string,
+    expiryDate: string,
+  ): Promise<ExpiredFutureContract | null> {
+    try {
+      const encodedKey = encodeURIComponent(instrumentKey);
+      const response = await firstValueFrom(
+        this.api.get<ExpiredFutureContractsResponse>(
+          `/v2/expired-instruments/future/contract?instrument_key=${encodedKey}&expiry_date=${expiryDate}`,
+        ),
+      );
+
+      if (
+        response.data.status !== 'success' ||
+        !response.data.data ||
+        response.data.data.length === 0
+      ) {
+        return null;
+      }
+
+      return response.data.data[0];
+    } catch (error) {
+      this.logger.error(
+        `Error fetching expired future contract for ${expiryDate}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Fetch historical candles for expired instruments
+   * @param expiredInstrumentKey - Expired instrument key (e.g., 'NSE_FO|54452|24-04-2025')
+   * @param interval - '1minute', '30minute', 'day', etc.
+   * @param fromDate - Start date in YYYY-MM-DD format
+   * @param toDate - End date in YYYY-MM-DD format
+   * @returns Array of candle data
+   */
+  async getExpiredHistoricalCandles(
+    expiredInstrumentKey: string,
+    interval: '1minute' | '30minute' | 'day',
+    fromDate: string,
+    toDate: string,
+  ): Promise<UpstoxCandleData[]> {
+    try {
+      const encodedKey = encodeURIComponent(expiredInstrumentKey);
+      const response = await firstValueFrom(
+        this.api.get<ExpiredHistoricalCandleResponse>(
+          `/v2/expired-instruments/historical-candle/${encodedKey}/${interval}/${toDate}/${fromDate}`,
+        ),
+      );
+
+      if (response.data.status !== 'success' || !response.data.data?.candles) {
+        throw new Error(
+          `Failed to fetch expired candles for ${expiredInstrumentKey}`,
+        );
+      }
+
+      this.logger.log(
+        `Fetched ${response.data.data.candles.length} expired candles for ${expiredInstrumentKey} from ${fromDate} to ${toDate}`,
+      );
+
+      return response.data.data.candles.map((candle) => ({
+        timestamp: candle[0],
+        open: candle[1],
+        high: candle[2],
+        low: candle[3],
+        close: candle[4],
+        volume: candle[5],
+        open_interest: candle[6],
+      }));
+    } catch (error) {
+      if (isAxiosError(error)) {
+        this.logger.error(
+          `Axios error fetching expired candles: ${
+            error.response
+              ? `Status ${error.response.status} - ${JSON.stringify(
+                  error.response.data,
+                )}`
+              : error.message
+          }`,
+        );
+        throw error;
+      }
+      this.logger.error(
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
       throw error;
     }
   }

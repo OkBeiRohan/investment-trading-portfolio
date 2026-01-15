@@ -51,15 +51,10 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     const today = new Date();
 
     // Instruments to fetch
-    const instruments = [
-      NIFTY50_INDEX,
-      INDIA_VIX,
-      ...NIFTY50_CONSTITUENTS,
-      ...NIFTY50_FUTURES,
-    ];
+    const instruments = [NIFTY50_INDEX, INDIA_VIX, ...NIFTY50_CONSTITUENTS];
 
     this.logger.log(
-      `Bootstrapping historical data for ${instruments.length} instruments`,
+      `Bootstrapping historical data for ${instruments.length} instruments + futures`,
     );
     this.logger.log(
       `Date range: ${twoYearsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
@@ -67,10 +62,21 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     // Step 1: Populate instrument_master table
     await this.populateInstrumentMaster([NIFTY50_INDEX, INDIA_VIX], 'SPOT');
-    await this.populateInstrumentMaster(NIFTY50_FUTURES, 'FUTURE');
     await this.populateInstrumentMaster(NIFTY50_CONSTITUENTS, 'STOCK');
 
-    // Step 2: Fetch and insert historical candles
+    // Step 2: Fetch NIFTY50 futures dynamically based on expiries in the date range
+    const futureInstruments = await this.getFuturesForDateRange(
+      NIFTY50_INDEX,
+      twoYearsAgo,
+      today,
+    );
+    this.logger.log(
+      `Found ${futureInstruments.length} NIFTY50 futures contracts for the date range`,
+    );
+
+    instruments.push(...futureInstruments);
+
+    // Step 3: Fetch and insert historical candles
 
     let totalFetched = 0;
     let skipped = 0;
@@ -239,6 +245,70 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     }
 
     return gaps;
+  }
+
+  /**
+   * Get all NIFTY50 futures (active and expired) for a date range
+   * @returns Array of instrument keys for all futures that were active during the period
+   */
+  private async getFuturesForDateRange(
+    underlyingKey: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<string[]> {
+    try {
+      // Fetch all expiries (last 6 months available from API)
+      const allExpiries = await this.upstoxClient.getExpiries(underlyingKey);
+
+      this.logger.log(
+        `Found ${allExpiries.length} total expiries for ${underlyingKey}`,
+      );
+
+      // Filter expiries that fall within our date range
+      const relevantExpiries = allExpiries.filter((expiryStr) => {
+        const expiryDate = new Date(expiryStr);
+        // Include if expiry is within range OR if expiry is after startDate (was active during period)
+        return expiryDate >= startDate && expiryDate <= endDate;
+      });
+
+      this.logger.log(
+        `${relevantExpiries.length} expiries fall within the target date range`,
+      );
+
+      const futureKeys: string[] = [];
+
+      // For each expiry, fetch the contract details
+      for (const expiry of relevantExpiries) {
+        const contract = await this.upstoxClient.getExpiredFutureContract(
+          underlyingKey,
+          expiry,
+        );
+
+        if (contract) {
+          futureKeys.push(contract.instrument_key);
+          this.logger.debug(
+            `Added future: ${contract.trading_symbol} (${contract.instrument_key})`,
+          );
+        }
+
+        // Rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Also include currently active futures from NIFTY50_FUTURES
+      futureKeys.push(...NIFTY50_FUTURES);
+      this.logger.log(`Added ${NIFTY50_FUTURES.length} active futures`);
+
+      return futureKeys;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching futures for date range: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      // Fallback to hardcoded futures if API fails
+      return NIFTY50_FUTURES;
+    }
   }
 
   /**
