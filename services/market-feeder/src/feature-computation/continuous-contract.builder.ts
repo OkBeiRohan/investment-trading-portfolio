@@ -44,8 +44,11 @@ export class ContinuousContractBuilder {
       `Building continuous contract for ${underlyingSymbol} from ${startTime.toISOString()} to ${endTime.toISOString()}`,
     );
 
-    // 1. Get all futures for this underlying
-    const futures = await this.getFuturesForUnderlying(underlyingSymbol);
+    // 1. Get all futures for this underlying (including historical)
+    const futures = await this.getFuturesForUnderlying(
+      underlyingSymbol,
+      startTime,
+    );
 
     if (futures.length === 0) {
       this.logger.warn(`No futures found for ${underlyingSymbol}`);
@@ -79,21 +82,50 @@ export class ContinuousContractBuilder {
   }
 
   /**
-   * Get all futures for underlying symbol
+   * Get all futures for underlying symbol (including historical contracts)
+   * Uses underlying_key to match, and filters by expiry >= startTime to include relevant contracts
    */
   private async getFuturesForUnderlying(
     underlyingSymbol: string,
+    startTime: Date,
   ): Promise<InstrumentMaster[]> {
-    const allInstruments =
-      await this.instrumentMasterRepository.getActiveInstruments();
+    // Map symbol to underlying_key
+    const underlyingKeyMap: Record<string, string> = {
+      NIFTY: 'NSE_INDEX|Nifty 50',
+      BANKNIFTY: 'NSE_INDEX|Nifty Bank',
+      FINNIFTY: 'NSE_INDEX|Nifty Fin Service',
+      MIDCPNIFTY: 'NSE_INDEX|NIFTY MID SELECT',
+    };
 
-    return allInstruments.filter(
+    const underlyingKey = underlyingKeyMap[underlyingSymbol];
+
+    if (!underlyingKey) {
+      this.logger.warn(
+        `No underlying_key mapping for ${underlyingSymbol}. Available: ${Object.keys(underlyingKeyMap).join(', ')}`,
+      );
+      return [];
+    }
+
+    // Get ALL instruments (not just currently active)
+    const allInstruments =
+      await this.instrumentMasterRepository.getAllInstruments();
+
+    // Filter for futures with matching underlying_key
+    // Include contracts that expired AFTER startTime (so they have data in our range)
+    const futures = allInstruments.filter(
       (inst) =>
         inst.instrumentType === 'FUTURE' &&
         inst.segment === 'FO' &&
-        inst.tradingsymbol.includes(underlyingSymbol) &&
-        inst.expiry !== null,
+        inst.underlyingKey === underlyingKey &&
+        inst.expiry !== null &&
+        inst.expiry >= startTime, // Include contracts that were active during our time range
     );
+
+    this.logger.debug(
+      `Found ${futures.length} futures contracts for ${underlyingSymbol} (underlying_key: ${underlyingKey}) with expiry >= ${startTime.toISOString()}`,
+    );
+
+    return futures;
   }
 
   /**
