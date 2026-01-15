@@ -20,6 +20,11 @@ impl Feature for PctStocksAboveVwap {
   }
 
   fn compute(&self, input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    // Handle edge case: no constituents
+    if input.constituents.is_empty() {
+      return FeatureValue::Scalar(0.0);
+    }
+
     let count_above = input
       .constituents
       .iter()
@@ -48,6 +53,11 @@ impl Feature for PctStocksAboveEma20 {
   }
 
   fn compute(&self, input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    // Handle edge case: no constituents
+    if input.constituents.is_empty() {
+      return FeatureValue::Scalar(0.0);
+    }
+
     let count_above = input
       .constituents
       .iter()

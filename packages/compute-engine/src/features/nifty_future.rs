@@ -20,6 +20,11 @@ impl Feature for FutPriceVsVwap {
   }
 
   fn compute(&self, input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    // Handle edge case: no VWAP data (cache empty)
+    if deps.nifty_future_vwap == 0.0 || !deps.nifty_future_vwap.is_finite() {
+      return FeatureValue::Scalar(0.0);
+    }
+
     let deviation = (input.nifty_future.ltp - deps.nifty_future_vwap) / deps.nifty_future_vwap;
     FeatureValue::Scalar(deviation)
   }
