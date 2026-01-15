@@ -58,10 +58,6 @@ export class ConstituentManagerService {
         [...addedKeys].filter((key) => !currentConstituents.includes(key)),
       );
 
-    this.logger.debug(
-      `Constituents at ${timestamp.toISOString()}: ${constituents.length} stocks`,
-    );
-
     return constituents;
   }
 
