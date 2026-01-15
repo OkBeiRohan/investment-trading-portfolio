@@ -14,7 +14,7 @@ import {
   NIFTY50_FUTURES,
   NIFTY50_INDEX,
 } from './nifty50-instruments';
-import { SimpleUpstoxClient } from './simple-client';
+import { ExpiredFutureContract, SimpleUpstoxClient } from './simple-client';
 import { isAxiosError } from 'axios';
 
 @Injectable()
@@ -65,16 +65,25 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     await this.populateInstrumentMaster(NIFTY50_CONSTITUENTS, 'STOCK');
 
     // Step 2: Fetch NIFTY50 futures dynamically based on expiries in the date range
-    const futureInstruments = await this.getFuturesForDateRange(
-      NIFTY50_INDEX,
-      twoYearsAgo,
-      today,
-    );
+    const { activeFutures, expiredContracts } =
+      await this.getFuturesForDateRange(NIFTY50_INDEX, twoYearsAgo, today);
+
     this.logger.log(
-      `Found ${futureInstruments.length} NIFTY50 futures contracts for the date range`,
+      `Found ${activeFutures.length} active futures + ${expiredContracts.length} expired futures`,
     );
 
-    instruments.push(...futureInstruments);
+    // Populate instrument_master for active futures (fetch from market quote API)
+    await this.populateInstrumentMaster(activeFutures, 'FUTURE');
+
+    // Populate instrument_master for expired futures (use already-fetched contract data)
+    await this.populateExpiredFutures(expiredContracts);
+
+    // Combine all futures for candle fetching
+    const allFutureKeys = [
+      ...activeFutures,
+      ...expiredContracts.map((c) => c.instrument_key),
+    ];
+    instruments.push(...allFutureKeys);
 
     // Step 3: Fetch and insert historical candles
 
@@ -168,13 +177,16 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
   /**
    * Get all NIFTY50 futures (active and expired) for a date range
-   * @returns Array of instrument keys for all futures that were active during the period
+   * @returns Object with active futures keys and expired contract details
    */
   private async getFuturesForDateRange(
     underlyingKey: string,
     startDate: Date,
     endDate: Date,
-  ): Promise<string[]> {
+  ): Promise<{
+    activeFutures: string[];
+    expiredContracts: ExpiredFutureContract[];
+  }> {
     try {
       // Fetch all expiries (last 6 months available from API)
       const allExpiries = await this.upstoxClient.getExpiries(underlyingKey);
@@ -194,7 +206,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         `${relevantExpiries.length} expiries fall within the target date range`,
       );
 
-      const futureKeys: string[] = [];
+      const expiredContracts: ExpiredFutureContract[] = [];
 
       // For each expiry, fetch the contract details
       for (const expiry of relevantExpiries) {
@@ -204,7 +216,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         );
 
         if (contract) {
-          futureKeys.push(contract.instrument_key);
+          expiredContracts.push(contract);
           this.logger.debug(
             `Added future: ${contract.trading_symbol} (${contract.instrument_key})`,
           );
@@ -214,11 +226,12 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      // Also include currently active futures from NIFTY50_FUTURES
-      futureKeys.push(...NIFTY50_FUTURES);
       this.logger.log(`Added ${NIFTY50_FUTURES.length} active futures`);
 
-      return futureKeys;
+      return {
+        activeFutures: NIFTY50_FUTURES,
+        expiredContracts,
+      };
     } catch (error) {
       this.logger.error(
         `Error fetching futures for date range: ${
@@ -226,7 +239,82 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         }`,
       );
       // Fallback to hardcoded futures if API fails
-      return NIFTY50_FUTURES;
+      return {
+        activeFutures: NIFTY50_FUTURES,
+        expiredContracts: [],
+      };
+    }
+  }
+
+  /**
+   * Populate instrument_master for expired futures from already-fetched contract data
+   */
+  private async populateExpiredFutures(contracts: any[]): Promise<void> {
+    if (contracts.length === 0) {
+      return;
+    }
+
+    try {
+      // Check which instruments already exist
+      const existingInstruments = await Promise.all(
+        contracts.map(async (contract) => {
+          const exists = await this.instrumentMasterRepository.getByKey(
+            contract.instrument_key,
+          );
+          return exists ? contract.instrument_key : null;
+        }),
+      );
+
+      const toInsert = contracts.filter(
+        (contract, idx) => existingInstruments[idx] === null,
+      );
+
+      if (toInsert.length === 0) {
+        this.logger.log(
+          `✓ All ${contracts.length} expired futures already exist in instrument_master, skipping`,
+        );
+        return;
+      }
+
+      this.logger.log(
+        `Populating instrument_master for ${toInsert.length} expired futures (${contracts.length - toInsert.length} already exist)...`,
+      );
+
+      // Transform expired contract data to InstrumentMaster format
+      const instruments: InstrumentMaster[] = toInsert.map((contract) => ({
+        instrumentKey: contract.instrument_key,
+        exchange: 'NSE',
+        segment: 'FO',
+        instrumentType: 'FUTURE',
+        tradingsymbol: contract.trading_symbol,
+        name: contract.name || contract.trading_symbol,
+        expiry: contract.expiry ? new Date(contract.expiry) : null,
+        strike: null,
+        optionType: null,
+        lotSize: contract.lot_size || 25, // NIFTY default
+        tickSize: contract.tick_size || 0.05,
+        underlyingKey: contract.underlying_key || NIFTY50_INDEX,
+        isExpired: true,
+        lastUpdated: new Date(),
+      }));
+
+      const success =
+        await this.instrumentMasterRepository.bulkInsert(instruments);
+
+      if (success)
+        this.logger.log(
+          `✓ Populated ${instruments.length} expired futures in instrument_master`,
+        );
+      else
+        this.logger.warn(
+          `✗ Failed to populate some expired futures in instrument_master`,
+        );
+    } catch (error) {
+      this.logger.error(
+        `Failed to populate expired futures: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
 
