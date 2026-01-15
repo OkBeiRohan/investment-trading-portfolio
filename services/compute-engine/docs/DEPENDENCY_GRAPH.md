@@ -15,8 +15,8 @@
 ┌───────────────────────────────────────────────────────────────────────┐
 │              PHASE 1: Compute Shared Dependencies (Sequential)        │
 │  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │ 1. VWAP Calculations                                            │ │
-│  │    • Future VWAP (from price/volume history)                    │ │
+│  │ 1. VWAP Calculations (COMPUTED from historical cache)           │ │
+│  │    • Future VWAP: Σ(price × volume) / Σ(volume) over window    │ │
 │  │    • Constituent VWAP (for all 50 stocks)                       │ │
 │  │    Time: ~300µs                                                 │ │
 │  └─────────────────────────────────────────────────────────────────┘ │

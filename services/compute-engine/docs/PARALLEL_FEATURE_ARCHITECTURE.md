@@ -415,7 +415,7 @@ pub struct FutureTick {
     pub close: f64,
     pub volume: f64,
     pub open_interest: f64,
-    pub vwap: Option<f64>, // May come from broker
+    // VWAP is computed from historical cache, not provided
 }
 
 #[napi(object)]
@@ -425,8 +425,8 @@ pub struct ConstituentTick {
     pub symbol: String,
     pub ltp: f64,
     pub open: f64,
-    pub vwap: Option<f64>,
     pub volume: f64,
+    // VWAP is computed from historical cache, not provided
 }
 
 #[napi(object)]
