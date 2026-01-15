@@ -4,7 +4,8 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import got, { Got } from 'got';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 export interface UpstoxCandleData {
   timestamp: string;
@@ -65,32 +66,8 @@ export interface InstrumentMasterData {
 @Injectable()
 export class SimpleUpstoxClient {
   private readonly logger = new Logger(SimpleUpstoxClient.name);
-  private readonly api: Got;
-  private readonly baseUrl = 'https://api.upstox.com';
 
-  constructor() {
-    const accessToken = process.env.UPSTOX_ACCESS_TOKEN;
-
-    if (!accessToken) {
-      this.logger.warn('UPSTOX_ACCESS_TOKEN not set in environment');
-    } else {
-      this.logger.log(
-        `Upstox client initialized with token (first 10 chars): ${accessToken.substring(0, 10)}...`,
-      );
-    }
-
-    this.api = got.extend({
-      prefixUrl: this.baseUrl,
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${accessToken || ''}`,
-        'Api-Version': '3.0',
-      },
-      throwHttpErrors: true,
-      timeout: { request: 30000 },
-      responseType: 'json',
-    });
-  }
+  constructor(private readonly api: HttpService) {}
 
   /**
    * Fetch historical candle data using V3 API
@@ -110,20 +87,22 @@ export class SimpleUpstoxClient {
     try {
       // V3 API endpoint: /v3/historical-candle/:instrument_key/:unit/:interval/:to_date/:from_date
       const encodedKey = encodeURIComponent(instrumentKey);
-      const response = await this.api.get<UpstoxHistoricalResponse>(
-        `v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`,
+      const response = await firstValueFrom(
+        this.api.get<UpstoxHistoricalResponse>(
+          `/v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`,
+        ),
       );
 
-      if (response.body.status !== 'success' || !response.body.data?.candles) {
+      if (response.data.status !== 'success' || !response.data.data?.candles) {
         throw new Error(`Failed to fetch candles for ${instrumentKey}`);
       } else {
         this.logger.log(
-          `Fetched ${response.body.data.candles.length} candles for ${instrumentKey} (${unit}/${interval}) from ${fromDate} to ${toDate}`,
+          `Fetched ${response.data.data.candles.length} candles for ${instrumentKey} (${unit}/${interval}) from ${fromDate} to ${toDate}`,
         );
       }
 
       // Transform array format to object format
-      return response.body.data.candles.map((candle) => ({
+      return response.data.data.candles.map((candle) => ({
         timestamp: candle[0],
         open: candle[1],
         high: candle[2],
@@ -193,7 +172,7 @@ export class SimpleUpstoxClient {
         ) + 1;
     }
 
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
 
     while (currentDate <= endDate) {
       const batchEnd = new Date(currentDate);
@@ -285,16 +264,18 @@ export class SimpleUpstoxClient {
       const params = new URLSearchParams();
       instrumentKeys.forEach((key) => params.append('instrument_key', key));
 
-      const response = await this.api.get<UpstoxMarketQuoteResponse>(
-        `v2/market-quote/quotes?${params.toString()}`,
+      const response = await firstValueFrom(
+        this.api.get<UpstoxMarketQuoteResponse>(
+          `/v2/market-quote/quotes?${params.toString()}`,
+        ),
       );
 
-      if (response.body.status !== 'success' || !response.body.data) {
+      if (response.data.status !== 'success' || !response.data.data) {
         throw new Error('Failed to fetch market quotes');
       }
 
       // Transform to InstrumentMasterData
-      return Object.entries(response.body.data).map(([key, quote]) => {
+      return Object.entries(response.data.data).map(([key, quote]) => {
         // Parse segment from instrument key (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
         const [segment] = key.split('|');
         const [exchange] = segment.split('_');
@@ -311,6 +292,12 @@ export class SimpleUpstoxClient {
         };
       });
     } catch (error) {
+      this.logger.error(
+        `Error fetching market quotes: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
       throw error;
     }
   }

@@ -23,6 +23,7 @@
   "dependencies": {
     "@grpc/grpc-js": "^1.14.3",
     "@grpc/proto-loader": "^0.8.0",
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.1.11",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.11",
@@ -34,7 +35,7 @@
     "@repo/database": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/schema": "workspace:*",
-    "got": "^14.6.6",
+    "axios": "^1.13.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
