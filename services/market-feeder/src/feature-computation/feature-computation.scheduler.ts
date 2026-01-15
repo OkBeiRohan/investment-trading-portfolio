@@ -49,7 +49,7 @@ export class FeatureComputationScheduler implements OnModuleInit {
     this.logger.log('Starting Feature Computation Scheduler...');
 
     void this.triggerManualComputation(
-      new Date('2023-01-01T00:00:00Z'),
+      new Date('2024-01-01T00:00:00Z'),
       new Date(),
     );
   }
