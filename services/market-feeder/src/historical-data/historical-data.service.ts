@@ -241,7 +241,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       // Check which instruments already exist
       const existingInstruments = await Promise.all(
         instrumentKeys.map(async (key) => {
-          const exists = await this.instrumentMasterRepository.findByKey(key);
+          const exists = await this.instrumentMasterRepository.getByKey(key);
           return exists ? key : null;
         }),
       );
