@@ -97,7 +97,8 @@ export class ContinuousContractBuilder {
   }
 
   /**
-   * Stitch futures contracts into continuous series
+   * Stitch futures contracts into continuous series (OPTIMIZED)
+   * Fetches entire time ranges per contract instead of per-timestamp
    */
   private async stitchContracts(
     sortedFutures: InstrumentMaster[],
@@ -106,134 +107,163 @@ export class ContinuousContractBuilder {
     intervalValue: number,
     intervalUnit: 'minute' | 'day',
   ): Promise<MarketCandle[]> {
-    const result: MarketCandle[] = [];
-    let currentTime = new Date(startTime);
+    const allCandles: MarketCandle[] = [];
 
-    while (currentTime <= endTime) {
-      // Find active contract for current time
-      const activeContract = this.findActiveContract(
-        sortedFutures,
-        currentTime,
-      );
+    // Calculate time ranges for each contract
+    const contractRanges = this.calculateContractRanges(
+      sortedFutures,
+      startTime,
+      endTime,
+    );
 
-      if (!activeContract) {
-        this.logger.warn(
-          `No active contract found for ${currentTime.toISOString()}`,
-        );
-        currentTime = this.incrementTime(
-          currentTime,
-          intervalValue,
-          intervalUnit,
-        );
-        continue;
-      }
+    this.logger.debug(
+      `Fetching data for ${contractRanges.length} contract periods`,
+    );
 
-      // Fetch candle for this timestamp
+    // Fetch candles for each contract range
+    for (const range of contractRanges) {
       const candles = await this.candlesRepository.findByTimeRange(
-        activeContract.instrumentKey,
+        range.instrumentKey,
         intervalValue,
         intervalUnit,
-        currentTime,
-        currentTime,
-        1,
+        range.startTime,
+        range.endTime,
+        10000, // Large limit to get all candles
       );
 
       if (candles.length > 0) {
-        // Use actual candle data
-        result.push({
-          ...candles[0],
-          instrumentKey: `${activeContract.underlyingKey}_1!`, // Mark as continuous contract
-        });
+        // Mark as continuous contract and add to result
+        const markedCandles = candles.map((candle) => ({
+          ...candle,
+          instrumentKey: `${range.underlyingKey}_1!`,
+        }));
+        allCandles.push(...markedCandles);
+
+        this.logger.debug(
+          `Fetched ${candles.length} candles for ${range.instrumentKey} (${range.startTime.toISOString()} to ${range.endTime.toISOString()})`,
+        );
       } else {
-        // Try next available contract (backfill)
-        const backfillCandle = await this.backfillFromNextContract(
-          sortedFutures,
-          currentTime,
-          intervalValue,
-          intervalUnit,
+        this.logger.warn(
+          `No data for ${range.instrumentKey} in range ${range.startTime.toISOString()} to ${range.endTime.toISOString()}`,
         );
 
-        if (backfillCandle) {
-          result.push({
-            ...backfillCandle,
-            instrumentKey: `${activeContract.underlyingKey}_1!`,
-          });
-        } else {
-          this.logger.debug(
-            `No data available for ${currentTime.toISOString()}, skipping`,
-          );
-        }
+        // Try backfilling from next available contract
+        await this.backfillContractRange(
+          sortedFutures,
+          range,
+          intervalValue,
+          intervalUnit,
+          allCandles,
+        );
       }
+    }
 
-      currentTime = this.incrementTime(
-        currentTime,
-        intervalValue,
-        intervalUnit,
+    // Sort by timestamp (should already be sorted, but ensure it)
+    allCandles.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    return allCandles;
+  }
+
+  /**
+   * Calculate time ranges for each futures contract
+   * Each contract is active until its expiry (3:30 PM IST on expiry day)
+   */
+  private calculateContractRanges(
+    sortedFutures: InstrumentMaster[],
+    startTime: Date,
+    endTime: Date,
+  ): Array<{
+    instrumentKey: string;
+    underlyingKey: string;
+    startTime: Date;
+    endTime: Date;
+  }> {
+    const ranges: Array<{
+      instrumentKey: string;
+      underlyingKey: string;
+      startTime: Date;
+      endTime: Date;
+    }> = [];
+
+    let currentStart = new Date(startTime);
+
+    for (let i = 0; i < sortedFutures.length; i++) {
+      const future = sortedFutures[i];
+
+      if (!future.expiry) continue;
+
+      // Contract expires at 3:30 PM IST on expiry day
+      const expiryEnd = new Date(future.expiry);
+      expiryEnd.setHours(15, 30, 0, 0); // 3:30 PM
+
+      // This contract is active from currentStart until min(expiryEnd, endTime)
+      const rangeEnd = new Date(
+        Math.min(expiryEnd.getTime(), endTime.getTime()),
       );
-    }
 
-    return result;
-  }
+      if (currentStart <= rangeEnd) {
+        ranges.push({
+          instrumentKey: future.instrumentKey,
+          underlyingKey: future.underlyingKey || 'NIFTY',
+          startTime: new Date(currentStart),
+          endTime: rangeEnd,
+        });
 
-  /**
-   * Find active contract for given timestamp
-   * (Front-month: earliest non-expired contract)
-   */
-  private findActiveContract(
-    sortedFutures: InstrumentMaster[],
-    timestamp: Date,
-  ): InstrumentMaster | null {
-    for (const future of sortedFutures) {
-      if (future.expiry && future.expiry >= timestamp) {
-        return future;
+        // Next contract starts after this one expires
+        currentStart = new Date(expiryEnd.getTime() + 1);
       }
+
+      // If we've covered the entire requested range, stop
+      if (rangeEnd >= endTime) break;
     }
 
-    // If all expired, use last one
-    return sortedFutures[sortedFutures.length - 1] || null;
+    return ranges;
   }
 
   /**
-   * Backfill missing data from next available contract
+   * Backfill missing contract range from next available contracts
    */
-  private async backfillFromNextContract(
+  private async backfillContractRange(
     sortedFutures: InstrumentMaster[],
-    timestamp: Date,
+    missingRange: {
+      instrumentKey: string;
+      underlyingKey: string;
+      startTime: Date;
+      endTime: Date;
+    },
     intervalValue: number,
     intervalUnit: 'minute' | 'day',
-  ): Promise<MarketCandle | null> {
+    resultArray: MarketCandle[],
+  ): Promise<void> {
+    // Try each subsequent contract
     for (const future of sortedFutures) {
-      if (!future.expiry || future.expiry < timestamp) continue;
+      if (future.instrumentKey === missingRange.instrumentKey) continue;
 
       const candles = await this.candlesRepository.findByTimeRange(
         future.instrumentKey,
         intervalValue,
         intervalUnit,
-        timestamp,
-        timestamp,
-        1,
+        missingRange.startTime,
+        missingRange.endTime,
+        10000,
       );
 
       if (candles.length > 0) {
-        return candles[0];
+        this.logger.debug(
+          `Backfilled ${candles.length} candles from ${future.instrumentKey}`,
+        );
+
+        const markedCandles = candles.map((candle) => ({
+          ...candle,
+          instrumentKey: `${missingRange.underlyingKey}_1!`,
+        }));
+        resultArray.push(...markedCandles);
+        return; // Found data, stop searching
       }
     }
 
-    return null;
-  }
-
-  /**
-   * Increment timestamp by interval
-   */
-  private incrementTime(
-    time: Date,
-    intervalValue: number,
-    intervalUnit: 'minute' | 'day',
-  ): Date {
-    const increment =
-      intervalUnit === 'minute'
-        ? intervalValue * 60 * 1000
-        : intervalValue * 24 * 60 * 60 * 1000;
-    return new Date(time.getTime() + increment);
+    this.logger.warn(
+      `Could not backfill data for range ${missingRange.startTime.toISOString()} to ${missingRange.endTime.toISOString()}`,
+    );
   }
 }
