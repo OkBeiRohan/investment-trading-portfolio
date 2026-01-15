@@ -12,43 +12,17 @@
  */
 
 import { Logger } from '@nestjs/common';
-import type {
+import {
   FeatureInput,
   ComputeResult,
   validateFeatureInput,
   validateComputeResult,
 } from '@repo/schema';
 
-import computeEngine from '@repo/compute-engine';
+import { computeFeatures } from '@repo/compute-engine';
 
 export class ComputeEngineAdapter {
   private readonly logger = new Logger(ComputeEngineAdapter.name);
-  private isInitialized = false;
-
-  /**
-   * Initialize the native compute-engine NAPI module
-   * Call this once at service startup
-   */
-  initialize(): void {
-    if (this.isInitialized) {
-      this.logger.warn('Compute engine already initialized');
-      return;
-    }
-
-    try {
-      // Pre-warm the global processor (initializes cache + feature registry)
-      this.logger.log('Initializing global feature processor...');
-      computeEngine.initializeProcessor(26); // 26-period max lookback for EMA26
-
-      this.isInitialized = true;
-      this.logger.log('Compute engine initialized successfully');
-    } catch (error) {
-      this.logger.error('Failed to load compute-engine native module', error);
-      throw new Error(
-        `Compute engine initialization failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
 
   /**
    * Compute all 33 features from market data input
@@ -59,12 +33,6 @@ export class ComputeEngineAdapter {
    * @throws Error if compute engine is not initialized or computation fails
    */
   computeFeatures(input: FeatureInput): ComputeResult {
-    if (!this.isInitialized || !computeEngine) {
-      throw new Error(
-        'Compute engine not initialized. Call initialize() first.',
-      );
-    }
-
     try {
       // Validate input (throws ZodError if invalid)
       const validatedInput = validateFeatureInput(input);
