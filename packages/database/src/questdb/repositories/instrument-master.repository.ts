@@ -85,6 +85,16 @@ export class InstrumentMasterRepository {
   }
 
   /**
+   * Get all instruments (including expired)
+   */
+  async getAllInstruments(): Promise<InstrumentMaster[]> {
+    const sql = loadSqlQueryCached("instrument-master/get-all");
+    const result = await this.pool.query(sql);
+
+    return result.rows.map((row) => this.mapRow(row));
+  }
+
+  /**
    * Get options for underlying
    */
   async getOptions(

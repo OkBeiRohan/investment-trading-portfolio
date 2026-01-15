@@ -17,40 +17,66 @@ export class MarketStateRepository {
 
     await this.pool.query(sql, [
       v.timestamp,
-      v.priceVsVwap,
-      v.priceVsDayHigh,
-      v.priceVsDayLow,
-      v.rangePosition,
-      v.prevDayHighDist,
-      v.prevDayLowDist,
-      v.weeklyHighDist,
-      v.weeklyLowDist,
-      v.rsi5,
-      v.rsi14,
-      v.rsi21,
-      v.macdHist,
-      v.ema9Slope,
-      v.ema21Slope,
-      v.adx,
-      v.roc5,
-      v.atrPercent,
-      v.realizedVol5m,
-      v.realizedVol15m,
-      v.volExpansionRatio,
-      v.indiaVix,
+      v.instrumentKey,
+      // Index Breadth (6)
+      v.pctStocksAboveVwap,
+      v.pctStocksAboveEma20,
+      v.weightedReturnTop10,
+      v.advanceDeclineRatio,
+      v.breadthMomentum5M,
+      v.breadthVolatility,
+      // NIFTY Future (9)
+      v.futPriceVsVwap,
+      v.futRangePosition,
+      v.futReturn1M,
+      v.futReturn5M,
+      v.futAtrPercent,
+      v.futVolumeZscore,
+      v.futOiChange,
+      v.futRsi14,
+      v.futMacd,
+      // Options (11)
       v.atmIv,
       v.atmIvChange,
-      v.deltaAtm,
+      v.ivSkew,
       v.gammaAtm,
       v.vegaAtm,
       v.thetaAtm,
       v.pcrOi,
       v.pcrVolume,
-      v.maxPainDist,
+      v.maxPainDistance,
+      v.charmAtm,
+      v.vannaAtm,
+      // Volatility (4)
+      v.indiaVix,
+      v.realizedVol5M,
+      v.realizedVol15M,
+      v.volExpansionRatio,
+      // Time Context (3)
       v.minutesFromOpen,
       v.minutesToClose,
       v.dayOfWeek,
     ]);
+  }
+
+  /**
+   * Insert market states in batch (optimized for QuestDB)
+   */
+  async insertBatch(states: MarketState1m[]): Promise<void> {
+    if (states.length === 0) return;
+
+    const sqlPrefix = loadSqlQueryCached("market-state/insert-batch-prefix");
+
+    const values = states
+      .map((state) => {
+        const v = MarketState1mSchema.parse(state);
+        return `('${v.timestamp.toISOString()}', '${v.instrumentKey}', ${v.pctStocksAboveVwap}, ${v.pctStocksAboveEma20}, ${v.weightedReturnTop10}, ${v.advanceDeclineRatio}, ${v.breadthMomentum5M}, ${v.breadthVolatility}, ${v.futPriceVsVwap}, ${v.futRangePosition}, ${v.futReturn1M}, ${v.futReturn5M}, ${v.futAtrPercent}, ${v.futVolumeZscore}, ${v.futOiChange}, ${v.futRsi14}, ${v.futMacd}, ${v.atmIv}, ${v.atmIvChange}, ${v.ivSkew}, ${v.gammaAtm}, ${v.vegaAtm}, ${v.thetaAtm}, ${v.pcrOi}, ${v.pcrVolume}, ${v.maxPainDistance}, ${v.charmAtm}, ${v.vannaAtm}, ${v.indiaVix}, ${v.realizedVol5M}, ${v.realizedVol15M}, ${v.volExpansionRatio}, ${v.minutesFromOpen}, ${v.minutesToClose}, ${v.dayOfWeek})`;
+      })
+      .join(",");
+
+    const query = `${sqlPrefix} ${values}`;
+    await this.pool.query(query);
+    this.logger.log(`Inserted ${states.length} market states`);
   }
 
   /**
@@ -93,36 +119,42 @@ export class MarketStateRepository {
   private mapRow(row: any): MarketState1m {
     return {
       timestamp: new Date(row.timestamp),
-      priceVsVwap: parseFloat(row.price_vs_vwap),
-      priceVsDayHigh: parseFloat(row.price_vs_day_high),
-      priceVsDayLow: parseFloat(row.price_vs_day_low),
-      rangePosition: parseFloat(row.range_position),
-      prevDayHighDist: parseFloat(row.prev_day_high_dist),
-      prevDayLowDist: parseFloat(row.prev_day_low_dist),
-      weeklyHighDist: parseFloat(row.weekly_high_dist),
-      weeklyLowDist: parseFloat(row.weekly_low_dist),
-      rsi5: parseFloat(row.rsi_5),
-      rsi14: parseFloat(row.rsi_14),
-      rsi21: parseFloat(row.rsi_21),
-      macdHist: parseFloat(row.macd_hist),
-      ema9Slope: parseFloat(row.ema_9_slope),
-      ema21Slope: parseFloat(row.ema_21_slope),
-      adx: parseFloat(row.adx),
-      roc5: parseFloat(row.roc_5),
-      atrPercent: parseFloat(row.atr_percent),
-      realizedVol5m: parseFloat(row.realized_vol_5m),
-      realizedVol15m: parseFloat(row.realized_vol_15m),
-      volExpansionRatio: parseFloat(row.vol_expansion_ratio),
-      indiaVix: row.india_vix ? parseFloat(row.india_vix) : null,
+      instrumentKey: row.instrument_key,
+      // Index Breadth (6)
+      pctStocksAboveVwap: parseFloat(row.pct_stocks_above_vwap),
+      pctStocksAboveEma20: parseFloat(row.pct_stocks_above_ema20),
+      weightedReturnTop10: parseFloat(row.weighted_return_top10),
+      advanceDeclineRatio: parseFloat(row.advance_decline_ratio),
+      breadthMomentum5M: parseFloat(row.breadth_momentum_5m),
+      breadthVolatility: parseFloat(row.breadth_volatility),
+      // NIFTY Future (9)
+      futPriceVsVwap: parseFloat(row.fut_price_vs_vwap),
+      futRangePosition: parseFloat(row.fut_range_position),
+      futReturn1M: parseFloat(row.fut_return_1m),
+      futReturn5M: parseFloat(row.fut_return_5m),
+      futAtrPercent: parseFloat(row.fut_atr_percent),
+      futVolumeZscore: parseFloat(row.fut_volume_zscore),
+      futOiChange: parseFloat(row.fut_oi_change),
+      futRsi14: parseFloat(row.fut_rsi_14),
+      futMacd: parseFloat(row.fut_macd),
+      // Options (11)
       atmIv: parseFloat(row.atm_iv),
       atmIvChange: parseFloat(row.atm_iv_change),
-      deltaAtm: parseFloat(row.delta_atm),
+      ivSkew: parseFloat(row.iv_skew),
       gammaAtm: parseFloat(row.gamma_atm),
       vegaAtm: parseFloat(row.vega_atm),
       thetaAtm: parseFloat(row.theta_atm),
       pcrOi: parseFloat(row.pcr_oi),
       pcrVolume: parseFloat(row.pcr_volume),
-      maxPainDist: parseFloat(row.max_pain_dist),
+      maxPainDistance: parseFloat(row.max_pain_distance),
+      charmAtm: parseFloat(row.charm_atm),
+      vannaAtm: parseFloat(row.vanna_atm),
+      // Volatility (4)
+      indiaVix: parseFloat(row.india_vix),
+      realizedVol5M: parseFloat(row.realized_vol_5m),
+      realizedVol15M: parseFloat(row.realized_vol_15m),
+      volExpansionRatio: parseFloat(row.vol_expansion_ratio),
+      // Time Context (3)
       minutesFromOpen: parseInt(row.minutes_from_open),
       minutesToClose: parseInt(row.minutes_to_close),
       dayOfWeek: parseInt(row.day_of_week),

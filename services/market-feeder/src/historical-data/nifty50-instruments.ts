@@ -41,6 +41,79 @@ export const NIFTY50_CONSTITUENTS = data.constituents.map(
 // Export full constituent data for enriched usage
 export const NIFTY50_CONSTITUENTS_DATA = data.constituents;
 
+export const REMOVED_NIFTY50_CONSTITUENTS = [
+  {
+    companyName: 'UPL Limited',
+    symbol: 'UPL',
+    instrumentKey: 'NSE_EQ|INE628A01036',
+    effectiveFrom: '28-03-2024',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE721A01047',
+      symbol: 'SHRIRAMFIN',
+    },
+  },
+  {
+    companyName: 'LTI Mindtree Limited',
+    symbol: 'LTI',
+    instrumentKey: 'NSE_EQ|INE214T01019',
+    effectiveFrom: '30-09-2024',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE263A01024',
+      symbol: 'BEL',
+    },
+  },
+  {
+    companyName: 'Divis Laboratories Limited',
+    symbol: 'DIVISLAB',
+    instrumentKey: 'NSE_EQ|INE361B01024',
+    effectiveFrom: '30-09-2024',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE849A01020',
+      symbol: 'TRENT',
+    },
+  },
+  {
+    companyName: 'Britannia Industries Limited',
+    symbol: 'BRITANNIA',
+    instrumentKey: 'NSE_EQ|INE216A01030',
+    effectiveFrom: '28-03-2025',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE758T01015',
+      symbol: 'ETERNAL',
+    },
+  },
+  {
+    companyName: 'Bharat Petroleum Corp',
+    symbol: 'BPCL',
+    instrumentKey: 'NSE_EQ|INE029A01011',
+    effectiveFrom: '28-03-2025',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE758E01017',
+      symbol: 'JIOFIN',
+    },
+  },
+  {
+    companyName: 'Hero MotoCorp Limited',
+    symbol: 'HEROMOTOCO',
+    instrumentKey: 'NSE_EQ|INE158A01026',
+    effectiveFrom: '30-09-2025',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE646L01027',
+      symbol: 'INDIGO',
+    },
+  },
+  {
+    companyName: 'IndusInd Bank Limited',
+    symbol: 'INDUSINDBK',
+    instrumentKey: 'NSE_EQ|INE095A01012',
+    effectiveFrom: '30-09-2025',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE027H01010',
+      symbol: 'MAXHEALTH',
+    },
+  },
+];
+
 // Export metadata
 export const NIFTY50_METADATA = data.metadata;
 
@@ -55,3 +128,5 @@ export const NIFTY50_FUTURES = [
   'NSE_FO|59182', // 24 Feb 2026
   'NSE_FO|51714', // 30 Mar 2026
 ];
+
+// NO DATA RECEIVED FOR NSE_FO|35005|26-12-2024 (Expired contract for Dec 2024)

@@ -159,54 +159,56 @@ export type OptionChainSnapshot = z.infer<typeof OptionChainSnapshotSchema>;
 
 // ============================================
 // TABLE 6: market_state_1m
-// Market State Encoder output - feeds LightGBM (33 features)
+// Market State Encoder output - feeds LightGBM (33 features from compute-engine)
+// CRITICAL: Must exactly match FeatureOutput from @repo/compute-engine
 // ============================================
 
 export const MarketState1mSchema = z.object({
   timestamp: z.date(),
+  instrumentKey: z.string(), // Index/spot instrument key (e.g., 'NSE_INDEX|Nifty 50')
 
-  // ========== MARKET STRUCTURE (8) ==========
-  priceVsVwap: z.number(), // Weighted avg of 50 stocks + index future
-  priceVsDayHigh: z.number(), // Distance from day high
-  priceVsDayLow: z.number(), // Distance from day low
-  rangePosition: z.number(), // Position within daily range
-  prevDayHighDist: z.number(), // Distance from previous day high
-  prevDayLowDist: z.number(), // Distance from previous day low
-  weeklyHighDist: z.number(), // Distance from weekly high
-  weeklyLowDist: z.number(), // Distance from weekly low
+  // ========== INDEX BREADTH (6) - from NIFTY 50 constituents ==========
+  pctStocksAboveVwap: z.number(), // % of stocks above their VWAP
+  pctStocksAboveEma20: z.number(), // % of stocks above their 20-period EMA
+  weightedReturnTop10: z.number(), // Weighted return of top 10 stocks by market cap
+  advanceDeclineRatio: z.number(), // Ratio of advancing vs declining stocks
+  breadthMomentum5M: z.number(), // 5-minute breadth momentum
+  breadthVolatility: z.number(), // Breadth volatility measure
 
-  // ========== MOMENTUM & TREND (8) ==========
-  rsi5: z.number(), // Median RSI (5-period) of constituents
-  rsi14: z.number(), // Median RSI (14-period) of constituents
-  rsi21: z.number(), // Median RSI (21-period) of constituents
-  macdHist: z.number(), // Index MACD histogram
-  ema9Slope: z.number(), // Index 9-period EMA slope
-  ema21Slope: z.number(), // Index 21-period EMA slope
-  adx: z.number(), // Mean ADX of top 10 weighted stocks
-  roc5: z.number(), // Index rate of change (5-period)
+  // ========== NIFTY FUTURE (9) - primary price discovery instrument ==========
+  futPriceVsVwap: z.number(), // Future price distance from VWAP
+  futRangePosition: z.number(), // Position within daily range (0-1)
+  futReturn1M: z.number(), // 1-minute return
+  futReturn5M: z.number(), // 5-minute return
+  futAtrPercent: z.number(), // ATR as % of price
+  futVolumeZscore: z.number(), // Volume z-score
+  futOiChange: z.number(), // Open interest change
+  futRsi14: z.number(), // 14-period RSI
+  futMacd: z.number(), // MACD histogram
 
-  // ========== VOLATILITY (5) ==========
-  atrPercent: z.number(), // Index ATR as % of price
-  realizedVol5m: z.number(), // 5-min realized volatility
-  realizedVol15m: z.number(), // 15-min realized volatility
-  volExpansionRatio: z.number(), // Short-term vol / long-term vol
-  indiaVix: z.number().nullable(), // India VIX (if available, else NULL)
-
-  // ========== OPTIONS (9) ==========
-  atmIv: z.number(), // At-the-money implied volatility
-  atmIvChange: z.number(), // Change in ATM IV (1-min)
-  deltaAtm: z.number(), // ATM delta (average of CE/PE)
+  // ========== OPTIONS (11) - from option chain Greeks and PCR ==========
+  atmIv: z.number(), // ATM implied volatility
+  atmIvChange: z.number(), // Change in ATM IV
+  ivSkew: z.number(), // IV skew (put vs call)
   gammaAtm: z.number(), // ATM gamma
   vegaAtm: z.number(), // ATM vega
   thetaAtm: z.number(), // ATM theta
-  pcrOi: z.number(), // Put-call ratio (open interest)
-  pcrVolume: z.number(), // Put-call ratio (volume)
-  maxPainDist: z.number(), // Distance from max pain strike
+  pcrOi: z.number(), // Put-Call Ratio (Open Interest)
+  pcrVolume: z.number(), // Put-Call Ratio (Volume)
+  maxPainDistance: z.number(), // Distance from max pain strike
+  charmAtm: z.number(), // ATM charm (delta decay)
+  vannaAtm: z.number(), // ATM vanna (delta sensitivity to IV)
 
-  // ========== TIME CONTEXT (3) ==========
-  minutesFromOpen: z.number().int(), // Minutes since 9:15 AM
-  minutesToClose: z.number().int(), // Minutes until 3:30 PM
-  dayOfWeek: z.number().int().min(1).max(7), // 1=Monday, 7=Sunday
+  // ========== VOLATILITY (4) - market-wide volatility measures ==========
+  indiaVix: z.number(), // India VIX
+  realizedVol5M: z.number(), // 5-minute realized volatility
+  realizedVol15M: z.number(), // 15-minute realized volatility
+  volExpansionRatio: z.number(), // Current vol vs historical avg
+
+  // ========== TIME CONTEXT (3) - market timing ==========
+  minutesFromOpen: z.number().int(), // Minutes since market open (9:15 AM)
+  minutesToClose: z.number().int(), // Minutes until market close (3:30 PM)
+  dayOfWeek: z.number().int().min(1).max(7), // Day of week (1=Monday, 7=Sunday)
 });
 
 export type MarketState1m = z.infer<typeof MarketState1mSchema>;

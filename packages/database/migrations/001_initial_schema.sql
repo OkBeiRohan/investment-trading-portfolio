@@ -171,49 +171,50 @@ DEDUP UPSERT KEYS(timestamp, underlying_key, instrument_key);
 CREATE TABLE IF NOT EXISTS market_state_1m (
   timestamp TIMESTAMP,
   
-  -- ========== MARKET STRUCTURE (8) ==========
-  price_vs_vwap DOUBLE,                                -- Weighted avg of 50 stocks + index future
-  price_vs_day_high DOUBLE,                            -- Distance from day high
-  price_vs_day_low DOUBLE,                             -- Distance from day low
-  range_position DOUBLE,                               -- Position within daily range
-  prev_day_high_dist DOUBLE,                           -- Distance from previous day high
-  prev_day_low_dist DOUBLE,                            -- Distance from previous day low
-  weekly_high_dist DOUBLE,                             -- Distance from weekly high
-  weekly_low_dist DOUBLE,                              -- Distance from weekly low
+  -- ========== INDEX BREADTH (6) ==========
+  pct_stocks_above_vwap DOUBLE,
+  pct_stocks_above_ema20 DOUBLE,
+  weighted_return_top10 DOUBLE,
+  advance_decline_ratio DOUBLE,
+  breadth_momentum_5m DOUBLE,
+  breadth_volatility DOUBLE,
   
-  -- ========== MOMENTUM & TREND (8) ==========
-  rsi_5 DOUBLE,                                        -- Median RSI (5-period) of constituents
-  rsi_14 DOUBLE,                                       -- Median RSI (14-period) of constituents
-  rsi_21 DOUBLE,                                       -- Median RSI (21-period) of constituents
-  macd_hist DOUBLE,                                    -- Index MACD histogram
-  ema_9_slope DOUBLE,                                  -- Index 9-period EMA slope
-  ema_21_slope DOUBLE,                                 -- Index 21-period EMA slope
-  adx DOUBLE,                                          -- Mean ADX of top 10 weighted stocks
-  roc_5 DOUBLE,                                        -- Index rate of change (5-period)
+  -- ========== NIFTY FUTURE (9) ==========
+  fut_price_vs_vwap DOUBLE,
+  fut_range_position DOUBLE,
+  fut_return_1m DOUBLE,
+  fut_return_5m DOUBLE,
+  fut_atr_percent DOUBLE,
+  fut_volume_zscore DOUBLE,
+  fut_oi_change DOUBLE,
+  fut_rsi_14 DOUBLE,
+  fut_macd DOUBLE,
   
-  -- ========== VOLATILITY (5) ==========
-  atr_percent DOUBLE,                                  -- Index ATR as % of price
-  realized_vol_5m DOUBLE,                              -- 5-min realized volatility
-  realized_vol_15m DOUBLE,                             -- 15-min realized volatility
-  vol_expansion_ratio DOUBLE,                          -- Short-term vol / long-term vol
-  india_vix DOUBLE,                                    -- India VIX (if available, else NULL)
+  -- ========== OPTIONS (11) ==========
+  atm_iv DOUBLE,
+  atm_iv_change DOUBLE,
+  iv_skew DOUBLE,
+  gamma_atm DOUBLE,
+  vega_atm DOUBLE,
+  theta_atm DOUBLE,
+  pcr_oi DOUBLE,
+  pcr_volume DOUBLE,
+  max_pain_distance DOUBLE,
+  charm_atm DOUBLE,
+  vanna_atm DOUBLE,
   
-  -- ========== OPTIONS (9) ==========
-  atm_iv DOUBLE,                                       -- At-the-money implied volatility
-  atm_iv_change DOUBLE,                                -- Change in ATM IV (1-min)
-  delta_atm DOUBLE,                                    -- ATM delta (average of CE/PE)
-  gamma_atm DOUBLE,                                    -- ATM gamma
-  vega_atm DOUBLE,                                     -- ATM vega
-  theta_atm DOUBLE,                                    -- ATM theta
-  pcr_oi DOUBLE,                                       -- Put-call ratio (open interest)
-  pcr_volume DOUBLE,                                   -- Put-call ratio (volume)
-  max_pain_dist DOUBLE,                                -- Distance from max pain strike
+  -- ========== VOLATILITY (4) ==========
+  india_vix DOUBLE,
+  realized_vol_5m DOUBLE,
+  realized_vol_15m DOUBLE,
+  vol_expansion_ratio DOUBLE,
   
   -- ========== TIME CONTEXT (3) ==========
-  minutes_from_open INT,                               -- Minutes since 9:15 AM
-  minutes_to_close INT,                                -- Minutes until 3:30 PM
-  day_of_week INT                                      -- 1=Monday, 7=Sunday
+  minutes_from_open INT,
+  minutes_to_close INT,
+  day_of_week INT
 ) TIMESTAMP(timestamp) PARTITION BY DAY WAL;
+
 
 -- =============================================================================
 -- TABLE 7: training_labels_1m

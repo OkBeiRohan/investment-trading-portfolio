@@ -13,6 +13,7 @@ import {
   NIFTY50_CONSTITUENTS,
   NIFTY50_FUTURES,
   NIFTY50_INDEX,
+  REMOVED_NIFTY50_CONSTITUENTS,
 } from './nifty50-instruments';
 import { ExpiredFutureContract, SimpleUpstoxClient } from './simple-client';
 import { isAxiosError } from 'axios';
@@ -51,7 +52,12 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     const today = new Date();
 
     // Instruments to fetch
-    const instruments = [NIFTY50_INDEX, INDIA_VIX, ...NIFTY50_CONSTITUENTS];
+    const instruments = [
+      NIFTY50_INDEX,
+      INDIA_VIX,
+      ...NIFTY50_CONSTITUENTS,
+      ...REMOVED_NIFTY50_CONSTITUENTS.map((c) => c.instrumentKey),
+    ];
 
     this.logger.log(
       `Bootstrapping historical data for ${instruments.length} instruments + futures`,
@@ -62,7 +68,13 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     // Step 1: Populate instrument_master table
     await this.populateInstrumentMaster([NIFTY50_INDEX, INDIA_VIX], 'SPOT');
-    await this.populateInstrumentMaster(NIFTY50_CONSTITUENTS, 'STOCK');
+    await this.populateInstrumentMaster(
+      [
+        ...NIFTY50_CONSTITUENTS,
+        ...REMOVED_NIFTY50_CONSTITUENTS.map((c) => c.instrumentKey),
+      ],
+      'STOCK',
+    );
 
     // Step 2: Fetch NIFTY50 futures dynamically based on expiries in the date range
     const { activeFutures, expiredContracts } =
@@ -114,18 +126,51 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         );
 
         // DEMO VERSION: Fetch and insert directly in client (see SimpleUpstoxClient.getHistoricalCandlesBatched)
-        const upstoxCandles =
-          await this.upstoxClient.getHistoricalCandlesBatched(
+        let upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
+          instrumentKey,
+          'minutes',
+          1,
+          twoYearsAgo,
+          today,
+        );
+
+        if (!upstoxCandles || upstoxCandles.length === 0) {
+          this.logger.warn(`No data returned for ${instrumentKey}`);
+
+          // try again with 5 minute interval
+          this.logger.log(
+            `Retrying with 5 minute interval for ${instrumentKey}...`,
+          );
+          upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
             instrumentKey,
             'minutes',
-            1,
+            5,
             twoYearsAgo,
             today,
           );
 
-        if (!upstoxCandles || upstoxCandles.length === 0) {
-          this.logger.warn(`No data returned for ${instrumentKey}`);
-          continue;
+          if (!upstoxCandles || upstoxCandles.length === 0) {
+            // try again with 30 minute interval
+            this.logger.warn(
+              `No data returned for ${instrumentKey} at 5 minute interval either, skipping.`,
+            );
+
+            upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
+              instrumentKey,
+              'minutes',
+              30,
+              twoYearsAgo,
+              today,
+            );
+
+            if (!upstoxCandles || upstoxCandles.length === 0) {
+              this.logger.error(
+                `No data returned for ${instrumentKey} at 30 minute interval either, skipping.`,
+              );
+
+              continue;
+            }
+          }
         }
 
         totalFetched += upstoxCandles.length;
@@ -249,7 +294,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
   /**
    * Populate instrument_master for expired futures from already-fetched contract data
    */
-  private async populateExpiredFutures(contracts: any[]): Promise<void> {
+  private async populateExpiredFutures(
+    contracts: ExpiredFutureContract[],
+  ): Promise<void> {
     if (contracts.length === 0) {
       return;
     }
