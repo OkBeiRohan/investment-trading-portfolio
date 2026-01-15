@@ -9,10 +9,10 @@ import { ConfigService } from '@nestjs/config';
 import { CandlesRepository, InstrumentMasterRepository } from '@repo/database';
 import { InstrumentMaster } from '@repo/schema';
 import {
-  NIFTY50_CONSTITUENTS,
-  NIFTY50_INDEX,
-  NIFTY50_FUTURES_CURRENT,
   INDIA_VIX,
+  NIFTY50_CONSTITUENTS,
+  NIFTY50_FUTURES,
+  NIFTY50_INDEX,
 } from './nifty50-instruments';
 import { SimpleUpstoxClient } from './simple-client';
 import { isAxiosError } from 'axios';
@@ -54,8 +54,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     const instruments = [
       NIFTY50_INDEX,
       INDIA_VIX,
-      NIFTY50_FUTURES_CURRENT,
       ...NIFTY50_CONSTITUENTS,
+      ...NIFTY50_FUTURES,
     ];
 
     this.logger.log(
@@ -67,7 +67,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     // Step 1: Populate instrument_master table
     await this.populateInstrumentMaster([NIFTY50_INDEX, INDIA_VIX], 'SPOT');
-    await this.populateInstrumentMaster([NIFTY50_FUTURES_CURRENT], 'FUTURE');
+    await this.populateInstrumentMaster(NIFTY50_FUTURES, 'FUTURE');
     await this.populateInstrumentMaster(NIFTY50_CONSTITUENTS, 'STOCK');
 
     // Step 2: Fetch and insert historical candles
