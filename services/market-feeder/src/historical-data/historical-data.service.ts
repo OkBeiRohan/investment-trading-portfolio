@@ -17,19 +17,6 @@ import {
 import { SimpleUpstoxClient } from './simple-client';
 import { isAxiosError } from 'axios';
 
-interface CandleInsert {
-  timestamp: Date;
-  instrumentKey: string;
-  intervalValue: number;
-  intervalUnit: 'minute' | 'second' | 'day';
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  openInterest: number | null;
-}
-
 @Injectable()
 export class HistoricalDataBootstrapService implements OnModuleInit {
   private readonly logger = new Logger(HistoricalDataBootstrapService.name);
@@ -107,7 +94,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
         this.logger.log(`Fetching 1-minute candles for ${instrumentKey}...`);
 
-        // Fetch candles from Upstox V3 API
+        // DEMO VERSION: Fetch and insert directly in client (see SimpleUpstoxClient.getHistoricalCandlesBatched)
         const upstoxCandles =
           await this.upstoxClient.getHistoricalCandlesBatched(
             instrumentKey,
@@ -122,33 +109,10 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
           continue;
         }
 
-        // Transform to MarketCandle format
-        const candles: CandleInsert[] = upstoxCandles.map((c) => ({
-          timestamp: new Date(c.timestamp),
-          instrumentKey,
-          intervalValue: 1,
-          intervalUnit: 'minute' as const,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-          volume: c.volume,
-          openInterest: c.open_interest || null,
-        }));
-
-        // Insert into QuestDB in chunks to avoid connection timeout
-        const CHUNK_SIZE = 5000;
-        for (let i = 0; i < candles.length; i += CHUNK_SIZE) {
-          const chunk = candles.slice(i, i + CHUNK_SIZE);
-          await this.candlesRepository.insertBatch(chunk);
-          this.logger.debug(
-            `Inserted chunk ${Math.floor(i / CHUNK_SIZE) + 1} (${chunk.length} candles)`,
-          );
-        }
-        totalFetched += candles.length;
+        totalFetched += upstoxCandles.length;
 
         this.logger.log(
-          `✓ Inserted ${candles.length} candles for ${instrumentKey}`,
+          `✓ Fetched and inserted ${upstoxCandles.length} candles for ${instrumentKey}`,
         );
 
         // Rate limiting: wait 500ms between instruments

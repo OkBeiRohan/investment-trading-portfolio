@@ -6,6 +6,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { CandlesRepository } from '@repo/database';
+import { isAxiosError } from 'axios';
 
 export interface UpstoxCandleData {
   timestamp: string;
@@ -72,7 +74,10 @@ export interface InstrumentMasterData {
 export class SimpleUpstoxClient {
   private readonly logger = new Logger(SimpleUpstoxClient.name);
 
-  constructor(private readonly api: HttpService) {}
+  constructor(
+    private readonly api: HttpService,
+    private readonly candlesRepository: CandlesRepository,
+  ) {}
 
   /**
    * Fetch historical candle data using V3 API
@@ -117,6 +122,19 @@ export class SimpleUpstoxClient {
         open_interest: candle[6],
       }));
     } catch (error) {
+      if (isAxiosError(error)) {
+        this.logger.error(
+          `Axios error fetching candles for ${instrumentKey}: ${
+            error.response
+              ? `Status ${error.response.status} - ${JSON.stringify(
+                  error.response.data,
+                )}`
+              : error.message
+          }`,
+        );
+        throw error;
+      }
+
       // Log non-axios errors
       this.logger.error(
         `Error: ${error instanceof Error ? error.message : String(error)}`,
@@ -156,6 +174,16 @@ export class SimpleUpstoxClient {
         `Requested start date ${startDate.toISOString().split('T')[0]} is before Jan 2022. Clamping to 2022-01-01.`,
       );
       startDate = minDate;
+    }
+
+    // CRITICAL FIX: Clamp endDate to today to prevent 400 errors from requesting future data
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Set to end of today
+    if (endDate > today) {
+      this.logger.warn(
+        `Requested end date ${endDate.toISOString().split('T')[0]} is in the future. Clamping to today (${today.toISOString().split('T')[0]}).`,
+      );
+      endDate = today;
     }
 
     const allCandles: UpstoxCandleData[] = [];
@@ -201,6 +229,42 @@ export class SimpleUpstoxClient {
       );
 
       allCandles.push(...candles);
+
+      // DEMO VERSION: Insert directly to QuestDB after each batch
+      if (candles.length > 0) {
+        const candleInserts = candles.map((c) => ({
+          timestamp: new Date(c.timestamp),
+          instrumentKey,
+          intervalValue: interval,
+          intervalUnit:
+            unit === 'minutes'
+              ? ('minute' as const)
+              : unit === 'hours'
+                ? ('hour' as const)
+                : unit === 'days'
+                  ? ('day' as const)
+                  : ('minute' as const),
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          volume: c.volume,
+          openInterest: c.open_interest || null,
+        }));
+
+        // Insert in chunks to avoid connection timeout
+        const CHUNK_SIZE = 5000;
+        for (let i = 0; i < candleInserts.length; i += CHUNK_SIZE) {
+          const chunk = candleInserts.slice(i, i + CHUNK_SIZE);
+          await this.candlesRepository.insertBatch(chunk);
+          this.logger.debug(
+            `Inserted chunk ${Math.floor(i / CHUNK_SIZE) + 1} (${chunk.length} candles) for ${instrumentKey}`,
+          );
+        }
+        this.logger.log(
+          `✓ Inserted ${candleInserts.length} candles to QuestDB for ${instrumentKey}`,
+        );
+      }
 
       // Rate limiting: 250 requests/second, so wait 100ms between requests
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -280,7 +344,7 @@ export class SimpleUpstoxClient {
       }
 
       // Transform to InstrumentMasterData
-      return Object.entries(response.data.data).map(([_, quote]) => {
+      return Object.values(response.data.data).map((quote) => {
         // Parse segment from instrument key (e.g. NSE_EQ:HDFCLIFE) or from instrument_token (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
 
         const [exchange, segment] = quote.instrument_token

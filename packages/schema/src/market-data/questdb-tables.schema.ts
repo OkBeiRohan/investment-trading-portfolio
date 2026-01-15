@@ -48,7 +48,7 @@ export const MarketCandleSchema = z.object({
   timestamp: z.date(), // TIMESTAMP (designated timestamp column)
   instrumentKey: z.string(),
   intervalValue: z.number().int(), // 1, 5, 15, 30, 60
-  intervalUnit: z.enum(["second", "minute", "day"]),
+  intervalUnit: z.enum(["second", "minute", "hour", "day"]),
   open: z.number(),
   high: z.number(),
   low: z.number(),
