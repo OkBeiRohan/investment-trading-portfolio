@@ -32,7 +32,7 @@ import type { FeatureInput } from '@repo/compute-engine';
 @Injectable()
 export class FeatureComputationService {
   private readonly logger = new Logger(FeatureComputationService.name);
-  private readonly BATCH_SIZE = 100; // Process 100 timestamps at a time
+  private readonly BATCH_SIZE = 5000; // Process 5000 timestamps at a time for batch insert
 
   constructor(
     private readonly computeEngine: ComputeEngineService,
@@ -159,8 +159,11 @@ export class FeatureComputationService {
       batchEnd,
     );
 
-    // 5. Process each timestamp
-    let rowsStored = 0;
+    // 5. Process each timestamp and accumulate results for batch insert
+    const marketStatesToInsert: MarketState1m[] = [];
+    const trainingLabelsToInsert: TrainingLabels1m[] = [];
+    let batchTimeTaken = 0;
+
     for (const timestamp of timestamps) {
       try {
         const constituents = constituentsByTimestamp.get(timestamp.getTime())!;
@@ -180,9 +183,7 @@ export class FeatureComputationService {
         // Skip if insufficient data
         if (constituentCandles.length < 30) {
           // At least 60% of constituents
-          this.logger.debug(
-            `Skipping ${timestamp.toISOString()}: only ${constituentCandles.length}/50 constituents available`,
-          );
+
           continue;
         }
 
@@ -196,26 +197,25 @@ export class FeatureComputationService {
 
         // Compute features
         const computeResult = this.computeEngine.computeFeatures(featureInput);
+        batchTimeTaken += computeResult.totalDurationMicros;
 
-        // Store features to market_state_1m (features already match schema)
+        // Accumulate market state for batch insert
         const marketState: MarketState1m = {
           ...computeResult.features,
           timestamp,
+          instrumentKey: 'NSE_INDEX|Nifty 50', // NIFTY 50 index
         };
+        marketStatesToInsert.push(marketState);
 
-        await this.marketStateRepository.insert(marketState);
-        rowsStored++;
-
-        // Calculate and store training label (5-minute horizon)
-        await this.calculateAndStoreLabel(
+        // Calculate training label (5-minute horizon)
+        const trainingLabel = this.calculateLabel(
           timestamp,
           futuresCandle,
           futuresCandleMap,
         );
-
-        this.logger.debug(
-          `Stored market state for ${timestamp.toISOString()} (${computeResult.totalDurationMicros}µs)`,
-        );
+        if (trainingLabel) {
+          trainingLabelsToInsert.push(trainingLabel);
+        }
       } catch (error) {
         this.logger.error(
           `Failed to process ${timestamp.toISOString()}`,
@@ -224,7 +224,35 @@ export class FeatureComputationService {
       }
     }
 
-    return rowsStored;
+    this.logger.debug(
+      `Computed features for ${marketStatesToInsert.length} timestamps in batch (total ${batchTimeTaken}µs)`,
+    );
+
+    // 6. Batch insert market states to QuestDB
+    if (marketStatesToInsert.length > 0) {
+      try {
+        await this.marketStateRepository.insertBatch(marketStatesToInsert);
+        this.logger.log(
+          `Batch inserted ${marketStatesToInsert.length} market states`,
+        );
+      } catch (error) {
+        this.logger.error('Failed to batch insert market states', error);
+      }
+    }
+
+    // 7. Batch insert training labels to QuestDB
+    if (trainingLabelsToInsert.length > 0) {
+      try {
+        await this.trainingLabelsRepository.insertBatch(trainingLabelsToInsert);
+        this.logger.log(
+          `Batch inserted ${trainingLabelsToInsert.length} training labels`,
+        );
+      } catch (error) {
+        this.logger.error('Failed to batch insert training labels', error);
+      }
+    }
+
+    return marketStatesToInsert.length;
   }
 
   /**
@@ -413,13 +441,15 @@ export class FeatureComputationService {
    * - future_return_5m < -k * ATR → DOWN (-1)
    * - else → NEUTRAL (0)
    * - k = 1.0 by default
+   *
+   * @returns TrainingLabels1m or null if insufficient data
    */
-  private async calculateAndStoreLabel(
+  private calculateLabel(
     timestamp: Date,
     currentCandle: MarketCandle | undefined,
     futuresCandleMap: Map<number, MarketCandle>,
-  ): Promise<void> {
-    if (!currentCandle) return;
+  ): TrainingLabels1m | null {
+    if (!currentCandle) return null;
 
     const horizonMinutes = 5;
     const futureTimestamp = new Date(
@@ -428,7 +458,7 @@ export class FeatureComputationService {
     const futureCandle = futuresCandleMap.get(futureTimestamp.getTime());
 
     if (!futureCandle) {
-      return; // No future data available
+      return null; // No future data available
     }
 
     // Calculate future return
@@ -449,19 +479,13 @@ export class FeatureComputationService {
       label = 0; // NEUTRAL
     }
 
-    // Store label
-    const trainingLabel: TrainingLabels1m = {
+    // Return label for batch insertion
+    return {
       timestamp,
       horizonMinutes,
       label,
       futureReturn,
       atrThreshold,
     };
-
-    try {
-      await this.trainingLabelsRepository.insertBatch([trainingLabel]);
-    } catch {
-      this.logger.debug(`Failed to store label for ${timestamp.toISOString()}`);
-    }
   }
 }

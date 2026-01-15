@@ -4,6 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS market_state_1m (
   timestamp TIMESTAMP,
+  instrument_key SYMBOL,
   
   -- ========== INDEX BREADTH (6) ==========
   pct_stocks_above_vwap DOUBLE,

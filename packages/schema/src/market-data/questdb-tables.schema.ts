@@ -165,6 +165,7 @@ export type OptionChainSnapshot = z.infer<typeof OptionChainSnapshotSchema>;
 
 export const MarketState1mSchema = z.object({
   timestamp: z.date(),
+  instrumentKey: z.string(), // Index/spot instrument key (e.g., 'NSE_INDEX|Nifty 50')
 
   // ========== INDEX BREADTH (6) - from NIFTY 50 constituents ==========
   pctStocksAboveVwap: z.number(), // % of stocks above their VWAP

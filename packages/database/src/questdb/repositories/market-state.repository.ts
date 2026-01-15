@@ -17,6 +17,7 @@ export class MarketStateRepository {
 
     await this.pool.query(sql, [
       v.timestamp,
+      v.instrumentKey,
       // Index Breadth (6)
       v.pctStocksAboveVwap,
       v.pctStocksAboveEma20,
@@ -59,6 +60,26 @@ export class MarketStateRepository {
   }
 
   /**
+   * Insert market states in batch (optimized for QuestDB)
+   */
+  async insertBatch(states: MarketState1m[]): Promise<void> {
+    if (states.length === 0) return;
+
+    const sqlPrefix = loadSqlQueryCached("market-state/insert-batch-prefix");
+
+    const values = states
+      .map((state) => {
+        const v = MarketState1mSchema.parse(state);
+        return `('${v.timestamp.toISOString()}', '${v.instrumentKey}', ${v.pctStocksAboveVwap}, ${v.pctStocksAboveEma20}, ${v.weightedReturnTop10}, ${v.advanceDeclineRatio}, ${v.breadthMomentum5M}, ${v.breadthVolatility}, ${v.futPriceVsVwap}, ${v.futRangePosition}, ${v.futReturn1M}, ${v.futReturn5M}, ${v.futAtrPercent}, ${v.futVolumeZscore}, ${v.futOiChange}, ${v.futRsi14}, ${v.futMacd}, ${v.atmIv}, ${v.atmIvChange}, ${v.ivSkew}, ${v.gammaAtm}, ${v.vegaAtm}, ${v.thetaAtm}, ${v.pcrOi}, ${v.pcrVolume}, ${v.maxPainDistance}, ${v.charmAtm}, ${v.vannaAtm}, ${v.indiaVix}, ${v.realizedVol5M}, ${v.realizedVol15M}, ${v.volExpansionRatio}, ${v.minutesFromOpen}, ${v.minutesToClose}, ${v.dayOfWeek})`;
+      })
+      .join(",");
+
+    const query = `${sqlPrefix} ${values}`;
+    await this.pool.query(query);
+    this.logger.log(`Inserted ${states.length} market states`);
+  }
+
+  /**
    * Get latest market state
    */
   async getLatest(): Promise<MarketState1m | null> {
@@ -98,6 +119,7 @@ export class MarketStateRepository {
   private mapRow(row: any): MarketState1m {
     return {
       timestamp: new Date(row.timestamp),
+      instrumentKey: row.instrument_key,
       // Index Breadth (6)
       pctStocksAboveVwap: parseFloat(row.pct_stocks_above_vwap),
       pctStocksAboveEma20: parseFloat(row.pct_stocks_above_ema20),
