@@ -152,7 +152,14 @@ export class FeatureComputationService {
       batchEnd,
     );
 
-    // 4. Process each timestamp
+    // 4. Fetch India VIX data for batch (single query)
+    const indiaVixCandleMap = await this.fetchBatchIndexCandles(
+      'NSE_INDEX|India VIX',
+      batchStart,
+      batchEnd,
+    );
+
+    // 5. Process each timestamp
     let rowsStored = 0;
     for (const timestamp of timestamps) {
       try {
@@ -168,6 +175,7 @@ export class FeatureComputationService {
           .filter((c): c is MarketCandle => c !== undefined);
 
         const futuresCandle = futuresCandleMap.get(timestamp.getTime());
+        const indiaVixCandle = indiaVixCandleMap.get(timestamp.getTime());
 
         // Skip if insufficient data
         if (constituentCandles.length < 30) {
@@ -183,6 +191,7 @@ export class FeatureComputationService {
           timestamp,
           constituentCandles,
           futuresCandle ?? null,
+          indiaVixCandle ?? null,
         );
 
         // Compute features
@@ -283,12 +292,47 @@ export class FeatureComputationService {
   }
 
   /**
+   * Fetch index candles for batch (India VIX, NIFTY 50, etc.)
+   * Returns Map<timestamp_ms, candle>
+   */
+  private async fetchBatchIndexCandles(
+    instrumentKey: string,
+    startTime: Date,
+    endTime: Date,
+  ): Promise<Map<number, MarketCandle>> {
+    const candleMap = new Map<number, MarketCandle>();
+
+    try {
+      const candles = await this.candleRepository.findByTimeRange(
+        instrumentKey,
+        1,
+        'minute',
+        startTime,
+        endTime,
+        10000, // Large limit
+      );
+
+      for (const candle of candles) {
+        candleMap.set(candle.timestamp.getTime(), candle);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to fetch index candles for ${instrumentKey}`,
+        error,
+      );
+    }
+
+    return candleMap;
+  }
+
+  /**
    * Build FeatureInput for compute-engine
    */
   private buildFeatureInput(
     timestamp: Date,
     constituentCandles: MarketCandle[],
     futuresCandle: MarketCandle | null,
+    indiaVixCandle: MarketCandle | null,
   ): FeatureInput {
     return {
       timestamp: timestamp.getTime(), // Unix timestamp in milliseconds
@@ -318,7 +362,7 @@ export class FeatureComputationService {
         volume: candle.volume,
       })),
       options: [], // Placeholder for now - will add option chain data later
-      indiaVix: undefined, // Placeholder - will add VIX data later
+      indiaVix: indiaVixCandle?.close, // Use close price from India VIX candle
     };
   }
 
