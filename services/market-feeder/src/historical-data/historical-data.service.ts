@@ -249,7 +249,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
   /**
    * Populate instrument_master for expired futures from already-fetched contract data
    */
-  private async populateExpiredFutures(contracts: any[]): Promise<void> {
+  private async populateExpiredFutures(
+    contracts: ExpiredFutureContract[],
+  ): Promise<void> {
     if (contracts.length === 0) {
       return;
     }
