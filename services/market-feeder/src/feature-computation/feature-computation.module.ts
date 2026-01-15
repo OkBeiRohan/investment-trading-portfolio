@@ -3,6 +3,7 @@ import { QuestDBModule } from '@repo/database';
 import { FeatureComputationService } from './feature-computation.service';
 import { FeatureComputationScheduler } from './feature-computation.scheduler';
 import { ComputeEngineService } from './compute-engine.service';
+import { ComputeEngineAdapter } from './compute-engine.adapter';
 
 /**
  * Feature Computation Module
@@ -21,6 +22,7 @@ import { ComputeEngineService } from './compute-engine.service';
     FeatureComputationService,
     FeatureComputationScheduler,
     ComputeEngineService,
+    ComputeEngineAdapter,
   ],
   exports: [FeatureComputationService],
 })

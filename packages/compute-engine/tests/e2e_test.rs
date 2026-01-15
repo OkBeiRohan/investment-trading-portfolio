@@ -1,9 +1,9 @@
 //! End-to-End Integration Tests
 //! Tests full pipeline: Input → Dependencies → Features → Output
 
-use compute_engine::cache::HistoricalCache;
 use compute_engine::processor::FeatureProcessor;
 use compute_engine::types::{ComputeResult, ConstituentTick, FeatureInput, FutureTick, OptionTick};
+use compute_engine::HistoricalCache;
 
 fn create_realistic_input() -> FeatureInput {
   // Realistic NIFTY Future data (19,500 level)

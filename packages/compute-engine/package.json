@@ -1,6 +1,7 @@
 {
   "name": "@repo/compute-engine",
   "version": "1.0.0",
+  "private": true,
   "description": "High-performance feature computation engine for algorithmic trading",
   "main": "index.js",
   "types": "index.d.ts",
@@ -24,11 +25,17 @@
     "browser.js"
   ],
   "napi": {
-    "binaryName": "@repo/compute-engine",
+    "binaryName": "compute-engine",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-unknown-linux-gnu"
     ]
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
   },
   "engines": {
     "node": ">= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0"

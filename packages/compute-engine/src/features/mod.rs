@@ -17,6 +17,7 @@ pub struct ComputedDependencies {
   pub constituent_vwaps: Vec<f64>, // Indexed same as input.constituents
 
   // Moving averages
+  #[allow(dead_code)] // Reserved for RSI implementation
   pub nifty_future_ema20: f64,
   pub nifty_future_ema12: f64, // For MACD
   pub nifty_future_ema26: f64, // For MACD
@@ -43,6 +44,7 @@ pub struct ComputedDependencies {
 
 #[derive(Debug, Clone)]
 pub struct OptionGreeks {
+  #[allow(dead_code)] // Reserved for advanced options features
   pub delta: f64,
   pub gamma: f64,
   pub vega: f64,
@@ -91,7 +93,8 @@ pub trait Feature: Send + Sync {
   /// Returns f64 for scalar features, Vec<f64> for multi-value features
   fn compute(&self, input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue;
 
-  /// Compute with timing (default implementation)
+  /// Compute with timing (default implementation) - used in Phase 4 parallel processor
+  #[allow(dead_code)]
   fn compute_timed(
     &self,
     input: &FeatureInput,
@@ -112,6 +115,7 @@ pub trait Feature: Send + Sync {
 
 /// Feature computation result (supports scalar and vector features)
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Vector variant reserved for multi-value features in Phase 4
 pub enum FeatureValue {
   Scalar(f64),
   Vector(Vec<f64>),
@@ -119,6 +123,8 @@ pub enum FeatureValue {
 }
 
 impl FeatureValue {
+  /// Convert to scalar value (used in Phase 4 processor)
+  #[allow(dead_code)]
   pub fn as_scalar(&self) -> f64 {
     match self {
       FeatureValue::Scalar(v) => *v,
@@ -126,6 +132,8 @@ impl FeatureValue {
     }
   }
 
+  /// Convert to integer value (used in Phase 4 processor)
+  #[allow(dead_code)]
   pub fn as_integer(&self) -> i32 {
     match self {
       FeatureValue::Integer(v) => *v,
@@ -138,11 +146,13 @@ impl FeatureValue {
 // FEATURE REGISTRY
 // ============================================
 
-/// Registry of all available features
+/// Registry of all available features (Phase 4 - Parallel Execution)
+#[allow(dead_code)]
 pub struct FeatureRegistry {
   features: Vec<Box<dyn Feature>>,
 }
 
+#[allow(dead_code)]
 impl FeatureRegistry {
   pub fn new() -> Self {
     Self {
