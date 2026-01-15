@@ -3,7 +3,7 @@
 
 use crate::features::{ComputedDependencies, Feature, FeatureValue};
 use crate::types::FeatureInput;
-use chrono::{DateTime, Datelike, Local, NaiveTime, Timelike};
+use chrono::{DateTime, Datelike, FixedOffset, NaiveTime, Timelike};
 
 // ============================================
 // MARKET HOURS CONSTANTS
@@ -30,8 +30,12 @@ impl Feature for MinutesFromOpen {
     }
 
     fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+        // IST is UTC+5:30
+        let ist_offset = FixedOffset::east_opt(5 * 3600 + 30 * 60).unwrap();
+
         let timestamp = DateTime::from_timestamp_millis(input.timestamp)
-            .unwrap_or_else(|| DateTime::<Local>::from(Local::now()).into());
+            .map(|dt| dt.with_timezone(&ist_offset))
+            .unwrap_or_else(|| chrono::Utc::now().with_timezone(&ist_offset));
 
         let market_open = NaiveTime::from_hms_opt(MARKET_OPEN_HOUR, MARKET_OPEN_MINUTE, 0)
             .unwrap();
@@ -69,8 +73,12 @@ impl Feature for MinutesToClose {
     }
 
     fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+        // IST is UTC+5:30
+        let ist_offset = FixedOffset::east_opt(5 * 3600 + 30 * 60).unwrap();
+
         let timestamp = DateTime::from_timestamp_millis(input.timestamp)
-            .unwrap_or_else(|| DateTime::<Local>::from(Local::now()).into());
+            .map(|dt| dt.with_timezone(&ist_offset))
+            .unwrap_or_else(|| chrono::Utc::now().with_timezone(&ist_offset));
 
         let market_close = NaiveTime::from_hms_opt(MARKET_CLOSE_HOUR, MARKET_CLOSE_MINUTE, 0)
             .unwrap();
@@ -108,8 +116,12 @@ impl Feature for DayOfWeek {
     }
 
     fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+        // IST is UTC+5:30
+        let ist_offset = FixedOffset::east_opt(5 * 3600 + 30 * 60).unwrap();
+
         let timestamp = DateTime::from_timestamp_millis(input.timestamp)
-            .unwrap_or_else(|| DateTime::<Local>::from(Local::now()).into());
+            .map(|dt| dt.with_timezone(&ist_offset))
+            .unwrap_or_else(|| chrono::Utc::now().with_timezone(&ist_offset));
 
         // Monday = 1, Sunday = 7
         let day = timestamp.weekday().number_from_monday() as i32;

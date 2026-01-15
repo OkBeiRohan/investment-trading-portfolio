@@ -297,10 +297,13 @@ impl Feature for MaxPainDistance {
           .options
           .iter()
           .map(|opt| {
+            // Intrinsic value at expiry when spot = strike
+            // Call: max(0, option_strike - strike)
+            // Put: max(0, strike - option_strike)
             let intrinsic = if opt.option_type == "CE" {
-              (strike - opt.strike).max(0.0)
-            } else {
               (opt.strike - strike).max(0.0)
+            } else {
+              (strike - opt.strike).max(0.0)
             };
             intrinsic * opt.open_interest
           })
