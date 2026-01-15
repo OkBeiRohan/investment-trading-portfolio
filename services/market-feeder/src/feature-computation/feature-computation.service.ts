@@ -100,15 +100,14 @@ export class FeatureComputationService {
     this.logger.debug(`Fetched ${rawData.length} raw data points`);
 
     // 2. Call compute-engine to calculate features
-    const features = await this.computeEngine.computeFeatures(rawData);
+    // const features = await this.computeEngine.computeFeatures();
 
     // this.logger.debug(`Computed ${features.length} feature rows`);
 
     // 3. Store features in training_features_lightgbm table
     // await this.storeFeatures(instrumentKey, features);
 
-    // return features.length;
-    return features.total_duration_micros; // Placeholder until compute-engine integration is done
+    return 0; // Placeholder until compute-engine integration is done
   }
 
   /**

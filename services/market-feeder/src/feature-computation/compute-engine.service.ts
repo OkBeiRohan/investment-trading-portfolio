@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ComputeEngineAdapter } from './compute-engine.adapter';
-import type { FeatureInput, ComputeResult } from '@repo/schema';
+import type { ComputeResult, FeatureInput } from '@repo/compute-engine';
 
 /**
  * Compute Engine Service
@@ -20,8 +20,6 @@ export class ComputeEngineService {
   private readonly logger = new Logger(ComputeEngineService.name);
 
   constructor(private readonly computeEngineAdapter: ComputeEngineAdapter) {
-    // NAPI-RS 3.0: Module auto-loads on first require
-    // No explicit initialization needed
     if (this.computeEngineAdapter.isReady()) {
       this.logger.log('Compute engine service ready');
     } else {
@@ -46,9 +44,7 @@ export class ComputeEngineService {
       // Rust internally: updates cache → computes dependencies → parallel features
       const result = this.computeEngineAdapter.computeFeatures(input);
 
-      this.logger.debug(
-        `Features computed in ${result.total_duration_micros}µs`,
-      );
+      this.logger.debug(`Features computed in ${result.totalDurationMicros}µs`);
 
       return result;
     } catch (error) {

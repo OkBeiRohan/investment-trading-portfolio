@@ -1,27 +1,5 @@
-/**
- * Compute Engine Adapter
- *
- * TypeScript adapter for the Rust-based compute-engine NAPI module.
- * Handles JSON serialization for feature computation with type safety.
- *
- * Architecture:
- * - Phase 1: Dependency computation (VWAP, EMA, ATR, etc.) - Sequential
- * - Phase 2: Feature computation (33 features) - Parallel via Rayon
- *
- * Performance Target: <5ms total (2ms deps + 150µs features + overhead)
- *
- * NAPI-RS 3.0 Integration:
- * - Auto-generated bindings in @repo/compute-engine package
- * - Functions are automatically registered via #[napi] macro
- * - No manual module initialization required
- */
-
 import { Injectable, Logger } from '@nestjs/common';
-import { FeatureInput, ComputeResult } from '@repo/schema';
-
-// Import NAPI-RS auto-generated module
-// This is the .node binary compiled from Rust
-import { computeFeatures } from '@repo/compute-engine';
+import { computeFeatures, type FeatureInput } from '@repo/compute-engine';
 
 /**
  * TypeScript adapter for Rust compute-engine NAPI module
@@ -66,7 +44,6 @@ export class ComputeEngineAdapter {
     } catch (error) {
       this.logger.error('Feature computation failed', {
         error: error instanceof Error ? error.message : String(error),
-        timestamp: input.timestamp,
       });
       throw error;
     }
