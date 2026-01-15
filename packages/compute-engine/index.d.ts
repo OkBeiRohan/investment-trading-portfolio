@@ -9,9 +9,102 @@
  * - Total target: <5ms
  *
  * # Input
- * JSON string conforming to FeatureInput schema
+ * FeatureInput object (zero-copy from TypeScript)
  *
  * # Output
- * JSON string conforming to ComputeResult schema
+ * ComputeResult object (zero-copy to TypeScript)
  */
-export declare function computeFeatures(inputJson: string): string
+export declare function computeFeatures(input: FeatureInput): ComputeResult
+
+/** Complete computation result with features and timings (returned directly to Node.js) */
+export interface ComputeResult {
+  features: FeatureOutput
+  timings: Array<FeatureTimingLog>
+  totalDurationMicros: number
+}
+
+/** Single tick data for NIFTY 50 constituent */
+export interface ConstituentTick {
+  symbol: string
+  ltp: number
+  open: number
+  volume: number
+}
+
+/** Complete feature computation input (passed directly from Node.js) */
+export interface FeatureInput {
+  timestamp: number
+  niftyFuture: FutureTick
+  constituents: Array<ConstituentTick>
+  options: Array<OptionTick>
+  indiaVix?: number
+}
+
+/** Complete feature output (33 features + timestamp = 34 fields) - returned directly to Node.js */
+export interface FeatureOutput {
+  timestamp: number
+  pctStocksAboveVwap: number
+  pctStocksAboveEma20: number
+  weightedReturnTop10: number
+  advanceDeclineRatio: number
+  breadthMomentum5M: number
+  breadthVolatility: number
+  futPriceVsVwap: number
+  futRangePosition: number
+  futReturn1M: number
+  futReturn5M: number
+  futAtrPercent: number
+  futVolumeZscore: number
+  futOiChange: number
+  futRsi14: number
+  futMacd: number
+  atmIv: number
+  atmIvChange: number
+  ivSkew: number
+  gammaAtm: number
+  vegaAtm: number
+  thetaAtm: number
+  pcrOi: number
+  pcrVolume: number
+  maxPainDistance: number
+  charmAtm: number
+  vannaAtm: number
+  indiaVix: number
+  realizedVol5M: number
+  realizedVol15M: number
+  volExpansionRatio: number
+  minutesFromOpen: number
+  minutesToClose: number
+  dayOfWeek: number
+}
+
+/** Per-feature timing log */
+export interface FeatureTimingLog {
+  featureName: string
+  durationMicros: number
+}
+
+/** Single tick data for NIFTY Future */
+export interface FutureTick {
+  ltp: number
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+  openInterest: number
+}
+
+/** Single option tick data */
+export interface OptionTick {
+  strike: number
+  optionType: string
+  ltp: number
+  iv: number
+  delta: number
+  gamma: number
+  vega: number
+  theta: number
+  openInterest: number
+  volume: number
+}

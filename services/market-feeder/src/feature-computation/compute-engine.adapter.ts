@@ -49,29 +49,20 @@ export class ComputeEngineAdapter {
    *
    * @throws Error if validation fails or computation errors
    */
-  computeFeatures(input: FeatureInput): ComputeResult {
+  computeFeatures(input: FeatureInput) {
     try {
-      // Validate input (throws ZodError if invalid)
-
-      // Serialize to JSON string
-      // Why JSON? NAPI has 32-field limit on objects, FeatureOutput has 34 fields
-      const inputJson = JSON.stringify(input);
-
       // Call Rust NAPI function: #[napi] pub fn compute_features(input_json: String) -> String
       // This updates internal cache and computes all features in parallel
-      const resultJson: string = computeFeatures(inputJson);
-
-      // Deserialize and validate result
-      const result: ComputeResult = JSON.parse(resultJson) as ComputeResult;
+      const result = computeFeatures(input);
 
       // Performance monitoring
-      if (result.total_duration_micros > 5000) {
+      if (result.totalDurationMicros > 5000) {
         this.logger.warn(
-          `Feature computation exceeded 5ms target: ${validatedResult.total_duration_micros}µs`,
+          `Feature computation exceeded 5ms target: ${result.totalDurationMicros}µs`,
         );
       }
 
-      return validatedResult;
+      return result;
     } catch (error) {
       this.logger.error('Feature computation failed', {
         error: error instanceof Error ? error.message : String(error),

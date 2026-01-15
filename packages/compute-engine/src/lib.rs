@@ -11,7 +11,7 @@ mod cache;
 mod dependencies;
 mod features;
 pub mod processor; // Public for integration tests
-mod types;
+pub mod types; // Public for re-exports
 
 // Re-export public types
 pub use cache::{HistoricalCache, OhlcTick, PriceVolumeTick};
@@ -40,7 +40,6 @@ static CACHE: Lazy<Mutex<HistoricalCache>> = Lazy::new(|| Mutex::new(HistoricalC
 /// ComputeResult object (zero-copy to TypeScript)
 #[napi]
 pub fn compute_features(input: FeatureInput) -> napi::Result<ComputeResult> {
-
   // Update cache (thread-safe)
   {
     let mut cache = CACHE
