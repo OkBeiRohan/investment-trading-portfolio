@@ -15,6 +15,7 @@ import {
   INDIA_VIX,
 } from './nifty50-instruments';
 import { SimpleUpstoxClient } from './simple-client';
+import { isAxiosError } from 'axios';
 
 interface CandleInsert {
   timestamp: Date;
@@ -198,10 +199,12 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       const instrumentData =
         await this.upstoxClient.getFullMarketQuoteBatched(instrumentKeys);
 
+      console.log(instrumentData[0]);
+
       // Transform to InstrumentMaster format
       const instruments: InstrumentMaster[] = instrumentData.map((inst) => ({
         instrumentKey: inst.instrumentKey,
-        exchange: inst.exchange as 'NSE' | 'BSE' | 'MCX',
+        exchange: (inst.exchange as 'NSE' | 'BSE' | 'MCX') || 'NSE',
         segment: inst.segment as 'INDEX' | 'EQ' | 'FO' | 'COMMODITY',
         instrumentType: 'STOCK' as const, // All NIFTY50 constituents are stocks
         tradingsymbol: inst.tradingSymbol,
@@ -223,9 +226,13 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         `✓ Populated ${instruments.length} instruments in instrument_master`,
       );
     } catch (error) {
-      this.logger.error(error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = isAxiosError(error)
+        ? `Axios error: ${error.message}, Response data: ${JSON.stringify(
+            error.response?.data,
+          )}. Status: ${error.response?.status}`
+        : error instanceof Error
+          ? error.message
+          : String(error);
       this.logger.error(
         `Failed to populate instrument_master: ${errorMessage}`,
       );

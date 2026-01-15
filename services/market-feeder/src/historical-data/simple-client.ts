@@ -28,10 +28,9 @@ export interface UpstoxMarketQuoteResponse {
   status: string;
   data: {
     [instrumentKey: string]: {
+      timestamp: string;
       instrument_token: string;
-      exchange: string;
-      trading_symbol: string;
-      isin?: string;
+      symbol: string;
       last_price: number;
       ohlc: {
         open: number;
@@ -39,10 +38,16 @@ export interface UpstoxMarketQuoteResponse {
         low: number;
         close: number;
       };
+      depth: {
+        buy: Array<{ quantity: number; price: number; orders: number }>;
+        sell: Array<{ quantity: number; price: number; orders: number }>;
+      };
       volume: number;
       average_price: number;
       oi?: number;
       net_change: number;
+      total_buy_quantity: number;
+      total_sell_quantity: number;
       lower_circuit_limit: number;
       upper_circuit_limit: number;
       last_trade_time: string;
@@ -276,17 +281,20 @@ export class SimpleUpstoxClient {
 
       // Transform to InstrumentMasterData
       return Object.entries(response.data.data).map(([key, quote]) => {
-        // Parse segment from instrument key (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
-        const [segment] = key.split('|');
-        const [exchange] = segment.split('_');
+        // Parse segment from instrument key (e.g. NSE_EQ:HDFCLIFE) or from instrument_token (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
+
+        const [exchange, segment] = quote.instrument_token
+          .split('|')[0]
+          .split('_');
+        const isin = quote.instrument_token.split('|')[1];
 
         return {
-          instrumentKey: key,
-          exchange: quote.exchange || exchange,
+          instrumentKey: quote.instrument_token,
+          exchange: exchange,
           segment: segment,
-          tradingSymbol: quote.trading_symbol,
-          name: quote.trading_symbol, // API doesn't provide full name, use symbol
-          isin: quote.isin,
+          tradingSymbol: quote.symbol,
+          name: quote.symbol, // API doesn't provide full name, use symbol
+          isin: isin,
           lastPrice: quote.last_price,
           lastUpdated: new Date(),
         };
