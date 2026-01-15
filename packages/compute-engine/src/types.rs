@@ -1,7 +1,7 @@
 //! Type definitions for parallel feature computation
-//! All types use JSON serialization for NAPI compatibility (no field count limits)
-//! Auto-generates TypeScript types via ts-rs
+//! All types use NAPI objects for zero-copy FFI and automatic TypeScript type generation
 
+use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
 // ============================================
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 // ============================================
 
 /// Single tick data for NIFTY Future
+#[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FutureTick {
   pub ltp: f64,
@@ -22,6 +23,7 @@ pub struct FutureTick {
 }
 
 /// Single tick data for NIFTY 50 constituent
+#[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstituentTick {
   pub symbol: String,
@@ -32,6 +34,7 @@ pub struct ConstituentTick {
 }
 
 /// Single option tick data
+#[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptionTick {
   pub strike: f64,
@@ -46,7 +49,8 @@ pub struct OptionTick {
   pub volume: f64,
 }
 
-/// Complete feature computation input (pass as JSON string from Node.js)
+/// Complete feature computation input (passed directly from Node.js)
+#[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureInput {
   pub timestamp: i64, // Unix timestamp in milliseconds
@@ -60,7 +64,8 @@ pub struct FeatureInput {
 // OUTPUT TYPES
 // ============================================
 
-/// Complete feature output (33 features) - returned as JSON string to Node.js
+/// Complete feature output (33 features + timestamp = 34 fields) - returned directly to Node.js
+#[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureOutput {
   pub timestamp: i64,
@@ -110,13 +115,15 @@ pub struct FeatureOutput {
 }
 
 /// Per-feature timing log
+#[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureTimingLog {
   pub feature_name: String,
   pub duration_micros: i64, // Use i64 instead of u64 for NAPI compatibility
 }
 
-/// Complete computation result with features and timings (returned as JSON string)
+/// Complete computation result with features and timings (returned directly to Node.js)
+#[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputeResult {
   pub features: FeatureOutput,
@@ -237,18 +244,20 @@ mod tests {
   }
 }
 // ============================================
-// JSON SERIALIZATION HELPERS
+// JSON HELPERS (for testing/debugging only)
 // ============================================
 
 impl FeatureInput {
-  /// Deserialize from JSON string (called from Node.js)
+  /// Deserialize from JSON string (for testing)
+  #[allow(dead_code)]
   pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
     serde_json::from_str(json)
   }
 }
 
 impl ComputeResult {
-  /// Serialize to JSON string (returned to Node.js)
+  /// Serialize to JSON string (for testing)
+  #[allow(dead_code)]
   pub fn to_json(&self) -> Result<String, serde_json::Error> {
     serde_json::to_string(self)
   }

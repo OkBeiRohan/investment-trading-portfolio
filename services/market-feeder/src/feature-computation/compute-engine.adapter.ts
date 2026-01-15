@@ -17,12 +17,7 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  FeatureInput,
-  ComputeResult,
-  validateFeatureInput,
-  validateComputeResult,
-} from '@repo/schema';
+import { FeatureInput, ComputeResult } from '@repo/schema';
 
 // Import NAPI-RS auto-generated module
 // This is the .node binary compiled from Rust
@@ -57,22 +52,20 @@ export class ComputeEngineAdapter {
   computeFeatures(input: FeatureInput): ComputeResult {
     try {
       // Validate input (throws ZodError if invalid)
-      const validatedInput = validateFeatureInput(input);
 
       // Serialize to JSON string
       // Why JSON? NAPI has 32-field limit on objects, FeatureOutput has 34 fields
-      const inputJson = JSON.stringify(validatedInput);
+      const inputJson = JSON.stringify(input);
 
       // Call Rust NAPI function: #[napi] pub fn compute_features(input_json: String) -> String
       // This updates internal cache and computes all features in parallel
       const resultJson: string = computeFeatures(inputJson);
 
       // Deserialize and validate result
-      const result = JSON.parse(resultJson) as ComputeResult;
-      const validatedResult = validateComputeResult(result);
+      const result: ComputeResult = JSON.parse(resultJson) as ComputeResult;
 
       // Performance monitoring
-      if (validatedResult.total_duration_micros > 5000) {
+      if (result.total_duration_micros > 5000) {
         this.logger.warn(
           `Feature computation exceeded 5ms target: ${validatedResult.total_duration_micros}µs`,
         );

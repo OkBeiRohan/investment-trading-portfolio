@@ -34,15 +34,12 @@ static CACHE: Lazy<Mutex<HistoricalCache>> = Lazy::new(|| Mutex::new(HistoricalC
 /// - Total target: <5ms
 ///
 /// # Input
-/// JSON string conforming to FeatureInput schema
+/// FeatureInput object (zero-copy from TypeScript)
 ///
 /// # Output
-/// JSON string conforming to ComputeResult schema
+/// ComputeResult object (zero-copy to TypeScript)
 #[napi]
-pub fn compute_features(input_json: String) -> napi::Result<String> {
-  // Deserialize input
-  let input = types::FeatureInput::from_json(&input_json)
-    .map_err(|e| napi::Error::from_reason(format!("Failed to parse input JSON: {}", e)))?;
+pub fn compute_features(input: FeatureInput) -> napi::Result<ComputeResult> {
 
   // Update cache (thread-safe)
   {
@@ -87,8 +84,6 @@ pub fn compute_features(input_json: String) -> napi::Result<String> {
   let result = PROCESSOR.compute_all(&input, &cache);
   let _duration = start.elapsed(); // Already measured in processor
 
-  // Serialize result
-  result
-    .to_json()
-    .map_err(|e| napi::Error::from_reason(format!("Failed to serialize result: {}", e)))
+  // Return result directly (zero-copy)
+  Ok(result)
 }

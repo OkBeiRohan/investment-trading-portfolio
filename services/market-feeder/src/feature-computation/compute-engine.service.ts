@@ -64,6 +64,6 @@ export class ComputeEngineService {
    * Health check: Verify compute-engine module is loaded
    */
   healthCheck(): boolean {
-    return this.adapter.isReady();
+    return this.computeEngineAdapter.isReady();
   }
 }
