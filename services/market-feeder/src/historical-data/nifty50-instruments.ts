@@ -100,3 +100,5 @@ export const NIFTY50_FUTURES = [
   'NSE_FO|59182', // 24 Feb 2026
   'NSE_FO|51714', // 30 Mar 2026
 ];
+
+// NO DATA RECEIVED FOR NSE_FO|35005|26-12-2024 (Expired contract for Dec 2024)
