@@ -43,6 +43,23 @@ pub struct OptionGreeks {
   pub vanna: f64, // Second-order Greek
 }
 
+impl Default for ComputedDependencies {
+  fn default() -> Self {
+    Self {
+      nifty_future_vwap: 0.0,
+      constituent_vwaps: vec![],
+      nifty_future_ema20: 0.0,
+      constituent_ema20s: vec![],
+      nifty_future_atr: 0.0,
+      nifty_future_rsi_14: 50.0,
+      atm_call_greeks: OptionGreeks::default(),
+      atm_put_greeks: OptionGreeks::default(),
+      realized_vol_5m: 0.0,
+      realized_vol_15m: 0.0,
+    }
+  }
+}
+
 // ============================================
 // FEATURE TRAIT
 // ============================================
