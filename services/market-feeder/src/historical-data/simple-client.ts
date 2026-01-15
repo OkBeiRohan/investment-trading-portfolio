@@ -280,7 +280,7 @@ export class SimpleUpstoxClient {
       }
 
       // Transform to InstrumentMasterData
-      return Object.entries(response.data.data).map(([key, quote]) => {
+      return Object.entries(response.data.data).map(([_, quote]) => {
         // Parse segment from instrument key (e.g. NSE_EQ:HDFCLIFE) or from instrument_token (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
 
         const [exchange, segment] = quote.instrument_token

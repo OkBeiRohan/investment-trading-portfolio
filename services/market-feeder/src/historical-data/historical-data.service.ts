@@ -79,7 +79,11 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     );
 
     // Step 1: Populate instrument_master table
-    await this.populateInstrumentMaster(instruments);
+    await this.populateInstrumentMaster([NIFTY50_INDEX, INDIA_VIX], 'SPOT');
+    await this.populateInstrumentMaster([NIFTY50_FUTURES_CURRENT], 'FUTURE');
+    await this.populateInstrumentMaster(NIFTY50_CONSTITUENTS, 'STOCK');
+
+    // Step 2: Fetch and insert historical candles
 
     let totalFetched = 0;
     let skipped = 0;
@@ -189,6 +193,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
    */
   private async populateInstrumentMaster(
     instrumentKeys: string[],
+    type: 'STOCK' | 'SPOT' | 'FUTURE' | 'OPTION',
   ): Promise<void> {
     try {
       this.logger.log(
@@ -199,14 +204,12 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       const instrumentData =
         await this.upstoxClient.getFullMarketQuoteBatched(instrumentKeys);
 
-      console.log(instrumentData[0]);
-
       // Transform to InstrumentMaster format
       const instruments: InstrumentMaster[] = instrumentData.map((inst) => ({
         instrumentKey: inst.instrumentKey,
         exchange: (inst.exchange as 'NSE' | 'BSE' | 'MCX') || 'NSE',
         segment: inst.segment as 'INDEX' | 'EQ' | 'FO' | 'COMMODITY',
-        instrumentType: 'STOCK' as const, // All NIFTY50 constituents are stocks
+        instrumentType: type,
         tradingsymbol: inst.tradingSymbol,
         name: inst.name,
         expiry: null, // Stocks don't expire
