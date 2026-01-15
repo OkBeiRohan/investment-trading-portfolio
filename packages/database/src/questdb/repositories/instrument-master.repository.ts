@@ -37,22 +37,29 @@ export class InstrumentMasterRepository {
   /**
    * Bulk insert instruments (for initial load from Upstox)
    */
-  async bulkInsert(instruments: InstrumentMaster[]): Promise<void> {
-    if (instruments.length === 0) return;
+  async bulkInsert(instruments: InstrumentMaster[]): Promise<boolean> {
+    try {
+      if (instruments.length === 0) return true;
 
-    const sqlPrefix = loadSqlQueryCached(
-      "instrument-master/insert-batch-prefix"
-    );
-    const values = instruments
-      .map((inst) => {
-        const v = InstrumentMasterSchema.parse(inst);
-        return `('${v.instrumentKey}', '${v.exchange}', '${v.segment}', '${v.instrumentType}', '${v.tradingsymbol}', '${v.name}', ${v.expiry ? `'${v.expiry.toISOString()}'` : "NULL"}, ${v.strike ?? "NULL"}, ${v.optionType ? `'${v.optionType}'` : "NULL"}, ${v.lotSize}, ${v.tickSize}, ${v.underlyingKey ? `'${v.underlyingKey}'` : "NULL"}, ${v.isExpired}, '${v.lastUpdated.toISOString()}')`;
-      })
-      .join(",");
+      const sqlPrefix = loadSqlQueryCached(
+        "instrument-master/insert-batch-prefix"
+      );
+      const values = instruments
+        .map((inst) => {
+          const v = InstrumentMasterSchema.parse(inst);
+          return `('${v.instrumentKey}', '${v.exchange}', '${v.segment}', '${v.instrumentType}', '${v.tradingsymbol}', '${v.name}', ${v.expiry ? `'${v.expiry.toISOString()}'` : "NULL"}, ${v.strike ?? "NULL"}, ${v.optionType ? `'${v.optionType}'` : "NULL"}, ${v.lotSize}, ${v.tickSize}, ${v.underlyingKey ? `'${v.underlyingKey}'` : "NULL"}, ${v.isExpired}, '${v.lastUpdated.toISOString()}')`;
+        })
+        .join(",");
 
-    const query = `${sqlPrefix} ${values}`;
-    await this.pool.query(query);
-    this.logger.log(`Inserted ${instruments.length} instruments`);
+      const query = `${sqlPrefix} ${values}`;
+      await this.pool.query(query);
+      this.logger.log(`Inserted ${instruments.length} instruments`);
+
+      return true;
+    } catch (error) {
+      this.logger.error("Error during bulk insert of instruments", error);
+      return false;
+    }
   }
 
   /**

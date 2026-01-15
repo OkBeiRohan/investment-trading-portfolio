@@ -1,5 +1,5 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { AccountRepository } from "@repo/database";
+import { Injectable, UnauthorizedException, Logger } from "@nestjs/common";
+import { AccountRepository, RedisService } from "@repo/database";
 import * as crypto from "crypto";
 
 /**
@@ -13,29 +13,72 @@ interface UpstoxAccessTokenResponse {
   refresh_token?: string;
 }
 
+/**
+ * Enhanced Multi-Tenant Auth Manager
+ *
+ * Features:
+ * - L1 Cache: Redis (6-hour TTL, <1ms access)
+ * - L2 Storage: MongoDB (encrypted, persistent)
+ * - Sandbox/Live mode support
+ * - Automatic token refresh integration
+ *
+ * @example
+ * ```typescript
+ * const token = await authManager.getAccessToken('user123', 'upstox', 'LIVE');
+ * ```
+ */
 @Injectable()
 export class AuthManagerService {
-  constructor(private readonly accountRepository: AccountRepository) {}
+  private readonly logger = new Logger(AuthManagerService.name);
+  private readonly REDIS_TTL = 21600; // 6 hours in seconds
+
+  constructor(
+    private readonly accountRepository: AccountRepository,
+    private readonly redis: RedisService
+  ) {}
 
   /**
-   * Get access token for Upstox from better-auth Account collection
-   * Upstox accounts are stored with providerId="upstox"
+   * Get access token with L1 (Redis) + L2 (MongoDB) caching
+   *
+   * @param userId - Better-auth user ID
+   * @param provider - Provider name (upstox, binance, yahoo)
+   * @param environment - SANDBOX or LIVE mode
    */
-  async getAccessToken(userId: string): Promise<string> {
+  async getAccessToken(
+    userId: string,
+    provider: string = "upstox",
+    environment: "SANDBOX" | "LIVE" = "LIVE"
+  ): Promise<string> {
+    // L1: Check Redis cache
+    const cacheKey = this.getCacheKey(userId, provider, environment);
+    const cached = await this.redis.get(cacheKey);
+
+    if (cached) {
+      this.logger.debug(
+        `Token cache HIT for ${userId} (${provider}/${environment})`
+      );
+      return cached;
+    }
+
+    this.logger.debug(
+      `Token cache MISS for ${userId} (${provider}/${environment})`
+    );
+
+    // L2: Query MongoDB
     const account = await this.accountRepository.findOne({
       userId,
-      providerId: "upstox",
+      providerId: provider,
     });
 
     if (!account) {
       throw new UnauthorizedException(
-        `No Upstox account linked for user ${userId}. Please connect your Upstox account.`
+        `No ${provider} account linked for user ${userId}. Please connect your account.`
       );
     }
 
     if (!account.accessToken) {
       throw new UnauthorizedException(
-        "Upstox access token not found. Please re-authenticate."
+        `${provider} access token not found. Please re-authenticate.`
       );
     }
 
@@ -45,11 +88,63 @@ export class AuthManagerService {
       new Date() > account.accessTokenExpiresAt
     ) {
       throw new UnauthorizedException(
-        "Upstox session expired. Please re-authenticate."
+        `${provider} session expired. Please re-authenticate.`
       );
     }
 
+    // Cache in Redis
+    await this.cacheToken(cacheKey, account.accessToken, this.REDIS_TTL);
+
     return account.accessToken;
+  }
+
+  /**
+   * Cache token in Redis with TTL
+   */
+  private async cacheToken(
+    key: string,
+    token: string,
+    ttl: number
+  ): Promise<void> {
+    try {
+      await this.redis.set(key, token, "EX", ttl);
+      this.logger.debug(`Cached token: ${key} (TTL: ${ttl}s)`);
+    } catch (error) {
+      this.logger.error(`Failed to cache token: ${error}`);
+      // Non-fatal: continue without cache
+    }
+  }
+
+  /**
+   * Invalidate token cache (e.g., after refresh or revoke)
+   */
+  async invalidateCache(
+    userId: string,
+    provider: string,
+    environment: "SANDBOX" | "LIVE"
+  ): Promise<void> {
+    const cacheKey = this.getCacheKey(userId, provider, environment);
+    await this.redis.del(cacheKey);
+    this.logger.log(`Invalidated token cache: ${cacheKey}`);
+  }
+
+  /**
+   * Generate Redis cache key
+   */
+  private getCacheKey(
+    userId: string,
+    provider: string,
+    environment: string
+  ): string {
+    return `auth:${provider}:${environment}:${userId}`;
+  }
+
+  /**
+   * Get access token (legacy method - defaults to Upstox LIVE)
+   * @deprecated Use getAccessToken(userId, provider, environment) instead
+   */
+  async getUpstoxAccessToken(userId: string): Promise<string> {
+    return this.getAccessToken(userId, "upstox", "LIVE");
   }
 
   /**

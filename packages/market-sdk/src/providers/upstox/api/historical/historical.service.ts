@@ -19,52 +19,14 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import axios, { AxiosInstance } from "axios";
-
-export interface HistoricalCandleRequest {
-  instrument_key: string;
-  interval: string; // '1', '3', '5', '15', '30' (minutes) or '1' (hour/day/week/month)
-  unit: "minutes" | "hours" | "days" | "weeks" | "months";
-  from_date: string; // YYYY-MM-DD
-  to_date: string; // YYYY-MM-DD
-}
-
-export interface IntradayCandleRequest {
-  instrument_key: string;
-  interval: string;
-  unit: "minutes" | "hours" | "days";
-}
-
-export interface CandleResponse {
-  status: string;
-  data: {
-    candles: Array<
-      [
-        string, // timestamp
-        number, // open
-        number, // high
-        number, // low
-        number, // close
-        number, // volume
-        number, // open_interest
-      ]
-    >;
-  };
-}
-
-export interface ExpiredContractsRequest {
-  symbol: string; // 'NIFTY', 'BANKNIFTY', etc.
-  expiry_date: string; // YYYY-MM-DD
-}
-
-export interface ExpiredContractsResponse {
-  status: string;
-  data: Array<{
-    instrument_key: string;
-    name: string;
-    exchange: string;
-    trading_symbol: string;
-  }>;
-}
+import { HistoricalApiRepository } from "./historical.repository";
+import {
+  HistoricalCandleRequest,
+  CandleResponse,
+  IntradayCandleRequest,
+  ExpiredContractsRequest,
+  ExpiredContractsResponse,
+} from "./dto/historical.request.dto";
 
 /**
  * Date range chunk for API requests
@@ -114,12 +76,12 @@ class TokenBucket {
 }
 
 @Injectable()
-export class UpstoxHistoricalAPI {
-  private readonly logger = new Logger(UpstoxHistoricalAPI.name);
+export class UpstoxHistoricalAPIService {
+  private readonly logger = new Logger(UpstoxHistoricalAPIService.name);
   private client: AxiosInstance | null = null;
   private readonly rateLimiter: TokenBucket;
 
-  constructor() {
+  constructor(private readonly historicalRepository: HistoricalApiRepository) {
     // Rate limit: 50 requests/second (Upstox limit)
     this.rateLimiter = new TokenBucket(50, 50 / 1000); // 50 tokens, refill at 50/1000 = 0.05 tokens/ms
   }

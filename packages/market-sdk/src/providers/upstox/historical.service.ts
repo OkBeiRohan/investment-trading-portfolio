@@ -18,7 +18,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { UpstoxHistoricalAPI } from "./api/historical.api";
+import { UpstoxHistoricalAPI } from "./api/historical/historical.service";
 import type { ICandleInsert } from "@repo/schema";
 
 export interface HistoricalDataRequest {

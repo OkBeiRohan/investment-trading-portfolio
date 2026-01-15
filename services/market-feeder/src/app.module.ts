@@ -5,7 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { QuestDBModule } from '@repo/database';
-import { UpstoxModule } from '@repo/market-sdk';
+// import { UpstoxModule } from '@repo/market-sdk';
 import { HistoricalDataModule } from './historical-data/historical-data.module';
 import configuration from './config/configuration';
 // import { ObservabilityModule } from '@repo/observability';
@@ -39,7 +39,7 @@ import { FeatureComputationModule } from './feature-computation/feature-computat
     ConditionalModule.registerWhen(QuestDBModule, 'HISTORY_SAVER_ENABLED'),
 
     // Market SDK (Upstox)
-    UpstoxModule,
+    // UpstoxModule,
 
     // Feature modules
     ConditionalModule.registerWhen(

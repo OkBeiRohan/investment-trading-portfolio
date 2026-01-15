@@ -5,7 +5,7 @@
 
 import { Controller, Body, Logger, Get, Query } from '@nestjs/common';
 import { HistoricalDataBootstrapService } from './historical-data.service';
-import { SimpleUpstoxClient } from '@repo/market-sdk';
+import { SimpleUpstoxClient } from './simple-client';
 
 @Controller('historical-data')
 export class HistoricalDataController {
@@ -21,7 +21,7 @@ export class HistoricalDataController {
    * GET /historical-data/bootstrap
    */
   @Get('bootstrap')
-  async bootstrap() {
+  bootstrap() {
     this.logger.log('Bootstrap endpoint called');
     return this.historicalDataService.triggerBootstrap();
   }
@@ -42,10 +42,7 @@ export class HistoricalDataController {
       `Testing fetch for ${instrumentKey}, ${daysBack} days back`,
     );
 
-    const result = await this.upstoxClient.testFetch(
-      instrumentKey,
-      daysBack,
-    );
+    const result = await this.upstoxClient.testFetch(instrumentKey, daysBack);
 
     return result;
   }
