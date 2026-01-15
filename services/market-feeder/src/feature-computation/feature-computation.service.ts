@@ -9,7 +9,7 @@ import { ComputeEngineService } from './compute-engine.service';
 import { MarketCandle, MarketState1m, TrainingLabels1m } from '@repo/schema';
 import { ContinuousContractBuilder } from './continuous-contract.builder';
 import { ConstituentManagerService } from './constituent-manager.service';
-import type { FeatureInput } from '@repo/compute-engine';
+import type { FeatureInput, FeatureOutput } from '@repo/compute-engine';
 
 /**
  * Feature Computation Service v3.0
@@ -199,9 +199,12 @@ export class FeatureComputationService {
         const computeResult = this.computeEngine.computeFeatures(featureInput);
         batchTimeTaken += computeResult.totalDurationMicros;
 
+        // Sanitize features: replace NaN with 0.0 (happens when cache is empty)
+        const sanitizedFeatures = this.sanitizeFeatures(computeResult.features);
+
         // Accumulate market state for batch insert
         const marketState: MarketState1m = {
-          ...computeResult.features,
+          ...sanitizedFeatures,
           timestamp,
           instrumentKey: 'NSE_INDEX|Nifty 50', // NIFTY 50 index
         };
@@ -430,6 +433,23 @@ export class FeatureComputationService {
     const endTime = endOfDay < now ? endOfDay : now;
 
     return this.computeFeaturesForNifty50(startTime, endTime);
+  }
+
+  /**
+   * Sanitize feature values by replacing NaN with 0.0
+   * This happens when cache is empty and certain features can't be computed
+   */
+  private sanitizeFeatures(features: FeatureOutput): FeatureOutput {
+    const sanitized = { ...features };
+
+    // Replace all NaN values with 0.0
+    for (const key in sanitized) {
+      if (typeof sanitized[key] === 'number' && Number.isNaN(sanitized[key])) {
+        sanitized[key] = 0.0;
+      }
+    }
+
+    return sanitized;
   }
 
   /**
