@@ -8,6 +8,7 @@
 
 // New parallel feature system (Phase 1)
 mod cache;
+mod dependencies; // Phase 2: Shared dependency calculations
 mod features;
 mod types;
 
@@ -27,11 +28,19 @@ pub fn initialize_processor(lookback_periods: u32) -> String {
 }
 
 /// Compute all features in parallel
+/// Takes JSON string input, returns JSON string result
 /// Phase 1: Placeholder (will implement in Phase 4)
 #[napi]
-pub fn compute_features(input: String) -> String {
-  format!(
-    "Phase 1 complete. Feature computation pending Phase 4. Input: {} bytes",
-    input.len()
-  )
+pub fn compute_features(input_json: String) -> napi::Result<String> {
+  // Phase 1: Just validate JSON can be parsed
+  match types::FeatureInput::from_json(&input_json) {
+    Ok(_input) => Ok(format!(
+      "Phase 1 complete. Feature computation pending Phase 4. Input: {} bytes",
+      input_json.len()
+    )),
+    Err(e) => Err(napi::Error::from_reason(format!(
+      "Failed to parse input JSON: {}",
+      e
+    ))),
+  }
 }
