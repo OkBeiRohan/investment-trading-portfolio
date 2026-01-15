@@ -7,7 +7,7 @@ version = "1.0.0"
 description = "High-performance feature computation engine for algorithmic trading"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"] # cdylib for NAPI, rlib for tests
 
 [dependencies]
 napi = "3.0.0"
