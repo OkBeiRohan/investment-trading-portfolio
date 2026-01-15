@@ -159,7 +159,14 @@ export class FeatureComputationService {
       batchEnd,
     );
 
-    // 5. Process each timestamp and accumulate results for batch insert
+    // 5. Fetch NIFTY SPOT for label calculation (NOT futures!)
+    const niftySpotCandleMap = await this.fetchBatchIndexCandles(
+      'NSE_INDEX|Nifty 50',
+      batchStart,
+      batchEnd,
+    );
+
+    // 6. Process each timestamp and accumulate results for batch insert
     const marketStatesToInsert: MarketState1m[] = [];
     const trainingLabelsToInsert: TrainingLabels1m[] = [];
     let batchTimeTaken = 0;
@@ -211,10 +218,13 @@ export class FeatureComputationService {
         marketStatesToInsert.push(marketState);
 
         // Calculate training label (5-minute horizon)
+        // Use NIFTY SPOT (not futures!) and computed ATR from features
+        const niftySpotCandle = niftySpotCandleMap.get(timestamp.getTime());
         const trainingLabel = this.calculateLabel(
           timestamp,
-          futuresCandle,
-          futuresCandleMap,
+          niftySpotCandle,
+          niftySpotCandleMap,
+          sanitizedFeatures.futAtrPercent, // Use computed ATR from features
         );
         if (trainingLabel) {
           trainingLabelsToInsert.push(trainingLabel);
@@ -457,43 +467,62 @@ export class FeatureComputationService {
    * Labels: -1 (DOWN), 0 (NEUTRAL), 1 (UP)
    *
    * Logic (from training-pipeline LightGBM trainer):
-   * - future_return_5m > k * ATR → UP (1)
-   * - future_return_5m < -k * ATR → DOWN (-1)
+   * - future_return > k * ATR_PERCENT → UP (1)
+   * - future_return < -k * ATR_PERCENT → DOWN (-1)
    * - else → NEUTRAL (0)
    * - k = 1.0 by default
    *
+   * CRITICAL: Uses NIFTY SPOT (not futures!) and computed ATR from features
+   *
+   * @param timestamp - Current timestamp
+   * @param currentCandle - Current NIFTY SPOT candle
+   * @param spotCandleMap - Map of NIFTY SPOT candles by timestamp
+   * @param futAtrPercent - Computed ATR percentage from features (e.g., 0.015 = 1.5%)
    * @returns TrainingLabels1m or null if insufficient data
    */
   private calculateLabel(
     timestamp: Date,
     currentCandle: MarketCandle | undefined,
-    futuresCandleMap: Map<number, MarketCandle>,
+    spotCandleMap: Map<number, MarketCandle>,
+    futAtrPercent: number,
   ): TrainingLabels1m | null {
     if (!currentCandle) return null;
+
+    // Skip if ATR is invalid (NaN, 0, or unreasonably high)
+    if (
+      !futAtrPercent ||
+      Number.isNaN(futAtrPercent) ||
+      futAtrPercent <= 0 ||
+      futAtrPercent > 0.1 // Sanity check: >10% is unreasonable
+    ) {
+      return null;
+    }
 
     const horizonMinutes = 5;
     const futureTimestamp = new Date(
       timestamp.getTime() + horizonMinutes * 60 * 1000,
     );
-    const futureCandle = futuresCandleMap.get(futureTimestamp.getTime());
+    const futureCandle = spotCandleMap.get(futureTimestamp.getTime());
 
     if (!futureCandle) {
       return null; // No future data available
     }
 
-    // Calculate future return
+    // Calculate future return (percentage, dimensionless)
     const futureReturn =
       (futureCandle.close - currentCandle.close) / currentCandle.close;
 
-    // Estimate ATR threshold (0.5% of price as default)
-    const atrThreshold = currentCandle.close * 0.005;
+    // ATR threshold (k * ATR_PERCENT)
+    // futAtrPercent is already normalized (0.015 = 1.5%)
     const k = 1.0;
+    const atrThreshold = k * futAtrPercent;
 
     // Determine label
+    // Compare dimensionless returns with dimensionless threshold
     let label: -1 | 0 | 1;
-    if (futureReturn > (k * atrThreshold) / currentCandle.close) {
+    if (futureReturn > atrThreshold) {
       label = 1; // UP
-    } else if (futureReturn < (-k * atrThreshold) / currentCandle.close) {
+    } else if (futureReturn < -atrThreshold) {
       label = -1; // DOWN
     } else {
       label = 0; // NEUTRAL
