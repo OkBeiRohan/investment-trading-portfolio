@@ -4,22 +4,22 @@ import { ConfigService } from '@nestjs/config';
 import { FeatureComputationService } from './feature-computation.service';
 
 /**
- * Feature Computation Scheduler
+ * Feature Computation Scheduler v2.0
  *
- * Triggers batch feature computation at regular intervals:
+ * Triggers batch feature computation at regular intervals for Nifty 50:
  * - Every hour: Incremental update for last 2 hours
  * - End of day: Full day computation (3:45 PM IST)
  * - Weekly: Recompute entire week (Sunday 2:00 AM)
  *
  * Configuration:
- * - FEATURE_COMPUTATION_ENABLED: Enable/disable scheduler
- * - FEATURE_COMPUTATION_INSTRUMENTS: Comma-separated instrument keys
+ * - FEATURE_COMPUTATION_ENABLED: Enable/disable scheduler (env flag)
+ *
+ * Note: Always computes for Nifty 50 index (uses constituent data internally)
  */
 @Injectable()
 export class FeatureComputationScheduler {
   private readonly logger = new Logger(FeatureComputationScheduler.name);
   private readonly enabled: boolean;
-  private readonly instruments: string[];
 
   constructor(
     private readonly featureComputation: FeatureComputationService,
@@ -29,15 +29,9 @@ export class FeatureComputationScheduler {
       'FEATURE_COMPUTATION_ENABLED',
       false,
     );
-    this.instruments = this.configService
-      .get<string>('FEATURE_COMPUTATION_INSTRUMENTS', 'NSE_INDEX|Nifty 50')
-      .split(',')
-      .map((s) => s.trim());
 
     if (this.enabled) {
-      this.logger.log(
-        `Feature computation scheduler enabled for ${this.instruments.length} instruments`,
-      );
+      this.logger.log('Feature computation scheduler enabled for Nifty 50');
     } else {
       this.logger.log('Feature computation scheduler disabled');
     }
@@ -58,10 +52,7 @@ export class FeatureComputationScheduler {
       this.logger.log('Starting hourly feature computation...');
 
       const rowsStored =
-        await this.featureComputation.computeFeaturesForLastHours(
-          2,
-          this.instruments,
-        );
+        await this.featureComputation.computeFeaturesForLastHours(2);
 
       this.logger.log(`Hourly computation complete: ${rowsStored} rows stored`);
     } catch (error) {
@@ -83,9 +74,8 @@ export class FeatureComputationScheduler {
     try {
       this.logger.log('Starting end-of-day feature computation...');
 
-      const rowsStored = await this.featureComputation.computeFeaturesForToday(
-        this.instruments,
-      );
+      const rowsStored =
+        await this.featureComputation.computeFeaturesForToday();
 
       this.logger.log(`EOD computation complete: ${rowsStored} rows stored`);
     } catch (error) {
@@ -111,10 +101,9 @@ export class FeatureComputationScheduler {
       const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
 
       const rowsStored =
-        await this.featureComputation.computeFeaturesForTimeRange(
+        await this.featureComputation.computeFeaturesForNifty50(
           startTime,
           endTime,
-          this.instruments,
         );
 
       this.logger.log(
@@ -131,18 +120,12 @@ export class FeatureComputationScheduler {
   async triggerManualComputation(
     startTime: Date,
     endTime: Date,
-    instruments?: string[],
   ): Promise<number> {
-    const targetInstruments = instruments || this.instruments;
+    this.logger.log('Manual feature computation triggered for Nifty 50');
 
-    this.logger.log(
-      `Manual feature computation triggered for ${targetInstruments.length} instruments`,
-    );
-
-    return this.featureComputation.computeFeaturesForTimeRange(
+    return this.featureComputation.computeFeaturesForNifty50(
       startTime,
       endTime,
-      targetInstruments,
     );
   }
 }

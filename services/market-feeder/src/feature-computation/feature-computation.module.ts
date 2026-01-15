@@ -4,6 +4,8 @@ import { FeatureComputationService } from './feature-computation.service';
 import { FeatureComputationScheduler } from './feature-computation.scheduler';
 import { ComputeEngineService } from './compute-engine.service';
 import { ComputeEngineAdapter } from './compute-engine.adapter';
+import { ConstituentManagerService } from './constituent-manager.service';
+import { ContinuousContractBuilder } from './continuous-contract.builder';
 
 /**
  * Feature Computation Module
@@ -23,6 +25,8 @@ import { ComputeEngineAdapter } from './compute-engine.adapter';
     FeatureComputationScheduler,
     ComputeEngineService,
     ComputeEngineAdapter,
+    ConstituentManagerService,
+    ContinuousContractBuilder,
   ],
   exports: [FeatureComputationService],
 })
