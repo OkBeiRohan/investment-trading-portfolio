@@ -5,8 +5,8 @@ Write-Host "🔄 Starting compute-engine migration..." -ForegroundColor Cyan
 
 # 1. Check if old compute-engine exists
 if (Test-Path "services\compute-engine") {
-    Write-Host "⚠️  Found old services/compute-engine" -ForegroundColor Yellow
-    Write-Host "   Backing up to services/compute-engine.backup..." -ForegroundColor Yellow
+    Write-Host "⚠️  Found old packages/compute-engine" -ForegroundColor Yellow
+    Write-Host "   Backing up to packages/compute-engine.backup..." -ForegroundColor Yellow
     if (Test-Path "services\compute-engine.backup") {
         Remove-Item -Recurse -Force "services\compute-engine.backup"
     }
@@ -36,9 +36,9 @@ Write-Host "`n🔧 Updating workspace references..." -ForegroundColor Cyan
 
 # Update root package.json workspaces
 $rootPkg = Get-Content "package.json" -Raw | ConvertFrom-Json
-$rootPkg.workspaces = $rootPkg.workspaces | Where-Object { $_ -ne "services/compute-engine-napi" }
-if ($rootPkg.workspaces -notcontains "services/compute-engine") {
-    $rootPkg.workspaces += "services/compute-engine"
+$rootPkg.workspaces = $rootPkg.workspaces | Where-Object { $_ -ne "packages/compute-engine-napi" }
+if ($rootPkg.workspaces -notcontains "packages/compute-engine") {
+    $rootPkg.workspaces += "packages/compute-engine"
 }
 $rootPkg | ConvertTo-Json -Depth 10 | Set-Content "package.json"
 Write-Host "   ✅ Updated root package.json" -ForegroundColor Green
@@ -75,4 +75,4 @@ Write-Host "     New: import { ... } from '@repo/compute-engine';" -ForegroundCo
 Write-Host "`n  2. Verify types are generated:" -ForegroundColor White
 Write-Host "     ls packages/schema/src/market-data/generated/*.ts" -ForegroundColor Gray
 Write-Host "`n  3. Build compute-engine:" -ForegroundColor White
-Write-Host "     cd services/compute-engine && pnpm build" -ForegroundColor Gray
+Write-Host "     cd packages/compute-engine && pnpm build" -ForegroundColor Gray

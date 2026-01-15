@@ -75,7 +75,7 @@ Transform the compute-engine from model-based computation to a **high-performanc
 ### File Structure
 
 ```
-services/compute-engine/src/
+packages/compute-engine/src/
 ├── lib.rs                    # NAPI entry point
 ├── types.rs                  # TS-compatible types
 ├── processor.rs              # Main orchestrator

@@ -14,7 +14,7 @@ market-feeder → compute-engine (NAPI) → QuestDB
 
 ## Key Principles
 
-1. **Rust types are the source of truth** - All core data structures defined in `services/compute-engine-napi/src/types.rs`
+1. **Rust types are the source of truth** - All core data structures defined in `packages/compute-engine-napi/src/types.rs`
 2. **NO manual type duplication** - TypeScript types auto-generated via ts-rs
 3. **NO Zod for internal data** - Zod only used at validation boundaries (frontend API, external broker data)
 4. **Unified market data structure** - One `MarketTick` type for all instruments (futures, stocks, options)
@@ -24,7 +24,7 @@ market-feeder → compute-engine (NAPI) → QuestDB
 ### 1. Define Types in Rust
 
 ```rust
-// services/compute-engine-napi/src/types.rs
+// packages/compute-engine-napi/src/types.rs
 use ts_rs::TS;
 
 #[napi(object)]
@@ -137,7 +137,7 @@ Upstox/Binance → algo-worker
 ### 1. Add to Rust
 
 ```rust
-// services/compute-engine-napi/src/types.rs
+// packages/compute-engine-napi/src/types.rs
 #[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
@@ -169,7 +169,7 @@ const input: TFTInput = {
 ### Type generation fails
 
 ```bash
-cd services/compute-engine-napi
+cd packages/compute-engine-napi
 cargo clean
 cargo test --lib
 ```

@@ -52,7 +52,7 @@ pub struct MarketTick {
 **Implemented complete MSE in Rust:**
 
 ```rust
-// services/compute-engine-napi/src/mse.rs
+// packages/compute-engine-napi/src/mse.rs
 pub fn compute_market_state(
     snapshot: &MarketSnapshot,
     historical: &HistoricalDataCache,
@@ -93,7 +93,7 @@ Created comprehensive docs:
 #### A. Generate TypeScript Types (First Run)
 
 ```bash
-cd services/compute-engine-napi
+cd packages/compute-engine-napi
 cargo test --lib
 ```
 
@@ -103,10 +103,10 @@ This will create `.ts` files in `packages/schema/src/market-data/generated/`
 
 ```bash
 # Delete old compute-engine
-rm -rf services/compute-engine
+rm -rf packages/compute-engine
 
 # Rename
-mv services/compute-engine-napi services/compute-engine
+mv packages/compute-engine-napi packages/compute-engine
 
 # Update references in:
 # - package.json (workspace)
@@ -223,10 +223,10 @@ export class MarketStateRepository {
 
 ### Created
 
-- `services/compute-engine-napi/src/types.rs` - Core Rust types with ts-rs
-- `services/compute-engine-napi/src/mse.rs` - Market State Encoder
-- `services/compute-engine-napi/src/features.rs` - Feature computation functions
-- `services/compute-engine-napi/src/types_test.rs` - Tests to trigger ts-rs
+- `packages/compute-engine-napi/src/types.rs` - Core Rust types with ts-rs
+- `packages/compute-engine-napi/src/mse.rs` - Market State Encoder
+- `packages/compute-engine-napi/src/features.rs` - Feature computation functions
+- `packages/compute-engine-napi/src/types_test.rs` - Tests to trigger ts-rs
 - `packages/schema/src/market-data/raw-market-data.types.ts` - Unified TS types
 - `packages/schema/src/market-data/market-state.types.ts` - MSE output types
 - `packages/schema/src/market-data/questdb-tables.schema.ts` - QuestDB schemas
@@ -235,14 +235,14 @@ export class MarketStateRepository {
 
 ### Modified
 
-- `services/compute-engine-napi/Cargo.toml` - Added ts-rs dependency
-- `services/compute-engine-napi/src/lib.rs` - Export MSE functions
+- `packages/compute-engine-napi/Cargo.toml` - Added ts-rs dependency
+- `packages/compute-engine-napi/src/lib.rs` - Export MSE functions
 - `packages/schema/package.json` - Added generate:rust-types script
 - `packages/schema/src/market-data/index.ts` - Export generated types
 
 ### To Delete (After Migration)
 
-- `services/compute-engine/` - Old Python-based version
+- `packages/compute-engine/` - Old Python-based version
 - `packages/schema/src/market-data/raw-subscriptions.schema.ts` - Old Zod schemas
 - `packages/schema/src/market-data/market-state.schema.ts` - Old Zod schemas
 - `packages/schema/src/market-data/model-contracts.schema.ts` - Will migrate to Rust

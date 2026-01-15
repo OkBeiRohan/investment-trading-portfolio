@@ -1,5 +1,5 @@
 ---
-applyTo: "services/compute-engine/**"
+applyTo: "packages/compute-engine/**"
 ---
 
 # GitHub Copilot Instructions - Compute Engine

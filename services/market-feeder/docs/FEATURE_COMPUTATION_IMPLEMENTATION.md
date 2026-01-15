@@ -195,7 +195,7 @@ const features = computeFeatures(rawData); // Direct FFI
 ### **1. Build Compute Engine**
 
 ```bash
-cd services/compute-engine
+cd packages/compute-engine
 cargo build --release
 ```
 

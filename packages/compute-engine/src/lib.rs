@@ -10,18 +10,17 @@
 mod cache;
 mod dependencies;
 mod features;
-mod processor;
+pub mod processor; // Public for integration tests
 mod types;
 
 // Re-export public types
 pub use cache::{HistoricalCache, OhlcTick, PriceVolumeTick};
+pub use processor::FeatureProcessor;
 pub use types::*;
 
 use napi_derive::napi;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
-
-use processor::FeatureProcessor;
 
 // Global instances for processor and cache
 static PROCESSOR: Lazy<FeatureProcessor> = Lazy::new(|| FeatureProcessor::new());

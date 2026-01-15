@@ -1,8 +1,8 @@
 // /**
 //  * Auto-generated TypeScript types from Rust (via ts-rs)
 //  *
-//  * These types are generated from services/compute-engine/src/types.rs
-//  * DO NOT EDIT - Run: cd services/compute-engine && cargo test --lib
+//  * These types are generated from packages/compute-engine/src/types.rs
+//  * DO NOT EDIT - Run: cd packages/compute-engine && cargo test --lib
 //  *
 //  * End-to-end type safety: Rust ↔️ TypeScript
 //  */

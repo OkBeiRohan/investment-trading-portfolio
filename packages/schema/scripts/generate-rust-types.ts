@@ -15,7 +15,7 @@ import { mkdirSync } from "fs";
 
 const computeEngineDir = join(
   __dirname,
-  "../../../services/compute-engine-napi"
+  "../../../packages/compute-engine-napi"
 );
 const generatedDir = join(__dirname, "../src/market-data/generated");
 

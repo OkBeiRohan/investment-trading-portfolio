@@ -217,7 +217,7 @@ services:
   # Compute & ML
   # ==========================================
   compute-engine:
-    build: ../../services/compute-engine
+    build: ../../packages/compute-engine
     environment:
       RUST_LOG: info
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317

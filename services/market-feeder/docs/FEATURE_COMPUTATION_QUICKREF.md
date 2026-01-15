@@ -94,7 +94,7 @@ services/market-feeder/src/
 
 1. Check `FEATURE_COMPUTATION_ENABLED=true`
 2. Verify raw data exists: `SELECT COUNT(*) FROM market_ticks;`
-3. Check compute-engine binary: `ls services/compute-engine/target/release/`
+3. Check compute-engine binary: `ls packages/compute-engine/target/release/`
 
 **Scheduler not running?**
 
@@ -104,7 +104,7 @@ services/market-feeder/src/
 **Compute engine errors?**
 
 ```bash
-cd services/compute-engine
+cd packages/compute-engine
 cargo build --release
 ./target/release/compute-engine --version
 ```

@@ -1,5 +1,5 @@
 {
-  "name": "compute-engine",
+  "name": "@repo/compute-engine",
   "version": "1.0.0",
   "description": "High-performance feature computation engine for algorithmic trading",
   "main": "index.js",
@@ -24,7 +24,7 @@
     "browser.js"
   ],
   "napi": {
-    "binaryName": "compute-engine",
+    "binaryName": "@repo/compute-engine",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-unknown-linux-gnu"

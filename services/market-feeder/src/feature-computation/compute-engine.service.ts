@@ -1,8 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-// import type { JsMarketDataPoint, JsFeatureVector } from 'compute-engine';
-
-// Dynamic import of native module
-// let computeEngine: typeof import('compute-engine') | null = null;
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ComputeEngineAdapter } from './compute-engine.adapter';
+import type { FeatureInput, ComputeResult } from '@repo/schema/compute-engine';
 
 /**
  * Compute Engine Service
@@ -11,73 +9,61 @@ import { Injectable, Logger } from '@nestjs/common';
  * Handles feature calculation using high-performance Rust code.
  *
  * Features computed (33 total):
- * - Market Structure (8): price vs VWAP, highs/lows, range position
- * - Momentum & Trend (8): RSI, MACD, EMA slopes, ADX, ROC
- * - Volatility (5): ATR, realized vol, vol expansion, India VIX
- * - Options (9): ATM IV, Greeks, PCR, max pain distance
+ * - Index Breadth (6): pct stocks above VWAP/EMA20, weighted returns, breadth metrics
+ * - NIFTY Future (9): price vs VWAP, range position, returns, ATR, RSI, MACD
+ * - Options (11): ATM IV, Greeks (gamma, vega, theta, charm, vanna), PCR ratios
+ * - Volatility (4): India VIX, realized vol, vol expansion ratio
  * - Time Context (3): minutes from open, to close, day of week
  */
 @Injectable()
-export class ComputeEngineService {
+export class ComputeEngineService implements OnModuleInit {
   private readonly logger = new Logger(ComputeEngineService.name);
-  private isInitialized = false;
+  private readonly adapter: ComputeEngineAdapter;
 
   constructor() {
-    // void this.initialize();
+    this.adapter = new ComputeEngineAdapter();
   }
 
   /**
-   * Initialize compute-engine native module
+   * Initialize compute engine on module startup
    */
-  // private async initialize(): Promise<void> {
-  //   try {
-  //     // Dynamically import native module
-  //     computeEngine = await import('@repo/compute-engine');
-  //     this.isInitialized = true;
-  //     this.logger.log('Compute engine initialized successfully');
-  //   } catch (error) {
-  //     this.logger.error('Failed to load compute-engine native module', error);
-  //     throw error;
-  //   }
-  // }
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.adapter.initialize();
+      this.logger.log('Compute engine service ready');
+    } catch (error) {
+      this.logger.error('Failed to initialize compute engine', error);
+      throw error;
+    }
+  }
 
   /**
-   * Compute features for a batch of market data
+   * Compute all 33 features from market data input
    *
-   * @param inputData - Array of market tick/candle data
-   * @returns Array of feature vectors (33 features each)
-   *
-   * Type-safe end-to-end: TypeScript types auto-generated from Rust
+   * @param input - Market data with NIFTY Future, constituents, and options
+   * @returns Computed features with per-feature timing logs
    */
-  // async computeFeatures(
-  //   inputData: JsMarketDataPoint[],
-  // ): Promise<JsFeatureVector[]> {
-  //   if (!this.isInitialized || !computeEngine) {
-  //     await this.initialize();
-  //   }
+  async computeFeatures(input: FeatureInput): Promise<ComputeResult> {
+    try {
+      // Update cache with new tick data
+      this.adapter.updateCache(input);
 
-  //   if (!computeEngine) {
-  //     throw new Error('Compute engine not available');
-  //   }
+      // Compute features
+      const result = await this.adapter.computeFeatures(input);
 
-  //   try {
-  //     this.logger.debug(
-  //       `Computing features for ${inputData.length} data points`,
-  //     );
+      this.logger.debug(
+        `Features computed in ${result.total_duration_micros}µs`,
+      );
 
-  //     // Call Rust function (zero-copy via NAPI-RS)
-  //     const features = computeEngine.computeFeaturesNapi(inputData);
-
-  //     this.logger.debug(
-  //       `Features computed: ${features.length} rows × 33 features`,
-  //     );
-
-  //     return features;
-  //   } catch (error) {
-  //     this.logger.error('Feature computation failed', error);
-  //     throw error;
-  //   }
-  // }
+      return result;
+    } catch (error) {
+      this.logger.error('Feature computation failed', {
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: input.timestamp,
+      });
+      throw error;
+    }
+  }
 
   /**
    * Health check: Verify compute-engine module is loaded

@@ -162,7 +162,6 @@ Forensic AI observability and system governance for administrators.
 
 - `wealth-analyzer`: AI Insights & Recommendations
 
-- `compute-engine`: High-Performance Math Kernel (Rust)
 
 - `market-feeder`: Data Ingestion Service
 

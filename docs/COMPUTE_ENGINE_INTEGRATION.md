@@ -29,7 +29,7 @@ algo-worker (for live inference)
 All types originate from Rust and are auto-generated to TypeScript using `ts-rs`:
 
 ```rust
-// In services/compute-engine/src/types.rs
+// In packages/compute-engine/src/types.rs
 #[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../packages/schema/src/market-data/generated/")]
@@ -385,7 +385,7 @@ Compute Engine uses NAPI-RS for zero-overhead Node.js bindings:
 
 ```bash
 # Build Rust code
-cd services/compute-engine
+cd packages/compute-engine
 cargo build --release
 
 # Generate TypeScript types
@@ -403,7 +403,7 @@ The compute engine is compiled to native code (`.node` file):
 pnpm build # Builds all services including compute-engine
 ```
 
-**Location**: `services/compute-engine/compute_engine.node`
+**Location**: `packages/compute-engine/compute_engine.node`
 
 Import in TypeScript:
 
@@ -418,7 +418,7 @@ The NAPI module is automatically loaded by Node.js.
 ### Types Not Generated
 
 ```bash
-cd services/compute-engine
+cd packages/compute-engine
 cargo clean
 cargo test --lib
 ```

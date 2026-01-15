@@ -414,7 +414,7 @@ updates:
 
   # Rust: Compute Engine
   - package-ecosystem: "cargo"
-    directory: "/services/compute-engine"
+    directory: "/packages/compute-engine"
     schedule:
       interval: "weekly"
       day: "sunday"
