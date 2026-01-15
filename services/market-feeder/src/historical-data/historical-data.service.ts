@@ -77,43 +77,61 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     for (const instrumentKey of instruments) {
       try {
-        // Check if data exists for this instrument
-        const hasData = await this.checkDataExists(
+        this.logger.log(`Checking for missing data for ${instrumentKey}...`);
+
+        // Find gaps in existing data
+        const gaps = await this.findMissingDataGaps(
           instrumentKey,
           twoYearsAgo,
           today,
         );
 
-        if (hasData) {
-          this.logger.debug(
-            `Data already exists for ${instrumentKey}, skipping`,
+        if (gaps.length === 0) {
+          this.logger.log(
+            `✓ Complete data already exists for ${instrumentKey}, skipping`,
           );
           skipped++;
           continue;
         }
 
-        this.logger.log(`Fetching 1-minute candles for ${instrumentKey}...`);
+        this.logger.log(
+          `Found ${gaps.length} gap(s) in data for ${instrumentKey}`,
+        );
 
-        // DEMO VERSION: Fetch and insert directly in client (see SimpleUpstoxClient.getHistoricalCandlesBatched)
-        const upstoxCandles =
-          await this.upstoxClient.getHistoricalCandlesBatched(
-            instrumentKey,
-            'minutes',
-            1,
-            twoYearsAgo,
-            today,
+        // Fetch each gap
+        for (const gap of gaps) {
+          this.logger.log(
+            `Fetching 1-minute candles for ${instrumentKey} from ${gap.start.toISOString().split('T')[0]} to ${gap.end.toISOString().split('T')[0]}...`,
           );
 
-        if (!upstoxCandles || upstoxCandles.length === 0) {
-          this.logger.warn(`No data returned for ${instrumentKey}`);
-          continue;
+          // DEMO VERSION: Fetch and insert directly in client (see SimpleUpstoxClient.getHistoricalCandlesBatched)
+          const upstoxCandles =
+            await this.upstoxClient.getHistoricalCandlesBatched(
+              instrumentKey,
+              'minutes',
+              1,
+              gap.start,
+              gap.end,
+            );
+
+          if (!upstoxCandles || upstoxCandles.length === 0) {
+            this.logger.warn(
+              `No data returned for ${instrumentKey} gap ${gap.start.toISOString().split('T')[0]} to ${gap.end.toISOString().split('T')[0]}`,
+            );
+            continue;
+          }
+
+          totalFetched += upstoxCandles.length;
+
+          this.logger.log(
+            `✓ Fetched and inserted ${upstoxCandles.length} candles for gap`,
+          );
+
+          // Rate limiting: wait 500ms between gaps
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
-        totalFetched += upstoxCandles.length;
-
-        this.logger.log(
-          `✓ Fetched and inserted ${upstoxCandles.length} candles for ${instrumentKey}`,
-        );
+        this.logger.log(`✓ Completed filling gaps for ${instrumentKey}`);
 
         // Rate limiting: wait 500ms between instruments
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -136,20 +154,91 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
   }
 
   /**
-   * Check if data exists for instrument in QuestDB
+   * Check for missing candle data and return gaps that need to be filled
+   * @returns Array of date ranges [startDate, endDate] that have missing data
    */
-  private async checkDataExists(
+  private async findMissingDataGaps(
     instrumentKey: string,
     startDate: Date,
     endDate: Date,
-  ): Promise<boolean> {
-    return this.candlesRepository.existsForRange(
+  ): Promise<Array<{ start: Date; end: Date }>> {
+    // Fetch all existing candles for this range
+    const existingCandles = await this.candlesRepository.findByTimeRange(
       instrumentKey,
       1, // interval_value
       'minute', // interval_unit
       startDate,
       endDate,
+      1000000, // Large limit to get all candles
     );
+
+    if (existingCandles.length === 0) {
+      // No data at all, return entire range
+      return [{ start: startDate, end: endDate }];
+    }
+
+    // Create a set of existing timestamps for fast lookup
+    const existingTimestamps = new Set(
+      existingCandles.map((c) => c.timestamp.getTime()),
+    );
+
+    // Find gaps in the data
+    const gaps: Array<{ start: Date; end: Date }> = [];
+    let gapStart: Date | null = null;
+
+    const current = new Date(startDate);
+    current.setHours(0, 0, 0, 0);
+
+    while (current <= endDate) {
+      // Skip weekends (Saturday = 6, Sunday = 0)
+      if (current.getDay() === 0 || current.getDay() === 6) {
+        current.setDate(current.getDate() + 1);
+        continue;
+      }
+
+      // Check market hours (NSE: 9:15 AM to 3:30 PM)
+      const marketOpen = new Date(current);
+      marketOpen.setHours(9, 15, 0, 0);
+      const marketClose = new Date(current);
+      marketClose.setHours(15, 30, 0, 0);
+
+      const checkTime = new Date(marketOpen);
+      let dayHasMissingData = false;
+
+      // Check each minute in market hours
+      while (checkTime <= marketClose) {
+        if (!existingTimestamps.has(checkTime.getTime())) {
+          dayHasMissingData = true;
+          break;
+        }
+        checkTime.setMinutes(checkTime.getMinutes() + 1);
+      }
+
+      if (dayHasMissingData) {
+        if (!gapStart) {
+          gapStart = new Date(current);
+          gapStart.setHours(0, 0, 0, 0);
+        }
+      } else {
+        if (gapStart) {
+          // End of gap
+          const gapEnd = new Date(current);
+          gapEnd.setDate(gapEnd.getDate() - 1);
+          gapEnd.setHours(23, 59, 59, 999);
+          gaps.push({ start: gapStart, end: gapEnd });
+          gapStart = null;
+        }
+      }
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    // Handle case where gap extends to the end
+    if (gapStart) {
+      gaps.push({ start: gapStart, end: new Date(endDate) });
+    }
+
+    return gaps;
   }
 
   /**
