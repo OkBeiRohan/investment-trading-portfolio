@@ -129,7 +129,7 @@ See [Dependency Graph](./docs/DEPENDENCY_GRAPH.md) for visual representation.
 ## Project Structure
 
 ```
-services/compute-engine/
+packages/compute-engine/
 ├── src/
 │   ├── lib.rs                    # NAPI entry point
 │   ├── types.rs                  # TypeScript-compatible types (ts-rs)

@@ -19,7 +19,7 @@ import type {
   validateComputeResult,
 } from '@repo/schema';
 
-import computeEngine from 'compute-engine';
+import computeEngine from '@repo/compute-engine';
 
 export class ComputeEngineAdapter {
   private readonly logger = new Logger(ComputeEngineAdapter.name);

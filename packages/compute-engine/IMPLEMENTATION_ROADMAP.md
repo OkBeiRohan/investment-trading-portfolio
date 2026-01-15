@@ -585,7 +585,7 @@ export class ComputeEngineService implements OnModuleInit {
 
 ### 5.2 End-to-End Testing ✅
 
-**File**: `services/compute-engine/tests/e2e_test.rs`
+**File**: `packages/compute-engine/tests/e2e_test.rs`
 
 **7 E2E Tests Implemented**:
 

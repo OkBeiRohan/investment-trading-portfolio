@@ -33,5 +33,5 @@ class TFTTrainer:
         """Train TFT model (PLACEHOLDER)"""
         raise NotImplementedError(
             "TFT trainer not yet implemented - "
-            "compute-engine must first define TFT feature schema"
+            "@repo/compute-engine must first define TFT feature schema"
         )

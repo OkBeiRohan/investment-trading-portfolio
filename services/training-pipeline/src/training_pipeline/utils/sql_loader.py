@@ -141,7 +141,7 @@ class QuestDBLoader:
         # TODO: Implement when TFT feature schema finalized
         raise NotImplementedError(
             "TFT feature loading not yet implemented. "
-            "Compute-engine must first define TFT feature schema."
+            "@repo/compute-engine must first define TFT feature schema."
         )
 
     def load_lit_features(
@@ -161,7 +161,7 @@ class QuestDBLoader:
         # TODO: Implement when LiT feature schema finalized
         raise NotImplementedError(
             "LiT feature loading not yet implemented. "
-            "Compute-engine must first define LiT LOB tensor schema."
+            "@repo/compute-engine must first define LiT LOB tensor schema."
         )
 
     def get_available_date_range(

@@ -158,7 +158,7 @@ graph TD
 ### 3.1 File Structure
 
 ```
-services/compute-engine/
+packages/compute-engine/
 ├── src/
 │   ├── lib.rs                    # NAPI entry point
 │   ├── types.rs                  # TypeScript-compatible types (ts-rs)

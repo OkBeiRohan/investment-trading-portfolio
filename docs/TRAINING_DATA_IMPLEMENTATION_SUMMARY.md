@@ -94,7 +94,7 @@ def load_lightgbm_features(start_date, end_date):
 
 ### 5. Compute Engine Documentation ✅
 
-**Location**: [`services/compute-engine/docs/FEATURE_COMPUTATION.md`](../services/compute-engine/docs/FEATURE_COMPUTATION.md)
+**Location**: [`packages/compute-engine/docs/FEATURE_COMPUTATION.md`](../packages/compute-engine/docs/FEATURE_COMPUTATION.md)
 
 **Services Documented**:
 
@@ -344,7 +344,7 @@ X = df.drop(['timestamp', 'reference_instrument'], axis=1)
 ## References
 
 - [TRAINING_DATA_SCHEMA.md](../packages/database/docs/TRAINING_DATA_SCHEMA.md) - Complete schema reference
-- [FEATURE_COMPUTATION.md](../services/compute-engine/docs/FEATURE_COMPUTATION.md) - Rust implementation guide
+- [FEATURE_COMPUTATION.md](../packages/compute-engine/docs/FEATURE_COMPUTATION.md) - Rust implementation guide
 - [FEATURE_STORE_ARCHITECTURE.md](../docs/FEATURE_STORE_ARCHITECTURE.md) - High-level architecture
 - [QuestDB Time-Series Best Practices](https://questdb.io/docs/concept/partitions/)
 

@@ -33,5 +33,5 @@ class LiTTrainer:
         """Train LiT model (PLACEHOLDER)"""
         raise NotImplementedError(
             "LiT trainer not yet implemented - "
-            "compute-engine must first define LOB tensor schema"
+            "@repo/compute-engine must first define LOB tensor schema"
         )

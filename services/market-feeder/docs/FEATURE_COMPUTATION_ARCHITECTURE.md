@@ -377,7 +377,7 @@ Compute features for multiple timeframes simultaneously:
    ```
 3. Check compute-engine binary exists:
    ```bash
-   ls services/compute-engine/target/release/compute-engine
+   ls packages/compute-engine/target/release/compute-engine
    ```
 
 ### **Scheduler not running**
@@ -390,7 +390,7 @@ Compute features for multiple timeframes simultaneously:
 
 1. Rebuild Rust binary:
    ```bash
-   cd services/compute-engine
+   cd packages/compute-engine
    cargo build --release
    ```
 2. Test manually:
@@ -402,7 +402,7 @@ Compute features for multiple timeframes simultaneously:
 
 ## References
 
-- [Compute Engine Architecture](../../services/compute-engine/docs/ARCHITECTURE.md)
+- [Compute Engine Architecture](../../packages/compute-engine/docs/ARCHITECTURE.md)
 - [Training Pipeline](../../services/training-pipeline/README.md)
 - [Algo Worker](../../apps/algo-worker/README.md)
 - [QuestDB Schema](../../packages/schema/sql/schema/)

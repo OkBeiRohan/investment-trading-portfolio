@@ -93,7 +93,7 @@ const result = await adapter.computeFeatures(input)
 
 ### 4. End-to-End Testing ✅
 
-**File**: `services/compute-engine/tests/e2e_test.rs`
+**File**: `packages/compute-engine/tests/e2e_test.rs`
 
 **7 comprehensive E2E tests**:
 
@@ -247,7 +247,7 @@ cargo build --release      # Creates index.node
 ### NAPI Build Command
 
 ```bash
-cd services/compute-engine
+cd packages/compute-engine
 pnpm build   # Runs napi build --platform --release
 ```
 
@@ -323,7 +323,7 @@ These are **intentional** and expected at this stage:
 
 ### Updated Files
 
-1. **services/compute-engine/README.md** ✅
+1. **packages/compute-engine/README.md** ✅
    - Integration examples
    - TypeScript usage patterns
    - Performance benchmarks
@@ -342,7 +342,7 @@ These are **intentional** and expected at this stage:
 
 1. `packages/schema/src/compute-engine/index.ts` - Type definitions
 2. `services/market-feeder/src/feature-computation/compute-engine.adapter.ts` - NAPI adapter
-3. `services/compute-engine/tests/e2e_test.rs` - Integration tests
+3. `packages/compute-engine/tests/e2e_test.rs` - Integration tests
 
 ---
 
