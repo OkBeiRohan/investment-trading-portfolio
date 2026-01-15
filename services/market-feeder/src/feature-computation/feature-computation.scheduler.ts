@@ -39,10 +39,10 @@ export class FeatureComputationScheduler implements OnModuleInit {
 
   onModuleInit() {
     if (
-      !this.configService.get<boolean>(
+      this.configService.get<string>(
         'AUTO_BOOTSTRAP_FEATURE_COMPUTATION',
-        false,
-      )
+        'false',
+      ) === 'false'
     )
       return;
 
