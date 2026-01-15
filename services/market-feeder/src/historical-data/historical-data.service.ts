@@ -7,7 +7,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CandlesRepository, InstrumentMasterRepository } from '@repo/database';
-import { type InstrumentMaster } from '@repo/schema';
+import { InstrumentMaster } from '@repo/schema';
 import {
   NIFTY50_CONSTITUENTS,
   NIFTY50_INDEX,
@@ -187,11 +187,17 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       }));
 
       // Use repository bulk insert instead of raw SQL
-      await this.instrumentMasterRepository.bulkInsert(instruments);
+      const success =
+        await this.instrumentMasterRepository.bulkInsert(instruments);
 
-      this.logger.log(
-        `✓ Populated ${instruments.length} instruments in instrument_master`,
-      );
+      if (success)
+        this.logger.log(
+          `✓ Populated ${instruments.length} instruments in instrument_master`,
+        );
+      else
+        this.logger.warn(
+          `✗ Failed to populate some instruments in instrument_master`,
+        );
     } catch (error) {
       const errorMessage = isAxiosError(error)
         ? `Axios error: ${error.message}, Response data: ${JSON.stringify(

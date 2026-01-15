@@ -4,9 +4,11 @@ import { HistoricalDataController } from './historical-data.controller';
 import { SimpleUpstoxClient } from './simple-client';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { QuestDBModule } from '@repo/database';
 
 @Module({
   imports: [
+    QuestDBModule,
     HttpModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
