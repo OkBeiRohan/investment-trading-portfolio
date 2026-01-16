@@ -120,9 +120,8 @@ def train_horizon(
         logger.error(f"❌ No data after merge!")
         return None
 
-    # 4. Prepare X, y
-    feature_cols = [col for col in features.columns if col != "timestamp"]
-    X = data[feature_cols]
+    # 4. Prepare X, y - Use only the 33 defined features (exclude timestamp, instrument_key, etc.)
+    X = data[FEATURE_NAMES]
     y = data["label"]
 
     logger.info(f"Features: {X.shape}, Labels: {y.shape}")
