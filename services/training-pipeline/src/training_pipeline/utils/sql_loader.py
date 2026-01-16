@@ -2,10 +2,12 @@
 QuestDB Data Loader for Training Pipeline
 
 Loads pre-computed features from QuestDB (computed by compute-engine)
+Uses centralized SQL files from packages/schema/sql/
 """
 
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -20,6 +22,8 @@ class QuestDBLoader:
 
     Features are pre-computed by compute-engine (Rust/NAPI) and stored by market-feeder.
     This loader simply fetches the stored features for training.
+
+    Uses SQL files from: packages/schema/sql/
     """
 
     def __init__(self, connection_string: str):
@@ -31,7 +35,51 @@ class QuestDBLoader:
                               e.g., 'postgresql://admin:quest@localhost:8812/qdb'
         """
         self.engine = create_engine(connection_string)
-        logger.info(f"QuestDB loader initialized")
+
+        # Resolve SQL directory (packages/schema/sql)
+        self.sql_dir = (
+            Path(__file__).parent.parent.parent.parent.parent.parent
+            / "packages"
+            / "schema"
+            / "sql"
+        )
+
+        if not self.sql_dir.exists():
+            logger.warning(
+                f"SQL directory not found at {self.sql_dir}. "
+                "Falling back to inline queries."
+            )
+            self.sql_dir = None
+        else:
+            logger.info(f"Using SQL files from: {self.sql_dir}")
+
+        logger.info("QuestDB loader initialized")
+
+    def _load_sql(self, sql_path: str) -> str:
+        """
+        Load SQL query from file
+
+        Args:
+            sql_path: Relative path to SQL file (e.g., 'market-state/get-by-time-range')
+
+        Returns:
+            SQL query string
+        """
+        if self.sql_dir is None:
+            raise FileNotFoundError(
+                f"SQL directory not configured. Cannot load {sql_path}.sql"
+            )
+
+        sql_file = self.sql_dir / f"{sql_path}.sql"
+
+        if not sql_file.exists():
+            raise FileNotFoundError(f"SQL file not found: {sql_file}")
+
+        with open(sql_file, "r", encoding="utf-8") as f:
+            sql = f.read().strip()
+
+        logger.debug(f"Loaded SQL from: {sql_file}")
+        return sql
 
     def load_lightgbm_features(
         self,
@@ -135,6 +183,73 @@ class QuestDBLoader:
             f"Loaded {len(df)} rows with {len(df.columns)} columns "
             f"(33 features + timestamp + close_price)"
         )
+
+        return df
+
+    def load_training_labels(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        horizon_minutes: int = 5,
+    ) -> pd.DataFrame:
+        """
+        Load pre-computed training labels from QuestDB
+
+        Args:
+            start_date: Start of training period
+            end_date: End of training period
+            horizon_minutes: Prediction horizon (5, 15, 30 minutes)
+
+        Returns:
+            DataFrame with columns: timestamp, label, future_return, atr_threshold
+        """
+        logger.info(
+            f"Loading training labels (horizon={horizon_minutes}min) "
+            f"from {start_date} to {end_date}"
+        )
+
+        # Try loading SQL from file if available
+        try:
+            if self.sql_dir:
+                labels_sql = self._load_sql("training-labels/get-by-time-range")
+                # Replace $1, $2, $3 with named parameters (SQLAlchemy format)
+                labels_sql = (
+                    labels_sql.replace("$1", ":start_date")
+                    .replace("$2", ":end_date")
+                    .replace("$3", ":horizon_minutes")
+                )
+            else:
+                # Fallback inline query
+                labels_sql = """
+                    SELECT * FROM training_labels_1m 
+                    WHERE timestamp >= :start_date 
+                    AND timestamp < :end_date 
+                    AND horizon_minutes = :horizon_minutes
+                    ORDER BY timestamp ASC
+                """
+        except FileNotFoundError:
+            logger.warning("SQL file not found, using fallback inline query")
+            labels_sql = """
+                SELECT * FROM training_labels_1m 
+                WHERE timestamp >= :start_date 
+                AND timestamp < :end_date 
+                AND horizon_minutes = :horizon_minutes
+                ORDER BY timestamp ASC
+            """
+
+        query = text(labels_sql)
+
+        df = pd.read_sql(
+            query,
+            self.engine,
+            params={
+                "start_date": start_date,
+                "end_date": end_date,
+                "horizon_minutes": horizon_minutes,
+            },
+        )
+
+        logger.info(f"Loaded {len(df)} labels for {horizon_minutes}min horizon")
 
         return df
 
