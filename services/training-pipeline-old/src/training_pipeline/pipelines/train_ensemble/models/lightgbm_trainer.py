@@ -148,17 +148,31 @@ class FeatureImportance(BaseModel):
 
 class LightGBMTrainer:
     """
-    State-of-the-art LightGBM trainer for index options trading
+    Production-grade LightGBM trainer for index options trading
 
     Features:
     - Walk-forward validation with purging/embargoing
-    - Volatility-adjusted labeling with dynamic k
+    - Pre-computed volatility-adjusted labels from database
     - Production-safe hyperparameters
     - Multi-class classification (UP, NEUTRAL, DOWN)
     - Class weighting for imbalanced labels
     - Label entropy monitoring for regime detection
     - MLflow experiment tracking
     - Out-of-fold predictions for meta-learner
+
+    CRITICAL: Labels Must Be Pre-Computed
+    =====================================
+    Labels are pre-computed by market-feeder's feature-computation service
+    and stored in training_labels_1m table with horizon-specific scaling.
+
+    Load labels using:
+    ```python
+    labels_data = loader.load_training_labels(
+        start_date=start_date,
+        end_date=end_date,
+        horizon_minutes=5,
+    )
+    ```
 
     CRITICAL: Probabilistic Prediction Model
     =====================================
@@ -169,25 +183,7 @@ class LightGBMTrainer:
 
     ⚠️  DO NOT trade directly on argmax(probabilities)!
 
-    Proper downstream usage (in strategy layer):
-    ```python
-    probs = model.predict_proba(features)
-    p_up, p_neutral, p_down = probs[0, 2], probs[0, 1], probs[0, 0]
-
-    # Explicit NO-TRADE threshold
-    if p_up > 0.65:
-        signal = "BUY_CALL"
-    elif p_down > 0.65:
-        signal = "BUY_PUT"
-    else:
-        signal = "NO_TRADE"  # Low confidence
-    ```
-
-    Why this matters:
-    - P(UP)=0.35, P(NEUTRAL)=0.33, P(DOWN)=0.32 → NO TRADE (low confidence)
-    - P(UP)=0.70, P(NEUTRAL)=0.20, P(DOWN)=0.10 → TRADE (high confidence)
-    - Avoids overtrading in choppy markets
-    - Preserves capital during low-conviction regimes
+    Use probability thresholds in strategy layer to avoid overtrading.
     """
 
     def __init__(
@@ -262,65 +258,6 @@ class LightGBMTrainer:
 
         return weights
 
-    def calculate_dynamic_k(self, features: pd.DataFrame) -> pd.Series:
-        """
-        Calculate dynamic k values based on India VIX
-
-        Strategy:
-        - When VIX is high → larger k (wider threshold to avoid noise)
-        - When VIX is low → smaller k (tighter threshold to capture moves)
-
-        Formula: k = k_base + vix_scaling * (india_vix - vix_reference)
-        Clamped to [k_min, k_max]
-
-        Args:
-            features: Feature DataFrame containing 'india_vix' column
-
-        Returns:
-            Series of k values for each timestamp
-
-        Example:
-            - VIX = 15 (reference), k = 1.0 (base)
-            - VIX = 20 (+5 points), k = 1.0 + 0.05*5 = 1.25
-            - VIX = 30 (+15 points), k = 1.0 + 0.05*15 = 1.75
-            - VIX = 10 (-5 points), k = 1.0 - 0.05*5 = 0.75
-        """
-        if "india_vix" not in features.columns:
-            raise ValueError(
-                "india_vix column not found in features. "
-                "Required for dynamic k calculation."
-            )
-
-        india_vix = features["india_vix"]
-
-        # Calculate k based on VIX deviation from reference
-        k_values = self.labeling_config.k_base + self.labeling_config.vix_scaling * (
-            india_vix - self.labeling_config.vix_reference
-        )
-
-        # Clamp to min/max bounds
-        k_values = k_values.clip(
-            lower=self.labeling_config.k_min, upper=self.labeling_config.k_max
-        )
-
-        # Log statistics
-        logger.info(
-            f"Dynamic k statistics: "
-            f"mean={k_values.mean():.3f}, "
-            f"std={k_values.std():.3f}, "
-            f"min={k_values.min():.3f}, "
-            f"max={k_values.max():.3f}"
-        )
-        logger.info(
-            f"VIX statistics: "
-            f"mean={india_vix.mean():.2f}, "
-            f"std={india_vix.std():.2f}, "
-            f"min={india_vix.min():.2f}, "
-            f"max={india_vix.max():.2f}"
-        )
-
-        return k_values
-
     def _calculate_label_entropy(self, labels: pd.Series) -> float:
         """
         Calculate Shannon entropy of label distribution
@@ -352,82 +289,6 @@ class LightGBMTrainer:
         entropy = -sum(p * np.log2(p) if p > 0 else 0 for p in probs)
 
         return float(entropy)
-
-    def create_volatility_adjusted_labels(
-        self,
-        features: pd.DataFrame,
-        prices: pd.Series,
-    ) -> pd.Series:
-        """
-        Create volatility-adjusted labels with dynamic or fixed k
-
-        Args:
-            features: Feature DataFrame (must contain india_vix if use_dynamic_k=True)
-            prices: Price series for calculating returns
-
-        Returns:
-            Label series (-1=DOWN, 0=NEUTRAL, 1=UP)
-        """
-
-        # Validate ATR column exists
-        if self.labeling_config.atr_column not in features.columns:
-            raise ValueError(
-                f"ATR column '{self.labeling_config.atr_column}' not found"
-            )
-
-        # Future returns (dimensionless percentage)
-        future_returns = (prices.shift(-self.labeling_config.horizon) - prices) / prices
-
-        # ATR (ensure same units as returns)
-        atr = features[self.labeling_config.atr_column]
-
-        # Calculate k (either fixed or dynamic)
-        if self.labeling_config.use_dynamic_k:
-            k_values = self.calculate_dynamic_k(features)
-            logger.info("Using dynamic k based on India VIX")
-        else:
-            k_values = pd.Series(
-                self.labeling_config.k, index=features.index, dtype=np.float64
-            )
-            logger.info(f"Using fixed k={self.labeling_config.k}")
-
-        # CRITICAL: Explicit unit conversion
-        if self.labeling_config.atr_column == "atr_percent":
-            # Already in percentage form (0.015 = 1.5%)
-            atr_threshold = k_values * atr
-        elif self.labeling_config.atr_column == "atr":
-            # In price points, need to normalize
-            atr_threshold = k_values * (atr / prices)
-        else:
-            raise ValueError(
-                f"Unknown ATR column format: {self.labeling_config.atr_column}. "
-                "Expected 'atr_percent' (normalized) or 'atr' (price points)"
-            )
-
-        # Validate threshold is reasonable
-        if (atr_threshold < 0).any() or (atr_threshold > 0.1).any():
-            raise ValueError(f"ATR threshold out of bounds: {atr_threshold.describe()}")
-
-        # Label logic
-        labels = pd.Series(0, index=features.index, dtype=np.int8)
-        labels[future_returns > atr_threshold] = 1  # UP
-        labels[future_returns < -atr_threshold] = -1  # DOWN
-
-        # Remove NaN at end
-        labels = labels.iloc[: -self.labeling_config.horizon]
-
-        # Log statistics
-        label_dist = labels.value_counts(normalize=True)
-        logger.info(
-            f"Label distribution: UP={label_dist.get(1, 0):.2%}, "
-            f"NEUTRAL={label_dist.get(0, 0):.2%}, DOWN={label_dist.get(-1, 0):.2%}"
-        )
-        logger.info(
-            f"ATR threshold stats: mean={atr_threshold.mean():.4f}, "
-            f"std={atr_threshold.std():.4f}"
-        )
-
-        return labels
 
     def walk_forward_split(
         self,
@@ -964,113 +825,3 @@ def validate_features(features: pd.DataFrame) -> pd.DataFrame:
         f"(Index Breadth: 6, NIFTY FUTURE: 9, Options: 11, Volatility: 4, Time: 3)"
     )
     return features_ordered
-
-
-# Example usage
-if __name__ == "__main__":
-    from pathlib import Path
-
-    # This would be called from a Kedro pipeline node
-
-    # Load features and prices
-    features = pd.read_parquet("data/04_feature/features.parquet")
-    prices = pd.read_parquet("data/01_raw/prices.parquet")["close"]
-
-    # Validate features match blueprint
-    features = validate_features(features)
-
-    # Initialize configs
-    training_config = TrainingConfig(
-        n_splits=12,
-        purge_window=375,
-        embargo_window=375,
-        random_state=42,
-    )
-
-    lightgbm_config = LightGBMConfig(
-        objective="multiclass",
-        num_class=3,
-        metric="multi_logloss",
-        boosting_type="gbdt",
-        num_leaves=31,
-        learning_rate=0.05,
-        n_estimators=400,
-        min_data_in_leaf=80,
-        feature_fraction=0.8,
-        bagging_fraction=0.8,
-        bagging_freq=5,
-        lambda_l1=0.5,
-        lambda_l2=1.0,
-        max_depth=-1,
-        verbose=-1,
-        device="gpu",
-        gpu_platform_id=0,
-        gpu_device_id=0,
-        # Class weighting: penalize false UP/DOWN more than NEUTRAL
-        # Many labels will be NEUTRAL, so down-weight it
-        class_weight={
-            0: 1.2,  # DOWN (important to get right)
-            1: 0.6,  # NEUTRAL (many of these, less critical)
-            2: 1.2,  # UP (important to get right)
-        },
-        # Monotonic constraints (optional): enforce domain knowledge
-        # Example: fut_return_5m should increase UP probability
-        # Set to None to disable, or list of 33 values (1, -1, 0) per feature
-        monotone_constraints=None,
-    )
-
-    # Option 1: Fixed k (traditional approach)
-    labeling_config_fixed = LabelingConfig(
-        horizon=5,
-        k=1.0,
-        atr_column="atr_percent",
-        use_dynamic_k=False,
-    )
-
-    # Option 2: Dynamic k based on VIX (RECOMMENDED - adapts to market conditions)
-    labeling_config = LabelingConfig(
-        horizon=5,
-        atr_column="atr_percent",
-        use_dynamic_k=True,
-        k_base=1.0,  # Base k when VIX = 15
-        k_min=0.5,  # Min k (low volatility)
-        k_max=2.0,  # Max k (high volatility)
-        vix_reference=15.0,  # Typical VIX level
-        vix_scaling=0.05,  # +0.05 k per VIX point
-    )
-
-    # Initialize trainer
-    trainer = LightGBMTrainer(
-        training_config=training_config,
-        lightgbm_config=lightgbm_config,
-        labeling_config=labeling_config,
-    )
-
-    # Create volatility-adjusted labels
-    labels = trainer.create_volatility_adjusted_labels(
-        features=features,
-        prices=prices,
-    )
-
-    # Align features with labels (remove last horizon rows)
-    features_aligned = features.iloc[: -labeling_config.horizon]
-
-    # Train with walk-forward validation
-    result = trainer.train(
-        features=features_aligned,
-        labels=labels,
-        mlflow_run_name="lightgbm_v1",
-    )
-
-    # Save outputs
-    trainer.save_model(Path("data/06_models/lightgbm.txt"))
-    trainer.save_oof_predictions(Path("data/07_model_output/oof_lightgbm.parquet"))
-
-    logger.info(f"LightGBM training complete!")
-    logger.info(f"Model type: {result.model_type}")
-    logger.info(
-        f"Validation AUC: {result.validation_metrics.auc_mean:.3f}±{result.validation_metrics.auc_std:.3f}"
-    )
-    logger.info(
-        f"Top 3 features: {', '.join([f'{feat}: {imp:.2f}' for feat, imp in result.feature_importance[:3]])}"
-    )
