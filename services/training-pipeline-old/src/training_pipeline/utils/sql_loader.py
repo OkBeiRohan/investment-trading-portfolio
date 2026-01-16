@@ -89,99 +89,63 @@ class QuestDBLoader:
         """
         Load LightGBM features (33 features from Market State Encoder)
 
+        Uses SQL file: packages/schema/sql/market-state/get-by-time-range.sql
+
         Args:
             start_date: Start of training period
             end_date: End of training period
-            symbol: Index symbol (default: NIFTY)
+            symbol: Index symbol (default: NIFTY) - currently unused, all indices included
 
         Returns:
-            DataFrame with 33 features + timestamp + close_price
+            DataFrame with 33 features from market_state_1m table:
+            - 6 index breadth features
+            - 9 NIFTY future features
+            - 11 options features
+            - 4 volatility features
+            - 3 time context features
         """
         logger.info(
             f"Loading LightGBM features for {symbol} "
             f"from {start_date} to {end_date}"
         )
 
-        # Determine instrument_key based on symbol
-        if symbol == "NIFTY":
-            instrument_key = "NSE_INDEX|Nifty 50"
-        elif symbol == "BANKNIFTY":
-            instrument_key = "NSE_INDEX|Nifty Bank"
-        elif symbol == "FINNIFTY":
-            instrument_key = "NSE_INDEX|Nifty Fin Services"
-        else:
-            instrument_key = f"NSE_INDEX|{symbol}"
-
-        query = text(
+        # Load SQL query from file
+        try:
+            market_state_sql = self._load_sql("market-state/get-by-time-range")
+            # Replace $1, $2 with named parameters (SQLAlchemy format)
+            market_state_sql = market_state_sql.replace("$1", ":start_date").replace(
+                "$2", ":end_date"
+            )
+        except (FileNotFoundError, AttributeError):
+            logger.warning("SQL file not found, using fallback inline query")
+            market_state_sql = """
+                SELECT * FROM market_state_1m 
+                WHERE timestamp >= :start_date AND timestamp < :end_date 
+                ORDER BY timestamp ASC
             """
-            SELECT 
-                ms.timestamp,
-                -- Market Structure (8)
-                ms.price_vs_vwap,
-                ms.price_vs_day_high,
-                ms.price_vs_day_low,
-                ms.range_position,
-                ms.prev_day_high_dist,
-                ms.prev_day_low_dist,
-                ms.weekly_high_dist,
-                ms.weekly_low_dist,
-                -- Momentum & Trend (8)
-                ms.rsi_5,
-                ms.rsi_14,
-                ms.rsi_21,
-                ms.macd_hist,
-                ms.ema_9_slope,
-                ms.ema_21_slope,
-                ms.adx,
-                ms.roc_5,
-                -- Volatility (5)
-                ms.atr_percent,
-                ms.realized_vol_5m,
-                ms.realized_vol_15m,
-                ms.vol_expansion_ratio,
-                ms.india_vix,
-                -- Options (9)
-                ms.atm_iv,
-                ms.atm_iv_change,
-                ms.delta_atm,
-                ms.gamma_atm,
-                ms.vega_atm,
-                ms.theta_atm,
-                ms.pcr_oi,
-                ms.pcr_volume,
-                ms.max_pain_dist,
-                -- Time Context (3)
-                ms.minutes_from_open,
-                ms.minutes_to_close,
-                ms.day_of_week,
-                -- Target (from candles)
-                mc.close as close_price
-            FROM market_state_1m ms
-            LEFT JOIN market_candles mc 
-                ON ms.timestamp = mc.timestamp 
-                AND mc.instrument_key = :instrument_key
-                AND mc.interval_value = 1
-                AND mc.interval_unit = 'minute'
-            WHERE ms.timestamp >= :start_date
-              AND ms.timestamp < :end_date
-            ORDER BY ms.timestamp ASC
-        """
-        )
+
+        query = text(market_state_sql)
 
         df = pd.read_sql(  # type: ignore
             query,
             self.engine,
             params={
-                "instrument_key": instrument_key,
                 "start_date": start_date,
                 "end_date": end_date,
             },  # type: ignore[arg-type]
         )
 
         logger.info(
-            f"Loaded {len(df)} rows with {len(df.columns)} columns "
-            f"(33 features + timestamp + close_price)"
+            f"Loaded {len(df)} rows with {len(df.columns)} columns from market_state_1m"
         )
+
+        # Verify we have the expected 33 features + timestamp + instrument_key = 35 columns
+        expected_cols = 35  # 33 features + timestamp + instrument_key
+        if len(df.columns) < expected_cols:
+            logger.warning(
+                f"Expected at least {expected_cols} columns, got {len(df.columns)}. "
+                "Check if market_state_1m schema matches compute-engine output."
+            )
 
         return df
 
@@ -194,39 +158,31 @@ class QuestDBLoader:
         """
         Load pre-computed training labels from QuestDB
 
+        Uses SQL file: packages/schema/sql/training-labels/get-by-time-range.sql
+
         Args:
             start_date: Start of training period
             end_date: End of training period
             horizon_minutes: Prediction horizon (5, 15, 30 minutes)
 
         Returns:
-            DataFrame with columns: timestamp, label, future_return, atr_threshold
+            DataFrame with columns: timestamp, horizon_minutes, label, future_return, atr_threshold
         """
         logger.info(
             f"Loading training labels (horizon={horizon_minutes}min) "
             f"from {start_date} to {end_date}"
         )
 
-        # Try loading SQL from file if available
+        # Load SQL query from file
         try:
-            if self.sql_dir:
-                labels_sql = self._load_sql("training-labels/get-by-time-range")
-                # Replace $1, $2, $3 with named parameters (SQLAlchemy format)
-                labels_sql = (
-                    labels_sql.replace("$1", ":start_date")
-                    .replace("$2", ":end_date")
-                    .replace("$3", ":horizon_minutes")
-                )
-            else:
-                # Fallback inline query
-                labels_sql = """
-                    SELECT * FROM training_labels_1m 
-                    WHERE timestamp >= :start_date 
-                    AND timestamp < :end_date 
-                    AND horizon_minutes = :horizon_minutes
-                    ORDER BY timestamp ASC
-                """
-        except FileNotFoundError:
+            labels_sql = self._load_sql("training-labels/get-by-time-range")
+            # Replace $1, $2, $3 with named parameters (SQLAlchemy format)
+            labels_sql = (
+                labels_sql.replace("$1", ":start_date")
+                .replace("$2", ":end_date")
+                .replace("$3", ":horizon_minutes")
+            )
+        except (FileNotFoundError, AttributeError):
             logger.warning("SQL file not found, using fallback inline query")
             labels_sql = """
                 SELECT * FROM training_labels_1m 

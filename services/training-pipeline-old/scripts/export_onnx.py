@@ -215,43 +215,43 @@ if __name__ == "__main__":
         / "models"
     )
 
-    # Feature names (must match training)
+    # Feature names (must match training) - from packages/schema/sql/schema/create_market_state_1m.sql
     feature_names = [
-        # Market Structure (8)
-        "price_vs_vwap",
-        "price_vs_day_high",
-        "price_vs_day_low",
-        "range_position",
-        "prev_day_high_dist",
-        "prev_day_low_dist",
-        "weekly_high_dist",
-        "weekly_low_dist",
-        # Momentum & Trend (8)
-        "rsi_5",
-        "rsi_14",
-        "rsi_21",
-        "macd_hist",
-        "ema_9_slope",
-        "ema_21_slope",
-        "adx",
-        "roc_5",
-        # Volatility (5)
-        "atr_percent",
-        "realized_vol_5m",
-        "realized_vol_15m",
-        "vol_expansion_ratio",
-        "india_vix",
-        # Options (9)
+        # Index Breadth (6)
+        "pct_stocks_above_vwap",
+        "pct_stocks_above_ema20",
+        "weighted_return_top10",
+        "advance_decline_ratio",
+        "breadth_momentum_5m",
+        "breadth_volatility",
+        # NIFTY Future (9)
+        "fut_price_vs_vwap",
+        "fut_range_position",
+        "fut_return_1m",
+        "fut_return_5m",
+        "fut_atr_percent",
+        "fut_volume_zscore",
+        "fut_oi_change",
+        "fut_rsi_14",
+        "fut_macd",
+        # Options (11)
         "atm_iv",
         "atm_iv_change",
-        "delta_atm",
+        "iv_skew",
         "gamma_atm",
         "vega_atm",
         "theta_atm",
         "pcr_oi",
         "pcr_volume",
-        "max_pain_dist",
-        # Time (3)
+        "max_pain_distance",
+        "charm_atm",
+        "vanna_atm",
+        # Volatility (4)
+        "india_vix",
+        "realized_vol_5m",
+        "realized_vol_15m",
+        "vol_expansion_ratio",
+        # Time Context (3)
         "minutes_from_open",
         "minutes_to_close",
         "day_of_week",
