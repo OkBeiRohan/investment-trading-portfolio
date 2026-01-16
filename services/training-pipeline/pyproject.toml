@@ -56,7 +56,7 @@ package_name = "training_pipeline"
 project_name = "training-pipeline"
 kedro_init_version = "1.1.1"
 tools = "['Linting', 'Testing', 'Custom Logging', 'Documentation', 'Data Structure', 'PySpark']"
-example_pipeline = "True"
+example_pipeline = "False"
 source_dir = "src"
 
 [tool.pytest.ini_options]
@@ -89,4 +89,4 @@ select = [
 ignore = ["E501"]  # Ruff format takes care of line-too-long
 
 [tool.kedro_telemetry]
-project_id = "437e32c04a544d29b7f37c57c82c1fa1"
+project_id = "bec906021fb547e3b7f06b657cd6d176"
