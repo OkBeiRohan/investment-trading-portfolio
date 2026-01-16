@@ -251,11 +251,7 @@ def main():
     # PHASE 1: Training
     if not args.skip_training:
         loader = QuestDBLoader(
-            host="localhost",
-            port=8812,
-            user="admin",
-            password="quest",
-            database="qdb",
+            connection_string="postgresql://admin:quest@localhost:8812/qdb",
         )
 
         for horizon in args.horizons:

@@ -6,9 +6,8 @@ Uses centralized SQL files from packages/schema/sql/
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -34,6 +33,7 @@ class QuestDBLoader:
             connection_string: PostgreSQL wire protocol connection string
                               e.g., 'postgresql://admin:quest@localhost:8812/qdb'
         """
+        self._cache = {}
         self.engine = create_engine(connection_string)
 
         # Resolve SQL directory (packages/schema/sql)
@@ -169,7 +169,7 @@ class QuestDBLoader:
         """
         )
 
-        df = pd.read_sql(
+        df = pd.read_sql(  # type: ignore
             query,
             self.engine,
             params={
@@ -239,7 +239,7 @@ class QuestDBLoader:
 
         query = text(labels_sql)
 
-        df = pd.read_sql(
+        df = pd.read_sql(  # type: ignore
             query,
             self.engine,
             params={
@@ -311,7 +311,7 @@ class QuestDBLoader:
         """
         )
 
-        result = pd.read_sql(query, self.engine)
+        result = pd.read_sql(query, self.engine) # type: ignore
 
         min_date = result["min_date"].iloc[0]
         max_date = result["max_date"].iloc[0]

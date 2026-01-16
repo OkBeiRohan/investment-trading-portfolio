@@ -15,7 +15,7 @@ Based on research:
 """
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Any
 import logging
 import numpy as np
 import pandas as pd
@@ -27,10 +27,8 @@ from sklearn.metrics import (
     log_loss,
     roc_auc_score,
     confusion_matrix,
-    classification_report,
+    classification_report,  # type: ignore
 )
-from sklearn.calibration import calibration_curve
-import shap
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +58,13 @@ class ModelValidator:
         # Load feature importance
         self.importance_df = pd.read_csv(feature_importance_path)
 
-    def validate_all(self) -> Dict:
+    def validate_all(self) -> dict[str, dict[str, Any]]:
         """Run all 5 validation dimensions"""
         logger.info("=" * 80)
         logger.info("5-DIMENSION MODEL VALIDATION")
         logger.info("=" * 80)
 
-        results = {
+        results: dict[str, dict[str, Any]] = {
             "predictive": self.validate_predictive(),
             "selective": self.validate_selective(),
             "stable": self.validate_stable(),
@@ -79,7 +77,7 @@ class ModelValidator:
 
         return results
 
-    def validate_predictive(self) -> Dict:
+    def validate_predictive(self) -> dict[str, float | list[float] | Any]:
         """Dimension 1: Better than random?"""
         logger.info("\n📊 DIMENSION 1: PREDICTIVE POWER")
         logger.info("-" * 80)
@@ -96,7 +94,7 @@ class ModelValidator:
         from sklearn.preprocessing import label_binarize
 
         y_true_bin = label_binarize(y_true, classes=[0, 1, 2])
-        auc_scores = []
+        auc_scores: list[float] = []
         for i in range(3):
             auc = roc_auc_score(y_true_bin[:, i], y_pred[:, i])
             auc_scores.append(auc)
@@ -155,7 +153,7 @@ class ModelValidator:
             "classification_report": report,
         }
 
-    def validate_selective(self) -> Dict:
+    def validate_selective(self) -> dict[str, float | list[float] | Any]:
         """Dimension 2: Knows when NOT to trade?"""
         logger.info("\n🎯 DIMENSION 2: SELECTIVE TRADING")
         logger.info("-" * 80)
@@ -235,7 +233,7 @@ class ModelValidator:
             "bin_counts": bin_counts,
         }
 
-    def validate_stable(self) -> Dict:
+    def validate_stable(self) -> dict[str, float]:
         """Dimension 3: Consistent across time?"""
         logger.info("\n📈 DIMENSION 3: TEMPORAL STABILITY")
         logger.info("-" * 80)
@@ -300,7 +298,7 @@ class ModelValidator:
             "coefficient_of_variation": cv,
         }
 
-    def validate_profitable(self) -> Dict:
+    def validate_profitable(self) -> dict[str, float]:
         """Dimension 4: Positive expectancy?"""
         logger.info("\n💰 DIMENSION 4: PROFITABILITY")
         logger.info("-" * 80)
@@ -402,7 +400,7 @@ class ModelValidator:
             "trade_frequency_pct": trade_freq,
         }
 
-    def validate_explainable(self) -> Dict:
+    def validate_explainable(self) -> dict[str, Any]:
         """Dimension 5: Understand why?"""
         logger.info("\n🔍 DIMENSION 5: EXPLAINABILITY")
         logger.info("-" * 80)
@@ -432,7 +430,7 @@ class ModelValidator:
             "top_features": top_features[["feature", "importance"]].to_dict("records"),
         }
 
-    def _generate_report(self, results: Dict):
+    def _generate_report(self, results: dict[str, dict[str, Any]]):
         """Generate HTML validation report"""
         logger.info("\n" + "=" * 80)
         logger.info("VALIDATION SUMMARY")
