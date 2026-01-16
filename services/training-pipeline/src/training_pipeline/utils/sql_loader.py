@@ -55,55 +55,69 @@ class QuestDBLoader:
             f"from {start_date} to {end_date}"
         )
 
+        # Determine instrument_key based on symbol
+        if symbol == "NIFTY":
+            instrument_key = "NSE_INDEX|Nifty 50"
+        elif symbol == "BANKNIFTY":
+            instrument_key = "NSE_INDEX|Nifty Bank"
+        elif symbol == "FINNIFTY":
+            instrument_key = "NSE_INDEX|Nifty Fin Services"
+        else:
+            instrument_key = f"NSE_INDEX|{symbol}"
+
         query = text(
             """
             SELECT 
-                timestamp,
-                -- Index Breadth (6)
-                pct_stocks_above_vwap,
-                pct_stocks_above_ema20,
-                weighted_return_top10,
-                advance_decline_ratio,
-                breadth_momentum_5m,
-                breadth_volatility,
-                -- NIFTY FUTURE (9)
-                fut_price_vs_vwap,
-                fut_range_position,
-                fut_return_1m,
-                fut_return_5m,
-                fut_atr_percent,
-                fut_volume_zscore,
-                fut_oi_change,
-                fut_rsi_14,
-                fut_macd,
-                -- Options (11)
-                atm_iv,
-                atm_iv_change,
-                iv_skew,
-                gamma_atm,
-                vega_atm,
-                theta_atm,
-                pcr_oi,
-                pcr_volume,
-                max_pain_distance,
-                charm_atm,
-                vanna_atm,
-                -- Volatility (4)
-                india_vix,
-                realized_vol_5m,
-                realized_vol_15m,
-                vol_expansion_ratio,
-                -- Time (3)
-                minutes_from_open,
-                minutes_to_close,
-                day_of_week,
-                -- Target (for labeling)
-                close_price
-            FROM lightgbm_features
-            WHERE symbol = :symbol
-              AND timestamp >= :start_date
-              AND timestamp < :end_date
-            ORDER BY timestamp ASC
+                ms.timestamp,
+                -- Market Structure (8)
+                ms.price_vs_vwap,
+                ms.price_vs_day_high,
+                ms.price_vs_day_low,
+                ms.range_position,
+                ms.prev_day_high_dist,
+                ms.prev_day_low_dist,
+                ms.weekly_high_dist,
+                ms.weekly_low_dist,
+                -- Momentum & Trend (8)
+                ms.rsi_5,
+                ms.rsi_14,
+                ms.rsi_21,
+                ms.macd_hist,
+                ms.ema_9_slope,
+                ms.ema_21_slope,
+                ms.adx,
+                ms.roc_5,
+                -- Volatility (5)
+                ms.atr_percent,
+                ms.realized_vol_5m,
+                ms.realized_vol_15m,
+                ms.vol_expansion_ratio,
+                ms.india_vix,
+                -- Options (9)
+                ms.atm_iv,
+                ms.atm_iv_change,
+                ms.delta_atm,
+                ms.gamma_atm,
+                ms.vega_atm,
+                ms.theta_atm,
+                ms.pcr_oi,
+                ms.pcr_volume,
+                ms.max_pain_dist,
+                -- Time Context (3)
+                ms.minutes_from_open,
+                ms.minutes_to_close,
+                ms.day_of_week,
+                -- Target (from candles)
+                mc.close as close_price
+            FROM market_state_1m ms
+            LEFT JOIN market_candles mc 
+                ON ms.timestamp = mc.timestamp 
+                AND mc.instrument_key = :instrument_key
+                AND mc.interval_value = 1
+                AND mc.interval_unit = 'minute'
+            WHERE ms.timestamp >= :start_date
+              AND ms.timestamp < :end_date
+            ORDER BY ms.timestamp ASC
         """
         )
 
@@ -111,7 +125,7 @@ class QuestDBLoader:
             query,
             self.engine,
             params={
-                "symbol": symbol,
+                "instrument_key": instrument_key,
                 "start_date": start_date,
                 "end_date": end_date,
             },  # type: ignore[arg-type]
@@ -165,7 +179,7 @@ class QuestDBLoader:
         )
 
     def get_available_date_range(
-        self, table: str = "lightgbm_features"
+        self, table: str = "market_state_1m"
     ) -> tuple[datetime, datetime]:
         """
         Get available date range in QuestDB
