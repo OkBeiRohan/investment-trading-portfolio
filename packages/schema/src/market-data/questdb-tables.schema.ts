@@ -228,6 +228,20 @@ export const TrainingLabels1mSchema = z.object({
 
 export type TrainingLabels1m = z.infer<typeof TrainingLabels1mSchema>;
 
+/**
+ * Training Label Distribution by Horizon
+ * Used for analyzing class balance before training
+ */
+export interface TrainingLabelDistribution {
+  horizonMinutes: number;
+  totalLabels: number;
+  upLabels: number;
+  neutralLabels: number;
+  downLabels: number;
+  avgReturn: number;
+  avgThreshold: number;
+}
+
 // ============================================
 // TABLE 8: system_audit
 // Distributed tracing audit log
