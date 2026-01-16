@@ -29,8 +29,8 @@ import logging
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from training_pipeline.utils.sql_loader import QuestDBLoader
-from training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
+from src.training_pipeline.utils.sql_loader import QuestDBLoader
+from src.training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
     LightGBMTrainer,
 )
 
