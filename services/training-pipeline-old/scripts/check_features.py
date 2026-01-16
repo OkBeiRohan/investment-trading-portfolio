@@ -41,7 +41,8 @@ def main():
         result = connection.execute(
             text("SELECT COUNT(*) as count FROM market_state_1m")
         )
-        row_count = result.fetchone()[0]  # type: ignore
+        row = result.fetchone()
+        row_count = row[0] if row else 0
         print(f"  ✅ Table exists with {row_count:,} rows")
         print()
 
@@ -61,8 +62,8 @@ def main():
             )
         )
         row = result.fetchone()
-        min_date = row[0]  # type: ignore
-        max_date = row[1]  # type: ignore
+        min_date = row[0] if row else None
+        max_date = row[1] if row else None
 
         print(f"  - First data: {min_date}")
         print(f"  - Last data:  {max_date}")

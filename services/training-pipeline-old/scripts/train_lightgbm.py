@@ -134,18 +134,15 @@ def main():
     # -------------------------------------------------------------------------
 
     features = lightgbm_data.drop(columns=["timestamp", "close_price"])
-    prices = lightgbm_data[["timestamp", "close_price"]]
+    prices = lightgbm_data["close_price"]
 
     logger.info(f"Feature matrix shape: {features.shape}")
     logger.info(f"Features: {list(features.columns)}")
     print()
 
     # -------------------------------------------------------------------------
-    # Step 4: Train LightGBM Model
+    # Step 4: Create Volatility-Adjusted Labels
     # -------------------------------------------------------------------------
-
-    logger.info("Starting LightGBM training with walk-forward validation...")
-    print()
 
     trainer = LightGBMTrainer(
         training_config=training_config,
@@ -153,14 +150,31 @@ def main():
         labeling_config=labeling_config,
     )
 
+    logger.info("Creating volatility-adjusted labels...")
+    labels = trainer.create_volatility_adjusted_labels(features, prices)
+    logger.info(f"Labels shape: {labels.shape}")
+    print()
+
+    # Align features with labels (remove last N rows that have no labels)
+    features = features.iloc[: len(labels)]
+    logger.info(f"Aligned features shape: {features.shape}")
+    print()
+
+    # -------------------------------------------------------------------------
+    # Step 6: Train LightGBM Model
+    # -------------------------------------------------------------------------
+
+    logger.info("Starting LightGBM training with walk-forward validation...")
+    print()
+
     result = trainer.train(
         features=features,
-        prices=prices,
-        mlflow_enabled=False,  # Set to True to enable MLflow tracking
+        labels=labels,
+        mlflow_run_name="lightgbm_training",
     )
 
     # -------------------------------------------------------------------------
-    # Step 5: Save Model and OOF Predictions
+    # Step 7: Save Model and OOF Predictions
     # -------------------------------------------------------------------------
 
     logger.info("Saving model and predictions...")
@@ -180,27 +194,22 @@ def main():
     logger.info(f"OOF predictions saved to: {oof_path.absolute()}")
 
     # Save feature importance to CSV
+    import pandas as pd
+
     importance_path = output_dir / "feature_importance_latest.csv"
-    feature_importance = result.model.feature_importance(importance_type="gain")
-    feature_names = features.columns
+    feature_importance_list = result.feature_importance
+
     importance_df = pd.DataFrame(
-        {
-            "feature": feature_names,
-            "importance": feature_importance,
-            "rank": range(1, len(feature_names) + 1),
-        }
+        feature_importance_list, columns=["feature", "importance"]
     )
-    importance_df = importance_df.sort_values(
-        "importance", ascending=False
-    ).reset_index(drop=True)
-    importance_df["rank"] = range(1, len(importance_df) + 1)
+    importance_df = importance_df.sort_values("importance", ascending=False)
     importance_df.to_csv(importance_path, index=False)
     logger.info(f"Feature importance saved to: {importance_path.absolute()}")
 
     print()
 
     # -------------------------------------------------------------------------
-    # Step 6: Display Results
+    # Step 8: Display Results
     # -------------------------------------------------------------------------
 
     print()
@@ -214,33 +223,29 @@ def main():
 
     print(f"Validation Metrics (Cross-Validation Averages):")
     print(
-        f"  - Accuracy:   {val_metrics.accuracy:.4f} ± {val_metrics.accuracy_std:.4f}"
+        f"  - Accuracy:   {val_metrics.accuracy_mean:.4f} ± {val_metrics.accuracy_std:.4f}"
+    )
+    print(f"  - AUC:        {val_metrics.auc_mean:.4f} ± {val_metrics.auc_std:.4f}")
+    print(
+        f"  - Precision (UP):   {val_metrics.precision_up_mean:.4f} ± {val_metrics.precision_up_std:.4f}"
     )
     print(
-        f"  - Precision:  {val_metrics.precision:.4f} ± {val_metrics.precision_std:.4f}"
+        f"  - Precision (DOWN): {val_metrics.precision_down_mean:.4f} ± {val_metrics.precision_down_std:.4f}"
     )
-    print(f"  - Recall:     {val_metrics.recall:.4f} ± {val_metrics.recall_std:.4f}")
-    print(f"  - F1 Score:   {val_metrics.f1:.4f} ± {val_metrics.f1_std:.4f}")
-    print(f"  - ROC-AUC:    {val_metrics.roc_auc:.4f} ± {val_metrics.roc_auc_std:.4f}")
+    print(f"  - F1 (UP):    {val_metrics.f1_up_mean:.4f} ± {val_metrics.f1_up_std:.4f}")
+    print(
+        f"  - F1 (DOWN):  {val_metrics.f1_down_mean:.4f} ± {val_metrics.f1_down_std:.4f}"
+    )
     print()
 
-    print(f"OOF Predictions: {len(result.oof_predictions)} rows")
-    print(f"Final Model Feature Count: {result.model.num_feature()}")
+    print(f"OOF Predictions shape: {result.oof_predictions_shape}")
+    print(f"Model type: {result.model_type}")
     print()
 
     # Feature importance
     print("Top 10 Most Important Features:")
-    feature_importance = result.model.feature_importance(importance_type="gain")
-    feature_names = features.columns
-
-    importance_df = sorted(
-        zip(feature_names, feature_importance),
-        key=lambda x: x[1],
-        reverse=True,
-    )
-
-    for i, (feat_name, importance) in enumerate(importance_df[:10], 1):
-        print(f"  {i:2d}. {feat_name:30s} - {importance:.2f}")
+    for i, row in enumerate(importance_df.head(10).itertuples(), 1):
+        print(f"  {i:2d}. {row.feature:30s} - {row.importance:.2f}")
 
     print()
     print("=" * 80)
@@ -256,7 +261,7 @@ def main():
     print(
         "  2. Tune hyperparameters if needed (edit script or conf/base/parameters.yml)"
     )
-    print("  3. Export to ONNX: (TODO - kedro run --pipeline export_onnx)")
+    print("  3. Export to ONNX: python scripts/export_onnx.py")
     print(f"  4. Current model ready at: {model_path.absolute()}")
     print("  5. For deployment: Convert to ONNX and copy to apps/algo-worker/models/")
     print("=" * 80)

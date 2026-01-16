@@ -46,7 +46,7 @@ def train_horizon(
     loader: QuestDBLoader,
     start_date: datetime,
     end_date: datetime,
-) -> dict:
+) -> dict[str, object]:
     """Train model for specific horizon"""
     logger.info(f"=" * 80)
     logger.info(f"Training LightGBM for {horizon_minutes}-minute horizon")
@@ -73,7 +73,7 @@ def train_horizon(
 
     if len(data) == 0:
         logger.error(f"No data after merge for {horizon_minutes}min horizon!")
-        return None
+        return {"horizon": horizon_minutes, "error": "No data after merge"}
 
     # 4. Prepare X, y
     feature_cols = [col for col in features.columns if col != "timestamp"]
@@ -84,60 +84,77 @@ def train_horizon(
     logger.info(f"Label distribution:\n{y.value_counts().sort_index()}")
 
     # 5. Train model
+    from training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
+        LightGBMConfig,
+        LabelingConfig,
+    )
+    from training_pipeline.types import TrainingConfig
+
     trainer = LightGBMTrainer(
-        num_classes=3,
-        params={
-            "objective": "multiclass",
-            "num_class": 3,
-            "metric": "multi_logloss",
-            "boosting_type": "gbdt",
-            "learning_rate": 0.01,
-            "max_depth": 6,
-            "num_leaves": 31,
-            "feature_fraction": 0.8,
-            "bagging_fraction": 0.8,
-            "bagging_freq": 5,
-            "verbose": -1,
-            "device": "gpu",  # Use GPU if available
-            "gpu_platform_id": 0,
-            "gpu_device_id": 0,
-        },
+        training_config=TrainingConfig(
+            n_splits=12, purge_window=375, embargo_window=375
+        ),
+        lightgbm_config=LightGBMConfig(
+            objective="multiclass",
+            num_class=3,
+            metric="multi_logloss",
+            boosting_type="gbdt",
+            learning_rate=0.01,
+            num_leaves=31,
+            n_estimators=400,
+            feature_fraction=0.8,
+            bagging_fraction=0.8,
+            bagging_freq=5,
+            device="gpu",
+            gpu_platform_id=0,
+            gpu_device_id=0,
+        ),
+        labeling_config=LabelingConfig(horizon=horizon_minutes),
     )
 
     logger.info("Training model with walk-forward validation...")
-    trainer.train(X, y)
+    result = trainer.train(X, y, mlflow_run_name=f"lightgbm_{horizon_minutes}min")
 
     # 6. Save model with horizon suffix
     model_dir = Path(__file__).parent.parent / "data" / "06_models"
     model_dir.mkdir(parents=True, exist_ok=True)
 
     model_path = model_dir / f"lightgbm_{horizon_minutes}min.txt"
-    trainer.save_model(str(model_path))
+    trainer.save_model(model_path)
     logger.info(f"✅ Saved model: {model_path}")
 
     # 7. Save OOF predictions
     oof_path = model_dir / f"oof_lightgbm_{horizon_minutes}min.parquet"
-    trainer.save_oof_predictions(str(oof_path))
+    trainer.save_oof_predictions(oof_path)
     logger.info(f"✅ Saved OOF predictions: {oof_path}")
 
     # 8. Save feature importance
+    import pandas as pd
+
     importance_path = model_dir / f"feature_importance_{horizon_minutes}min.csv"
-    trainer.save_feature_importance(str(importance_path))
+    importance_df = pd.DataFrame(
+        result.feature_importance, columns=["feature", "importance"]
+    )
+    importance_df.to_csv(importance_path, index=False)
     logger.info(f"✅ Saved feature importance: {importance_path}")
 
     # 9. Get metrics
-    metrics = trainer.get_metrics()
+    val_metrics = result.validation_metrics
     logger.info(f"\n📊 {horizon_minutes}min Horizon Metrics:")
-    logger.info(f"  Train Log Loss: {metrics.get('train_logloss', 'N/A'):.4f}")
-    logger.info(f"  Val Log Loss: {metrics.get('val_logloss', 'N/A'):.4f}")
-    logger.info(f"  Val Accuracy: {metrics.get('val_accuracy', 'N/A'):.4f}")
+    logger.info(
+        f"  Accuracy: {val_metrics.accuracy_mean:.4f} ± {val_metrics.accuracy_std:.4f}"
+    )
+    logger.info(f"  AUC: {val_metrics.auc_mean:.4f} ± {val_metrics.auc_std:.4f}")
+    logger.info(f"  Precision (UP): {val_metrics.precision_up_mean:.4f}")
+    logger.info(f"  Precision (DOWN): {val_metrics.precision_down_mean:.4f}")
 
     return {
         "horizon": horizon_minutes,
         "model_path": str(model_path),
         "oof_path": str(oof_path),
         "importance_path": str(importance_path),
-        "metrics": metrics,
+        "accuracy": val_metrics.accuracy_mean,
+        "auc": val_metrics.auc_mean,
     }
 
 
@@ -156,13 +173,7 @@ def main():
     logger.info(f"Training period: {START_DATE} to {END_DATE}")
 
     # Initialize loader
-    loader = QuestDBLoader(
-        host="localhost",
-        port=8812,
-        user="admin",
-        password="quest",
-        database="qdb",
-    )
+    loader = QuestDBLoader("postgresql://admin:quest@localhost:8812/qdb")
 
     # Train each horizon
     results = []
@@ -174,10 +185,10 @@ def main():
                 start_date=START_DATE,
                 end_date=END_DATE,
             )
-            if result:
-                results.append(result)
+            results.append(result)
         except Exception as e:
             logger.error(f"❌ Failed to train {horizon}min model: {e}", exc_info=True)
+            results.append({"horizon": horizon, "error": str(e)})
 
     # Summary
     logger.info("\n" + "=" * 80)
@@ -185,13 +196,15 @@ def main():
     logger.info("=" * 80)
 
     for result in results:
+        if "error" in result:
+            logger.info(f"\n{result['horizon']}min Horizon: ❌ {result['error']}")
+            continue
         logger.info(f"\n{result['horizon']}min Horizon:")
         logger.info(f"  Model: {result['model_path']}")
         logger.info(f"  OOF: {result['oof_path']}")
         logger.info(f"  Importance: {result['importance_path']}")
-        logger.info(
-            f"  Val Accuracy: {result['metrics'].get('val_accuracy', 'N/A'):.4f}"
-        )
+        logger.info(f"  Accuracy: {result.get('accuracy', 0):.4f}")
+        logger.info(f"  AUC: {result.get('auc', 0):.4f}")
 
     logger.info("\n✅ Multi-horizon training complete!")
 
