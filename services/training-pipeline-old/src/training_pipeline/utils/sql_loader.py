@@ -33,7 +33,6 @@ class QuestDBLoader:
             connection_string: PostgreSQL wire protocol connection string
                               e.g., 'postgresql://admin:quest@localhost:8812/qdb'
         """
-        self._cache = {}
         self.engine = create_engine(connection_string)
 
         # Resolve SQL directory (packages/schema/sql)
@@ -311,7 +310,7 @@ class QuestDBLoader:
         """
         )
 
-        result = pd.read_sql(query, self.engine) # type: ignore
+        result = pd.read_sql(query, self.engine)  # type: ignore
 
         min_date = result["min_date"].iloc[0]
         max_date = result["max_date"].iloc[0]
@@ -324,21 +323,3 @@ class QuestDBLoader:
         """Close database connection"""
         self.engine.dispose()
         logger.info("QuestDB connection closed")
-        if use_cache and query_path in self._cache:
-            return self._cache[query_path]
-
-        sql_file = self.sql_dir / f"{query_path}.sql"
-
-        if not sql_file.exists():
-            raise FileNotFoundError(
-                f"SQL query not found: {sql_file}. "
-                f"Available queries: {self.list_queries()}"
-            )
-
-        with open(sql_file, "r", encoding="utf-8") as f:
-            sql = f.read()
-
-        if use_cache:
-            self._cache[query_path] = sql
-
-        return sql
