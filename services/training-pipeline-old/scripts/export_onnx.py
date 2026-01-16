@@ -14,13 +14,12 @@ Features:
 from pathlib import Path
 import logging
 import numpy as np
-import pandas as pd
 import lightgbm as lgb
 import onnx
-import onnxruntime as ort
-from onnxmltools.convert import convert_lightgbm
-from onnxconverter_common import FloatTensorType
-from onnxconverter_common.float16_converter import convert_float_to_float16
+import onnxruntime as ort  # type: ignore
+from onnxmltools.convert import convert_lightgbm  # type: ignore
+from onnxconverter_common import FloatTensorType  # type: ignore
+from onnxconverter_common.float16_converter import convert_float_to_float16  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ def export_lightgbm_to_onnx(
     num_classes: int = 3,
     quantize_fp16: bool = True,
     validate: bool = True,
-) -> dict:
+) -> dict[str, float]:
     """
     Export LightGBM model to ONNX format
 
@@ -83,7 +82,7 @@ def export_lightgbm_to_onnx(
     onnx_size = output_path_obj.stat().st_size / 1024  # KB
     logger.info(f"File sizes: LightGBM={lgb_size:.1f}KB, ONNX={onnx_size:.1f}KB")
 
-    metadata = {
+    metadata: dict[str, float] = {
         "lightgbm_size_kb": lgb_size,
         "onnx_size_kb": onnx_size,
         "compression_ratio": lgb_size / onnx_size if onnx_size > 0 else 0,
@@ -145,7 +144,7 @@ def export_all_horizons(
     output_dir: Path,
     feature_names: list[str],
     horizons: list[int] = [5, 15, 30],
-) -> dict:
+) -> dict[int, dict[str, float]]:
     """
     Export all multi-horizon models to ONNX
 
@@ -162,7 +161,7 @@ def export_all_horizons(
     logger.info("EXPORTING MULTI-HORIZON MODELS TO ONNX")
     logger.info("=" * 80)
 
-    results = {}
+    results: dict[int, dict[str, float]] = {}
 
     for horizon in horizons:
         model_path = model_dir / f"lightgbm_{horizon}min.txt"

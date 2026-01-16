@@ -93,7 +93,7 @@ def train_horizon(
     start_date: datetime,
     end_date: datetime,
     model_dir: Path,
-) -> dict:
+) -> dict[str, str] | None:
     """Train model for specific horizon"""
     logger.info(f"=" * 80)
     logger.info(f"TRAINING: {horizon_minutes}-minute horizon")
@@ -131,25 +131,7 @@ def train_horizon(
     logger.info(f"Label distribution:\n{y.value_counts().sort_index()}")
 
     # 5. Train
-    trainer = LightGBMTrainer(
-        num_classes=3,
-        params={
-            "objective": "multiclass",
-            "num_class": 3,
-            "metric": "multi_logloss",
-            "boosting_type": "gbdt",
-            "learning_rate": 0.01,
-            "max_depth": 6,
-            "num_leaves": 31,
-            "feature_fraction": 0.8,
-            "bagging_fraction": 0.8,
-            "bagging_freq": 5,
-            "verbose": -1,
-            "device": "gpu",
-            "gpu_platform_id": 0,
-            "gpu_device_id": 0,
-        },
-    )
+    trainer = LightGBMTrainer()
 
     logger.info("Training with walk-forward validation...")
     trainer.train(X, y)
@@ -157,25 +139,21 @@ def train_horizon(
     # 6. Save
     model_path = model_dir / f"lightgbm_{horizon_minutes}min.txt"
     oof_path = model_dir / f"oof_lightgbm_{horizon_minutes}min.parquet"
-    importance_path = model_dir / f"feature_importance_{horizon_minutes}min.csv"
 
-    trainer.save_model(str(model_path))
-    trainer.save_oof_predictions(str(oof_path))
-    trainer.save_feature_importance(str(importance_path))
+    trainer.save_model(model_path)
+    trainer.save_oof_predictions(oof_path)
 
     logger.info(f"✅ Model: {model_path}")
     logger.info(f"✅ OOF: {oof_path}")
-    logger.info(f"✅ Importance: {importance_path}")
 
     return {
-        "horizon": horizon_minutes,
+        "horizon": f"{horizon_minutes}min",
         "model_path": str(model_path),
         "oof_path": str(oof_path),
-        "importance_path": str(importance_path),
     }
 
 
-def export_onnx(model_dir: Path, output_dir: Path, horizons: list):
+def export_onnx(model_dir: Path, output_dir: Path, horizons: list[int]):
     """Export models to ONNX"""
     logger.info(f"\n" + "=" * 80)
     logger.info("EXPORTING TO ONNX")
@@ -192,7 +170,7 @@ def export_onnx(model_dir: Path, output_dir: Path, horizons: list):
     )
 
 
-def validate_models(model_dir: Path, output_dir: Path, horizons: list):
+def validate_models(model_dir: Path, output_dir: Path, horizons: list[int]):
     """Run 5-dimension validation"""
     logger.info(f"\n" + "=" * 80)
     logger.info("VALIDATION: 5 DIMENSIONS")
