@@ -29,8 +29,8 @@ import logging
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.training_pipeline.utils.sql_loader import QuestDBLoader
-from src.training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
+from training_pipeline.utils.sql_loader import QuestDBLoader
+from training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
     LightGBMTrainer,
 )
 
@@ -84,11 +84,11 @@ def train_horizon(
     logger.info(f"Label distribution:\n{y.value_counts().sort_index()}")
 
     # 5. Train model
-    from src.training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
+    from training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
         LightGBMConfig,
         LabelingConfig,
     )
-    from src.training_pipeline.types import TrainingConfig
+    from training_pipeline.types import TrainingConfig
 
     trainer = LightGBMTrainer(
         training_config=TrainingConfig(

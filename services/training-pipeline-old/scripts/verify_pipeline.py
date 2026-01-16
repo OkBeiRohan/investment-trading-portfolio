@@ -56,7 +56,7 @@ print("✓ Test 2: Import validation")
 print("-" * 40)
 
 try:
-    from src.training_pipeline.utils.sql_loader import QuestDBLoader
+    from training_pipeline.utils.sql_loader import QuestDBLoader
 
     print("  ✅ QuestDBLoader")
     _ = QuestDBLoader  # Mark as used
@@ -65,7 +65,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from src.training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
+    from training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
         LightGBMTrainer,
     )
 
@@ -105,7 +105,7 @@ print("✓ Test 3: Function signature validation")
 print("-" * 40)
 
 try:
-    from src.training_pipeline.pipelines.train_ensemble import nodes
+    from training_pipeline.pipelines.train_ensemble import nodes
 
     # Check that key functions exist
     assert hasattr(nodes, "load_training_data"), "Missing load_training_data()"

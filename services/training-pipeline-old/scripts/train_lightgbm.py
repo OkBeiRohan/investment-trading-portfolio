@@ -16,13 +16,13 @@ import pandas as pd
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from src.training_pipeline.utils.sql_loader import QuestDBLoader
-from src.training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
+from training_pipeline.utils.sql_loader import QuestDBLoader
+from training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
     LightGBMTrainer,
     LightGBMConfig,
     LabelingConfig,
 )
-from src.training_pipeline.types import TrainingConfig
+from training_pipeline.types import TrainingConfig
 
 # Configure logging
 logging.basicConfig(
