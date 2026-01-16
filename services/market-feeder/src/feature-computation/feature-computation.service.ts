@@ -217,17 +217,22 @@ export class FeatureComputationService {
         };
         marketStatesToInsert.push(marketState);
 
-        // Calculate training label (5-minute horizon)
+        // Calculate training labels for multiple horizons
         // Use NIFTY SPOT (not futures!) and computed ATR from features
+        // Multiple horizons enable multi-task learning and different prediction timeframes
         const niftySpotCandle = niftySpotCandleMap.get(timestamp.getTime());
-        const trainingLabel = this.calculateLabel(
-          timestamp,
-          niftySpotCandle,
-          niftySpotCandleMap,
-          sanitizedFeatures.futAtrPercent, // Use computed ATR from features
-        );
-        if (trainingLabel) {
-          trainingLabelsToInsert.push(trainingLabel);
+        const horizons = [1, 5, 15, 30]; // 1m, 5m, 15m, 30m horizons
+        for (const horizon of horizons) {
+          const trainingLabel = this.calculateLabel(
+            timestamp,
+            niftySpotCandle,
+            niftySpotCandleMap,
+            sanitizedFeatures.futAtrPercent, // Use computed ATR from features
+            horizon,
+          );
+          if (trainingLabel) {
+            trainingLabelsToInsert.push(trainingLabel);
+          }
         }
       } catch (error) {
         this.logger.error(
@@ -463,7 +468,7 @@ export class FeatureComputationService {
   }
 
   /**
-   * Calculate volatility-adjusted training label
+   * Calculate volatility-adjusted training label for multiple horizons
    * Labels: -1 (DOWN), 0 (NEUTRAL), 1 (UP)
    *
    * Logic (from training-pipeline LightGBM trainer):
@@ -478,6 +483,7 @@ export class FeatureComputationService {
    * @param currentCandle - Current NIFTY SPOT candle
    * @param spotCandleMap - Map of NIFTY SPOT candles by timestamp
    * @param futAtrPercent - Computed ATR percentage from features (e.g., 0.015 = 1.5%)
+   * @param horizonMinutes - Forward-looking horizon in minutes (1, 5, 15, 30)
    * @returns TrainingLabels1m or null if insufficient data
    */
   private calculateLabel(
@@ -485,6 +491,7 @@ export class FeatureComputationService {
     currentCandle: MarketCandle | undefined,
     spotCandleMap: Map<number, MarketCandle>,
     futAtrPercent: number,
+    horizonMinutes: number,
   ): TrainingLabels1m | null {
     if (!currentCandle) return null;
 
@@ -498,7 +505,6 @@ export class FeatureComputationService {
       return null;
     }
 
-    const horizonMinutes = 5;
     const futureTimestamp = new Date(
       timestamp.getTime() + horizonMinutes * 60 * 1000,
     );
@@ -514,8 +520,10 @@ export class FeatureComputationService {
 
     // ATR threshold (k * ATR_PERCENT)
     // futAtrPercent is already normalized (0.015 = 1.5%)
+    // Scale threshold by sqrt(horizon) for multi-horizon consistency
     const k = 1.0;
-    const atrThreshold = k * futAtrPercent;
+    const horizonScalingFactor = Math.sqrt(horizonMinutes / 5); // Normalize to 5min baseline
+    const atrThreshold = k * futAtrPercent * horizonScalingFactor;
 
     // Determine label
     // Compare dimensionless returns with dimensionless threshold
