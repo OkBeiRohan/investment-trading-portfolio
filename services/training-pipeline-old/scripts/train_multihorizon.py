@@ -23,7 +23,7 @@ ALTERNATIVE (NOT RECOMMENDED): Single multi-output model
 import sys
 import warnings
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 # Add src to path
@@ -84,11 +84,11 @@ def train_horizon(
     logger.info(f"Label distribution:\n{y.value_counts().sort_index()}")
 
     # 5. Train model
-    from training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
+    from src.training_pipeline.pipelines.train_ensemble.models.lightgbm_trainer import (
         LightGBMConfig,
         LabelingConfig,
     )
-    from training_pipeline.types import TrainingConfig
+    from src.training_pipeline.types import TrainingConfig
 
     trainer = LightGBMTrainer(
         training_config=TrainingConfig(
@@ -176,7 +176,7 @@ def main():
     loader = QuestDBLoader("postgresql://admin:quest@localhost:8812/qdb")
 
     # Train each horizon
-    results = []
+    results: list[dict[str, object]] = []
     for horizon in HORIZONS:
         try:
             result = train_horizon(
