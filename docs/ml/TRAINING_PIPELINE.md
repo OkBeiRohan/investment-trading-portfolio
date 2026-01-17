@@ -753,6 +753,90 @@ module.exports = {
 
 ---
 
-See [AI_TRADING_ARCHITECTURE.md](./AI_TRADING_ARCHITECTURE.md) for the complete system overview.
+## 7. ONNX Export Pipeline
 
-See [TIER1_MODELS.md](./TIER1_MODELS.md) for model specifications.
+### PyTorch to ONNX
+
+```python
+import torch
+import onnx
+from onnxruntime.quantization import quantize_dynamic, QuantType
+
+def export_pytorch_to_onnx(
+    model: torch.nn.Module,
+    model_name: str,
+    input_shape: tuple,
+    output_path: str,
+    quantize: bool = True
+) -> str:
+    """Export PyTorch model to ONNX with optional quantization."""
+    
+    model.eval()
+    dummy_input = torch.randn(*input_shape)
+    
+    onnx_path = f"{output_path}/{model_name}.onnx"
+    
+    torch.onnx.export(
+        model,
+        dummy_input,
+        onnx_path,
+        input_names=['input'],
+        output_names=['output'],
+        dynamic_axes={
+            'input': {0: 'batch_size'},
+            'output': {0: 'batch_size'}
+        },
+        opset_version=17,
+        do_constant_folding=True,
+    )
+    
+    # Validate
+    onnx_model = onnx.load(onnx_path)
+    onnx.checker.check_model(onnx_model)
+    
+    # Quantize for faster inference
+    if quantize:
+        quantized_path = f"{output_path}/{model_name}_quantized.onnx"
+        quantize_dynamic(onnx_path, quantized_path, weight_type=QuantType.QUInt8)
+        return quantized_path
+    
+    return onnx_path
+```
+
+### LightGBM to ONNX
+
+```python
+from skl2onnx import convert_sklearn
+from skl2onnx.common.data_types import FloatTensorType
+
+def export_lightgbm_to_onnx(
+    model,
+    model_name: str,
+    num_features: int,
+    output_path: str
+) -> str:
+    """Export LightGBM model to ONNX."""
+    
+    initial_type = [('input', FloatTensorType([None, num_features]))]
+    
+    onnx_model = convert_sklearn(
+        model,
+        initial_types=initial_type,
+        target_opset=17
+    )
+    
+    onnx_path = f"{output_path}/{model_name}.onnx"
+    with open(onnx_path, "wb") as f:
+        f.write(onnx_model.SerializeToString())
+    
+    return onnx_path
+```
+
+---
+
+## Related Documentation
+
+- [AI_TRADING_ARCHITECTURE.md](./AI_TRADING_ARCHITECTURE.md) - Complete system overview
+- [TIER1_MODELS.md](./TIER1_MODELS.md) - Model specifications
+- [INFERENCE_PIPELINE.md](./INFERENCE_PIPELINE.md) - **ONNX Runtime in NestJS** (algo-worker)
+- [FEATURE_STORE.md](./FEATURE_STORE.md) - Feast + Redis integration

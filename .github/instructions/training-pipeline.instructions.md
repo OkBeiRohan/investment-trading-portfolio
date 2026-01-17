@@ -630,3 +630,11 @@ def test_xgboost_training():
 ❌ Missing random seeds  
 ❌ Training on leaky features
 
+## Documentation
+
+- [Training Pipeline README](./README.md) - Service overview
+- [ML Architecture](../../../docs/ml/README.md) - AI/ML documentation index
+- [TRAINING_PIPELINE.md](../../../docs/ml/TRAINING_PIPELINE.md) - Detailed training docs
+- [INFERENCE_PIPELINE.md](../../../docs/ml/INFERENCE_PIPELINE.md) - ONNX Runtime in NestJS
+- [compute-engine README](../../../packages/compute-engine/README.md) - Feature computation
+
