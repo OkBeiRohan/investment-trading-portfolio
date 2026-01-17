@@ -1,11 +1,26 @@
 # API Server
 
-REST API and authentication server for the investment trading portfolio system.
+> **NestJS API gateway with tRPC and Better Auth authentication.**
 
-## Overview
+**Port**: 3000  
+**Last Updated**: January 18, 2026
 
-**Port**: 3004
-**Purpose**: User management, authentication, portfolio data, and gateway to trading engines
+---
+
+## Purpose
+
+The API server is the **gateway layer** for the web dashboard:
+
+- ✅ User authentication via Better Auth
+- ✅ tRPC router for type-safe API calls
+- ✅ Portfolio and trading status endpoints
+- ✅ Gateway to local algo-worker (via Redis events)
+
+### What This Service Does NOT Do
+
+- ❌ ML inference (use algo-worker)
+- ❌ Feature computation (use compute-engine)
+- ❌ Market data ingestion (use market-feeder)
 
 ## Quick Start
 
