@@ -3,8 +3,13 @@ This is a boilerplate pipeline 'train_ensemble'
 generated using Kedro 1.1.1
 """
 
-from kedro.pipeline import Node
 from .models.lightgbm_trainer import LightGBMTrainer
+from kedro.io import DataCatalog
+import logging
+from training_pipeline.utils.batch_loader import BatchDataLoader
+
+logger = logging.getLogger(__name__)
+
 
 # def train_lightgbm_model(X, y, model_dir, horizon_minutes):
 #     """Train LightGBM model with walk-forward validation"""
@@ -30,14 +35,37 @@ from .models.lightgbm_trainer import LightGBMTrainer
 #     }
 
 
-def create_lightgbm_training_node() -> Node:
+def train_lightgbm_model(
+    catalog: DataCatalog,
+    parameters: dict[str, dict[str, str]],
+) -> dict[str, str]:
     """Create a Kedro Node for LightGBM training"""
+
+    # Extract parameters
+    train_params = parameters["training"]
+    lgb_params = parameters["lightgbm"]
+
+    start_date = train_params["training_start"]
+    end_date = train_params["training_end"]
+    batch_days = int(train_params.get("batch_days", 30))
+
+    logger.info(
+        f"Starting batch training: {start_date} to {end_date}, "
+        f"{batch_days} days per batch"
+        f"lightgbm_params: {lgb_params}"
+        f"catalog: {catalog}"
+    )
+
+    loader = BatchDataLoader(
+        catalog=catalog,
+        start_date=start_date,
+        end_date=end_date,
+        batch_days=batch_days,
+    )
+    logger.info(f"Initialized BatchDataLoader: {loader}")
+
+    logger.info("Initializing LightGBM Trainer...")
 
     trainer = LightGBMTrainer()
 
-    return Node(
-        func=trainer.train,
-        inputs=["features", "labels"],
-        outputs="lightgbm_training_result",
-        name="lightgbm_training_node",
-    )
+    return trainer.train(features="features", labels="labels")

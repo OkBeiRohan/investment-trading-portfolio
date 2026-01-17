@@ -19,6 +19,7 @@ dependencies = [
     "setuptools; python_version >= '3.12'",
     "pyspark>=4.1.1",
     "psycopg2-binary>=2.9.11",
+    "lightgbm>=4.6.0",
 ]
 
 [project.scripts]
