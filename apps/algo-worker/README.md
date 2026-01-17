@@ -1,10 +1,13 @@
 # Algo Worker - Event-Driven Trading Engine
 
-> **Real-time algorithmic trading engine for NSE Nifty/Bank Nifty options using event-driven microservices architecture and adaptive ML ensemble models.**
+> **Real-time algorithmic trading engine for NSE Nifty/Bank Nifty options using event-driven microservices architecture with Rust feature computation and ONNX inference.**
 
-Built with NestJS, TypeScript, ONNX Runtime, QuestDB, MongoDB, and Redis Streams.
+Built with NestJS, TypeScript, ONNX Runtime, Rust (NAPI-RS), QuestDB, MongoDB, and Redis Streams.
 
-**Architecture Documentation**: See [Algo Trading Architecture](../../docs/ALGO_TRADING_ARCHITECTURE.md) for comprehensive system design.
+**Architecture Documentation**: 
+- [Algo Trading Architecture](../../docs/ALGO_TRADING_ARCHITECTURE.md) - System design
+- [ML Documentation](../../docs/ml/README.md) - AI/ML architecture
+- [ONNX Inference Pipeline](../../docs/ml/INFERENCE_PIPELINE.md) - Inference details
 
 ---
 
@@ -106,8 +109,9 @@ Critical trading components for managing open positions:
 
 ### **Related Systems**
 
-- **market-feeder**: Real-time data ingestion to QuestDB (to be implemented)
-- **training-pipeline**: Offline ONNX model training (Kedro)
+- **compute-engine** (Rust): Feature computation (<5ms for 33 features)
+- **market-feeder**: Real-time data ingestion via Upstox WebSocket
+- **training-pipeline**: Offline ONNX model training (Kedro + CPCV)
 - **@repo/schema**: Shared Zod schemas for type safety
 - **@repo/database**: QuestDB, MongoDB, Redis clients
 - **@repo/market-sdk**: Upstox API wrapper with WebSocket multiplexer
@@ -184,20 +188,27 @@ GPU_DEVICE_ID=0
 ### **Data Flow Pipeline**
 
 ```
-[market-feeder] → QuestDB (Tick Data) + Redis Streams (Events)
-                                ↓
-         [Layer 1: Perception] - MarketDataConsumer
-                                ↓
-         [Layer 2: Cortex] - FeatureEngineService
-                                ↓
-         [Layer 3: Prediction] - EnsembleInferenceService
-                                ↓
-         [Layer 4: Cognition] - StrategySelection + RiskManager
-                                ↓
-         [Layer 5: Execution] - OrderPlacementService → Upstox API
-                                ↓
-         [Layer 6: Memory] - Redis + QuestDB + MongoDB
-                                ↓
+[Upstox WS] → [market-feeder] → [compute-engine (Rust)] → [algo-worker (ONNX)]
+                                       <5ms                     <50ms
+                                         ↓                         ↓
+                                   Redis Pub/Sub            Trading Decisions
+                                         ↓                         ↓
+                                     QuestDB              [Execution] → Upstox API
+```
+
+**Internal Layers**:
+
+```
+[Layer 1: Perception] - Subscribe to Redis features:live channel
+        ↓
+[Layer 2: Cortex] - Feature buffer and sequence preparation
+        ↓
+[Layer 3: Prediction] - ONNX Runtime ensemble inference (GPU)
+        ↓
+[Layer 4: Cognition] - Strategy selection + RiskManager validation
+        ↓
+[Layer 5: Execution] - OrderPlacementService → Upstox API
+        ↓
          [Layer 7: Control] - Metrics + Circuit Breakers
 ```
 
