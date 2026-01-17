@@ -23,21 +23,20 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 
 ### Algo Trading (algo-worker)
 
-- **🧠 ML Hierarchical Intelligence Stack** 🆕 (12-14 Models Total):
-  - **TIER 1 - Core (Always-On)**:
-    - **Level-0A: Micro-Alpha** - LiT (LOB Transformer) for 10s-1min microstructure signals from depth-20 order book
-    - **Level-0B: Macro Direction (CORE)** - LightGBM, XGBoost for 5-15min forecasting with 50+ features (Greeks, momentum, volatility)
-    - **Level-0C: Regime & Volatility** - TFT (Temporal Fusion Transformer) for multi-horizon forecasting (5min-EOD)
-  - **TIER 2 - Conditional (Regime-Activated)**:
-    - PatchTST (TREND regimes), Mamba (regime shifts), TimesNet-MLP (volatility expansion), WFTNet-MLP (news spikes)
-  - **TIER 3 - Research/Shadow**:
-    - SVM, GINN, KAN (compliance), ViT, CNN-LSTM for validation and interpretability
-  - **Level-1**: Contextual meta-learner with adaptive gating (market-state aware fusion, not simple stacking)
-  - **Key Insight**: 4-7 models run simultaneously (regime-dependent), NEVER all at once (prevents latency explosion)
-  - **Orthogonal Information**: LiT learns from LOB microstructure, LightGBM from technical+Greeks, TFT from time-series volatility
-  - Online learning: Drift detection (ADWIN) for real-time model adaptation
-  - Explainability: SHAP for feature importance monitoring (SEBI compliance)
-  - Symbolic risk rules (hard limits override AI predictions)
+- **🧠 4-Tier Hierarchical AI Stack** (2026 State-of-the-Art):
+  - **TIER 1 - Base Prediction Models**:
+    - **Micro-Alpha (10s-1min)**: LiT Transformer, TLOB for Depth-30 LOB microstructure
+    - **Macro Direction (5min-1hr)**: LightGBM, XGBoost, PatchTST with 50+ features
+    - **Regime & Volatility**: TFT (Temporal Fusion Transformer), Mamba (State Space), TimeMixer
+    - **Options-Specific**: IV Surface Predictor (VAE+MLP), Greeks Forecaster
+  - **TIER 2 - Meta-Learner**: Attention-based signal fusion with regime-aware weighting
+  - **TIER 3 - Strategy Layer**: Strike Selector (Neural Net), Risk Manager (Greeks + VaR)
+  - **TIER 4 - Execution**: PPO Agent for slippage minimization (-5 to -10 bps)
+  - **Multi-Horizon Predictions**: H1(10s) → H6(EOD) cascade as features
+  - **Validation**: CPCV (Combinatorial Purged Cross-Validation)
+  - **Drift Detection**: ADWIN for online model adaptation
+  - **Feature Store**: Feast + Redis for training-serving consistency
+  - **Explainability**: SHAP for SEBI compliance
 - **⚡ Ultra-Low Latency**:
   - Event-driven core with deterministic sequencer (<10μs event processing)
   - Worker Threads for GPU inference (eliminates main-thread blocking)
@@ -237,15 +236,16 @@ pnpm dev  # Starts on port 3001
 - **[DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md)**: Hybrid local-cloud deployment
 - **[SECURITY.md](docs/SECURITY.md)**: Security policies
 
-**AI/ML Architecture**:
+**AI/ML Architecture (2026 State-of-the-Art)**:
 
-- **[HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](docs/HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md)**: ML model hierarchy + CI/CD
-- **[MODEL_INVENTORY.md](docs/MODEL_INVENTORY.md)**: 12-14 model taxonomy
-- **[MARKET_STATE_ENCODER.md](docs/MARKET_STATE_ENCODER.md)**: **Critical** - Feature engineering (50k→200)
-- **[FEATURE_STORE_ARCHITECTURE.md](docs/FEATURE_STORE_ARCHITECTURE.md)**: Centralized feature registry
-- **[AI_MODEL_TRAINING.md](docs/AI_MODEL_TRAINING.md)**: ML training pipelines
+- **[docs/ml/README.md](docs/ml/README.md)**: 📁 **Start here** - AI documentation index
+- **[AI_TRADING_ARCHITECTURE.md](docs/ml/AI_TRADING_ARCHITECTURE.md)**: 4-tier hierarchical model architecture
+- **[TIER1_MODELS.md](docs/ml/TIER1_MODELS.md)**: TFT, Mamba, PatchTST, LiT specifications with code
+- **[META_LEARNER_EXECUTION.md](docs/ml/META_LEARNER_EXECUTION.md)**: Signal fusion, PPO execution agent
+- **[TRAINING_PIPELINE.md](docs/ml/TRAINING_PIPELINE.md)**: CPCV validation, Kedro orchestration
+- **[FEATURE_STORE.md](docs/ml/FEATURE_STORE.md)**: Feast + Redis for consistency
 
-**Research**:
+**Legacy AI Docs** (Reference Only):
 
 - **[RESEARCH_FINDINGS.md](docs/RESEARCH_FINDINGS.md)**: Research insights
 - **[AGENTIC_AI_RESEARCH.md](docs/AGENTIC_AI_RESEARCH.md)**: Multi-agent systems (R&D only)
@@ -365,5 +365,6 @@ Please read **[Copilot Instructions](.github/copilot-instructions.md)** and cons
 
 **Built with ❤️ for the Indian Algo Trading Community**
 
-**License**: Proprietary
-**Status**: Production-Ready Architecture (Implementation in Progress)
+**License**: Proprietary  
+**Status**: Production-Ready Architecture (Implementation in Progress)  
+**Last Updated**: January 18, 2026

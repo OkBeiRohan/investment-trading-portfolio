@@ -2,7 +2,7 @@
 
 This folder contains **core architecture and system-wide documentation** for Quantum Investments and Trades.
 
-**Last Updated**: January 13, 2026
+**Last Updated**: January 18, 2026
 
 ---
 
@@ -19,13 +19,23 @@ This folder contains **core architecture and system-wide documentation** for Qua
 - [PROJECT_STATUS.md](./PROJECT_STATUS.md) - Implementation roadmap and gap analysis
 - [SECURITY.md](./SECURITY.md) - Security policies and best practices
 
-**AI/ML Architecture**:
+**AI/ML Architecture (2026 State-of-the-Art)**:
 
-- [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md) - ML model hierarchy (LiT, TFT, LightGBM, DRL)
-- [MODEL_INVENTORY.md](./MODEL_INVENTORY.md) - Complete taxonomy of 12-14 ML models
-- [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md) - Feature engineering and data-model interface (50k signals → 200 features)
-- [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md) - Centralized feature registry design
-- [AI_MODEL_TRAINING.md](./AI_MODEL_TRAINING.md) - ML training pipelines and best practices
+> 📁 **NEW**: See [ml/README.md](./ml/README.md) for comprehensive AI documentation with code examples.
+
+- [ml/AI_TRADING_ARCHITECTURE.md](./ml/AI_TRADING_ARCHITECTURE.md) - 4-tier hierarchical model architecture
+- [ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) - TFT, Mamba, PatchTST, LiT with full code
+- [ml/META_LEARNER_EXECUTION.md](./ml/META_LEARNER_EXECUTION.md) - Signal fusion, PPO execution agent
+- [ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) - CPCV validation, Kedro orchestration
+- [ml/FEATURE_STORE.md](./ml/FEATURE_STORE.md) - Feast + Redis for consistency
+
+**Legacy AI Docs** (Reference Only):
+
+- [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md) - Original ML model hierarchy
+- [MODEL_INVENTORY.md](./MODEL_INVENTORY.md) - Model taxonomy
+- [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md) - Feature engineering concepts
+- [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md) - Original feature registry design
+- [AI_MODEL_TRAINING.md](./AI_MODEL_TRAINING.md) - Original training pipelines
 
 **Research & Advanced**:
 
@@ -89,10 +99,11 @@ This folder contains **core architecture and system-wide documentation** for Qua
 
 **Quant/ML Researcher**:
 
-1. [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md) - Model stack
-2. [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md) - Feature engineering
-3. [MODEL_INVENTORY.md](./MODEL_INVENTORY.md) - Model taxonomy
-4. [services/training-pipeline/docs/](../services/training-pipeline/docs/) - Training pipelines
+1. [ml/README.md](./ml/README.md) - 📁 **Start here** - AI documentation index
+2. [ml/AI_TRADING_ARCHITECTURE.md](./ml/AI_TRADING_ARCHITECTURE.md) - 4-tier model architecture
+3. [ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) - Model specifications with code
+4. [ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) - CPCV validation, Kedro
+5. [services/training-pipeline/docs/](../services/training-pipeline/docs/) - Training infrastructure
 
 **Algo Trader**:
 
