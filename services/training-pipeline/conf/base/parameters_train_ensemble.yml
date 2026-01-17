@@ -3,5 +3,5 @@
 #
 # Documentation for this file format can be found in "Parameters"
 # Link: https://docs.kedro.org/en/1.1.1/configuration/parameters.html
-training_start: '2023-01-01 00:00:00'
-training_end: '2023-12-31 23:59:59'
+training_start: "2023-01-01 00:00:00"
+training_end: "2026-01-31 23:59:59"

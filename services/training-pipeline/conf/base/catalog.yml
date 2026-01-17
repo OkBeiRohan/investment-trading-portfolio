@@ -3,12 +3,18 @@ labels:
   filepath: /home/anandhuprakash/Code/investment-trading-portfolio/packages/schema/sql/training-labels/get-all-horizons.sql
   credentials: questdb_credentials
   load_args:
-    params: [training_start, training_end] # Pass parameters to the SQL query
+    params: {
+        "training_start": "2023-01-01 00:00:00",
+        "training_end": "2026-01-31 23:59:59",
+      } # Pass parameters to the SQL query
 
 features:
   type: pandas.SQLQueryDataset
-  filepath: /home/anandhuprakash/Code/investment-trading-portfolio/packages/schema/sql/market-state/get-latest.sql
+  filepath: /home/anandhuprakash/Code/investment-trading-portfolio/packages/schema/sql/market-state/get-by-time-range.sql
   credentials: questdb_credentials
   load_args:
-    params: [training_start, training_end] # Pass parameters to the SQL query
+    params: {
+        "training_start": "2023-01-01 00:00:00",
+        "training_end": "2026-01-31 23:59:59",
+      } # Pass parameters to the SQL query
 
