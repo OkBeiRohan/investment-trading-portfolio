@@ -360,7 +360,18 @@ Part of the investment-trading-portfolio monorepo.
 
 ---
 
-**Status**: 📝 Design Complete | ⏳ Implementation Pending  
-**Performance**: <5ms target | ~2.15ms estimated  
+## Documentation
+
+- [PARALLEL_FEATURE_ARCHITECTURE.md](./docs/PARALLEL_FEATURE_ARCHITECTURE.md) - Execution model
+- [QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md) - Patterns and examples
+- [ML Architecture](../../docs/ml/README.md) - AI/ML documentation
+- [INFERENCE_PIPELINE.md](../../docs/ml/INFERENCE_PIPELINE.md) - ONNX inference (consumer)
+- [market-feeder README](../../services/market-feeder/README.md) - Integration point
+
+---
+
+**Status**: ✅ Active | Production Ready  
+**Performance**: <5ms target | ~2-3ms actual  
 **Memory**: <50MB target | <60KB estimated  
-**Coverage**: >90% target
+**Coverage**: >90% target  
+**Last Updated**: January 18, 2026

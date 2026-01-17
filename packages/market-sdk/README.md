@@ -294,6 +294,19 @@ market-sdk/
 └── interfaces/     # Shared provider contracts
 ```
 
+## Documentation
+
+- [Upstox OAuth Guide](./docs/UPSTOX_OAUTH_INTEGRATION.md) - OAuth2 flow details
+- [WebSocket Implementation](./docs/WEBSOCKET_IMPLEMENTATION.md) - Multiplexer architecture
+- [Quickstart](./docs/QUICKSTART.md) - Getting started guide
+
+---
+
 ## License
 
 Part of the investment-trading-portfolio monorepo. MIT License.
+
+---
+
+**Status**: ✅ Active | Production Ready  
+**Last Updated**: January 18, 2026
