@@ -2,150 +2,160 @@
 
 > **Complete AI/ML architecture for 2026 state-of-the-art algorithmic trading.**
 
+**Last Updated**: January 18, 2026
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           TRAINING (Python/Kedro)                            │
+│                                                                              │
+│   QuestDB ──→ Feature Engineering ──→ CPCV Training ──→ ONNX Export         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ ONNX Models
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           INFERENCE (NestJS + Rust)                          │
+│                                                                              │
+│   Upstox WS ──→ compute-engine (Rust) ──→ algo-worker (ONNX Runtime)        │
+│                    <5ms features              <50ms inference                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Technology Stack
+
+| Component | Technology | Reason |
+|-----------|------------|--------|
+| **Feature Computation** | Rust (NAPI-RS) | <5ms, type-safe, parallel via Rayon |
+| **Model Training** | Python (Kedro) | ML ecosystem, CPCV validation |
+| **Model Export** | ONNX | Cross-platform, optimized inference |
+| **Live Inference** | NestJS + onnxruntime-node | Type-safe, Worker Threads, GPU |
+| **Feature Store** | Feast + Redis | Training-serving consistency |
+
 ---
 
 ## Documentation Index
 
 | Document | Description |
 |----------|-------------|
-| [AI_TRADING_ARCHITECTURE.md](./AI_TRADING_ARCHITECTURE.md) | **Start here** - Overview of 4-tier hierarchical model architecture |
-| [TIER1_MODELS.md](./TIER1_MODELS.md) | Base prediction models (TFT, Mamba, PatchTST, TimeMixer, LiT) |
-| [META_LEARNER_EXECUTION.md](./META_LEARNER_EXECUTION.md) | Tier 2-4: Signal fusion, strategy selection, PPO execution |
-| [TRAINING_PIPELINE.md](./TRAINING_PIPELINE.md) | CPCV validation, Kedro orchestration, model registry |
+| [AI_TRADING_ARCHITECTURE.md](./AI_TRADING_ARCHITECTURE.md) | 4-tier hierarchical model architecture |
+| [TIER1_MODELS.md](./TIER1_MODELS.md) | Base prediction models (TFT, Mamba, PatchTST, LiT) |
+| [META_LEARNER_EXECUTION.md](./META_LEARNER_EXECUTION.md) | Signal fusion, PPO execution agent |
+| [TRAINING_PIPELINE.md](./TRAINING_PIPELINE.md) | CPCV validation, Kedro orchestration, ONNX export |
 | [FEATURE_STORE.md](./FEATURE_STORE.md) | Feast + Redis for training/serving consistency |
+| [INFERENCE_PIPELINE.md](./INFERENCE_PIPELINE.md) | **NEW** - ONNX Runtime in NestJS, GPU acceleration |
 
 ---
 
-## Architecture Summary
-
-### 4-Tier Hierarchical Model Architecture
+## 4-Tier Hierarchical Model Architecture
 
 ```
 TIER 4: Execution Optimization
-  └── PPO Agent, Exit Manager, Position Sizing
+  └── PPO Agent (ONNX), Exit Manager, Position Sizing
        ▲
 TIER 3: Strategy & Decision
   └── Strike Selector, Strategy Selector, Risk Manager
        ▲
-TIER 2: Meta-Learner
+TIER 2: Meta-Learner (ONNX)
   └── Attention-Based Signal Fusion, Regime-Aware Weighting
        ▲
-TIER 1: Base Prediction Models
-  ├── MICRO (10s-1min): LiT, TLOB, OFI-CNN
+TIER 1: Base Prediction Models (ONNX)
+  ├── MICRO (10s-1min): LiT, TLOB
   ├── MACRO (5min-1hr): LightGBM, XGBoost, PatchTST
-  ├── REGIME: TFT, Mamba, TimeMixer, HMM
+  ├── REGIME: TFT, Mamba, TimeMixer
   └── OPTIONS: IV Predictor, Greeks Forecaster
 ```
 
-### Multi-Horizon Predictions
-
-| Horizon | Target | Primary Models |
-|---------|--------|----------------|
-| H1: 10s | Direction | LiT, TLOB |
-| H2: 1min | Direction + magnitude | LightGBM, Mamba |
-| H3: 5min | Trend continuation | TFT, PatchTST |
-| H4: 15min | Trend reversal | TFT, TimeMixer |
-| H5: 1hr | Session direction | PatchTST, HMM |
-| H6: EOD | Daily move | TFT Ensemble |
-
 ---
 
-## Key Technologies
+## Data Flow
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Time-Series Forecasting | TFT, PatchTST, TimeMixer | Multi-horizon prediction |
-| Sequence Modeling | Mamba (State Space) | Efficient regime detection |
-| Microstructure | LiT Transformer | LOB pattern recognition |
-| Gradient Boosting | LightGBM, XGBoost | Fast feature-based prediction |
-| Meta-Learning | Attention Networks | Regime-aware model fusion |
-| Execution | PPO (RL) | Slippage optimization |
-| Validation | CPCV | Robust model evaluation |
-| Feature Store | Feast + Redis | Training/serving consistency |
-| Drift Detection | ADWIN | Online model adaptation |
+### Training Flow (Offline)
 
----
+```
+1. Historical Data (QuestDB)
+   ↓
+2. Feature Engineering (compute-engine → QuestDB)
+   ↓
+3. Label Generation (Multi-horizon)
+   ↓
+4. CPCV Cross-Validation
+   ↓
+5. Model Training (PyTorch/LightGBM)
+   ↓
+6. ONNX Export + Quantization
+   ↓
+7. Model Registry (MLflow/MinIO)
+```
 
-## Data Assets
+### Inference Flow (Live)
 
-| Data Type | Source | Resolution | Timeframe |
-|-----------|--------|------------|-----------|
-| NIFTY 50 Index | Upstox | 1min OHLCV | 2022-2026 |
-| NIFTY 50 Index | Upstox | Daily OHLCV | 2000-2026 |
-| 50 Constituents | Upstox | 1min OHLCV | 2022-2026 |
-| NIFTY Futures | Upstox | 1min OHLCV+OI | 2022-2026 |
-| NIFTY Options | Upstox | 1min OHLCV+OI | 2022-2026 |
-| Live LOB | Upstox WS | Depth-30 | Real-time |
-| India VIX | Upstox | 1min | 2022-2026 |
+```
+1. Upstox WebSocket (market-feeder)
+   ↓
+2. Feature Computation (compute-engine, Rust, <5ms)
+   ↓
+3. Redis Pub/Sub (features:live)
+   ↓
+4. algo-worker receives features
+   ↓
+5. ONNX Inference (onnxruntime-node, <50ms)
+   ↓
+6. Risk Validation
+   ↓
+7. Order Execution (Upstox API)
+```
 
 ---
 
 ## Quick Start
 
-### 1. Feature Computation
+### 1. Feature Computation (Rust)
 
-```python
-from feature_computation import FeatureComputer
+```typescript
+import { computeFeatures } from '@repo/compute-engine';
 
-computer = FeatureComputer()
-features = computer.compute_all(ohlcv_df, options_chain_df, lob_df)
+const result = computeFeatures(marketTick);
+console.log(result.features);  // 33 features
+console.log(result.totalDurationMicros);  // ~2000-3000 µs
 ```
 
-### 2. Multi-Horizon Labels
-
-```python
-from labeling import MultiHorizonLabeler
-
-labeler = MultiHorizonLabeler()
-labeled_data = labeler.generate_labels(features)
-```
-
-### 3. Train with CPCV
+### 2. Training with Kedro
 
 ```bash
 cd services/training-pipeline
 kedro run --pipeline=training
+kedro run --pipeline=export  # ONNX export
 ```
 
-### 4. Inference
+### 3. Inference in NestJS
 
-```python
-from inference import TradingOrchestrator
+```typescript
+import * as ort from 'onnxruntime-node';
 
-orchestrator = TradingOrchestrator.load('models/')
-result = orchestrator.process_tick(market_state)
+const session = await ort.InferenceSession.create('models/model.onnx');
+const tensor = new ort.Tensor('float32', features, [1, 33]);
+const results = await session.run({ input: tensor });
 ```
-
----
-
-## Research References
-
-| Topic | Paper | Year |
-|-------|-------|------|
-| Temporal Fusion Transformer | [Bryan et al., Google](https://arxiv.org/abs/1912.09363) | 2019 |
-| Mamba (State Space) | [Gu & Dao](https://arxiv.org/abs/2312.00752) | 2023 |
-| PatchTST | [Nie et al.](https://arxiv.org/abs/2211.14730) | 2022 |
-| LiT (LOB Transformer) | [Frontiers AI](https://www.frontiersin.org/journals/artificial-intelligence) | 2025 |
-| CPCV | [López de Prado](https://www.cambridge.org/core/books/advances-in-financial-machine-learning) | 2018 |
-| PPO for Execution | [OpenAI](https://arxiv.org/abs/1707.06347) | 2017 |
 
 ---
 
 ## Performance Targets
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Tick-to-Trade Latency (p95) | <150ms | - |
-| ML Inference (GPU) | <50ms | - |
-| Feature Computation | <5ms | - |
+| Component | Target | Typical |
+|-----------|--------|---------|
+| Feature Computation (Rust) | <5ms | 2-3ms |
+| ONNX Inference (GPU) | <50ms | 30-40ms |
+| Total Tick-to-Decision | <100ms | 50-70ms |
 | Model AUC (H3) | >0.70 | - |
-| Sharpe Ratio (Backtest) | >2.0 | - |
 
 ---
 
 ## Related Documentation
 
+- [compute-engine README](../../packages/compute-engine/README.md) - Rust feature computation
+- [algo-worker README](../../apps/algo-worker/README.md) - Trading engine with ONNX
+- [training-pipeline README](../../services/training-pipeline/README.md) - Kedro ML training
 - [ARCHITECTURE.md](../ARCHITECTURE.md) - System architecture
-- [DEPLOYMENT_ARCHITECTURE.md](../DEPLOYMENT_ARCHITECTURE.md) - Deployment strategy
-- [algo-worker README](../../apps/algo-worker/README.md) - Trading engine
-- [training-pipeline README](../../services/training-pipeline/README.md) - Training infrastructure
