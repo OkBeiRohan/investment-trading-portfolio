@@ -1,0 +1,14 @@
+labels:
+  type: pandas.SQLQueryDataset
+  filepath: /home/anandhuprakash/Code/investment-trading-portfolio/packages/schema/sql/training-labels/get-all-horizons.sql
+  credentials: questdb_credentials
+  load_args:
+    params: [training_start, training_end] # Pass parameters to the SQL query
+
+features:
+  type: pandas.SQLQueryDataset
+  filepath: /home/anandhuprakash/Code/investment-trading-portfolio/packages/schema/sql/market-state/get-latest.sql
+  credentials: questdb_credentials
+  load_args:
+    params: [training_start, training_end] # Pass parameters to the SQL query
+
