@@ -6,18 +6,37 @@
  * - Phase 2: Candle Data Fetching
  */
 
-import { Controller, Post, Get, Query, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Query,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InstrumentMasterService } from './instrument-master.service';
 import { CandleFetcherService } from './candle-fetcher.service';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('historical-data')
-export class HistoricalDataController {
+export class HistoricalDataController implements OnModuleInit {
   private readonly logger = new Logger(HistoricalDataController.name);
 
   constructor(
     private readonly instrumentMasterService: InstrumentMasterService,
     private readonly candleFetcherService: CandleFetcherService,
+    private readonly configService: ConfigService,
   ) {}
+
+  onModuleInit() {
+    if (
+      !this.configService.get<string>('AUTO_BOOTSTRAP_HISTORICAL_DATA', 'false')
+    )
+      return;
+
+    this.logger.log('Auto-bootstrap enabled. Starting full bootstrap...');
+    void this.bootstrap();
+  }
 
   /**
    * Run full bootstrap: Phase 1 + Phase 2
