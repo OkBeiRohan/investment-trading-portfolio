@@ -9,7 +9,7 @@ import { Model } from "mongoose";
 import {
   ProcessingLog,
   ProcessingLogDocument,
-} from "../../schemas/trading/processing-log.schema";
+} from "../../schemas/market-data/processing-log.schema";
 import DatabaseConnections from "../../connections/connections";
 
 @Injectable()

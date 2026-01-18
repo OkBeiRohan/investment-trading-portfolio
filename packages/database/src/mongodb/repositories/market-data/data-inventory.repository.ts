@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { DataInventory } from "../../schemas/data-inventory.schema";
+import { DataInventory } from "../../schemas/market-data/data-inventory.schema";
 import DatabaseConnections from "../../connections/connections";
 
 /**

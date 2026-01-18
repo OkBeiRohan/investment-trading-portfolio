@@ -1,12 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import DatabaseConnections from "./connections/connections";
-import {
-  IngestionLog,
-  DataInventory,
-  IngestionLogSchema,
-  DataInventorySchema,
-} from "./schemas";
 import { User, UserSchema } from "./schemas/user/user.schema";
 import {
   Account,
@@ -38,16 +32,7 @@ import {
   Organization,
   OrganizationSchema,
 } from "./schemas/organization";
-import {
-  BrokerAccount,
-  BrokerAccountSchema,
-  Instrument,
-  ProcessingLog,
-  ConstituentChange,
-  ConstituentChangeSchema,
-  InstrumentSchema,
-  ProcessingLogSchema,
-} from "./schemas/trading";
+import { BrokerAccount, BrokerAccountSchema } from "./schemas/trading";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 import { MongoDBService } from "./mongodb.service";
 import {
@@ -57,6 +42,18 @@ import {
   IngestionLogRepository,
   DataInventoryRepository,
 } from "./repositories/market-data";
+import {
+  IngestionLog,
+  IngestionLogSchema,
+  DataInventory,
+  DataInventorySchema,
+  Instrument,
+  InstrumentSchema,
+  ProcessingLog,
+  ProcessingLogSchema,
+  ConstituentChange,
+  ConstituentChangeSchema,
+} from "./schemas/market-data";
 
 @Global()
 @Module({
@@ -79,6 +76,17 @@ import {
       {
         connectionName: DatabaseConnections.Trading,
         dbName: DatabaseConnections.Trading,
+        retryWrites: true,
+        retryAttempts: 5,
+        retryDelay: 3000,
+        writeConcern: { w: "majority" },
+      },
+    ),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || "mongodb://localhost:27017",
+      {
+        connectionName: DatabaseConnections.MarketData,
+        dbName: DatabaseConnections.MarketData,
         retryWrites: true,
         retryAttempts: 5,
         retryDelay: 3000,

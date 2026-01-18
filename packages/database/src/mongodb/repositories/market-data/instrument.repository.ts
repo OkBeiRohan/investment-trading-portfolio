@@ -9,7 +9,7 @@ import { Model } from "mongoose";
 import {
   Instrument,
   InstrumentDocument,
-} from "../../schemas/trading/instrument.schema";
+} from "../../schemas/market-data/instrument.schema";
 import DatabaseConnections from "../../connections/connections";
 
 @Injectable()

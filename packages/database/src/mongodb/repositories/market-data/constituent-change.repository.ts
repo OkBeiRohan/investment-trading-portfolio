@@ -9,7 +9,7 @@ import { Model } from "mongoose";
 import {
   ConstituentChange,
   ConstituentChangeDocument,
-} from "../../schemas/trading/constituent-change.schema";
+} from "../../schemas/market-data/constituent-change.schema";
 import DatabaseConnections from "../../connections/connections";
 
 @Injectable()
