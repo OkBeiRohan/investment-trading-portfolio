@@ -85,10 +85,12 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * Create all tables from SQL files using sql-loader
    * Order matters: create dependencies first
    *
-   * v2.1 Schema - 54-Feature Architecture
+   * v3.0 Schema - Unified Schema
+   * 7 tables: instrument_master, market_candles, orderbook_l2_snapshots,
+   *           tick_data, option_chain_snapshot, instrument_features, training_labels
    */
   private async createTables(): Promise<void> {
-    this.logger.log("Creating QuestDB v2.1 tables from schema files...");
+    this.logger.log("Creating QuestDB v3.0 tables from schema files...");
 
     // Core tables (no dependencies)
     await this.createTable(
@@ -104,34 +106,20 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
       "schema/create_orderbook_l2_snapshots",
     );
 
-    // Feature tables (depend on market data)
-    await this.createTable(
-      "instrument_features_1m",
-      "schema/create_instrument_features_1m",
-    );
-    await this.createTable(
-      "instrument_features_1d",
-      "schema/create_instrument_features_1d",
-    );
-    await this.createTable("market_state_1m", "schema/create_market_state_1m");
-
     // Option tables
     await this.createTable(
       "option_chain_snapshot",
       "schema/create_option_chain_snapshot",
     );
 
-    // Training tables (v2.1 - minute + daily labels)
+    // Feature and label tables (unified with interval fields)
     await this.createTable(
-      "training_labels_1m",
-      "schema/create_training_labels_1m",
+      "instrument_features",
+      "schema/create_instrument_features",
     );
-    await this.createTable(
-      "training_labels_1d",
-      "schema/create_training_labels_1d",
-    );
+    await this.createTable("training_labels", "schema/create_training_labels");
 
-    this.logger.log("✓ All v2.1 tables created successfully (10 tables)");
+    this.logger.log("✓ All v3.0 tables created successfully (7 tables)");
   }
 
   /**

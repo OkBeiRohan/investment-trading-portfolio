@@ -10,14 +10,12 @@ import { Pool } from "pg";
 import { QuestDBService } from "./questdb.service";
 import {
   CandlesRepository,
+  FeaturesRepository,
   InstrumentMasterRepository,
-  InstrumentFeaturesRepository,
-  MarketStateRepository,
+  LabelsRepository,
   OptionChainRepository,
-  TrainingLabelsRepository,
+  OptionChainTickRepository,
   TickDataRepository,
-  DailyFeaturesRepository,
-  DailyLabelsRepository,
 } from "./repositories";
 
 @Global()
@@ -37,16 +35,14 @@ import {
     InstrumentMasterRepository,
 
     // Features (minute + daily)
-    InstrumentFeaturesRepository,
-    MarketStateRepository,
-    DailyFeaturesRepository,
+    FeaturesRepository,
 
     // Labels (minute + daily)
-    TrainingLabelsRepository,
-    DailyLabelsRepository,
+    LabelsRepository,
 
     // Options
     OptionChainRepository,
+    OptionChainTickRepository,
   ],
   exports: [
     QuestDBService,
@@ -59,16 +55,14 @@ import {
     InstrumentMasterRepository,
 
     // Features (minute + daily)
-    InstrumentFeaturesRepository,
-    MarketStateRepository,
-    DailyFeaturesRepository,
+    FeaturesRepository,
 
     // Labels (minute + daily)
-    TrainingLabelsRepository,
-    DailyLabelsRepository,
+    LabelsRepository,
 
     // Options
     OptionChainRepository,
+    OptionChainTickRepository,
   ],
 })
-export class QuestDBModule { }
+export class QuestDBModule {}
