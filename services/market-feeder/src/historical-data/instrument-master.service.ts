@@ -1,19 +1,27 @@
 /**
- * Instrument Master Service
+ * Instrument Master Service v3.0
  * Phase 1: Populate instrument_master table with all instruments
  *
  * Flow:
  * 1a. Active Instruments - NIFTY 50, VIX, constituents, current futures (with depth-5)
  * 1b. Option Chain - Get option contracts with Greeks + depth-5
  * 1c. Expired Instruments - All expired futures and options from all expiry dates
+ *
+ * Data Storage:
+ * - instrument_master: All instrument metadata
+ * - orderbook_l2_snapshots: Depth-5 data for futures and options
+ * - option_chain_snapshot: Option chain with Greeks
+ *
+ * Logging:
+ * - MongoDB IngestionLog for operation tracking
  */
 
 import { Injectable, Logger } from '@nestjs/common';
 import {
   InstrumentMasterRepository,
-  TickDataRepository,
+  OrderbookRepository,
   OptionChainRepository,
-  OptionChainTickRepository,
+  IngestionLogRepository,
 } from '@repo/database';
 import { InstrumentMaster, OptionChainSnapshot } from '@repo/schema';
 import {
@@ -23,12 +31,7 @@ import {
   NIFTY50_INDEX,
   REMOVED_NIFTY50_CONSTITUENTS,
 } from './nifty50-instruments';
-import {
-  UpstoxClient,
-  ActiveOptionContract,
-  ExpiredFutureContract,
-  ExpiredOptionContract,
-} from './upstox-client';
+import { UpstoxClient, ActiveOptionContract } from './upstox-client';
 
 export interface PopulationProgress {
   phase: string;
@@ -41,6 +44,8 @@ export interface PopulationResult {
   phase: string;
   instrumentsAdded: number;
   instrumentsSkipped: number;
+  depthSnapshotsStored: number;
+  optionChainsStored: number;
   errors: string[];
   durationMs: number;
 }
@@ -52,6 +57,9 @@ export class InstrumentMasterService {
   constructor(
     private readonly upstoxClient: UpstoxClient,
     private readonly instrumentMasterRepository: InstrumentMasterRepository,
+    private readonly orderbookRepository: OrderbookRepository,
+    private readonly optionChainRepository: OptionChainRepository,
+    private readonly ingestionLogRepository: IngestionLogRepository,
   ) {}
 
   /**
@@ -60,40 +68,82 @@ export class InstrumentMasterService {
   async populateAll(): Promise<Map<string, PopulationResult>> {
     const results = new Map<string, PopulationResult>();
 
+    // Create MongoDB log entry
+    const logEntry = await this.ingestionLogRepository.create({
+      instrumentKey: 'NSE_INDEX|Nifty 50',
+      operation: 'FETCH_DAILY',
+      requestedRange: { start: new Date(), end: new Date() },
+    });
+
     this.logger.log('='.repeat(60));
     this.logger.log('INSTRUMENT MASTER POPULATION - Starting');
+    this.logger.log(`Log ID: ${logEntry._id}`);
     this.logger.log('='.repeat(60));
 
-    // Phase 1a: Active instruments
-    this.logger.log('\n--- Phase 1a: Active Instruments ---');
-    results.set('active', await this.populateActiveInstruments());
+    try {
+      // Phase 1a: Active instruments
+      this.logger.log('\n--- Phase 1a: Active Instruments ---');
+      results.set('active', await this.populateActiveInstruments());
 
-    // Phase 1b: Option chain
-    this.logger.log('\n--- Phase 1b: Option Chain ---');
-    results.set('options', await this.populateOptionChain());
+      // Phase 1b: Option chain
+      this.logger.log('\n--- Phase 1b: Option Chain ---');
+      results.set('options', await this.populateOptionChain());
 
-    // Phase 1c: Expired instruments
-    this.logger.log('\n--- Phase 1c: Expired Instruments ---');
-    results.set('expired', await this.populateExpiredInstruments());
+      // Phase 1c: Expired instruments
+      this.logger.log('\n--- Phase 1c: Expired Instruments ---');
+      results.set('expired', await this.populateExpiredInstruments());
 
-    this.logger.log('='.repeat(60));
-    this.logger.log('INSTRUMENT MASTER POPULATION - Complete');
-    this.logger.log('='.repeat(60));
+      // Calculate totals
+      let totalAdded = 0;
+      let totalSkipped = 0;
+      let totalDepth = 0;
+      let totalChains = 0;
+      const allErrors: string[] = [];
+
+      for (const result of results.values()) {
+        totalAdded += result.instrumentsAdded;
+        totalSkipped += result.instrumentsSkipped;
+        totalDepth += result.depthSnapshotsStored;
+        totalChains += result.optionChainsStored;
+        allErrors.push(...result.errors);
+      }
+
+      // Mark success in MongoDB
+      await this.ingestionLogRepository.markSuccess(logEntry._id.toString(), {
+        candlesFetched: totalAdded,
+        candlesStored: totalAdded,
+        duplicatesSkipped: totalSkipped,
+      });
+
+      this.logger.log('='.repeat(60));
+      this.logger.log('INSTRUMENT MASTER POPULATION - Complete');
+      this.logger.log(
+        `Total: ${totalAdded} added, ${totalSkipped} skipped, ${totalDepth} depth, ${totalChains} chains`,
+      );
+      this.logger.log('='.repeat(60));
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      await this.ingestionLogRepository.markFailed(logEntry._id.toString(), {
+        code: 'POPULATION_FAILED',
+        message: msg,
+      });
+      throw error;
+    }
 
     return results;
   }
 
   /**
    * Phase 1a: Populate active instruments
-   * - NIFTY 50 Index
-   * - India VIX
+   * - NIFTY 50 Index, India VIX
    * - All constituents (current + past)
-   * - Current future contracts with depth-5
+   * - Current futures with depth-5
    */
   private async populateActiveInstruments(): Promise<PopulationResult> {
     const start = Date.now();
     let added = 0;
     let skipped = 0;
+    let depthStored = 0;
     const errors: string[] = [];
 
     try {
@@ -132,7 +182,6 @@ export class InstrumentMasterService {
         ...NIFTY50_CONSTITUENTS,
         ...REMOVED_NIFTY50_CONSTITUENTS.map((r) => r.instrumentKey),
       ];
-
       const uniqueConstituents = [...new Set(allConstituents)];
       this.logger.log(
         `Processing ${uniqueConstituents.length} constituents...`,
@@ -172,16 +221,16 @@ export class InstrumentMasterService {
       );
       const quoteData =
         await this.upstoxClient.getMarketQuoteWithDepth(NIFTY50_FUTURES);
+      const now = new Date();
 
       for (const key of NIFTY50_FUTURES) {
+        const quote = Object.values(quoteData).find(
+          (q) => q?.instrument_token === key,
+        );
         const exists = await this.instrumentMasterRepository.getByKey(key);
-        if (!exists) {
-          // Parse expiry from trading symbol (e.g., NIFTY24JANFUT)
-          const quote = Object.values(quoteData).find(
-            (q) => q?.instrument_token === key,
-          );
-          let expiry: Date | null = null;
 
+        if (!exists) {
+          let expiry: Date | null = null;
           if (quote?.symbol) {
             const match = quote.symbol.match(/(\d{2})([A-Z]{3})(\d{2})?FUT$/);
             if (match) {
@@ -229,9 +278,15 @@ export class InstrumentMasterService {
         } else {
           skipped++;
         }
+
+        // Store depth-5 in orderbook_l2_snapshots
+        if (quote?.depth) {
+          await this.orderbookRepository.insertDepth5(now, key, quote.depth);
+          depthStored += 10; // 5 bid + 5 ask levels
+        }
       }
       this.logger.log(
-        `✓ Processed ${NIFTY50_FUTURES.length} futures with depth-5`,
+        `✓ Processed ${NIFTY50_FUTURES.length} futures, ${depthStored} depth snapshots`,
       );
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -243,6 +298,8 @@ export class InstrumentMasterService {
       phase: 'active',
       instrumentsAdded: added,
       instrumentsSkipped: skipped,
+      depthSnapshotsStored: depthStored,
+      optionChainsStored: 0,
       errors,
       durationMs: Date.now() - start,
     };
@@ -250,14 +307,16 @@ export class InstrumentMasterService {
 
   /**
    * Phase 1b: Populate option chain
-   * - Get option chain with Greeks
+   * - Get option contracts with Greeks
    * - Get depth-5 for options via market quote
-   * - Store in instrument_master
+   * - Store in instrument_master and option_chain_snapshot
    */
   private async populateOptionChain(): Promise<PopulationResult> {
     const start = Date.now();
     let added = 0;
     let skipped = 0;
+    let depthStored = 0;
+    let chainsStored = 0;
     const errors: string[] = [];
 
     try {
@@ -279,60 +338,48 @@ export class InstrumentMasterService {
         }
       }
 
-      if (toInsert.length === 0) {
-        this.logger.log(
-          `✓ All ${contracts.length} option contracts already exist`,
-        );
-        return {
-          phase: 'options',
-          instrumentsAdded: 0,
-          instrumentsSkipped: skipped,
-          errors,
-          durationMs: Date.now() - start,
-        };
+      if (toInsert.length > 0) {
+        this.logger.log(`Inserting ${toInsert.length} option contracts...`);
+
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+          const batch = toInsert.slice(i, i + BATCH_SIZE);
+          const instruments: InstrumentMaster[] = batch.map((c) => ({
+            instrumentKey: c.instrument_key,
+            exchange: c.exchange,
+            segment: 'FO',
+            instrumentType: 'OPTION',
+            tradingsymbol: c.trading_symbol,
+            name: c.name,
+            expiry: new Date(c.expiry),
+            strike: c.strike_price,
+            optionType: c.instrument_type,
+            lotSize: c.lot_size,
+            tickSize: c.tick_size,
+            underlyingKey: c.underlying_key,
+            isExpired: false,
+            lastUpdated: new Date(),
+            exchangeToken: c.exchange_token,
+            underlyingSymbol: c.underlying_symbol,
+            underlyingType: c.underlying_type,
+            freezeQuantity: c.freeze_quantity,
+            minimumLot: c.minimum_lot,
+            weekly: c.weekly,
+            isActive: true,
+          }));
+
+          await this.instrumentMasterRepository.bulkInsert(instruments);
+          added += batch.length;
+        }
+        this.logger.log(`✓ Added ${added} option contracts`);
       }
-
-      this.logger.log(`Inserting ${toInsert.length} option contracts...`);
-
-      // Insert in batches
-      const BATCH_SIZE = 500;
-      for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
-        const batch = toInsert.slice(i, i + BATCH_SIZE);
-        const instruments: InstrumentMaster[] = batch.map((c) => ({
-          instrumentKey: c.instrument_key,
-          exchange: c.exchange,
-          segment: 'FO',
-          instrumentType: 'OPTION',
-          tradingsymbol: c.trading_symbol,
-          name: c.name,
-          expiry: new Date(c.expiry),
-          strike: c.strike_price,
-          optionType: c.instrument_type,
-          lotSize: c.lot_size,
-          tickSize: c.tick_size,
-          underlyingKey: c.underlying_key,
-          isExpired: false,
-          lastUpdated: new Date(),
-          exchangeToken: c.exchange_token,
-          underlyingSymbol: c.underlying_symbol,
-          underlyingType: c.underlying_type,
-          freezeQuantity: c.freeze_quantity,
-          minimumLot: c.minimum_lot,
-          weekly: c.weekly,
-          isActive: true,
-        }));
-
-        await this.instrumentMasterRepository.bulkInsert(instruments);
-        added += batch.length;
-      }
-
-      this.logger.log(`✓ Added ${added} option contracts`);
 
       // Fetch option chain with Greeks for current expiries
       const expiries = await this.upstoxClient.getActiveExpiries(NIFTY50_INDEX);
       this.logger.log(
         `Fetching Greeks for ${Math.min(expiries.length, 3)} nearest expiries...`,
       );
+      const now = new Date();
 
       for (const expiryDate of expiries.slice(0, 3)) {
         try {
@@ -343,11 +390,99 @@ export class InstrumentMasterService {
           this.logger.log(
             `✓ Fetched option chain for ${expiryDate}: ${chain.length} strikes`,
           );
-          // TODO: Store option_chain_snapshot data
+
+          // Store option chain snapshots
+          for (const item of chain) {
+            // Store call option
+            if (item.call_options?.instrument_key) {
+              const callSnapshot: OptionChainSnapshot = {
+                timestamp: now,
+                instrumentKey: item.call_options.instrument_key,
+                underlyingKey: item.underlying_key,
+                expiry: new Date(expiryDate),
+                strike: item.strike_price,
+                optionType: 'CE',
+                ltp: item.call_options.market_data.ltp,
+                bidPrice: item.call_options.market_data.bid_price,
+                askPrice: item.call_options.market_data.ask_price,
+                bidQty: item.call_options.market_data.bid_qty,
+                askQty: item.call_options.market_data.ask_qty,
+                iv: item.call_options.option_greeks.iv,
+                delta: item.call_options.option_greeks.delta,
+                gamma: item.call_options.option_greeks.gamma,
+                theta: item.call_options.option_greeks.theta,
+                vega: item.call_options.option_greeks.vega,
+                pop: item.call_options.option_greeks.pop,
+                oi: item.call_options.market_data.oi,
+                volume: item.call_options.market_data.volume,
+                underlyingSpot: item.underlying_spot_price,
+              };
+              await this.optionChainRepository.insertBatch([callSnapshot]);
+              chainsStored++;
+            }
+
+            // Store put option
+            if (item.put_options?.instrument_key) {
+              const putSnapshot: OptionChainSnapshot = {
+                timestamp: now,
+                instrumentKey: item.put_options.instrument_key,
+                underlyingKey: item.underlying_key,
+                expiry: new Date(expiryDate),
+                strike: item.strike_price,
+                optionType: 'PE',
+                ltp: item.put_options.market_data.ltp,
+                bidPrice: item.put_options.market_data.bid_price,
+                askPrice: item.put_options.market_data.ask_price,
+                bidQty: item.put_options.market_data.bid_qty,
+                askQty: item.put_options.market_data.ask_qty,
+                iv: item.put_options.option_greeks.iv,
+                delta: item.put_options.option_greeks.delta,
+                gamma: item.put_options.option_greeks.gamma,
+                theta: item.put_options.option_greeks.theta,
+                vega: item.put_options.option_greeks.vega,
+                pop: item.put_options.option_greeks.pop,
+                oi: item.put_options.market_data.oi,
+                volume: item.put_options.market_data.volume,
+                underlyingSpot: item.underlying_spot_price,
+              };
+              await this.optionChainRepository.insertBatch([putSnapshot]);
+              chainsStored++;
+            }
+          }
+
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (err) {
           errors.push(
             `Option chain ${expiryDate}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+
+      this.logger.log(`✓ Stored ${chainsStored} option chain snapshots`);
+
+      // Fetch depth-5 for some ATM options
+      const optionKeys = contracts.slice(0, 50).map((c) => c.instrument_key);
+      if (optionKeys.length > 0) {
+        try {
+          const optionQuotes =
+            await this.upstoxClient.getMarketQuoteWithDepth(optionKeys);
+          for (const key of optionKeys) {
+            const quote = Object.values(optionQuotes).find(
+              (q) => q?.instrument_token === key,
+            );
+            if (quote?.depth) {
+              await this.orderbookRepository.insertDepth5(
+                now,
+                key,
+                quote.depth,
+              );
+              depthStored += 10;
+            }
+          }
+          this.logger.log(`✓ Stored ${depthStored} option depth snapshots`);
+        } catch (err) {
+          errors.push(
+            `Option depth: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
       }
@@ -361,6 +496,8 @@ export class InstrumentMasterService {
       phase: 'options',
       instrumentsAdded: added,
       instrumentsSkipped: skipped,
+      depthSnapshotsStored: depthStored,
+      optionChainsStored: chainsStored,
       errors,
       durationMs: Date.now() - start,
     };
@@ -379,12 +516,10 @@ export class InstrumentMasterService {
     const errors: string[] = [];
 
     try {
-      // Get all expiry dates
       const expiries = await this.upstoxClient.getExpiries(NIFTY50_INDEX);
       this.logger.log(`Found ${expiries.length} historical expiry dates`);
 
-      // Process each expiry (limit to avoid API overload)
-      const maxExpiries = Math.min(expiries.length, 52); // ~1 year of weekly expiries
+      const maxExpiries = Math.min(expiries.length, 52);
 
       for (let i = 0; i < maxExpiries; i++) {
         const expiryDate = expiries[i];
@@ -418,7 +553,14 @@ export class InstrumentMasterService {
                   lastUpdated: new Date(),
                   exchangeToken: fut.exchange_token,
                   underlyingSymbol: fut.underlying_symbol,
-                  underlyingType: fut.underlying_type,
+                  underlyingType: fut.underlying_type as
+                    | 'INDEX'
+                    | 'EQUITY'
+                    | 'COMMODITY'
+                    | 'CUR'
+                    | 'IRD'
+                    | 'COM'
+                    | null,
                   freezeQuantity: fut.freeze_quantity,
                   minimumLot: fut.minimum_lot,
                 },
@@ -457,7 +599,14 @@ export class InstrumentMasterService {
                   lastUpdated: new Date(),
                   exchangeToken: opt.exchange_token,
                   underlyingSymbol: opt.underlying_symbol,
-                  underlyingType: opt.underlying_type,
+                  underlyingType: opt.underlying_type as
+                    | 'INDEX'
+                    | 'EQUITY'
+                    | 'COMMODITY'
+                    | 'CUR'
+                    | 'IRD'
+                    | 'COM'
+                    | null,
                   freezeQuantity: opt.freeze_quantity,
                   minimumLot: opt.minimum_lot,
                   weekly: opt.weekly,
@@ -471,11 +620,11 @@ export class InstrumentMasterService {
 
           if ((i + 1) % 10 === 0) {
             this.logger.log(
-              `Progress: ${i + 1}/${maxExpiries} expiries processed, ${added} added`,
+              `Progress: ${i + 1}/${maxExpiries} expiries, ${added} added`,
             );
           }
 
-          await new Promise((resolve) => setTimeout(resolve, 100)); // Rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (err) {
           errors.push(
             `Expiry ${expiryDate}: ${err instanceof Error ? err.message : String(err)}`,
@@ -496,6 +645,8 @@ export class InstrumentMasterService {
       phase: 'expired',
       instrumentsAdded: added,
       instrumentsSkipped: skipped,
+      depthSnapshotsStored: 0,
+      optionChainsStored: 0,
       errors,
       durationMs: Date.now() - start,
     };

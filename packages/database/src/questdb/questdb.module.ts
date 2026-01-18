@@ -44,6 +44,9 @@ import {
     // Options
     OptionChainRepository,
     OptionChainTickRepository,
+
+    // Orderbook
+    OrderbookRepository,
   ],
   exports: [
     QuestDBService,
