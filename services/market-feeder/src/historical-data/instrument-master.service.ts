@@ -9,7 +9,12 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { InstrumentMasterRepository, CandlesRepository } from '@repo/database';
+import {
+  InstrumentMasterRepository,
+  TickDataRepository,
+  OptionChainRepository,
+  OptionChainTickRepository,
+} from '@repo/database';
 import { InstrumentMaster, OptionChainSnapshot } from '@repo/schema';
 import {
   INDIA_VIX,
