@@ -72,3 +72,5 @@ export {
 export { UpstoxHistoricalService } from "./providers/upstox/historical.service";
 export { YahooProvider } from "./providers/yahoo/yahoo.provider";
 export { BinanceProvider } from "./providers/binance/binance.provider";
+
+

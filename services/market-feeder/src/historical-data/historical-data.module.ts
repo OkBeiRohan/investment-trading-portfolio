@@ -1,30 +1,77 @@
-import { Module } from '@nestjs/common';
-import { HistoricalDataBootstrapService } from './historical-data.service';
-import { HistoricalDataController } from './historical-data.controller';
-import { SimpleUpstoxClient } from './simple-client';
-import { HttpModule } from '@nestjs/axios';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { QuestDBModule } from '@repo/database';
+/**
+ * Historical Data Pipeline Module
+ * 
+ * Architecture:
+ * - DataFetcherService: Fetches data from Upstox via @repo/market-sdk
+ * - DataProcessorService: Transforms raw data for compute-engine
+ * - FeatureComputeService: Computes features using Rust compute-engine
+ * - LabelGeneratorService: Generates training labels
+ * - PipelineOrchestratorService: Coordinates the full pipeline
+ * 
+ * Data Sources:
+ * - market-sdk → UpstoxHistoricalService for API calls
+ * - QuestDB → market_candles for storage
+ * - compute-engine → Rust FFI for feature computation
+ */
+
+import { Module } from "@nestjs/common";
+import { HttpModule } from "@nestjs/axios";
+import { DatabaseModule } from "@repo/database";
+
+// Data Fetching
+import { DataFetcherService } from "./data-fetcher.service";
+import { SimpleUpstoxClient } from "./simple-client";
+
+// Data Processing
+import { DailyCandleProcessor } from "./processors/daily-candle.processor";
+import { MinuteCandleProcessor } from "./processors/minute-candle.processor";
+
+// Feature & Label Generation
+import { DailyFeatureService } from "./features/daily-feature.service";
+import { DailyLabelService } from "./labels/daily-label.service";
+
+// Orchestration
+import { PipelineOrchestratorService } from "./pipeline-orchestrator.service";
+
+// Legacy (for backward compatibility)
+import { HistoricalDataBootstrapService } from "./historical-data.service";
+import { TimeframeStrategy } from "./timeframe-strategy";
 
 @Module({
   imports: [
-    QuestDBModule,
-    HttpModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        baseURL: 'https://api.upstox.com',
-        headers: {
-          Authorization: `Bearer ${configService.getOrThrow<string>('UPSTOX_ACCESS_TOKEN')}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        timeout: 30000,
-      }),
-      inject: [ConfigService],
+    HttpModule.register({
+      timeout: 30000,
+      maxRedirects: 5,
     }),
+    DatabaseModule,
   ],
-  controllers: [HistoricalDataController],
-  providers: [HistoricalDataBootstrapService, SimpleUpstoxClient],
-  exports: [HistoricalDataBootstrapService],
+  providers: [
+    // Data Fetching
+    SimpleUpstoxClient,
+    DataFetcherService,
+
+    // Processors
+    DailyCandleProcessor,
+    MinuteCandleProcessor,
+
+    // Feature & Label Services
+    DailyFeatureService,
+    DailyLabelService,
+
+    // Orchestration
+    PipelineOrchestratorService,
+
+    // Legacy
+    HistoricalDataBootstrapService,
+    TimeframeStrategy,
+  ],
+  exports: [
+    DataFetcherService,
+    DailyFeatureService,
+    DailyLabelService,
+    PipelineOrchestratorService,
+    HistoricalDataBootstrapService,
+    SimpleUpstoxClient,
+  ],
 })
-export class HistoricalDataModule {}
+export class HistoricalDataModule { }
