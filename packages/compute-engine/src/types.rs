@@ -7,6 +7,54 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 // ============================================
+// FEATURE MODE
+// ============================================
+
+/// Feature computation mode (Historical vs Live)
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS, PartialEq)]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[napi]
+pub enum FeatureMode {
+  /// Historical mode: No market depth, compute Greeks from IV
+  /// Used for training on 2022-2026 1-minute data
+  Historical,
+  /// Live mode: Full depth-30, pre-computed Greeks from exchange
+  /// Used for real-time inference
+  Live,
+}
+
+impl Default for FeatureMode {
+  fn default() -> Self {
+    FeatureMode::Historical
+  }
+}
+
+// ============================================
+// MARKET DEPTH (for Live mode)
+// ============================================
+
+/// Single level of order book depth
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[napi(object)]
+pub struct DepthLevel {
+  pub price: f64,
+  pub quantity: i64,
+  pub orders: Option<i32>,
+}
+
+/// Full market depth (30 levels bid/ask)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[napi(object)]
+pub struct MarketDepth {
+  pub bids: Vec<DepthLevel>,   // Up to 30 levels
+  pub asks: Vec<DepthLevel>,   // Up to 30 levels
+  pub total_bid_qty: i64,
+  pub total_ask_qty: i64,
+}
+
+// ============================================
 // INPUT TYPES
 // ============================================
 

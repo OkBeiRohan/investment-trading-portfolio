@@ -27,7 +27,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     private readonly instrumentMasterRepository: InstrumentMasterRepository,
     private readonly configService: ConfigService,
     private readonly upstoxClient: SimpleUpstoxClient,
-  ) {}
+  ) { }
 
   onModuleInit() {
     // Auto-bootstrap on startup (can be disabled via env var)
@@ -43,175 +43,202 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
   /**
    * Bootstrap historical data for NIFTY50 ecosystem
-   * Checks for missing data and fetches from Upstox
+   * Full 26-year range: 2000-2026
+   * 
+   * Upstox API Availability:
+   * - Daily candles: Available for all history (2000+)
+   * - Minute candles: Only from Jan 2022 (Upstox V3 API limit)
+   * 
+   * Rate Limits:
+   * - 50 requests/second
+   * - 500 requests/minute
+   * - Delay: 25ms between requests (safe buffer)
    */
   async bootstrapHistoricalData(): Promise<void> {
-    const twoYearsAgo = new Date();
-    twoYearsAgo.setMonth(twoYearsAgo.getMonth() - 24);
-
+    // Date ranges based on Upstox API availability
+    const DAILY_START = new Date('2000-01-01');
+    const MINUTE_START = new Date('2022-01-01');
+    const VIX_START = new Date('2014-02-26'); // India VIX launched Feb 26, 2014
     const today = new Date();
 
-    // Instruments to fetch
-    const instruments = [
-      NIFTY50_INDEX,
-      INDIA_VIX,
+    // Core instruments
+    const indexInstruments = [NIFTY50_INDEX, INDIA_VIX];
+    const stockInstruments = [
       ...NIFTY50_CONSTITUENTS,
       ...REMOVED_NIFTY50_CONSTITUENTS.map((c) => c.instrumentKey),
     ];
 
-    this.logger.log(
-      `Bootstrapping historical data for ${instruments.length} instruments + futures`,
-    );
-    this.logger.log(
-      `Date range: ${twoYearsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`,
-    );
+    this.logger.log('='.repeat(60));
+    this.logger.log('HISTORICAL DATA BOOTSTRAP - 2000-2026');
+    this.logger.log('='.repeat(60));
+    this.logger.log(`Daily candles: ${DAILY_START.toISOString().split('T')[0]} to today`);
+    this.logger.log(`Minute candles: ${MINUTE_START.toISOString().split('T')[0]} to today`);
+    this.logger.log(`Instruments: ${indexInstruments.length} indices, ${stockInstruments.length} stocks`);
 
     // Step 1: Populate instrument_master table
-    await this.populateInstrumentMaster([NIFTY50_INDEX, INDIA_VIX], 'SPOT');
-    await this.populateInstrumentMaster(
-      [
-        ...NIFTY50_CONSTITUENTS,
-        ...REMOVED_NIFTY50_CONSTITUENTS.map((c) => c.instrumentKey),
-      ],
-      'STOCK',
-    );
+    await this.populateInstrumentMaster([NIFTY50_INDEX], 'SPOT');
+    await this.populateInstrumentMaster([INDIA_VIX], 'SPOT');
+    await this.populateInstrumentMaster(stockInstruments, 'STOCK');
 
-    // Step 2: Fetch NIFTY50 futures dynamically based on expiries in the date range
+    // Step 2: Fetch NIFTY50 futures dynamically
     const { activeFutures, expiredContracts } =
-      await this.getFuturesForDateRange(NIFTY50_INDEX, twoYearsAgo, today);
+      await this.getFuturesForDateRange(NIFTY50_INDEX, MINUTE_START, today);
 
     this.logger.log(
       `Found ${activeFutures.length} active futures + ${expiredContracts.length} expired futures`,
     );
 
-    // Populate instrument_master for active futures (fetch from market quote API)
     await this.populateInstrumentMaster(activeFutures, 'FUTURE');
-
-    // Populate instrument_master for expired futures (use already-fetched contract data)
     await this.populateExpiredFutures(expiredContracts);
 
-    // Combine all futures for candle fetching
     const allFutureKeys = [
       ...activeFutures,
       ...expiredContracts.map((c) => c.instrument_key),
     ];
-    instruments.push(...allFutureKeys);
 
-    // Step 3: Fetch and insert historical candles
+    // Step 3: Fetch DAILY candles first (2000-2026 for indices/stocks, based on available history)
+    this.logger.log('\n--- Phase 1: Daily Candles (2000-2026) ---');
+    await this.fetchDailyCandles([NIFTY50_INDEX], DAILY_START, today);
+    await this.fetchDailyCandles([INDIA_VIX], VIX_START, today); // VIX only from 2014
+    await this.fetchDailyCandles(stockInstruments, DAILY_START, today);
+    await this.fetchDailyCandles(allFutureKeys, MINUTE_START, today); // Futures only recent
 
-    let totalFetched = 0;
-    let skipped = 0;
-
-    for (const instrumentKey of instruments) {
-      try {
-        this.logger.log(`Checking if data exists for ${instrumentKey}...`);
-
-        // Simple check: if any data exists, skip
-        const hasData = await this.hasDataInRange(
-          instrumentKey,
-          twoYearsAgo,
-          today,
-        );
-
-        if (hasData) {
-          this.logger.log(
-            `✓ Data already exists for ${instrumentKey}, skipping`,
-          );
-          skipped++;
-          continue;
-        }
-
-        this.logger.log(
-          `No data found for ${instrumentKey}, fetching from ${twoYearsAgo.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}...`,
-        );
-
-        // DEMO VERSION: Fetch and insert directly in client (see SimpleUpstoxClient.getHistoricalCandlesBatched)
-        let upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
-          instrumentKey,
-          'minutes',
-          1,
-          twoYearsAgo,
-          today,
-        );
-
-        if (!upstoxCandles || upstoxCandles.length === 0) {
-          this.logger.warn(`No data returned for ${instrumentKey}`);
-
-          // try again with 5 minute interval
-          this.logger.log(
-            `Retrying with 5 minute interval for ${instrumentKey}...`,
-          );
-          upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
-            instrumentKey,
-            'minutes',
-            5,
-            twoYearsAgo,
-            today,
-          );
-
-          if (!upstoxCandles || upstoxCandles.length === 0) {
-            // try again with 30 minute interval
-            this.logger.warn(
-              `No data returned for ${instrumentKey} at 5 minute interval either, skipping.`,
-            );
-
-            upstoxCandles = await this.upstoxClient.getHistoricalCandlesBatched(
-              instrumentKey,
-              'minutes',
-              30,
-              twoYearsAgo,
-              today,
-            );
-
-            if (!upstoxCandles || upstoxCandles.length === 0) {
-              this.logger.error(
-                `No data returned for ${instrumentKey} at 30 minute interval either, skipping.`,
-              );
-
-              continue;
-            }
-          }
-        }
-
-        totalFetched += upstoxCandles.length;
-
-        this.logger.log(
-          `✓ Fetched and inserted ${upstoxCandles.length} candles for ${instrumentKey}`,
-        );
-
-        // Rate limiting: wait 500ms between instruments
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          `Failed to fetch data for ${instrumentKey}: ${errorMessage}`,
-        );
-      }
-    }
+    // Step 4: Fetch MINUTE candles (2022-2026)
+    this.logger.log('\n--- Phase 2: Minute Candles (2022-2026) ---');
+    await this.fetchMinuteCandles([NIFTY50_INDEX, INDIA_VIX], MINUTE_START, today);
+    await this.fetchMinuteCandles(stockInstruments, MINUTE_START, today);
+    await this.fetchMinuteCandles(allFutureKeys, MINUTE_START, today);
 
     this.logger.log('='.repeat(60));
-    this.logger.log(`Bootstrap complete:`);
-    this.logger.log(`  - Total instruments: ${instruments.length}`);
-    this.logger.log(`  - Skipped (existing): ${skipped}`);
-    this.logger.log(`  - Fetched: ${instruments.length - skipped}`);
-    this.logger.log(`  - Total candles inserted: ${totalFetched}`);
+    this.logger.log('Bootstrap complete!');
     this.logger.log('='.repeat(60));
   }
 
   /**
+   * Fetch daily candles for a list of instruments
+   */
+  private async fetchDailyCandles(
+    instrumentKeys: string[],
+    startDate: Date,
+    endDate: Date,
+  ): Promise<void> {
+    let fetched = 0;
+    let skipped = 0;
+
+    for (const instrumentKey of instrumentKeys) {
+      try {
+        const hasData = await this.hasDataInRange(instrumentKey, startDate, endDate, 'days');
+        if (hasData) {
+          this.logger.debug(`✓ Daily data exists for ${instrumentKey}, skipping`);
+          skipped++;
+          continue;
+        }
+
+        this.logger.log(`Fetching daily candles for ${instrumentKey}...`);
+        const candles = await this.upstoxClient.getHistoricalCandlesBatched(
+          instrumentKey,
+          'days',
+          1,
+          startDate,
+          endDate,
+        );
+
+        if (candles && candles.length > 0) {
+          fetched += candles.length;
+          this.logger.log(`✓ Fetched ${candles.length} daily candles for ${instrumentKey}`);
+        } else {
+          this.logger.warn(`No daily data for ${instrumentKey}`);
+        }
+
+        // Rate limit: 25ms between requests (safe for 50 req/sec)
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Daily fetch failed for ${instrumentKey}: ${msg}`);
+      }
+    }
+
+    this.logger.log(`Daily phase: ${fetched} candles fetched, ${skipped} skipped`);
+  }
+
+  /**
+   * Fetch minute candles for a list of instruments (2022+)
+   */
+  private async fetchMinuteCandles(
+    instrumentKeys: string[],
+    startDate: Date,
+    endDate: Date,
+  ): Promise<void> {
+    let fetched = 0;
+    let skipped = 0;
+
+    for (const instrumentKey of instrumentKeys) {
+      try {
+        const hasData = await this.hasDataInRange(instrumentKey, startDate, endDate, 'minutes');
+        if (hasData) {
+          this.logger.debug(`✓ Minute data exists for ${instrumentKey}, skipping`);
+          skipped++;
+          continue;
+        }
+
+        this.logger.log(`Fetching minute candles for ${instrumentKey}...`);
+        const candles = await this.upstoxClient.getHistoricalCandlesBatched(
+          instrumentKey,
+          'minutes',
+          1,
+          startDate,
+          endDate,
+        );
+
+        if (candles && candles.length > 0) {
+          fetched += candles.length;
+          this.logger.log(`✓ Fetched ${candles.length} minute candles for ${instrumentKey}`);
+        } else {
+          // Try 5-minute if 1-minute fails
+          const candles5m = await this.upstoxClient.getHistoricalCandlesBatched(
+            instrumentKey,
+            'minutes',
+            5,
+            startDate,
+            endDate,
+          );
+          if (candles5m && candles5m.length > 0) {
+            fetched += candles5m.length;
+            this.logger.log(`✓ Fetched ${candles5m.length} x 5-min candles for ${instrumentKey}`);
+          } else {
+            this.logger.warn(`No minute data for ${instrumentKey}`);
+          }
+        }
+
+        // Rate limit: 25ms between requests
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Minute fetch failed for ${instrumentKey}: ${msg}`);
+      }
+    }
+
+    this.logger.log(`Minute phase: ${fetched} candles fetched, ${skipped} skipped`);
+  }
+
+  /**
    * Simple check if candle data already exists for the instrument in the given time range
+   * @param instrumentKey - Instrument to check
+   * @param startDate - Start of range
+   * @param endDate - End of range
+   * @param intervalUnit - 'days' or 'minutes'
    * @returns true if data exists, false otherwise
    */
   private async hasDataInRange(
     instrumentKey: string,
     startDate: Date,
     endDate: Date,
+    intervalUnit: 'days' | 'minutes' = 'minutes',
   ): Promise<boolean> {
     const existingCandles = await this.candlesRepository.findByTimeRange(
       instrumentKey,
       1, // interval_value
-      'minute', // interval_unit
+      intervalUnit === 'days' ? 'day' : 'minute', // interval_unit
       startDate,
       endDate,
       1, // Just check if ANY candle exists
@@ -279,8 +306,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       };
     } catch (error) {
       this.logger.error(
-        `Error fetching futures for date range: ${
-          error instanceof Error ? error.message : String(error)
+        `Error fetching futures for date range: ${error instanceof Error ? error.message : String(error)
         }`,
       );
       // Fallback to hardcoded futures if API fails
@@ -358,8 +384,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         );
     } catch (error) {
       this.logger.error(
-        `Failed to populate expired futures: ${
-          error instanceof Error ? error.message : String(error)
+        `Failed to populate expired futures: ${error instanceof Error ? error.message : String(error)
         }`,
       );
     }
@@ -433,8 +458,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     } catch (error) {
       const errorMessage = isAxiosError(error)
         ? `Axios error: ${error.message}, Response data: ${JSON.stringify(
-            error.response?.data,
-          )}. Status: ${error.response?.status}`
+          error.response?.data,
+        )}. Status: ${error.response?.status}`
         : error instanceof Error
           ? error.message
           : String(error);
