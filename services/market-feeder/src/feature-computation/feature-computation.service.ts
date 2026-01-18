@@ -389,7 +389,7 @@ export class FeatureComputationService {
             high: futuresCandle.high,
             low: futuresCandle.low,
             close: futuresCandle.close,
-            volume: futuresCandle.volume,
+            volume: futuresCandle.volume ?? 0,
             openInterest: futuresCandle.openInterest ?? 0,
           }
         : {
@@ -405,7 +405,7 @@ export class FeatureComputationService {
         symbol: candle.instrumentKey,
         ltp: candle.close,
         open: candle.open,
-        volume: candle.volume,
+        volume: candle.volume ?? 0,
       })),
       options: [], // Placeholder for now - will add option chain data later
       indiaVix: indiaVixCandle?.close, // Use close price from India VIX candle
