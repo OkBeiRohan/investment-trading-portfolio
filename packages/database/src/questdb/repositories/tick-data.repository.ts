@@ -1,11 +1,12 @@
 /**
  * Tick Data Repository
  * Repository for depth-30 live tick data storage
- * Stores full order book with 30 levels bid/ask + Greeks
+ * Uses SQL queries from @repo/schema/sql/tick-data/
  */
 
 import { Injectable, Logger } from "@nestjs/common";
-import { Pool } from "pg";
+import { Pool, QueryResultRow } from "pg";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 
 export interface TickData {
     timestamp: Date;
@@ -56,13 +57,8 @@ export class TickDataRepository {
      * Get latest tick for instrument
      */
     async findLatest(instrumentKey: string): Promise<TickData | null> {
-        const result = await this.pool.query(
-            `SELECT * FROM tick_data 
-       WHERE instrument_key = $1 
-       ORDER BY timestamp DESC 
-       LIMIT 1`,
-            [instrumentKey]
-        );
+        const sql = loadSqlQueryCached("tick-data/get-latest");
+        const result = await this.pool.query(sql, [instrumentKey]);
 
         if (result.rows.length === 0) return null;
         return this.mapRow(result.rows[0]);
@@ -77,17 +73,15 @@ export class TickDataRepository {
         endTime: Date,
         limit = 10000
     ): Promise<TickData[]> {
-        const result = await this.pool.query(
-            `SELECT * FROM tick_data 
-       WHERE instrument_key = $1 
-       AND timestamp >= $2 
-       AND timestamp <= $3 
-       ORDER BY timestamp ASC 
-       LIMIT $4`,
-            [instrumentKey, startTime.toISOString(), endTime.toISOString(), limit]
-        );
+        const sql = loadSqlQueryCached("tick-data/get-by-time-range");
+        const result = await this.pool.query(sql, [
+            instrumentKey,
+            startTime.toISOString(),
+            endTime.toISOString(),
+            limit
+        ]);
 
-        return result.rows.map((row) => this.mapRow(row));
+        return result.rows.map((row: QueryResultRow) => this.mapRow(row));
     }
 
     /**
@@ -98,16 +92,12 @@ export class TickDataRepository {
         startTime: Date,
         endTime: Date
     ): Promise<{ avgImbalance: number; count: number }> {
-        const result = await this.pool.query(
-            `SELECT 
-         AVG((tbq - tsq) / NULLIF(tbq + tsq, 0)) as avg_imbalance,
-         COUNT(*) as count
-       FROM tick_data 
-       WHERE instrument_key = $1 
-       AND timestamp >= $2 
-       AND timestamp <= $3`,
-            [instrumentKey, startTime.toISOString(), endTime.toISOString()]
-        );
+        const sql = loadSqlQueryCached("tick-data/get-depth-imbalance");
+        const result = await this.pool.query(sql, [
+            instrumentKey,
+            startTime.toISOString(),
+            endTime.toISOString()
+        ]);
 
         return {
             avgImbalance: parseFloat(result.rows[0]?.avg_imbalance || 0),
@@ -156,40 +146,40 @@ export class TickDataRepository {
         return `(${vals.join(", ")})`;
     }
 
-    private mapRow(row: any): TickData {
+    private mapRow(row: QueryResultRow): TickData {
         const bidPrices: number[] = [];
         const bidQtys: number[] = [];
         const askPrices: number[] = [];
         const askQtys: number[] = [];
 
         for (let i = 1; i <= 30; i++) {
-            bidPrices.push(parseFloat(row[`bid_price_${i}`]) || 0);
-            bidQtys.push(parseInt(row[`bid_qty_${i}`]) || 0);
-            askPrices.push(parseFloat(row[`ask_price_${i}`]) || 0);
-            askQtys.push(parseInt(row[`ask_qty_${i}`]) || 0);
+            bidPrices.push(parseFloat(row[`bid_price_${i}`] as string) || 0);
+            bidQtys.push(parseInt(row[`bid_qty_${i}`] as string) || 0);
+            askPrices.push(parseFloat(row[`ask_price_${i}`] as string) || 0);
+            askQtys.push(parseInt(row[`ask_qty_${i}`] as string) || 0);
         }
 
         return {
-            timestamp: new Date(row.timestamp),
-            instrumentKey: row.instrument_key,
-            ltp: parseFloat(row.ltp),
-            ltq: parseInt(row.ltq),
-            cp: parseFloat(row.cp),
-            atp: parseFloat(row.atp),
-            vtt: parseInt(row.vtt),
-            oi: parseInt(row.oi),
-            tbq: parseInt(row.tbq),
-            tsq: parseInt(row.tsq),
+            timestamp: new Date(row.timestamp as string),
+            instrumentKey: row.instrument_key as string,
+            ltp: parseFloat(row.ltp as string),
+            ltq: parseInt(row.ltq as string),
+            cp: parseFloat(row.cp as string),
+            atp: parseFloat(row.atp as string),
+            vtt: parseInt(row.vtt as string),
+            oi: parseInt(row.oi as string),
+            tbq: parseInt(row.tbq as string),
+            tsq: parseInt(row.tsq as string),
             bidPrices,
             bidQtys,
             askPrices,
             askQtys,
-            delta: row.delta ? parseFloat(row.delta) : undefined,
-            theta: row.theta ? parseFloat(row.theta) : undefined,
-            gamma: row.gamma ? parseFloat(row.gamma) : undefined,
-            vega: row.vega ? parseFloat(row.vega) : undefined,
-            rho: row.rho ? parseFloat(row.rho) : undefined,
-            iv: row.iv ? parseFloat(row.iv) : undefined,
+            delta: row.delta ? parseFloat(row.delta as string) : undefined,
+            theta: row.theta ? parseFloat(row.theta as string) : undefined,
+            gamma: row.gamma ? parseFloat(row.gamma as string) : undefined,
+            vega: row.vega ? parseFloat(row.vega as string) : undefined,
+            rho: row.rho ? parseFloat(row.rho as string) : undefined,
+            iv: row.iv ? parseFloat(row.iv as string) : undefined,
         };
     }
 }

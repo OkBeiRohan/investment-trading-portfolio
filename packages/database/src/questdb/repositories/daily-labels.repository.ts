@@ -1,11 +1,12 @@
 /**
  * Daily Labels Repository
  * Repository for training_labels_1d table
- * Used for 26-year regime model training (2000-2026)
+ * Uses SQL queries from @repo/schema/sql/daily-labels/
  */
 
 import { Injectable, Logger } from "@nestjs/common";
-import { Pool } from "pg";
+import { Pool, QueryResultRow } from "pg";
+import { loadSqlQueryCached } from "../utils/sql-loader";
 
 export interface TrainingLabels1d {
     timestamp: Date;
@@ -22,18 +23,18 @@ export interface TrainingLabels1d {
     targetMaxDrawdown5d: number;
 
     // Classification Targets
-    targetDirection1d: number;   // -1, 0, 1
+    targetDirection1d: number;
     targetDirection5d: number;
     targetDirection20d: number;
 
     // Regime Labels
-    regimeLabel: string;         // 'BULL', 'BEAR', 'RANGING', 'VOLATILE'
+    regimeLabel: string;
     regimeConfidence: number;
 
     // Event Flags
     hadRegimeChange: boolean;
-    hadCrash: boolean;           // >5% single day drop
-    hadRally: boolean;           // >5% single day gain
+    hadCrash: boolean;
+    hadRally: boolean;
 
     // Validity
     isValid: boolean;
@@ -52,16 +53,7 @@ export class DailyLabelsRepository {
     async insertBatch(labels: TrainingLabels1d[]): Promise<void> {
         if (labels.length === 0) return;
 
-        const columns = [
-            "timestamp", "instrument_key",
-            "target_return_1d", "target_return_5d", "target_return_20d",
-            "target_volatility_5d", "target_volatility_20d", "target_max_drawdown_5d",
-            "target_direction_1d", "target_direction_5d", "target_direction_20d",
-            "regime_label", "regime_confidence",
-            "had_regime_change", "had_crash", "had_rally",
-            "is_valid", "invalid_reason"
-        ].join(", ");
-
+        const sqlPrefix = loadSqlQueryCached("daily-labels/insert-batch-prefix");
         const values = labels.map((l) => {
             return `('${l.timestamp.toISOString()}', '${l.instrumentKey}',
         ${l.targetReturn1d}, ${l.targetReturn5d}, ${l.targetReturn20d},
@@ -72,7 +64,7 @@ export class DailyLabelsRepository {
         ${l.isValid}, ${l.invalidReason ? `'${l.invalidReason}'` : "NULL"})`;
         }).join(",");
 
-        const query = `INSERT INTO training_labels_1d (${columns}) VALUES ${values}`;
+        const query = `${sqlPrefix}${values}`;
         await this.pool.query(query);
         this.logger.log(`Inserted ${labels.length} daily labels`);
     }
@@ -86,18 +78,15 @@ export class DailyLabelsRepository {
         endTime: Date,
         limit = 10000
     ): Promise<TrainingLabels1d[]> {
-        const result = await this.pool.query(
-            `SELECT * FROM training_labels_1d 
-       WHERE instrument_key = $1 
-       AND timestamp >= $2 
-       AND timestamp <= $3
-       AND is_valid = true
-       ORDER BY timestamp ASC 
-       LIMIT $4`,
-            [instrumentKey, startTime.toISOString(), endTime.toISOString(), limit]
-        );
+        const sql = loadSqlQueryCached("daily-labels/get-by-time-range");
+        const result = await this.pool.query(sql, [
+            instrumentKey,
+            startTime.toISOString(),
+            endTime.toISOString(),
+            limit
+        ]);
 
-        return result.rows.map((row) => this.mapRow(row));
+        return result.rows.map((row: QueryResultRow) => this.mapRow(row));
     }
 
     /**
@@ -108,21 +97,14 @@ export class DailyLabelsRepository {
         startYear: number,
         endYear: number
     ): Promise<TrainingLabels1d[]> {
-        const result = await this.pool.query(
-            `SELECT * FROM training_labels_1d 
-       WHERE instrument_key = $1 
-       AND timestamp >= $2 
-       AND timestamp <= $3
-       AND is_valid = true
-       ORDER BY timestamp ASC`,
-            [
-                instrumentKey,
-                `${startYear}-01-01T00:00:00Z`,
-                `${endYear}-12-31T23:59:59Z`
-            ]
-        );
+        const sql = loadSqlQueryCached("daily-labels/get-for-training");
+        const result = await this.pool.query(sql, [
+            instrumentKey,
+            `${startYear}-01-01T00:00:00Z`,
+            `${endYear}-12-31T23:59:59Z`
+        ]);
 
-        return result.rows.map((row) => this.mapRow(row));
+        return result.rows.map((row: QueryResultRow) => this.mapRow(row));
     }
 
     /**
@@ -133,39 +115,36 @@ export class DailyLabelsRepository {
         startTime: Date,
         endTime: Date
     ): Promise<TrainingLabels1d[]> {
-        const result = await this.pool.query(
-            `SELECT * FROM training_labels_1d 
-       WHERE instrument_key = $1 
-       AND timestamp >= $2 
-       AND timestamp <= $3
-       AND had_regime_change = true
-       ORDER BY timestamp ASC`,
-            [instrumentKey, startTime.toISOString(), endTime.toISOString()]
-        );
+        const sql = loadSqlQueryCached("daily-labels/get-regime-changes");
+        const result = await this.pool.query(sql, [
+            instrumentKey,
+            startTime.toISOString(),
+            endTime.toISOString()
+        ]);
 
-        return result.rows.map((row) => this.mapRow(row));
+        return result.rows.map((row: QueryResultRow) => this.mapRow(row));
     }
 
-    private mapRow(row: any): TrainingLabels1d {
+    private mapRow(row: QueryResultRow): TrainingLabels1d {
         return {
-            timestamp: new Date(row.timestamp),
-            instrumentKey: row.instrument_key,
-            targetReturn1d: parseFloat(row.target_return_1d),
-            targetReturn5d: parseFloat(row.target_return_5d),
-            targetReturn20d: parseFloat(row.target_return_20d),
-            targetVolatility5d: parseFloat(row.target_volatility_5d),
-            targetVolatility20d: parseFloat(row.target_volatility_20d),
-            targetMaxDrawdown5d: parseFloat(row.target_max_drawdown_5d),
-            targetDirection1d: parseInt(row.target_direction_1d),
-            targetDirection5d: parseInt(row.target_direction_5d),
-            targetDirection20d: parseInt(row.target_direction_20d),
-            regimeLabel: row.regime_label,
-            regimeConfidence: parseFloat(row.regime_confidence),
-            hadRegimeChange: row.had_regime_change,
-            hadCrash: row.had_crash,
-            hadRally: row.had_rally,
-            isValid: row.is_valid,
-            invalidReason: row.invalid_reason || undefined,
+            timestamp: new Date(row.timestamp as string),
+            instrumentKey: row.instrument_key as string,
+            targetReturn1d: parseFloat(row.target_return_1d as string),
+            targetReturn5d: parseFloat(row.target_return_5d as string),
+            targetReturn20d: parseFloat(row.target_return_20d as string),
+            targetVolatility5d: parseFloat(row.target_volatility_5d as string),
+            targetVolatility20d: parseFloat(row.target_volatility_20d as string),
+            targetMaxDrawdown5d: parseFloat(row.target_max_drawdown_5d as string),
+            targetDirection1d: parseInt(row.target_direction_1d as string),
+            targetDirection5d: parseInt(row.target_direction_5d as string),
+            targetDirection20d: parseInt(row.target_direction_20d as string),
+            regimeLabel: row.regime_label as string,
+            regimeConfidence: parseFloat(row.regime_confidence as string),
+            hadRegimeChange: row.had_regime_change as boolean,
+            hadCrash: row.had_crash as boolean,
+            hadRally: row.had_rally as boolean,
+            isValid: row.is_valid as boolean,
+            invalidReason: (row.invalid_reason as string) || undefined,
         };
     }
 }
