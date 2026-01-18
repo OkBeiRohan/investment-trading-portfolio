@@ -76,11 +76,9 @@ export class CandleFetcherService {
 
     // Create MongoDB log entry
     const logEntry = await this.ingestionLogRepository.create({
-      source: 'UPSTOX',
-      dataType: 'CANDLES',
-      instrumentKey: 'ALL',
-      intervalUnit: 'day',
-      intervalValue: 1,
+      instrumentKey: 'NSE_INDEX|Nifty 50',
+      operation: 'FETCH_DAILY',
+      requestedRange: { start: new Date('2000-01-01'), end: now },
     });
 
     this.logger.log('='.repeat(60));
@@ -573,12 +571,9 @@ export class CandleFetcherService {
   ): Promise<{ candlesFetched: number; error?: string }> {
     // Log to MongoDB
     const logEntry = await this.ingestionLogRepository.create({
-      source: 'UPSTOX',
-      dataType: 'CANDLES',
       instrumentKey,
-      intervalUnit: interval,
-      intervalValue: 1,
-      dateRange: { start: startDate, end: endDate },
+      operation: interval === 'day' ? 'FETCH_DAILY' : 'FETCH_MINUTE',
+      requestedRange: { start: startDate, end: endDate },
     });
 
     try {

@@ -402,7 +402,7 @@ export class InstrumentMasterService {
                 expiry: new Date(expiryDate),
                 strike: item.strike_price,
                 optionType: 'CE',
-                ltp: item.call_options.market_data.ltp,
+                lastPrice: item.call_options.market_data.ltp,
                 bidPrice: item.call_options.market_data.bid_price,
                 askPrice: item.call_options.market_data.ask_price,
                 bidQty: item.call_options.market_data.bid_qty,
@@ -413,9 +413,8 @@ export class InstrumentMasterService {
                 theta: item.call_options.option_greeks.theta,
                 vega: item.call_options.option_greeks.vega,
                 pop: item.call_options.option_greeks.pop,
-                oi: item.call_options.market_data.oi,
+                openInterest: item.call_options.market_data.oi,
                 volume: item.call_options.market_data.volume,
-                underlyingSpot: item.underlying_spot_price,
               };
               await this.optionChainRepository.insertBatch([callSnapshot]);
               chainsStored++;
@@ -430,7 +429,7 @@ export class InstrumentMasterService {
                 expiry: new Date(expiryDate),
                 strike: item.strike_price,
                 optionType: 'PE',
-                ltp: item.put_options.market_data.ltp,
+                lastPrice: item.put_options.market_data.ltp,
                 bidPrice: item.put_options.market_data.bid_price,
                 askPrice: item.put_options.market_data.ask_price,
                 bidQty: item.put_options.market_data.bid_qty,
@@ -441,9 +440,8 @@ export class InstrumentMasterService {
                 theta: item.put_options.option_greeks.theta,
                 vega: item.put_options.option_greeks.vega,
                 pop: item.put_options.option_greeks.pop,
-                oi: item.put_options.market_data.oi,
+                openInterest: item.put_options.market_data.oi,
                 volume: item.put_options.market_data.volume,
-                underlyingSpot: item.underlying_spot_price,
               };
               await this.optionChainRepository.insertBatch([putSnapshot]);
               chainsStored++;
