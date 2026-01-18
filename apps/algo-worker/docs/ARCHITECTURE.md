@@ -21,17 +21,19 @@ This implementation follows the comprehensive [Algo Trading Architecture](../../
 ### 2. Cortex (Feature Engineering + Market State Encoder)
 
 - **Service**: `MarketStateEncoder`, `FeatureEngineService`, `FeatureCacheService`, `IndexAggregator`, `BreadthComputer`, `AlignmentScorer`, `LOBTensorBuilder`, `RegimeFeatureBuilder`, `ExecutionStateBuilder`
-- **Tech**: TypeScript + TypedArrays, vectorized operations, SharedArrayBuffer for zero-copy
-- **Architecture**: Multi-instrument aggregation → model-specific compressed views
+- **Tech**: **Rust compute-engine (NAPI-RS)** + TypedArrays, parallel computation via Rayon
+- **Architecture**: Multi-instrument aggregation → **54 features** in <5ms
 - **Key Principle**: Models NEVER see raw 50+ instruments, they see aggregated state
-- **Inputs**: NIFTY FUTURE (OHLCV + LOB depth-20) + 50 constituents (OHLCV + depth) + Option chain (Greeks + OI + LOB)
-- **Outputs**:
-  - LightGBM: Float32Array(33) - index aggregation + futures + options + time context
-  - TFT: Float32Array(120×15) - temporal aggregates for regime classification
-  - LiT: Float32Array(60×80) - NIFTY FUTURE LOB tensors only
-  - DRL PPO: Execution state (option LOB + underlying + order state)
+- **Inputs**: NIFTY FUTURE (OHLCV + LOB depth-20) + 50 constituents + Option chain (Greeks + OI + LOB)
+- **Outputs** (54 features):
+  - Index Breadth (8): `pct_stocks_above_vwap`, `breadth_thrust`, etc.
+  - NIFTY Future (12): `fut_rsi_14`, `fut_macd_signal`, etc.
+  - Options (14): `atm_iv`, `pcr_oi`, `total_gamma_exposure`, etc.
+  - Volatility (6): `india_vix`, `iv_rv_ratio`, etc.
+  - Order Flow (8): `ofi_1s`, `depth_imbalance_5`, etc.
+  - Time Context (6): `minutes_from_open`, `is_expiry_day`, etc.
 - **Data Quality**: Staleness checks, spread validation, depth completeness
-- **See**: [layers/02-CORTEX.md](./layers/02-CORTEX.md), [../../../docs/MARKET_STATE_ENCODER.md](../../../docs/MARKET_STATE_ENCODER.md)
+- **See**: [layers/02-CORTEX.md](./layers/02-CORTEX.md), [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md), [../../../docs/ml/FEATURE_SPECIFICATION.md](../../../docs/ml/FEATURE_SPECIFICATION.md)
 
 ### 3. Market Structure & Regime Detector
 
@@ -44,16 +46,16 @@ This implementation follows the comprehensive [Algo Trading Architecture](../../
 ### 4. Signal/Prediction Engine (Multi-Scale Intelligence)
 
 - **Service**: `ModelLoaderService`, `EnsembleInferenceService`, `PredictionWorkerPool`
-- **Architecture**: 3-tier hierarchical prediction system
+- **Architecture**: 3-tier hierarchical prediction system with **54 features input**
 - **Models**:
-  - **Level-0A: Micro-Alpha** - LiT (Limit Order Book Transformer) for 10s-1min microstructure signals
-  - **Level-0B: Macro Direction** - LightGBM (CORE model), XGBoost for 5-15min directional forecasting
-  - **Level-0C: Regime & Volatility** - TFT (Temporal Fusion Transformer) for multi-horizon forecasting
-  - **Optional**: PatchTST, KAN, ViT for research/advanced use cases
+  - **Level-0A: Micro-Alpha** - LiT (14 Order Flow features) for 10s-1min signals
+  - **Level-0B: Macro Direction** - LightGBM (46 features), XGBoost for 5-15min forecasting
+  - **Level-0C: Regime & Volatility** - TFT (46 features × 120 timesteps)
+  - **Optional**: Mamba, PatchTST, KAN for research
   - **Level-1 Meta-Learner**: Contextual gating network for adaptive model fusion
-- **Tech**: ONNX Runtime (TensorRT/OpenVINO), Worker Threads
-- **Output**: Trading signals (VOL_UP/VOL_DOWN/NEUTRAL) + confidence + model weights + reasoning
-- **See**: [layers/04-PREDICTION-ENGINE.md](./layers/04-PREDICTION-ENGINE.md)
+- **Tech**: ONNX Runtime (TensorRT/OpenVINO), Worker Threads, <50ms inference
+- **Output**: Trading signals (VOL_UP/VOL_DOWN/NEUTRAL) + confidence + model weights
+- **See**: [layers/04-PREDICTION-ENGINE.md](./layers/04-PREDICTION-ENGINE.md), [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md)
 
 **Key Innovation**: Hierarchical intelligence where:
 

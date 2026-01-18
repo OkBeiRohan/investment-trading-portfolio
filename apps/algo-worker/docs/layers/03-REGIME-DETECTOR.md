@@ -318,6 +318,6 @@ describe('RegimeDetector', () => {
 
 **See Also**:
 
-- [02-FEATURE-ENGINE.md](./02-FEATURE-ENGINE.md) - Previous layer
+- [02-CORTEX.md](./02-CORTEX.md) - Previous layer
 - [04-PREDICTION-ENGINE.md](./04-PREDICTION-ENGINE.md) - Next layer
 - [ALGO_TRADING_ARCHITECTURE.md](../../../../docs/ALGO_TRADING_ARCHITECTURE.md#regime-detection--strategy-selection)

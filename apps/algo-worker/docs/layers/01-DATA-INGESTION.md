@@ -519,4 +519,4 @@ describe('DataIngestionLayer', () => {
 **See Also**:
 
 - [ALGO_TRADING_ARCHITECTURE.md](../../../../docs/ALGO_TRADING_ARCHITECTURE.md) - System overview
-- [02-FEATURE-ENGINE.md](./02-FEATURE-ENGINE.md) - Next layer
+- [02-CORTEX.md](./02-CORTEX.md) - Next layer (Feature Engine + Market State Encoder)
