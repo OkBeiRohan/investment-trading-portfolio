@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { QuestDBModule } from '@repo/database';
+import { DatabaseModule } from '@repo/database';
 import { FeatureComputationService } from './feature-computation.service';
 import { FeatureComputationScheduler } from './feature-computation.scheduler';
 import { ComputeEngineService } from './compute-engine.service';
@@ -19,7 +19,7 @@ import { ContinuousContractBuilder } from './continuous-contract.builder';
  * - algo-worker: Live trading → ephemeral features (no storage)
  */
 @Module({
-  imports: [QuestDBModule],
+  imports: [DatabaseModule.forMarketFeeder()],
   providers: [
     FeatureComputationService,
     FeatureComputationScheduler,

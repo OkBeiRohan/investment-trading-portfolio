@@ -1,15 +1,20 @@
 /**
- * QuestDB Service v2.0
+ * QuestDB Service v2.1
  * Production-grade time-series database service
  *
  * Features:
  * - PostgreSQL wire protocol for queries
- * - Auto-creates tables from SQL files
+ * - Auto-creates tables from SQL files (54-feature architecture)
  * - Connection pooling with health monitoring
  *
  * Architecture:
  * - Port 8812: PostgreSQL wire protocol
  * - Schema: packages/schema/sql/schema/create_*.sql
+ *
+ * v2.1 Changes (Jan 2026):
+ * - Added tick_data table (depth-30 for live trading)
+ * - Added instrument_features_1d (daily features for regime model)
+ * - Added training_labels_1d (daily labels for 26-year training)
  */
 
 import {
@@ -65,7 +70,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
       // Test connection
       await this.pool.query("SELECT 1 as test");
       this.logger.log(
-        `Connected to QuestDB at ${this.config.host}:${this.config.port}`
+        `Connected to QuestDB at ${this.config.host}:${this.config.port}`,
       );
 
       // Create tables from SQL files
@@ -80,44 +85,53 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * Create all tables from SQL files using sql-loader
    * Order matters: create dependencies first
    *
-   * v2.0 Schema Only - Production Tables
+   * v2.1 Schema - 54-Feature Architecture
    */
   private async createTables(): Promise<void> {
-    this.logger.log("Creating QuestDB v2.0 tables from schema files...");
+    this.logger.log("Creating QuestDB v2.1 tables from schema files...");
 
     // Core tables (no dependencies)
     await this.createTable(
       "instrument_master",
-      "schema/create_instrument_master"
+      "schema/create_instrument_master",
     );
 
     // Market data tables (depend on instrument_master)
+    await this.createTable("tick_data", "schema/create_tick_data");
     await this.createTable("market_candles", "schema/create_market_candles");
     await this.createTable(
       "orderbook_l2_snapshots",
-      "schema/create_orderbook_l2_snapshots"
+      "schema/create_orderbook_l2_snapshots",
     );
 
     // Feature tables (depend on market data)
     await this.createTable(
       "instrument_features_1m",
-      "schema/create_instrument_features_1m"
+      "schema/create_instrument_features_1m",
+    );
+    await this.createTable(
+      "instrument_features_1d",
+      "schema/create_instrument_features_1d",
     );
     await this.createTable("market_state_1m", "schema/create_market_state_1m");
 
     // Option tables
     await this.createTable(
       "option_chain_snapshot",
-      "schema/create_option_chain_snapshot"
+      "schema/create_option_chain_snapshot",
     );
 
-    // Training tables (v2.0 - 1-minute labels only)
+    // Training tables (v2.1 - minute + daily labels)
     await this.createTable(
       "training_labels_1m",
-      "schema/create_training_labels_1m"
+      "schema/create_training_labels_1m",
+    );
+    await this.createTable(
+      "training_labels_1d",
+      "schema/create_training_labels_1d",
     );
 
-    this.logger.log("✓ All v2.0 tables created successfully (7 tables)");
+    this.logger.log("✓ All v2.1 tables created successfully (10 tables)");
   }
 
   /**
@@ -149,7 +163,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    */
   async query<T = any>(
     sql: string,
-    params: any[] = []
+    params: any[] = [],
   ): Promise<{ rows: T[]; rowCount: number }> {
     const client = await this.pool.connect();
     try {
@@ -173,7 +187,7 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * Execute query within a transaction
    */
   async transaction<T>(
-    callback: (client: PoolClient) => Promise<T>
+    callback: (client: PoolClient) => Promise<T>,
   ): Promise<T> {
     const client = await this.pool.connect();
     try {
