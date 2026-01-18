@@ -1,26 +1,28 @@
 /**
- * Historical Data Pipeline Module
+ * Historical Data Pipeline Module v2.0
  * 
- * Architecture:
- * - DataFetcherService: Fetches data from Upstox via @repo/market-sdk
- * - DataProcessorService: Transforms raw data for compute-engine
- * - FeatureComputeService: Computes features using Rust compute-engine
- * - LabelGeneratorService: Generates training labels
- * - PipelineOrchestratorService: Coordinates the full pipeline
+ * Production-grade data fetching with:
+ * - Smart date discovery (binary search)
+ * - Rate limiting (40 req/sec)
+ * - Retry with exponential backoff
+ * - ALL options/futures fetching
  * 
  * Data Sources:
- * - market-sdk → UpstoxHistoricalService for API calls
- * - QuestDB → market_candles for storage
- * - compute-engine → Rust FFI for feature computation
+ * - Upstox V3 API for historical candles
+ * - QuestDB for storage
  */
 
 import { Module } from "@nestjs/common";
 import { HttpModule } from "@nestjs/axios";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 import { DatabaseModule } from "@repo/database";
 
-// Data Fetching
-import { DataFetcherService } from "./data-fetcher.service";
-import { SimpleUpstoxClient } from "./simple-client";
+// Production Upstox Client
+import { ProductionUpstoxClient } from "./production-upstox-client";
+
+// Bootstrap Services
+import { ComprehensiveBootstrapService } from "./comprehensive-bootstrap.service";
 
 // Data Processing
 import { DailyCandleProcessor } from "./processors/daily-candle.processor";
@@ -33,24 +35,38 @@ import { DailyLabelService } from "./labels/daily-label.service";
 // Orchestration
 import { PipelineOrchestratorService } from "./pipeline-orchestrator.service";
 
-// Legacy (for backward compatibility)
+// Legacy support
+import { SimpleUpstoxClient } from "./simple-client";
 import { HistoricalDataBootstrapService } from "./historical-data.service";
-import { TimeframeStrategy } from "./timeframe-strategy";
+import { DataFetcherService } from "./data-fetcher.service";
+import { HistoricalDataController } from "./historical-data.controller";
 
 @Module({
   imports: [
-    HttpModule.register({
-      timeout: 30000,
-      maxRedirects: 5,
+    HttpModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        timeout: 30000,
+        maxRedirects: 5,
+        baseURL: "https://api.upstox.com",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Bearer ${configService.get<string>("UPSTOX_ACCESS_TOKEN", "")}`,
+        },
+      }),
+      inject: [ConfigService],
     }),
-    // Use QuestDB + Redis for market-feeder (no MongoDB needed here)
+    EventEmitterModule.forRoot(),
     DatabaseModule.forMarketFeeder(),
   ],
-
+  controllers: [HistoricalDataController],
   providers: [
-    // Data Fetching
-    SimpleUpstoxClient,
-    DataFetcherService,
+    // Production Client (NEW)
+    ProductionUpstoxClient,
+
+    // Comprehensive Bootstrap (NEW)
+    ComprehensiveBootstrapService,
 
     // Processors
     DailyCandleProcessor,
@@ -63,17 +79,19 @@ import { TimeframeStrategy } from "./timeframe-strategy";
     // Orchestration
     PipelineOrchestratorService,
 
-    // Legacy
+    // Legacy (for backward compatibility)
+    SimpleUpstoxClient,
+    DataFetcherService,
     HistoricalDataBootstrapService,
-    TimeframeStrategy,
   ],
   exports: [
-    DataFetcherService,
+    ProductionUpstoxClient,
+    ComprehensiveBootstrapService,
     DailyFeatureService,
     DailyLabelService,
     PipelineOrchestratorService,
-    HistoricalDataBootstrapService,
     SimpleUpstoxClient,
+    HistoricalDataBootstrapService,
   ],
 })
 export class HistoricalDataModule { }
