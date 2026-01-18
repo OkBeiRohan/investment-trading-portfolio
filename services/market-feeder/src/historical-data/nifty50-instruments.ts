@@ -423,6 +423,16 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
     }
   },
   {
+    companyName: 'Grasim Industries Ltd',
+    symbol: 'GRASIM',
+    instrumentKey: 'NSE_EQ|INE047A01021',
+    effectiveFrom: '26-05-2017',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE205A01025',
+      symbol: 'VEDL'
+    }
+  },
+  {
     companyName: 'Idea Cellular Limited',
     symbol: 'IDEA',
     instrumentKey: 'NSE_EQ|INE669E01016',
@@ -433,6 +443,26 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
     }
   },
   {
+    companyName: 'ABB India Limited',
+    symbol: 'ABB',
+    instrumentKey: 'NSE_EQ|INE117A01022',
+    effectiveFrom: '01-10-2013',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE917I01010',
+      symbol: 'BAJAJ-AUTO'
+    }
+  },
+  {
+    companyName: 'Unitech Limited',
+    symbol: 'UNITECH',
+    instrumentKey: 'NSE_EQ|INE694A01020',
+    effectiveFrom: '01-10-2013',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE205A01025',
+      symbol: 'SESAGOA' // Renamed to Vedanta
+    }
+  },
+  {
     companyName: 'Sterlite Industries (India) Ltd',
     symbol: 'STERLITE',
     instrumentKey: 'NSE_EQ|INE268A01031', // Merged
@@ -440,6 +470,16 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
     addedInstrument: {
       instrumentKey: 'NSE_EQ|INE481G01011',
       symbol: 'ULTRACEMCO'
+    }
+  },
+  {
+    companyName: 'Suzlon Energy Limited',
+    symbol: 'SUZLON',
+    instrumentKey: 'NSE_EQ|INE040H01021', // Re-entered later? No, currently in Nifty Next 50/Midcap
+    effectiveFrom: '25-03-2011',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE047A01021',
+      symbol: 'GRASIM'
     }
   },
   {
