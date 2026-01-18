@@ -324,3 +324,43 @@ CREATE TABLE IF NOT EXISTS training_labels_1m (
   
 ) TIMESTAMP(timestamp) PARTITION BY MONTH WAL
 DEDUP UPSERT KEYS(timestamp, instrument_key);
+
+-- =============================================================================
+-- TABLE: training_labels_1d (NEW)
+-- Daily labels for 26-year Regime HMM training (2000-2026)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS training_labels_1d (
+  timestamp TIMESTAMP,
+  instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
+  
+  -- REGRESSION TARGETS
+  target_return_1d DOUBLE,
+  target_return_5d DOUBLE,
+  target_return_20d DOUBLE,
+  
+  -- VOLATILITY TARGETS
+  target_volatility_5d DOUBLE,
+  target_volatility_20d DOUBLE,
+  target_max_drawdown_5d DOUBLE,
+  
+  -- CLASSIFICATION TARGETS
+  target_direction_1d INT,
+  target_direction_5d INT,
+  target_direction_20d INT,
+  
+  -- REGIME LABELS
+  regime_label SYMBOL CAPACITY 20,
+  regime_confidence DOUBLE,
+  
+  -- EVENT FLAGS
+  had_regime_change BOOLEAN,
+  had_crash BOOLEAN,
+  had_rally BOOLEAN,
+  
+  -- VALIDITY
+  is_valid BOOLEAN,
+  invalid_reason STRING
+  
+) TIMESTAMP(timestamp) PARTITION BY YEAR WAL
+DEDUP UPSERT KEYS(timestamp, instrument_key);
+
