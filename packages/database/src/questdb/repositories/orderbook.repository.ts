@@ -30,7 +30,6 @@ export class OrderbookRepository {
 
     const query = `INSERT INTO orderbook_l2_snapshots (timestamp, instrument_key, side, level, price, quantity, orders) VALUES ${values}`;
     await this.pool.query(query);
-    this.logger.log(`Inserted ${snapshots.length} orderbook snapshots`);
   }
 
   /**

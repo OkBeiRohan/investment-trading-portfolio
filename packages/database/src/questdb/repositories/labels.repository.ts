@@ -106,7 +106,6 @@ export class LabelsRepository {
           );
         }
 
-        this.logger.log(`Inserted ${labels.length} labels`);
         return true;
       } finally {
         client.release();

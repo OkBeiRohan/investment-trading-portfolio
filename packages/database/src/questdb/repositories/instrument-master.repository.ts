@@ -57,7 +57,6 @@ export class InstrumentMasterRepository {
 
       const query = `${sqlPrefix} ${values}`;
       await this.pool.query(query);
-      this.logger.log(`Inserted ${instruments.length} instruments`);
 
       return true;
     } catch (error) {

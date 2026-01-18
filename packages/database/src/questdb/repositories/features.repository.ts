@@ -120,7 +120,6 @@ export class FeaturesRepository {
           );
         }
 
-        this.logger.log(`Inserted ${features.length} features`);
         return true;
       } finally {
         client.release();

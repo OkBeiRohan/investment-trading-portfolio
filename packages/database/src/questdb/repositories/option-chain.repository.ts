@@ -25,7 +25,6 @@ export class OptionChainRepository {
 
     const query = `${sqlPrefix} ${values}`;
     await this.pool.query(query);
-    this.logger.log(`Inserted ${snapshots.length} option chain snapshots`);
   }
 
   /**
@@ -33,7 +32,7 @@ export class OptionChainRepository {
    */
   async getLatestChain(
     underlyingKey: string,
-    expiry?: Date
+    expiry?: Date,
   ): Promise<OptionChainSnapshot[]> {
     const sql = expiry
       ? loadSqlQueryCached("option-chain/get-latest-chain-by-expiry")
@@ -51,7 +50,7 @@ export class OptionChainRepository {
    */
   async getATMOptions(
     underlyingKey: string,
-    spotPrice: number
+    spotPrice: number,
   ): Promise<OptionChainSnapshot[]> {
     const sql = loadSqlQueryCached("option-chain/get-atm-options");
     const result = await this.pool.query(sql, [underlyingKey, spotPrice]);
