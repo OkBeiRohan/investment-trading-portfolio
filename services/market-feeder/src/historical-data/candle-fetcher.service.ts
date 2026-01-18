@@ -1,5 +1,5 @@
 /**
- * Candle Fetcher Service v3.0
+ * Candle Fetcher Service v3.1
  * Phase 2: Fetch all candle data for all instruments
  *
  * Flow:
@@ -10,10 +10,8 @@
  * 2c. Options Candles - Both active and expired options
  *
  * Data Storage:
- * - market_candles: All OHLCV data
- *
- * Logging:
- * - MongoDB IngestionLog for operation tracking
+ * - QuestDB: market_candles
+ * - MongoDB: IngestionLog, DataInventory, Instrument, ProcessingLog
  *
  * Upstox API Limits:
  * - 60-day chunks per request for historical data
@@ -25,7 +23,9 @@ import {
   CandlesRepository,
   InstrumentMasterRepository,
   IngestionLogRepository,
+  DataInventoryRepository,
 } from '@repo/database';
+import { InstrumentRepository, ProcessingLogRepository } from '@repo/database';
 import { MarketCandle } from '@repo/schema';
 import { UpstoxClient, UpstoxCandleData } from './upstox-client';
 import {
@@ -55,6 +55,7 @@ export interface FetchResult {
 @Injectable()
 export class CandleFetcherService {
   private readonly logger = new Logger(CandleFetcherService.name);
+  private readonly SERVICE_NAME = 'CandleFetcherService';
 
   // Date ranges
   private readonly DAILY_START = new Date('2000-01-01');
@@ -62,9 +63,14 @@ export class CandleFetcherService {
 
   constructor(
     private readonly upstoxClient: UpstoxClient,
+    // QuestDB
     private readonly candlesRepository: CandlesRepository,
     private readonly instrumentMasterRepository: InstrumentMasterRepository,
+    // MongoDB
     private readonly ingestionLogRepository: IngestionLogRepository,
+    private readonly dataInventoryRepository: DataInventoryRepository,
+    private readonly instrumentRepository: InstrumentRepository,
+    private readonly processingLogRepository: ProcessingLogRepository,
   ) {}
 
   /**
@@ -73,13 +79,24 @@ export class CandleFetcherService {
   async fetchAll(): Promise<Map<string, FetchResult>> {
     const results = new Map<string, FetchResult>();
     const now = new Date();
+    const startTime = Date.now();
 
-    // Create MongoDB log entry
+    // Create IngestionLog entry
     const logEntry = await this.ingestionLogRepository.create({
       instrumentKey: 'NSE_INDEX|Nifty 50',
       operation: 'FETCH_DAILY',
-      requestedRange: { start: new Date('2000-01-01'), end: now },
+      requestedRange: { start: this.DAILY_START, end: now },
     });
+
+    // Log start to ProcessingLog
+    await this.processingLogRepository.logInfo(
+      'FETCH',
+      'FETCH_ALL_CANDLES',
+      'Starting candle data fetching pipeline',
+      {
+        service: this.SERVICE_NAME,
+      },
+    );
 
     this.logger.log('='.repeat(60));
     this.logger.log('CANDLE DATA FETCHING - Starting');
@@ -123,12 +140,26 @@ export class CandleFetcherService {
         allErrors.push(...result.errors);
       }
 
-      // Mark success in MongoDB
+      const durationMs = Date.now() - startTime;
+
+      // Mark success in IngestionLog
       await this.ingestionLogRepository.markSuccess(logEntry._id.toString(), {
         candlesFetched: totalCandles,
         candlesStored: totalCandles,
         duplicatesSkipped: 0,
       });
+
+      // Log completion to ProcessingLog
+      await this.processingLogRepository.logInfo(
+        'FETCH',
+        'FETCH_ALL_CANDLES',
+        `Completed: ${totalProcessed} instruments, ${totalCandles} candles`,
+        {
+          service: this.SERVICE_NAME,
+          recordsProcessed: totalCandles,
+          durationMs,
+        },
+      );
 
       this.logger.log('='.repeat(60));
       this.logger.log('CANDLE DATA FETCHING - Complete');
@@ -138,10 +169,23 @@ export class CandleFetcherService {
       this.logger.log('='.repeat(60));
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+
       await this.ingestionLogRepository.markFailed(logEntry._id.toString(), {
         code: 'FETCH_FAILED',
         message: msg,
       });
+
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'FETCH_ALL_CANDLES',
+        msg,
+        {
+          service: this.SERVICE_NAME,
+          errorCode: 'FETCH_FAILED',
+          stackTrace: error instanceof Error ? error.stack : undefined,
+        },
+      );
+
       throw error;
     }
 
@@ -150,7 +194,6 @@ export class CandleFetcherService {
 
   /**
    * Phase 2a: Fetch candles for expired futures
-   * For each expired instrument: 1 year before expiry → expiry date
    */
   private async fetchExpiredFuturesCandles(): Promise<FetchResult> {
     const start = Date.now();
@@ -181,6 +224,12 @@ export class CandleFetcherService {
           const minuteStart =
             startDate < this.MINUTE_START ? this.MINUTE_START : startDate;
 
+          // Update fetch status to FETCHING
+          await this.instrumentRepository.updateFetchStatus(
+            instrument.instrumentKey,
+            'FETCHING',
+          );
+
           // Check existing data
           const hasDaily = await this.hasDataInRange(
             instrument.instrumentKey,
@@ -194,6 +243,9 @@ export class CandleFetcherService {
             expiryDate,
             'minute',
           );
+
+          let dailyCount = 0;
+          let minuteCount = 0;
 
           if (!hasDaily) {
             const toDateStr = expiryDate.toISOString().split('T')[0];
@@ -212,6 +264,7 @@ export class CandleFetcherService {
                 1,
                 'day',
               );
+              dailyCount = dailyCandles.length;
               totalCandles += dailyCandles.length;
             }
           }
@@ -233,9 +286,45 @@ export class CandleFetcherService {
                 1,
                 'minute',
               );
+              minuteCount = minuteCandles.length;
               totalCandles += minuteCandles.length;
             }
           }
+
+          // Update DataInventory
+          if (dailyCount > 0) {
+            await this.dataInventoryRepository.updateDailyRange(
+              instrument.instrumentKey,
+              startDate,
+              expiryDate,
+              dailyCount,
+            );
+          }
+          if (minuteCount > 0) {
+            await this.dataInventoryRepository.updateMinuteRange(
+              instrument.instrumentKey,
+              minuteStart,
+              expiryDate,
+              minuteCount,
+            );
+          }
+
+          // Update Instrument data availability
+          await this.instrumentRepository.updateDataAvailability(
+            instrument.instrumentKey,
+            startDate,
+            expiryDate,
+            dailyCount,
+            minuteStart,
+            expiryDate,
+            minuteCount,
+          );
+
+          // Mark fetch complete
+          await this.instrumentRepository.updateFetchStatus(
+            instrument.instrumentKey,
+            'COMPLETE',
+          );
 
           processed++;
 
@@ -247,8 +336,24 @@ export class CandleFetcherService {
 
           await new Promise((resolve) => setTimeout(resolve, 50));
         } catch (err) {
-          errors.push(
-            `${instrument.instrumentKey}: ${err instanceof Error ? err.message : String(err)}`,
+          const errMsg = `${instrument.instrumentKey}: ${err instanceof Error ? err.message : String(err)}`;
+          errors.push(errMsg);
+
+          await this.instrumentRepository.updateFetchStatus(
+            instrument.instrumentKey,
+            'ERROR',
+            errMsg,
+          );
+
+          await this.processingLogRepository.logError(
+            'FETCH',
+            'FETCH_EXPIRED_FUTURES',
+            errMsg,
+            {
+              instrumentKey: instrument.instrumentKey,
+              service: this.SERVICE_NAME,
+              errorCode: 'EXPIRED_CANDLE_FAILED',
+            },
           );
         }
       }
@@ -260,6 +365,16 @@ export class CandleFetcherService {
       const msg = error instanceof Error ? error.message : String(error);
       errors.push(msg);
       this.logger.error(`Error in Phase 2a: ${msg}`);
+
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'FETCH_EXPIRED_FUTURES',
+        msg,
+        {
+          service: this.SERVICE_NAME,
+          errorCode: 'PHASE_2A_FAILED',
+        },
+      );
     }
 
     return {
@@ -317,6 +432,9 @@ export class CandleFetcherService {
             continue;
           }
 
+          // Update fetch status
+          await this.instrumentRepository.updateFetchStatus(key, 'FETCHING');
+
           const unit = interval === 'day' ? 'days' : 'minutes';
           const candles = await this.upstoxClient.getHistoricalCandlesBatched(
             key,
@@ -329,7 +447,46 @@ export class CandleFetcherService {
           if (candles.length > 0) {
             await this.storeCandles(key, candles, 1, interval);
             totalCandles += candles.length;
+
+            // Update DataInventory
+            if (interval === 'day') {
+              await this.dataInventoryRepository.updateDailyRange(
+                key,
+                startDate,
+                endDate,
+                candles.length,
+              );
+            } else {
+              await this.dataInventoryRepository.updateMinuteRange(
+                key,
+                startDate,
+                endDate,
+                candles.length,
+              );
+            }
+
+            // Update Instrument data availability
+            if (interval === 'day') {
+              await this.instrumentRepository.updateDataAvailability(
+                key,
+                startDate,
+                endDate,
+                candles.length,
+              );
+            } else {
+              await this.instrumentRepository.updateDataAvailability(
+                key,
+                undefined,
+                undefined,
+                undefined,
+                startDate,
+                endDate,
+                candles.length,
+              );
+            }
           }
+
+          await this.instrumentRepository.updateFetchStatus(key, 'COMPLETE');
 
           processed++;
 
@@ -341,8 +498,24 @@ export class CandleFetcherService {
 
           await new Promise((resolve) => setTimeout(resolve, 25));
         } catch (err) {
-          errors.push(
-            `${key}: ${err instanceof Error ? err.message : String(err)}`,
+          const errMsg = `${key}: ${err instanceof Error ? err.message : String(err)}`;
+          errors.push(errMsg);
+
+          await this.instrumentRepository.updateFetchStatus(
+            key,
+            'ERROR',
+            errMsg,
+          );
+
+          await this.processingLogRepository.logError(
+            'FETCH',
+            'FETCH_ACTIVE_CANDLES',
+            errMsg,
+            {
+              instrumentKey: key,
+              service: this.SERVICE_NAME,
+              errorCode: 'ACTIVE_CANDLE_FAILED',
+            },
           );
         }
       }
@@ -354,6 +527,16 @@ export class CandleFetcherService {
       const msg = error instanceof Error ? error.message : String(error);
       errors.push(msg);
       this.logger.error(`Error in Phase 2b (${interval}): ${msg}`);
+
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'FETCH_ACTIVE_CANDLES',
+        msg,
+        {
+          service: this.SERVICE_NAME,
+          errorCode: `PHASE_2B_${interval.toUpperCase()}_FAILED`,
+        },
+      );
     }
 
     return {
@@ -384,7 +567,6 @@ export class CandleFetcherService {
 
       this.logger.log(`Found ${options.length} option contracts`);
 
-      // Limit for initial run
       const maxOptions = Math.min(options.length, 200);
       const now = new Date();
 
@@ -396,20 +578,18 @@ export class CandleFetcherService {
           const expiryDate = new Date(option.expiry);
           const isExpired = expiryDate < now;
 
-          // Calculate date range: 1 month before expiry or from listing
+          // Calculate date range
           const startDate = new Date(expiryDate);
           startDate.setMonth(startDate.getMonth() - 1);
           const clampedStart =
             startDate < this.MINUTE_START ? this.MINUTE_START : startDate;
           const endDate = isExpired ? expiryDate : now;
 
-          // Skip if too old
           if (clampedStart >= endDate) {
             processed++;
             continue;
           }
 
-          // Check existing data
           const hasData = await this.hasDataInRange(
             option.instrumentKey,
             clampedStart,
@@ -421,28 +601,34 @@ export class CandleFetcherService {
             continue;
           }
 
-          // Fetch candles
+          await this.instrumentRepository.updateFetchStatus(
+            option.instrumentKey,
+            'FETCHING',
+          );
+
+          let candleCount = 0;
+
           if (isExpired) {
-            // Use expired API
             const fromDateStr = clampedStart.toISOString().split('T')[0];
             const toDateStr = endDate.toISOString().split('T')[0];
-            const candles = await this.upstoxClient.getExpiredHistoricalCandles(
-              option.instrumentKey,
-              '1minute',
-              fromDateStr,
-              toDateStr,
-            );
-            if (candles.length > 0) {
+
+            const minuteCandles =
+              await this.upstoxClient.getExpiredHistoricalCandles(
+                option.instrumentKey,
+                '1minute',
+                fromDateStr,
+                toDateStr,
+              );
+            if (minuteCandles.length > 0) {
               await this.storeCandles(
                 option.instrumentKey,
-                candles,
+                minuteCandles,
                 1,
                 'minute',
               );
-              totalCandles += candles.length;
+              candleCount += minuteCandles.length;
             }
 
-            // Also fetch daily for expired options
             const dailyCandles =
               await this.upstoxClient.getExpiredHistoricalCandles(
                 option.instrumentKey,
@@ -457,10 +643,9 @@ export class CandleFetcherService {
                 1,
                 'day',
               );
-              totalCandles += dailyCandles.length;
+              candleCount += dailyCandles.length;
             }
           } else {
-            // Use regular API for active options
             const candles = await this.upstoxClient.getHistoricalCandlesBatched(
               option.instrumentKey,
               'minutes',
@@ -475,9 +660,26 @@ export class CandleFetcherService {
                 1,
                 'minute',
               );
-              totalCandles += candles.length;
+              candleCount = candles.length;
             }
           }
+
+          totalCandles += candleCount;
+
+          // Update DataInventory
+          if (candleCount > 0) {
+            await this.dataInventoryRepository.updateMinuteRange(
+              option.instrumentKey,
+              clampedStart,
+              endDate,
+              candleCount,
+            );
+          }
+
+          await this.instrumentRepository.updateFetchStatus(
+            option.instrumentKey,
+            'COMPLETE',
+          );
 
           processed++;
 
@@ -489,8 +691,24 @@ export class CandleFetcherService {
 
           await new Promise((resolve) => setTimeout(resolve, 50));
         } catch (err) {
-          errors.push(
-            `${option.instrumentKey}: ${err instanceof Error ? err.message : String(err)}`,
+          const errMsg = `${option.instrumentKey}: ${err instanceof Error ? err.message : String(err)}`;
+          errors.push(errMsg);
+
+          await this.instrumentRepository.updateFetchStatus(
+            option.instrumentKey,
+            'ERROR',
+            errMsg,
+          );
+
+          await this.processingLogRepository.logError(
+            'FETCH',
+            'FETCH_OPTION_CANDLES',
+            errMsg,
+            {
+              instrumentKey: option.instrumentKey,
+              service: this.SERVICE_NAME,
+              errorCode: 'OPTION_CANDLE_FAILED',
+            },
           );
         }
       }
@@ -502,6 +720,16 @@ export class CandleFetcherService {
       const msg = error instanceof Error ? error.message : String(error);
       errors.push(msg);
       this.logger.error(`Error in Phase 2c: ${msg}`);
+
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'FETCH_OPTION_CANDLES',
+        msg,
+        {
+          service: this.SERVICE_NAME,
+          errorCode: 'PHASE_2C_FAILED',
+        },
+      );
     }
 
     return {
@@ -577,6 +805,11 @@ export class CandleFetcherService {
     });
 
     try {
+      await this.instrumentRepository.updateFetchStatus(
+        instrumentKey,
+        'FETCHING',
+      );
+
       const unit = interval === 'day' ? 'days' : 'minutes';
       const candles = await this.upstoxClient.getHistoricalCandlesBatched(
         instrumentKey,
@@ -588,6 +821,23 @@ export class CandleFetcherService {
 
       if (candles.length > 0) {
         await this.storeCandles(instrumentKey, candles, 1, interval);
+
+        // Update DataInventory
+        if (interval === 'day') {
+          await this.dataInventoryRepository.updateDailyRange(
+            instrumentKey,
+            startDate,
+            endDate,
+            candles.length,
+          );
+        } else {
+          await this.dataInventoryRepository.updateMinuteRange(
+            instrumentKey,
+            startDate,
+            endDate,
+            candles.length,
+          );
+        }
       }
 
       await this.ingestionLogRepository.markSuccess(logEntry._id.toString(), {
@@ -596,13 +846,48 @@ export class CandleFetcherService {
         duplicatesSkipped: 0,
       });
 
+      await this.instrumentRepository.updateFetchStatus(
+        instrumentKey,
+        'COMPLETE',
+      );
+
+      await this.processingLogRepository.logInfo(
+        'FETCH',
+        'FETCH_INSTRUMENT_CANDLES',
+        `Fetched ${candles.length} ${interval} candles for ${instrumentKey}`,
+        {
+          instrumentKey,
+          service: this.SERVICE_NAME,
+          recordsProcessed: candles.length,
+        },
+      );
+
       return { candlesFetched: candles.length };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+
       await this.ingestionLogRepository.markFailed(logEntry._id.toString(), {
         code: 'FETCH_FAILED',
         message: msg,
       });
+
+      await this.instrumentRepository.updateFetchStatus(
+        instrumentKey,
+        'ERROR',
+        msg,
+      );
+
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'FETCH_INSTRUMENT_CANDLES',
+        msg,
+        {
+          instrumentKey,
+          service: this.SERVICE_NAME,
+          errorCode: 'FETCH_FAILED',
+        },
+      );
+
       return { candlesFetched: 0, error: msg };
     }
   }

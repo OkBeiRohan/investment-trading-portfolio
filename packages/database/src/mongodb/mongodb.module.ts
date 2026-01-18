@@ -1,6 +1,12 @@
 import { DynamicModule, Global, Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import DatabaseConnections from "./connections/connections";
+import {
+  IngestionLog,
+  DataInventory,
+  IngestionLogSchema,
+  DataInventorySchema,
+} from "./schemas";
 import { User, UserSchema } from "./schemas/user/user.schema";
 import {
   Account,
@@ -23,6 +29,11 @@ import {
   TwoFactorRepository,
   PasskeyRepository,
   BrokerAccountRepository,
+  InstrumentRepository,
+  ProcessingLogRepository,
+  ConstituentChangeRepository,
+  IngestionLogRepository,
+  DataInventoryRepository,
 } from "./repositories";
 import {
   Invitation,
@@ -32,7 +43,16 @@ import {
   Organization,
   OrganizationSchema,
 } from "./schemas/organization";
-import { BrokerAccount, BrokerAccountSchema } from "./schemas/trading";
+import {
+  BrokerAccount,
+  BrokerAccountSchema,
+  Instrument,
+  ProcessingLog,
+  ConstituentChange,
+  ConstituentChangeSchema,
+  InstrumentSchema,
+  ProcessingLogSchema,
+} from "./schemas/trading";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 import { MongoDBService } from "./mongodb.service";
 
@@ -50,7 +70,7 @@ import { MongoDBService } from "./mongodb.service";
         writeConcern: { w: "majority" },
         // For replica set with transactions, ensure MONGODB_URI includes ?replicaSet=rs0
         // Example: mongodb://localhost:27017/?replicaSet=rs0
-      }
+      },
     ),
     MongooseModule.forRoot(
       process.env.MONGODB_URI || "mongodb://localhost:27017",
@@ -61,7 +81,7 @@ import { MongoDBService } from "./mongodb.service";
         retryAttempts: 5,
         retryDelay: 3000,
         writeConcern: { w: "majority" },
-      }
+      },
     ),
     MongooseModule.forFeature(
       [
@@ -91,7 +111,7 @@ import { MongoDBService } from "./mongodb.service";
           collection: "invitation",
         },
       ],
-      DatabaseConnections.User
+      DatabaseConnections.User,
     ),
     MongooseModule.forFeature(
       [
@@ -101,7 +121,37 @@ import { MongoDBService } from "./mongodb.service";
           collection: "broker_accounts",
         },
       ],
-      DatabaseConnections.Trading
+      DatabaseConnections.Trading,
+    ),
+    MongooseModule.forFeature(
+      [
+        {
+          name: IngestionLog.name,
+          schema: IngestionLogSchema,
+          collection: "ingestion_log",
+        },
+        {
+          name: DataInventory.name,
+          schema: DataInventorySchema,
+          collection: "data_inventory",
+        },
+        {
+          name: Instrument.name,
+          schema: InstrumentSchema,
+          collection: "instrument",
+        },
+        {
+          name: ProcessingLog.name,
+          schema: ProcessingLogSchema,
+          collection: "processing_log",
+        },
+        {
+          name: ConstituentChange.name,
+          schema: ConstituentChangeSchema,
+          collection: "constituent_change",
+        },
+      ],
+      DatabaseConnections.MarketData,
     ),
   ],
   providers: [
@@ -113,6 +163,11 @@ import { MongoDBService } from "./mongodb.service";
     TwoFactorRepository,
     PasskeyRepository,
     BrokerAccountRepository,
+    InstrumentRepository,
+    ProcessingLogRepository,
+    IngestionLogRepository,
+    DataInventoryRepository,
+    ConstituentChangeRepository,
     AuthRepositoryFactory,
     MongoDBService,
   ],
@@ -125,6 +180,11 @@ import { MongoDBService } from "./mongodb.service";
     TwoFactorRepository,
     PasskeyRepository,
     BrokerAccountRepository,
+    InstrumentRepository,
+    ProcessingLogRepository,
+    IngestionLogRepository,
+    DataInventoryRepository,
+    ConstituentChangeRepository,
     AuthRepositoryFactory,
     MongoDBService,
   ],

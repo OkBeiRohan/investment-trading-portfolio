@@ -1,5 +1,5 @@
 /**
- * Instrument Master Service v3.0
+ * Instrument Master Service v3.1
  * Phase 1: Populate instrument_master table with all instruments
  *
  * Flow:
@@ -8,12 +8,8 @@
  * 1c. Expired Instruments - All expired futures and options from all expiry dates
  *
  * Data Storage:
- * - instrument_master: All instrument metadata
- * - orderbook_l2_snapshots: Depth-5 data for futures and options
- * - option_chain_snapshot: Option chain with Greeks
- *
- * Logging:
- * - MongoDB IngestionLog for operation tracking
+ * - QuestDB: instrument_master, orderbook_l2_snapshots, option_chain_snapshot
+ * - MongoDB: Instrument, DataInventory, IngestionLog, ProcessingLog
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -22,7 +18,9 @@ import {
   OrderbookRepository,
   OptionChainRepository,
   IngestionLogRepository,
+  DataInventoryRepository,
 } from '@repo/database';
+import { InstrumentRepository, ProcessingLogRepository } from '@repo/database';
 import { InstrumentMaster, OptionChainSnapshot } from '@repo/schema';
 import {
   INDIA_VIX,
@@ -53,13 +51,19 @@ export interface PopulationResult {
 @Injectable()
 export class InstrumentMasterService {
   private readonly logger = new Logger(InstrumentMasterService.name);
+  private readonly SERVICE_NAME = 'InstrumentMasterService';
 
   constructor(
     private readonly upstoxClient: UpstoxClient,
+    // QuestDB repositories
     private readonly instrumentMasterRepository: InstrumentMasterRepository,
     private readonly orderbookRepository: OrderbookRepository,
     private readonly optionChainRepository: OptionChainRepository,
+    // MongoDB repositories
     private readonly ingestionLogRepository: IngestionLogRepository,
+    private readonly dataInventoryRepository: DataInventoryRepository,
+    private readonly instrumentRepository: InstrumentRepository,
+    private readonly processingLogRepository: ProcessingLogRepository,
   ) {}
 
   /**
@@ -67,13 +71,24 @@ export class InstrumentMasterService {
    */
   async populateAll(): Promise<Map<string, PopulationResult>> {
     const results = new Map<string, PopulationResult>();
+    const startTime = Date.now();
 
-    // Create MongoDB log entry
+    // Create IngestionLog entry
     const logEntry = await this.ingestionLogRepository.create({
       instrumentKey: 'NSE_INDEX|Nifty 50',
       operation: 'FETCH_DAILY',
       requestedRange: { start: new Date(), end: new Date() },
     });
+
+    // Log start to ProcessingLog
+    await this.processingLogRepository.logInfo(
+      'FETCH',
+      'POPULATE_INSTRUMENTS',
+      'Starting instrument master population',
+      {
+        service: this.SERVICE_NAME,
+      },
+    );
 
     this.logger.log('='.repeat(60));
     this.logger.log('INSTRUMENT MASTER POPULATION - Starting');
@@ -108,12 +123,26 @@ export class InstrumentMasterService {
         allErrors.push(...result.errors);
       }
 
-      // Mark success in MongoDB
+      const durationMs = Date.now() - startTime;
+
+      // Mark success in IngestionLog
       await this.ingestionLogRepository.markSuccess(logEntry._id.toString(), {
         candlesFetched: totalAdded,
         candlesStored: totalAdded,
         duplicatesSkipped: totalSkipped,
       });
+
+      // Log completion to ProcessingLog
+      await this.processingLogRepository.logInfo(
+        'FETCH',
+        'POPULATE_INSTRUMENTS',
+        `Completed: ${totalAdded} added, ${totalSkipped} skipped, ${totalDepth} depth, ${totalChains} chains`,
+        {
+          service: this.SERVICE_NAME,
+          recordsProcessed: totalAdded,
+          durationMs,
+        },
+      );
 
       this.logger.log('='.repeat(60));
       this.logger.log('INSTRUMENT MASTER POPULATION - Complete');
@@ -123,10 +152,25 @@ export class InstrumentMasterService {
       this.logger.log('='.repeat(60));
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+
+      // Mark failure in IngestionLog
       await this.ingestionLogRepository.markFailed(logEntry._id.toString(), {
         code: 'POPULATION_FAILED',
         message: msg,
       });
+
+      // Log error to ProcessingLog
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'POPULATE_INSTRUMENTS',
+        msg,
+        {
+          service: this.SERVICE_NAME,
+          errorCode: 'POPULATION_FAILED',
+          stackTrace: error instanceof Error ? error.stack : undefined,
+        },
+      );
+
       throw error;
     }
 
@@ -135,9 +179,6 @@ export class InstrumentMasterService {
 
   /**
    * Phase 1a: Populate active instruments
-   * - NIFTY 50 Index, India VIX
-   * - All constituents (current + past)
-   * - Current futures with depth-5
    */
   private async populateActiveInstruments(): Promise<PopulationResult> {
     const start = Date.now();
@@ -170,6 +211,33 @@ export class InstrumentMasterService {
               lastUpdated: new Date(),
             },
           ]);
+
+          // Store to MongoDB Instrument collection
+          await this.instrumentRepository.upsert({
+            instrumentKey: key,
+            instrumentType: 'INDEX',
+            exchange: 'NSE',
+            segment: 'INDEX',
+            tradingSymbol: key.split('|')[1],
+            name: key.split('|')[1],
+            isActive: true,
+            fetchStatus: {
+              status: 'COMPLETE',
+              lastSuccessAt: new Date(),
+              successfulFetches: 1,
+              fetchAttempts: 0,
+              failedFetches: 0,
+            },
+          });
+
+          // Initialize DataInventory
+          await this.dataInventoryRepository.upsert(key, {
+            instrumentKey: key,
+            instrumentType: 'INDEX',
+            source: 'UPSTOX_V3',
+            status: 'ACTIVE',
+          });
+
           added++;
           this.logger.log(`✓ Added index: ${key}`);
         } else {
@@ -208,6 +276,33 @@ export class InstrumentMasterService {
               lastUpdated: new Date(),
             },
           ]);
+
+          // Store to MongoDB
+          const isCurrentNifty50 = NIFTY50_CONSTITUENTS.includes(key);
+          await this.instrumentRepository.upsert({
+            instrumentKey: key,
+            instrumentType: 'EQUITY',
+            exchange: 'NSE',
+            segment: 'EQ',
+            tradingSymbol: key.split('|')[1],
+            name: key.split('|')[1],
+            isActive: true,
+            isNifty50: isCurrentNifty50,
+            fetchStatus: {
+              status: 'PENDING',
+              fetchAttempts: 0,
+              successfulFetches: 0,
+              failedFetches: 0,
+            },
+          });
+
+          await this.dataInventoryRepository.upsert(key, {
+            instrumentKey: key,
+            instrumentType: 'STOCK',
+            source: 'UPSTOX_V3',
+            status: 'ACTIVE',
+          });
+
           added++;
         } else {
           skipped++;
@@ -274,6 +369,37 @@ export class InstrumentMasterService {
               lastUpdated: new Date(),
             },
           ]);
+
+          // Store to MongoDB
+          await this.instrumentRepository.upsert({
+            instrumentKey: key,
+            instrumentType: 'FUTURE',
+            exchange: 'NSE',
+            segment: 'FO',
+            tradingSymbol: quote?.symbol || key.split('|')[1],
+            name: 'NIFTY FUT',
+            underlyingKey: NIFTY50_INDEX,
+            underlyingSymbol: 'NIFTY 50',
+            expiry: expiry || undefined,
+            lotSize: 25,
+            tickSize: 0.05,
+            isActive: true,
+            fetchStatus: {
+              status: 'PENDING',
+              fetchAttempts: 0,
+              successfulFetches: 0,
+              failedFetches: 0,
+            },
+          });
+
+          await this.dataInventoryRepository.upsert(key, {
+            instrumentKey: key,
+            instrumentType: 'FUTURE',
+            underlying: NIFTY50_INDEX,
+            source: 'UPSTOX_V3',
+            status: 'ACTIVE',
+          });
+
           added++;
         } else {
           skipped++;
@@ -282,7 +408,7 @@ export class InstrumentMasterService {
         // Store depth-5 in orderbook_l2_snapshots
         if (quote?.depth) {
           await this.orderbookRepository.insertDepth5(now, key, quote.depth);
-          depthStored += 10; // 5 bid + 5 ask levels
+          depthStored += 10;
         }
       }
       this.logger.log(
@@ -292,6 +418,17 @@ export class InstrumentMasterService {
       const msg = error instanceof Error ? error.message : String(error);
       errors.push(msg);
       this.logger.error(`Error in Phase 1a: ${msg}`);
+
+      // Log error to ProcessingLog
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'POPULATE_ACTIVE',
+        msg,
+        {
+          service: this.SERVICE_NAME,
+          errorCode: 'ACTIVE_INSTRUMENTS_FAILED',
+        },
+      );
     }
 
     return {
@@ -307,9 +444,6 @@ export class InstrumentMasterService {
 
   /**
    * Phase 1b: Populate option chain
-   * - Get option contracts with Greeks
-   * - Get depth-5 for options via market quote
-   * - Store in instrument_master and option_chain_snapshot
    */
   private async populateOptionChain(): Promise<PopulationResult> {
     const start = Date.now();
@@ -369,6 +503,33 @@ export class InstrumentMasterService {
           }));
 
           await this.instrumentMasterRepository.bulkInsert(instruments);
+
+          // Batch insert to MongoDB Instrument
+          const mongoInstruments = batch.map((c) => ({
+            instrumentKey: c.instrument_key,
+            instrumentType: 'OPTION' as const,
+            exchange: c.exchange,
+            segment: 'FO',
+            tradingSymbol: c.trading_symbol,
+            name: c.name,
+            underlyingKey: c.underlying_key,
+            underlyingSymbol: c.underlying_symbol,
+            expiry: new Date(c.expiry),
+            strikePrice: c.strike_price,
+            optionType: c.instrument_type as 'CE' | 'PE',
+            lotSize: c.lot_size,
+            tickSize: c.tick_size,
+            isActive: true,
+            fetchStatus: {
+              status: 'PENDING' as const,
+              fetchAttempts: 0,
+              successfulFetches: 0,
+              failedFetches: 0,
+            },
+          }));
+
+          await this.instrumentRepository.upsertMany(mongoInstruments);
+
           added += batch.length;
         }
         this.logger.log(`✓ Added ${added} option contracts`);
@@ -450,15 +611,24 @@ export class InstrumentMasterService {
 
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (err) {
-          errors.push(
-            `Option chain ${expiryDate}: ${err instanceof Error ? err.message : String(err)}`,
+          const errMsg = `Option chain ${expiryDate}: ${err instanceof Error ? err.message : String(err)}`;
+          errors.push(errMsg);
+
+          await this.processingLogRepository.logError(
+            'FETCH',
+            'POPULATE_OPTION_CHAIN',
+            errMsg,
+            {
+              service: this.SERVICE_NAME,
+              errorCode: 'OPTION_CHAIN_FAILED',
+            },
           );
         }
       }
 
       this.logger.log(`✓ Stored ${chainsStored} option chain snapshots`);
 
-      // Fetch depth-5 for some ATM options
+      // Fetch depth-5 for ATM options
       const optionKeys = contracts.slice(0, 50).map((c) => c.instrument_key);
       if (optionKeys.length > 0) {
         try {
@@ -488,6 +658,16 @@ export class InstrumentMasterService {
       const msg = error instanceof Error ? error.message : String(error);
       errors.push(msg);
       this.logger.error(`Error in Phase 1b: ${msg}`);
+
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'POPULATE_OPTION_CHAIN',
+        msg,
+        {
+          service: this.SERVICE_NAME,
+          errorCode: 'OPTIONS_FAILED',
+        },
+      );
     }
 
     return {
@@ -503,9 +683,6 @@ export class InstrumentMasterService {
 
   /**
    * Phase 1c: Populate expired instruments
-   * - Get all expiry dates
-   * - Get expired futures for each expiry
-   * - Get expired options for each expiry
    */
   private async populateExpiredInstruments(): Promise<PopulationResult> {
     const start = Date.now();
@@ -563,6 +740,37 @@ export class InstrumentMasterService {
                   minimumLot: fut.minimum_lot,
                 },
               ]);
+
+              // Store to MongoDB
+              await this.instrumentRepository.upsert({
+                instrumentKey: fut.instrument_key,
+                instrumentType: 'FUTURE',
+                exchange: fut.exchange,
+                segment: 'FO',
+                tradingSymbol: fut.trading_symbol,
+                name: fut.name,
+                underlyingKey: fut.underlying_key,
+                underlyingSymbol: fut.underlying_symbol,
+                expiry: new Date(fut.expiry),
+                lotSize: fut.lot_size,
+                tickSize: fut.tick_size,
+                isActive: false,
+                fetchStatus: {
+                  status: 'PENDING',
+                  fetchAttempts: 0,
+                  successfulFetches: 0,
+                  failedFetches: 0,
+                },
+              });
+
+              await this.dataInventoryRepository.upsert(fut.instrument_key, {
+                instrumentKey: fut.instrument_key,
+                instrumentType: 'FUTURE',
+                underlying: fut.underlying_key,
+                source: 'UPSTOX_EXPIRED',
+                status: 'EXPIRED',
+              });
+
               added++;
             } else {
               skipped++;
@@ -610,6 +818,39 @@ export class InstrumentMasterService {
                   weekly: opt.weekly,
                 },
               ]);
+
+              // Store to MongoDB
+              await this.instrumentRepository.upsert({
+                instrumentKey: opt.instrument_key,
+                instrumentType: 'OPTION',
+                exchange: opt.exchange,
+                segment: 'FO',
+                tradingSymbol: opt.trading_symbol,
+                name: opt.name,
+                underlyingKey: opt.underlying_key,
+                underlyingSymbol: opt.underlying_symbol,
+                expiry: new Date(opt.expiry),
+                strikePrice: opt.strike_price,
+                optionType: opt.instrument_type as 'CE' | 'PE',
+                lotSize: opt.lot_size,
+                tickSize: opt.tick_size,
+                isActive: false,
+                fetchStatus: {
+                  status: 'PENDING',
+                  fetchAttempts: 0,
+                  successfulFetches: 0,
+                  failedFetches: 0,
+                },
+              });
+
+              await this.dataInventoryRepository.upsert(opt.instrument_key, {
+                instrumentKey: opt.instrument_key,
+                instrumentType: 'OPTION',
+                underlying: opt.underlying_key,
+                source: 'UPSTOX_EXPIRED',
+                status: 'EXPIRED',
+              });
+
               added++;
             } else {
               skipped++;
@@ -624,8 +865,17 @@ export class InstrumentMasterService {
 
           await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (err) {
-          errors.push(
-            `Expiry ${expiryDate}: ${err instanceof Error ? err.message : String(err)}`,
+          const errMsg = `Expiry ${expiryDate}: ${err instanceof Error ? err.message : String(err)}`;
+          errors.push(errMsg);
+
+          await this.processingLogRepository.logError(
+            'FETCH',
+            'POPULATE_EXPIRED',
+            errMsg,
+            {
+              service: this.SERVICE_NAME,
+              errorCode: 'EXPIRED_FETCH_FAILED',
+            },
           );
         }
       }
@@ -637,6 +887,16 @@ export class InstrumentMasterService {
       const msg = error instanceof Error ? error.message : String(error);
       errors.push(msg);
       this.logger.error(`Error in Phase 1c: ${msg}`);
+
+      await this.processingLogRepository.logError(
+        'FETCH',
+        'POPULATE_EXPIRED',
+        msg,
+        {
+          service: this.SERVICE_NAME,
+          errorCode: 'EXPIRED_FAILED',
+        },
+      );
     }
 
     return {
