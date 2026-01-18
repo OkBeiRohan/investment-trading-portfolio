@@ -1,106 +1,115 @@
 /**
- * Historical Data Controller
- * HTTP endpoints for triggering data bootstrap
+ * Historical Data Controller v3.0
+ *
+ * REST API endpoints for:
+ * - Phase 1: Instrument Master Population
+ * - Phase 2: Candle Data Fetching
  */
 
-import { Controller, Post, Get, Param, Query, Logger } from "@nestjs/common";
-import { ComprehensiveBootstrapService } from "./comprehensive-bootstrap.service";
-import { ProductionUpstoxClient } from "./production-upstox-client";
+import { Controller, Post, Get, Query, Logger } from '@nestjs/common';
+import { InstrumentMasterService } from './instrument-master.service';
+import { CandleFetcherService } from './candle-fetcher.service';
 
-@Controller("historical-data")
+@Controller('historical-data')
 export class HistoricalDataController {
   private readonly logger = new Logger(HistoricalDataController.name);
 
   constructor(
-    private readonly bootstrapService: ComprehensiveBootstrapService,
-    private readonly upstoxClient: ProductionUpstoxClient
-  ) { }
+    private readonly instrumentMasterService: InstrumentMasterService,
+    private readonly candleFetcherService: CandleFetcherService,
+  ) {}
 
   /**
-   * Run full bootstrap (ALL data)
-   * POST /historical-data/bootstrap/full
+   * Run full bootstrap: Phase 1 + Phase 2
    */
-  @Post("bootstrap/full")
-  async runFullBootstrap() {
-    this.logger.log("Starting full bootstrap...");
-    const results = await this.bootstrapService.runFullBootstrap();
-    return Object.fromEntries(results);
-  }
+  @Post('bootstrap')
+  async bootstrap() {
+    this.logger.log('Starting full bootstrap...');
 
-  /**
-   * Bootstrap indices only (quick test)
-   * POST /historical-data/bootstrap/indices
-   */
-  @Post("bootstrap/indices")
-  async bootstrapIndices() {
-    this.logger.log("Starting indices bootstrap...");
-    return this.bootstrapService.bootstrapIndicesOnly();
-  }
+    // Phase 1: Populate instrument master
+    const phase1Results = await this.instrumentMasterService.populateAll();
 
-  /**
-   * Bootstrap a single instrument
-   * POST /historical-data/bootstrap/instrument/:instrumentKey
-   */
-  @Post("bootstrap/instrument/:instrumentKey")
-  async bootstrapInstrument(@Param("instrumentKey") instrumentKey: string) {
-    // Decode URL-encoded instrument key
-    const decoded = decodeURIComponent(instrumentKey);
-    this.logger.log(`Starting bootstrap for ${decoded}...`);
-    return this.bootstrapService.bootstrapInstrument(decoded);
-  }
+    // Phase 2: Fetch candle data
+    const phase2Results = await this.candleFetcherService.fetchAll();
 
-  /**
-   * Discover data start date for an instrument
-   * GET /historical-data/discover/:instrumentKey?timeframe=day|minute
-   */
-  @Get("discover/:instrumentKey")
-  async discoverStartDate(
-    @Param("instrumentKey") instrumentKey: string,
-    @Query("timeframe") timeframe: "day" | "minute" = "day"
-  ) {
-    const decoded = decodeURIComponent(instrumentKey);
-    const startDate = await this.upstoxClient.discoverDataStartDate(decoded, timeframe);
     return {
-      instrumentKey: decoded,
-      timeframe,
-      startDate: startDate?.toISOString().split("T")[0] || null,
+      success: true,
+      phase1: Object.fromEntries(phase1Results),
+      phase2: Object.fromEntries(phase2Results),
     };
   }
 
   /**
-   * Get all Nifty expiries
-   * GET /historical-data/expiries
+   * Phase 1 only: Populate instrument master
    */
-  @Get("expiries")
-  async getExpiries() {
-    const expiries = await this.upstoxClient.getExpiries("NSE_INDEX|Nifty 50");
-    return { expiries, count: expiries.length };
+  @Post('populate-instruments')
+  async populateInstruments() {
+    this.logger.log('Starting Phase 1: Instrument Master Population...');
+    const results = await this.instrumentMasterService.populateAll();
+    return {
+      success: true,
+      results: Object.fromEntries(results),
+    };
   }
 
   /**
-   * Get option contracts for an expiry
-   * GET /historical-data/options/:expiryDate
+   * Phase 2 only: Fetch candle data
    */
-  @Get("options/:expiryDate")
-  async getOptionContracts(@Param("expiryDate") expiryDate: string) {
-    const options = await this.upstoxClient.getExpiredOptionContracts(
-      "NSE_INDEX|Nifty 50",
-      expiryDate
-    );
+  @Post('fetch-candles')
+  async fetchCandles() {
+    this.logger.log('Starting Phase 2: Candle Data Fetching...');
+    const results = await this.candleFetcherService.fetchAll();
     return {
-      expiryDate,
-      contracts: options.length,
-      calls: options.filter(o => o.option_type === "CE").length,
-      puts: options.filter(o => o.option_type === "PE").length,
+      success: true,
+      results: Object.fromEntries(results),
+    };
+  }
+
+  /**
+   * Fetch candles for a specific instrument
+   */
+  @Post('fetch-instrument-candles')
+  async fetchInstrumentCandles(
+    @Query('instrumentKey') instrumentKey: string,
+    @Query('interval') interval: 'day' | 'minute' = 'day',
+    @Query('startDate') startDateStr?: string,
+    @Query('endDate') endDateStr?: string,
+  ) {
+    const startDate = startDateStr
+      ? new Date(startDateStr)
+      : new Date('2000-01-01');
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+
+    this.logger.log(
+      `Fetching ${interval} candles for ${instrumentKey} from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`,
+    );
+
+    const result = await this.candleFetcherService.fetchInstrumentCandles(
+      instrumentKey,
+      interval,
+      startDate,
+      endDate,
+    );
+
+    return {
+      success: !result.error,
+      ...result,
     };
   }
 
   /**
    * Health check
-   * GET /historical-data/health
    */
-  @Get("health")
+  @Get('health')
   health() {
-    return { status: "ok", timestamp: new Date().toISOString() };
+    return {
+      status: 'ok',
+      module: 'historical-data',
+      version: '3.0',
+      phases: {
+        phase1: 'Instrument Master Population',
+        phase2: 'Candle Data Fetching',
+      },
+    };
   }
 }

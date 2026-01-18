@@ -116,7 +116,14 @@ export interface ExpiredFutureContract {
   instrument_type: 'FUT';
   freeze_quantity: number;
   underlying_key: string;
-  underlying_type: string;
+  underlying_type:
+    | 'INDEX'
+    | 'EQUITY'
+    | 'COMMODITY'
+    | 'CUR'
+    | 'IRD'
+    | 'COM'
+    | null;
   underlying_symbol: string;
   minimum_lot: number;
 }
@@ -144,7 +151,14 @@ export interface ExpiredOptionContract {
   instrument_type: 'CE' | 'PE';
   freeze_quantity: number;
   underlying_key: `${string}|${string}`; // NSE_INDEX|Nifty 50
-  underlying_type: 'COM' | 'INDEX' | 'EQUITY' | 'CUR' | 'IRD';
+  underlying_type:
+    | 'INDEX'
+    | 'EQUITY'
+    | 'COMMODITY'
+    | 'CUR'
+    | 'IRD'
+    | 'COM'
+    | null;
   underlying_symbol: string;
   strike_price: number;
   minimum_lot: number;

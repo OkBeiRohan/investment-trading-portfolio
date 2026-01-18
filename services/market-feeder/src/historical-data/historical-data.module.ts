@@ -1,11 +1,9 @@
 /**
- * Historical Data Pipeline Module v2.0
+ * Historical Data Module v3.0
  *
- * Production-grade data fetching with:
- * - Smart date discovery (binary search)
- * - Rate limiting (40 req/sec)
- * - Retry with exponential backoff
- * - ALL options/futures fetching
+ * Institution-grade data fetching with 2-phase architecture:
+ * - Phase 1: Instrument Master Population
+ * - Phase 2: Candle Data Fetching
  *
  * Data Sources:
  * - Upstox V3 API for historical candles
@@ -15,30 +13,14 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DatabaseModule } from '@repo/database';
 
-// Production Upstox Client
-import { ProductionUpstoxClient } from './production-upstox-client';
+// Core Services
+import { UpstoxClient } from './upstox-client';
+import { InstrumentMasterService } from './instrument-master.service';
+import { CandleFetcherService } from './candle-fetcher.service';
 
-// Bootstrap Services
-import { ComprehensiveBootstrapService } from './comprehensive-bootstrap.service';
-
-// Data Processing
-import { DailyCandleProcessor } from './processors/daily-candle.processor';
-import { MinuteCandleProcessor } from './processors/minute-candle.processor';
-
-// Feature & Label Generation
-import { DailyFeatureService } from './features/daily-feature.service';
-import { DailyLabelService } from './labels/daily-label.service';
-
-// Orchestration
-import { PipelineOrchestratorService } from './pipeline-orchestrator.service';
-
-// Legacy support
-import { SimpleUpstoxClient } from './simple-client';
-import { HistoricalDataBootstrapService } from './historical-data.service';
-import { DataFetcherService } from './data-fetcher.service';
+// Controller
 import { HistoricalDataController } from './historical-data.controller';
 
 @Module({
@@ -57,41 +39,19 @@ import { HistoricalDataController } from './historical-data.controller';
       }),
       inject: [ConfigService],
     }),
-    EventEmitterModule.forRoot(),
     DatabaseModule.forMarketFeeder(),
   ],
   controllers: [HistoricalDataController],
   providers: [
-    // Production Client (NEW)
-    ProductionUpstoxClient,
+    // Upstox API Client
+    UpstoxClient,
 
-    // Comprehensive Bootstrap (NEW)
-    ComprehensiveBootstrapService,
+    // Phase 1: Instrument Master Population
+    InstrumentMasterService,
 
-    // Processors
-    DailyCandleProcessor,
-    MinuteCandleProcessor,
-
-    // Feature & Label Services
-    DailyFeatureService,
-    DailyLabelService,
-
-    // Orchestration
-    PipelineOrchestratorService,
-
-    // Legacy (for backward compatibility)
-    SimpleUpstoxClient,
-    DataFetcherService,
-    HistoricalDataBootstrapService,
+    // Phase 2: Candle Data Fetching
+    CandleFetcherService,
   ],
-  exports: [
-    ProductionUpstoxClient,
-    ComprehensiveBootstrapService,
-    DailyFeatureService,
-    DailyLabelService,
-    PipelineOrchestratorService,
-    SimpleUpstoxClient,
-    HistoricalDataBootstrapService,
-  ],
+  exports: [InstrumentMasterService, CandleFetcherService],
 })
 export class HistoricalDataModule {}

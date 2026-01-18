@@ -15,8 +15,8 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { CandlesRepository, InstrumentMasterRepository } from '@repo/database';
-import { MarketCandle, InstrumentMaster } from '@repo/schema';
-import { UpstoxClient } from './upstox-client';
+import { MarketCandle } from '@repo/schema';
+import { UpstoxClient, UpstoxCandleData } from './upstox-client';
 import {
   INDIA_VIX,
   NIFTY50_CONSTITUENTS,
@@ -139,14 +139,15 @@ export class CandleFetcherService {
           );
 
           if (!hasDaily) {
-            // Fetch daily candles
+            // Fetch daily candles using expired API
+            const toDateStr = expiryDate.toISOString().split('T')[0];
+            const fromDateStr = startDate.toISOString().split('T')[0];
             const dailyCandles =
               await this.upstoxClient.getExpiredHistoricalCandles(
                 instrument.instrumentKey,
                 'day',
-                1,
-                expiryDate,
-                startDate,
+                fromDateStr,
+                toDateStr,
               );
             if (dailyCandles.length > 0) {
               await this.storeCandles(
@@ -160,14 +161,15 @@ export class CandleFetcherService {
           }
 
           if (!hasMinute && minuteStart < expiryDate) {
-            // Fetch minute candles
+            // Fetch minute candles using expired API
+            const toDateStr = expiryDate.toISOString().split('T')[0];
+            const fromDateStr = minuteStart.toISOString().split('T')[0];
             const minuteCandles =
               await this.upstoxClient.getExpiredHistoricalCandles(
                 instrument.instrumentKey,
-                'minute',
-                1,
-                expiryDate,
-                minuteStart,
+                '1minute',
+                fromDateStr,
+                toDateStr,
               );
             if (minuteCandles.length > 0) {
               await this.storeCandles(
@@ -320,16 +322,13 @@ export class CandleFetcherService {
     interval: 'day' | 'minute',
   ): Promise<boolean> {
     try {
-      const intervalValue = 1;
-      const intervalUnit = interval;
-      const count = await this.candlesRepository.getCountInRange(
+      return await this.candlesRepository.existsForRange(
         instrumentKey,
-        intervalValue,
-        intervalUnit,
+        1,
+        interval,
         startDate,
         endDate,
       );
-      return count > 0;
     } catch {
       return false;
     }
@@ -340,15 +339,7 @@ export class CandleFetcherService {
    */
   private async storeCandles(
     instrumentKey: string,
-    candles: Array<{
-      timestamp: string;
-      open: number;
-      high: number;
-      low: number;
-      close: number;
-      volume: number;
-      oi: number;
-    }>,
+    candles: UpstoxCandleData[],
     intervalValue: number,
     intervalUnit: 'day' | 'minute',
   ): Promise<void> {
@@ -361,11 +352,11 @@ export class CandleFetcherService {
       high: c.high,
       low: c.low,
       close: c.close,
-      volume: c.volume,
-      openInterest: c.oi || null,
+      volume: c.volume || 0,
+      openInterest: c.open_interest || null,
     }));
 
-    await this.candlesRepository.bulkInsert(marketCandles);
+    await this.candlesRepository.insertBatch(marketCandles);
   }
 
   /**
