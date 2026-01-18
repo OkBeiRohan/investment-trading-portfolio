@@ -295,8 +295,8 @@ export interface OptionGreeksResponse {
 }
 
 @Injectable()
-export class SimpleUpstoxClient {
-  private readonly logger = new Logger(SimpleUpstoxClient.name);
+export class UpstoxClient {
+  private readonly logger = new Logger(UpstoxClient.name);
 
   constructor(
     private readonly api: HttpService,
@@ -1102,6 +1102,38 @@ export class SimpleUpstoxClient {
         }`,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Get expired futures for a specific expiry date
+   * @param instrumentKey - Underlying instrument key
+   * @param expiryDate - Expiry date in YYYY-MM-DD format
+   */
+  async getExpiredFutures(
+    instrumentKey: string,
+    expiryDate: string,
+  ): Promise<ExpiredFutureContract[]> {
+    try {
+      const encodedKey = encodeURIComponent(instrumentKey);
+      const response = await firstValueFrom(
+        this.api.get<ExpiredFutureContractsResponse>(
+          `/v2/expired-instruments/futures?instrument_key=${encodedKey}&expiry=${expiryDate}`,
+        ),
+      );
+
+      if (response.data.status !== 'success') {
+        throw new Error(`Failed to fetch expired futures for ${expiryDate}`);
+      }
+
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error(
+        `Error fetching expired futures: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return [];
     }
   }
 }
