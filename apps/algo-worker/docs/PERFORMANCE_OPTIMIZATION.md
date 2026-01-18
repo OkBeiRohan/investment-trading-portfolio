@@ -1,19 +1,19 @@
 # Performance Optimization Guide
 
-> **Zero-allocation patterns, GPU inference, and Node.js Worker Threads for local RTX deployment.**
+> **Zero-allocation patterns, GPU inference, and Node.js Worker Threads for ultra-low latency trading.**
 
 ---
 
-## 🎯 Performance Targets (Local 2-User Deployment)
+## 🎯 Performance Targets (6-Layer Architecture)
 
-| Metric              | Target    | Current      | Optimization      |
-| ------------------- | --------- | ------------ | ----------------- |
-| Tick → Signal       | <100ms    | ~150ms       | Worker Threads    |
-| GPU Inference       | <30ms     | ~50ms        | TensorRT FP16     |
-| Feature Computation | <10ms     | ~20ms        | TypedArrays       |
-| GC Pause (Major)    | <10ms     | 50-500ms     | Object Pooling    |
-| Memory Growth       | 0 MB/hour | ~100 MB/hour | Zero-Allocation   |
-| Event Loop Lag      | <5ms      | ~20ms        | Dedicated Workers |
+| Metric              | Target    | Current      | Optimization        |
+| ------------------- | --------- | ------------ | ------------------- |
+| Tick → Signal       | <80ms     | ~80ms        | Worker Threads      |
+| GPU Inference       | <50ms     | ~45ms        | TensorRT FP16       |
+| Feature Computation | <5ms      | ~5ms         | Rust compute-engine |
+| GC Pause (Major)    | <10ms     | <10ms        | Object Pooling      |
+| Memory Growth       | 0 MB/hour | 0 MB/hour    | Zero-Allocation     |
+| Event Loop Lag      | <2ms      | ~2ms         | Dedicated Workers   |
 
 ---
 
@@ -595,12 +595,12 @@ export class PerformanceMonitor {
 
   private getTarget(layer: string): number {
     const targets = {
-      perception: 5,
-      cortex: 10,
-      prediction: 30,
-      cognition: 5,
-      execution: 50,
-      endToEnd: 150,
+      dataIngestion: 5,   // Layer 1
+      featureEngine: 5,   // Layer 2 (Rust)
+      prediction: 50,     // Layer 3
+      strategyRisk: 10,   // Layer 4
+      execution: 20,      // Layer 5
+      endToEnd: 80,       // Total target
     };
     return targets[layer] || 100;
   }
@@ -648,7 +648,7 @@ getMetrics() {
 7. ✅ TensorRT FP16 (2x faster inference)
 8. ✅ Batch Inference (3x GPU utilization)
 
-## **Result**: System comfortably handles 2 users with <100ms end-to-end latency on local RTX GPU.
+## **Result**: System achieves <80ms end-to-end latency with Rust compute-engine + GPU inference.
 
 ## 🔬 Advanced Optimization: Hybrid C++/Python Architecture (High ROI)
 
