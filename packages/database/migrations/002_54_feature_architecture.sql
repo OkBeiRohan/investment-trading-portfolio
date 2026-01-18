@@ -1,16 +1,17 @@
 -- QuestDB Migration Script - 54 Feature Architecture Update
 -- Version: 2.1.0
 -- Date: January 18, 2026
--- Description: Updates for 54-feature ML architecture, tick data with depth-30, India VIX
+-- Description: Updates for 54-feature ML architecture + daily features
 --
 -- Run this script in QuestDB console (http://localhost:9000)
 --
 -- Changes:
 -- 1. CREATE tick_data table (depth-30 for live trading)
--- 2. CREATE india_vix table
--- 3. ALTER instrument_master - add new fields
--- 4. REPLACE instrument_features_1m - 54 features + validity
--- 5. REPLACE training_labels_1m - multi-horizon + validity
+-- 2. CREATE instrument_features_1d (daily features for regime model)
+-- 3. REPLACE instrument_features_1m (54 features + validity)
+-- 4. REPLACE training_labels_1m (multi-horizon + validity)
+-- 
+-- Note: india_vix consolidated into market_candles (use instrument_key = 'NSE_INDEX|India VIX')
 
 -- =============================================================================
 -- TABLE: tick_data (NEW)
@@ -114,30 +115,89 @@ CREATE TABLE IF NOT EXISTS tick_data (
 DEDUP UPSERT KEYS(timestamp, instrument_key);
 
 -- =============================================================================
--- TABLE: india_vix (NEW)
--- India VIX index data (launched Feb 26, 2014)
+-- TABLE: instrument_features_1d (NEW)
+-- Daily features for 26-year Regime HMM training (2000-2026)
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS india_vix (
+CREATE TABLE IF NOT EXISTS instrument_features_1d (
   timestamp TIMESTAMP,
-  interval_value INT,
-  interval_unit SYMBOL CAPACITY 10,
+  instrument_key SYMBOL CAPACITY 10000 NOCACHE INDEX,
   
-  open DOUBLE,
-  high DOUBLE,
-  low DOUBLE,
+  -- PRICE STRUCTURE (8)
   close DOUBLE,
+  return_1d DOUBLE,
+  return_5d DOUBLE,
+  return_20d DOUBLE,
+  range_hl DOUBLE,
+  gap_open DOUBLE,
+  close_vs_high_20d DOUBLE,
+  close_vs_low_20d DOUBLE,
   
-  percentile_30d DOUBLE,
-  percentile_1yr DOUBLE,
+  -- MOMENTUM (8)
+  rsi_14 DOUBLE,
+  rsi_5 DOUBLE,
+  macd DOUBLE,
+  macd_signal DOUBLE,
+  macd_hist DOUBLE,
+  adx_14 DOUBLE,
+  plus_di DOUBLE,
+  minus_di DOUBLE,
+  
+  -- MOVING AVERAGES (6)
   sma_10 DOUBLE,
-  sma_20 DOUBLE
+  sma_20 DOUBLE,
+  sma_50 DOUBLE,
+  sma_200 DOUBLE,
+  ema_12 DOUBLE,
+  ema_26 DOUBLE,
   
-) TIMESTAMP(timestamp) PARTITION BY MONTH WAL
-DEDUP UPSERT KEYS(timestamp, interval_value, interval_unit);
+  -- MA SIGNALS (4)
+  price_vs_sma_20 DOUBLE,
+  price_vs_sma_50 DOUBLE,
+  price_vs_sma_200 DOUBLE,
+  golden_cross INT,
+  
+  -- VOLATILITY (6)
+  atr_14 DOUBLE,
+  atr_percent DOUBLE,
+  realized_vol_20d DOUBLE,
+  realized_vol_60d DOUBLE,
+  bollinger_width DOUBLE,
+  bollinger_position DOUBLE,
+  
+  -- VIX (from market_candles where instrument_key = India VIX)
+  vix_close DOUBLE,
+  vix_percentile_30d DOUBLE,
+  vix_percentile_1yr DOUBLE,
+  vix_sma_10 DOUBLE,
+  
+  -- VOLUME (4)
+  volume_sma_20_ratio DOUBLE,
+  volume_trend DOUBLE,
+  obv_change DOUBLE,
+  accumulation_dist DOUBLE,
+  
+  -- REGIME INDICATORS (4)
+  trend_strength DOUBLE,
+  mean_reversion_signal DOUBLE,
+  momentum_regime INT,
+  volatility_regime INT,
+  
+  -- TIME CONTEXT (4)
+  day_of_week INT,
+  month_of_year INT,
+  is_month_end BOOLEAN,
+  is_quarter_end BOOLEAN,
+  
+  -- VALIDITY
+  is_valid BOOLEAN,
+  invalid_reason STRING,
+  feature_version STRING
+  
+) TIMESTAMP(timestamp) PARTITION BY YEAR WAL
+DEDUP UPSERT KEYS(timestamp, instrument_key);
 
 -- =============================================================================
 -- RECREATE: instrument_features_1m (54 features + validity)
--- Drop and recreate to add new columns
 -- =============================================================================
 DROP TABLE IF EXISTS instrument_features_1m;
 
@@ -193,7 +253,7 @@ CREATE TABLE IF NOT EXISTS instrument_features_1m (
   iv_rv_ratio DOUBLE,
   vix_percentile_30d DOUBLE,
   
-  -- ORDER FLOW (8) - NULL for historical
+  -- ORDER FLOW (8)
   bid_ask_spread_bps DOUBLE,
   depth_imbalance_5 DOUBLE,
   ofi_1s DOUBLE,
@@ -211,11 +271,9 @@ CREATE TABLE IF NOT EXISTS instrument_features_1m (
   days_to_expiry INT,
   session_phase INT,
   
-  -- VALIDITY FLAGS
+  -- VALIDITY
   is_valid BOOLEAN,
   invalid_reason STRING,
-  
-  -- METADATA
   feature_mode SYMBOL CAPACITY 10,
   computation_latency_us INT,
   feature_version STRING
@@ -259,15 +317,10 @@ CREATE TABLE IF NOT EXISTS training_labels_1m (
   had_spike_event BOOLEAN,
   had_gap_event BOOLEAN,
   
-  -- VALIDITY FLAGS
+  -- VALIDITY
   is_valid BOOLEAN,
   invalid_reason STRING,
   label_quality SYMBOL CAPACITY 10
   
 ) TIMESTAMP(timestamp) PARTITION BY MONTH WAL
 DEDUP UPSERT KEYS(timestamp, instrument_key);
-
--- =============================================================================
--- VERIFICATION
--- =============================================================================
--- SELECT table_name FROM tables();

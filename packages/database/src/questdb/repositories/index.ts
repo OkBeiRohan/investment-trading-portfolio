@@ -11,5 +11,5 @@ export * from "./market-state.repository";
 export * from "./option-chain.repository";
 export * from "./training-labels.repository";
 export * from "./tick-data.repository";
-export * from "./india-vix.repository";
+
 
