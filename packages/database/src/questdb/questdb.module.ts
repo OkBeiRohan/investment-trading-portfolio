@@ -16,6 +16,7 @@ import {
   OptionChainRepository,
   OptionChainTickRepository,
   TickDataRepository,
+  OrderbookRepository,
 } from "./repositories";
 
 @Global()
@@ -63,6 +64,9 @@ import {
     // Options
     OptionChainRepository,
     OptionChainTickRepository,
+
+    // Orderbook
+    OrderbookRepository,
   ],
 })
 export class QuestDBModule {}
