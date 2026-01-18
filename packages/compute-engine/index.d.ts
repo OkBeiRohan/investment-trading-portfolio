@@ -45,6 +45,12 @@ export interface FeatureInput {
   constituents: Array<ConstituentTick>
   options: Array<OptionTick>
   indiaVix?: number
+  isExpiryDay?: boolean
+  daysToExpiry?: number
+  currentExpiry?: string
+  marketDepth?: MarketDepth
+  niftySpot?: number
+  riskFreeRate?: number
 }
 
 /** Feature computation mode (Historical vs Live) */
@@ -61,7 +67,7 @@ export declare const enum FeatureMode {
   Live = 1
 }
 
-/** Complete feature output (33 features + timestamp = 34 fields) - returned directly to Node.js */
+/** Complete feature output (54 features + timestamp = 55 fields) - returned directly to Node.js */
 export interface FeatureOutput {
   timestamp: number
   pctStocksAboveVwap: number
@@ -70,6 +76,8 @@ export interface FeatureOutput {
   advanceDeclineRatio: number
   breadthMomentum5M: number
   breadthVolatility: number
+  breadthThrust: number
+  newHighsLowsRatio: number
   futPriceVsVwap: number
   futRangePosition: number
   futReturn1M: number
@@ -79,6 +87,9 @@ export interface FeatureOutput {
   futOiChange: number
   futRsi14: number
   futMacd: number
+  futReturn15M: number
+  futOiChangePct: number
+  futMacdSignal: number
   atmIv: number
   atmIvChange: number
   ivSkew: number
@@ -90,13 +101,29 @@ export interface FeatureOutput {
   maxPainDistance: number
   charmAtm: number
   vannaAtm: number
+  ivTermStructure: number
+  totalGammaExposure: number
+  ivPercentile30D: number
   indiaVix: number
   realizedVol5M: number
   realizedVol15M: number
   volExpansionRatio: number
+  ivRvRatio: number
+  vixPercentile30D: number
+  bidAskSpreadBps: number
+  depthImbalance5: number
+  ofi1S: number
+  ofi5S: number
+  ofi30S: number
+  tradeImbalance: number
+  bidSlope: number
+  askSlope: number
   minutesFromOpen: number
   minutesToClose: number
   dayOfWeek: number
+  isExpiryDay: number
+  daysToExpiry: number
+  sessionPhase: number
 }
 
 /** Per-feature timing log */
