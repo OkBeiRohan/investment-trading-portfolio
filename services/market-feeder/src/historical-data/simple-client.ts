@@ -201,7 +201,9 @@ export interface OptionContractsResponse {
   data: ActiveOptionContract[];
 }
 
-// Active Future Contract from /v2/option/contract (futures)
+// Active Future Contract - NOTE: Active futures are NOT available from Upstox API
+// They must be inferred from hardcoded list (NIFTY50_FUTURES) or constructed from trading symbols
+// This interface is used for internal representation only
 export interface ActiveFutureContract {
   name: string;
   segment: 'NSE_FO' | 'BSE_FO' | 'MCX_FO';

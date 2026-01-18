@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS orderbook_l2_snapshots (
   side SYMBOL CAPACITY 2,
   level BYTE,
   price DOUBLE,
-  quantity DOUBLE
+  quantity DOUBLE,
+  orders INT                                 -- NEW: Number of orders at this level
 ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
 DEDUP UPSERT KEYS(timestamp, instrument_key, side, level);

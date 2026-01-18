@@ -42,12 +42,16 @@ export class InstrumentMasterRepository {
       if (instruments.length === 0) return true;
 
       const sqlPrefix = loadSqlQueryCached(
-        "instrument-master/insert-batch-prefix"
+        "instrument-master/insert-batch-prefix",
       );
       const values = instruments
         .map((inst) => {
           const v = InstrumentMasterSchema.parse(inst);
-          return `('${v.instrumentKey}', '${v.exchange}', '${v.segment}', '${v.instrumentType}', '${v.tradingsymbol}', '${v.name}', ${v.expiry ? `'${v.expiry.toISOString()}'` : "NULL"}, ${v.strike ?? "NULL"}, ${v.optionType ? `'${v.optionType}'` : "NULL"}, ${v.lotSize}, ${v.tickSize}, ${v.underlyingKey ? `'${v.underlyingKey}'` : "NULL"}, ${v.isExpired}, '${v.lastUpdated.toISOString()}')`;
+          // Escape single quotes in strings
+          const escape = (s: string | null | undefined) =>
+            s ? s.replace(/'/g, "''") : null;
+
+          return `('${escape(v.instrumentKey)}', '${v.exchange}', '${v.segment}', '${v.instrumentType}', '${escape(v.tradingsymbol)}', '${escape(v.name)}', ${v.expiry ? `'${v.expiry.toISOString()}'` : "NULL"}, ${v.strike ?? "NULL"}, ${v.optionType ? `'${v.optionType}'` : "NULL"}, ${v.lotSize}, ${v.tickSize}, ${v.underlyingKey ? `'${escape(v.underlyingKey)}'` : "NULL"}, ${v.isExpired}, '${v.lastUpdated.toISOString()}', ${v.isin ? `'${escape(v.isin)}'` : "NULL"}, ${v.exchangeToken ? `'${escape(v.exchangeToken)}'` : "NULL"}, ${v.underlyingSymbol ? `'${escape(v.underlyingSymbol)}'` : "NULL"}, ${v.underlyingType ? `'${v.underlyingType}'` : "NULL"}, ${v.freezeQuantity ?? "NULL"}, ${v.minimumLot ?? "NULL"}, ${v.weekly ?? "NULL"}, ${v.isActive ?? "NULL"})`;
         })
         .join(",");
 
@@ -99,7 +103,7 @@ export class InstrumentMasterRepository {
    */
   async getOptions(
     underlyingKey: string,
-    expiryDate?: Date
+    expiryDate?: Date,
   ): Promise<InstrumentMaster[]> {
     const sql = expiryDate
       ? loadSqlQueryCached("instrument-master/get-options-by-expiry")
@@ -116,7 +120,7 @@ export class InstrumentMasterRepository {
       exchange: row.exchange,
       segment: row.segment,
       instrumentType: row.instrument_type,
-      tradingsymbol: row.tradingsymbol,
+      tradingsymbol: row.trading_symbol,
       name: row.name,
       expiry: row.expiry ? new Date(row.expiry) : null,
       strike: row.strike,
@@ -126,6 +130,15 @@ export class InstrumentMasterRepository {
       underlyingKey: row.underlying_key,
       isExpired: row.is_expired,
       lastUpdated: new Date(row.last_updated),
+      // Extended fields
+      isin: row.isin ?? null,
+      exchangeToken: row.exchange_token ?? null,
+      underlyingSymbol: row.underlying_symbol ?? null,
+      underlyingType: row.underlying_type ?? null,
+      freezeQuantity: row.freeze_quantity ?? null,
+      minimumLot: row.minimum_lot ?? null,
+      weekly: row.weekly ?? null,
+      isActive: row.is_active ?? undefined,
     };
   }
 }
