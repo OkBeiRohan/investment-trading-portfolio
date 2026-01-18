@@ -1,4 +1,4 @@
-import { DynamicModule, Global, Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import DatabaseConnections from "./connections/connections";
 import {
@@ -29,11 +29,6 @@ import {
   TwoFactorRepository,
   PasskeyRepository,
   BrokerAccountRepository,
-  InstrumentRepository,
-  ProcessingLogRepository,
-  ConstituentChangeRepository,
-  IngestionLogRepository,
-  DataInventoryRepository,
 } from "./repositories";
 import {
   Invitation,
@@ -55,6 +50,13 @@ import {
 } from "./schemas/trading";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 import { MongoDBService } from "./mongodb.service";
+import {
+  ConstituentChangeRepository,
+  InstrumentRepository,
+  ProcessingLogRepository,
+  IngestionLogRepository,
+  DataInventoryRepository,
+} from "./repositories/market-data";
 
 @Global()
 @Module({
