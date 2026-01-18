@@ -26,15 +26,31 @@
 
 ## Architecture Philosophy
 
+### **Core Data Flow**
+
+```
+Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (ONNX)
+                              <5ms features          <50ms inference
+```
+
+### **Technology Stack**
+
+| Component | Technology | Location |
+|-----------|------------|----------|
+| Feature Computation | **Rust (NAPI-RS)** | `packages/compute-engine` |
+| Model Training | Python (Kedro) | `services/training-pipeline` |
+| Model Export | ONNX | Training → Inference |
+| Live Inference | NestJS + onnxruntime-node | `apps/algo-worker` |
+
 ### **algo-worker: 7-Layer Event-Driven Architecture**
 
 All code must follow the **7-layer cognitive architecture** with strict layer separation:
 
-1. **Perception** → Event consumption (Redis Streams)
-2. **Cortex** → Feature engineering (real-time indicators + Order Flow Imbalance)
-3. **Prediction** → ONNX model inference (ensemble) - runs in Worker Thread
+1. **Perception** → Subscribe to Redis `features:live` channel
+2. **Cortex** → Feature buffer and sequence preparation
+3. **Prediction** → ONNX Runtime inference (GPU via Worker Thread)
 4. **Cognition** → Strategy selection + risk management
-5. **Execution** → Smart order routing + position tracking + RL-based execution
+5. **Execution** → Smart order routing + position tracking
 6. **Memory** → Multi-tier storage (Redis/QuestDB/MongoDB)
 7. **Control** → Observability (Prometheus metrics, health checks)
 
@@ -129,11 +145,38 @@ Fold 2: [--test--][--train--]  # Future data leaks into past!
 - Normalize data from different providers (Upstox, Binance) into common `MarketData` format
 - Use circuit breakers for external API calls
 
-### @repo/ai-models
+### @repo/compute-engine (Rust)
 
-- Load ONNX models with TensorRT/OpenVINO execution providers
+- **Location**: `packages/compute-engine`
+- **Purpose**: Compute 33 trading features in <5ms
+- Used by both `market-feeder` (live) and `training-pipeline` (historical)
+- Auto-generated TypeScript types via ts-rs
+- Parallel execution via Rayon
+
+```typescript
+import { computeFeatures } from '@repo/compute-engine';
+
+const result = computeFeatures(marketTick);
+console.log(result.features);  // 33 features
+console.log(result.totalDurationMicros);  // ~2000-3000µs
+```
+
+### @repo/ai-models (ONNX)
+
+- Load ONNX models with CUDA/CPU execution providers
 - Pre-warm models on startup (run dummy inference)
 - Monitor inference latency (<50ms p95 target)
+- Use Worker Threads for GPU inference (never block event loop)
+
+```typescript
+import * as ort from 'onnxruntime-node';
+
+const session = await ort.InferenceSession.create('model.onnx', {
+  executionProviders: ['CUDAExecutionProvider', 'CPUExecutionProvider'],
+});
+const tensor = new ort.Tensor('float32', features, [1, 33]);
+const results = await session.run({ input: tensor });
+```
 
 ### tRPC Architecture
 

@@ -1,32 +1,119 @@
 # Market Feeder
 
-Real-time market data ingestion microservice.
-
-## Overview
+> **Real-time market data ingestion service with compute-engine integration for feature computation.**
 
 **Port**: 3002  
-**Purpose**: Ingest real-time market data from external providers and distribute to other services
+**Last Updated**: January 18, 2026
+
+---
+
+## Purpose
+
+Market Feeder is the **data ingestion layer** that:
+
+1. Connects to Upstox WebSocket for real-time market data
+2. Computes features using **compute-engine (Rust)**
+3. Publishes features to Redis for algo-worker
+4. Stores data to QuestDB for training
+
+### What This Service Does
+
+- ✅ Subscribe to Upstox WebSocket for live tick data
+- ✅ Generate 1-minute candles from tick data
+- ✅ Compute 33 features using compute-engine (Rust, <5ms)
+- ✅ Publish features to Redis Pub/Sub (`features:live`)
+- ✅ Store features to QuestDB (`instrument_features_1m`)
+- ✅ Handle reconnection with exponential backoff
+- ✅ Monitor connection health
+
+### What This Service Should NOT Do
+
+- ❌ ML inference (use algo-worker)
+- ❌ Trading decisions (use algo-worker)
+- ❌ Historical data processing (use training-pipeline)
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         MARKET FEEDER (NestJS)                               │
+│                                                                              │
+│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
+│   │ Upstox          │ →  │ Tick Handler    │ →  │ Candle Builder  │         │
+│   │ WebSocket       │    │                 │    │ (1-min OHLCV)   │         │
+│   └─────────────────┘    └─────────────────┘    └─────────────────┘         │
+│                                                          ↓                   │
+│   ┌─────────────────┐    ┌─────────────────────────────────────────────┐   │
+│   │ QuestDB         │ ←  │ compute-engine (Rust/NAPI)                  │   │
+│   │ (Storage)       │    │ 33 features in <5ms                         │   │
+│   └─────────────────┘    └─────────────────────────────────────────────┘   │
+│                                    ↓                                         │
+│                          ┌─────────────────┐                                │
+│                          │ Redis Pub/Sub   │ → algo-worker                  │
+│                          │ (features:live) │                                │
+│                          └─────────────────┘                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Dependencies
+
+### Internal Packages
+
+| Package | Purpose |
+|---------|---------|
+| `@repo/compute-engine` | **Rust NAPI-RS** feature computation |
+| `@repo/market-sdk` | Upstox WebSocket client |
+| `@repo/database` | QuestDB and Redis access |
+| `@repo/schema` | Type definitions |
+
+### External
+
+| Library | Purpose |
+|---------|---------|
+| NestJS | Application framework |
+| Redis | Pub/Sub for feature distribution |
+| QuestDB | Time-series storage |
+
+---
 
 ## Data Flow
 
 ```
-External Providers (Upstox WebSocket)
-  ↓
-Market Feeder (this app)
-  ↓
-├─> QuestDB (time-series storage)
-└─> Redis Pub/Sub (real-time distribution)
+1. Upstox WebSocket sends tick data
+   ↓
+2. TickHandler aggregates into 1-min candles
+   ↓
+3. CandleComplete event triggers feature computation
+   ↓
+4. compute-engine (Rust) computes 33 features (<5ms)
+   ↓
+5. Features published to Redis (features:live channel)
+   ↓
+6. Features stored to QuestDB (instrument_features_1m table)
+   ↓
+7. algo-worker subscribes to Redis and runs inference
 ```
+
+---
 
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Install dependencies (from monorepo root)
 pnpm install
 
-# Setup environment
+# Build compute-engine
+cd packages/compute-engine
+pnpm build
+
+# Configure environment
+cd services/market-feeder
 cp .env.example .env
-# Edit .env with your credentials
+# Edit .env with Upstox credentials
 
 # Development
 pnpm dev
@@ -36,59 +123,115 @@ pnpm build
 pnpm start:prod
 ```
 
-## Features
+---
 
-- ✅ WebSocket connections to market data providers
-- ✅ Automatic reconnection with exponential backoff
-- ✅ Real-time tick data ingestion
-- ✅ 1-minute candle generation
-- ✅ Option Greeks streaming
-- ✅ Batch writes to QuestDB
-- ✅ Redis pub/sub for real-time distribution
-- ✅ Health monitoring and circuit breakers
+## Integration with Compute Engine
 
-## Environment Variables
+```typescript
+import { computeFeatures, FeatureInput } from '@repo/compute-engine';
+import { Injectable } from '@nestjs/common';
 
-See `.env.example` for required configuration.
+@Injectable()
+export class FeatureComputationService {
+  constructor(
+    private redis: RedisService,
+    private questdb: QuestDbService,
+  ) {}
 
-## Architecture
+  async onCandleComplete(candle: Candle, options: OptionChain) {
+    // Prepare input for compute-engine
+    const input: FeatureInput = {
+      timestamp: candle.timestamp,
+      niftyFuture: {
+        ltp: candle.close,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume,
+        openInterest: candle.oi,
+      },
+      constituents: this.getConstituents(),
+      options: this.mapOptionsToTicks(options),
+      indiaVix: this.latestVix,
+    };
 
-Uses shared packages:
+    // Compute features (Rust, <5ms)
+    const result = computeFeatures(input);
+    
+    console.log(`Features computed in ${result.totalDurationMicros}µs`);
 
-- `@repo/market-sdk` - Market data clients (Upstox, Yahoo, Binance)
-- `@repo/database` - QuestDB and Redis access
-- `@repo/schema` - Type definitions
+    // Publish to Redis for algo-worker
+    await this.redis.publish('features:live', JSON.stringify(result.features));
 
-## Documentation
-
-- [Copilot Instructions](.github/copilot-instructions.md)
-
-## Stack
-
-- NestJS
-- WebSocket (via @repo/market-sdk)
-- QuestDB (time-series storage)
-- Redis (pub/sub)
-- TypeScript
-
-## Testing
-
-```bash
-pnpm test
-pnpm test:e2e
+    // Store to QuestDB for training
+    await this.questdb.insert('instrument_features_1m', result.features);
+  }
+}
 ```
 
-## Monitoring
+---
 
-Health endpoint: `GET /health`
+## Configuration
 
-Returns connection status for:
+### Environment Variables
 
-- WebSocket connection
-- QuestDB
-- Redis
-- Data freshness
+```bash
+# Upstox API
+UPSTOX_API_KEY=your_api_key
+UPSTOX_API_SECRET=your_api_secret
+UPSTOX_ACCESS_TOKEN=your_access_token
 
-## Contributing
+# Databases
+QUESTDB_HOST=localhost
+QUESTDB_PORT=9000
+REDIS_URL=redis://localhost:6379
 
-Follow the coding standards in `.github/copilot-instructions.md`.
+# Feature computation
+FEATURE_COMPUTATION_ENABLED=true
+```
+
+---
+
+## Outputs
+
+| Output | Destination | Consumer |
+|--------|-------------|----------|
+| Features (live) | Redis `features:live` | algo-worker |
+| Features (historical) | QuestDB `instrument_features_1m` | training-pipeline |
+| Candles | QuestDB `market_candles` | All services |
+| Ticks | QuestDB `tick_data` | Analysis |
+
+---
+
+## Health Monitoring
+
+```bash
+GET /health
+```
+
+Returns:
+
+```json
+{
+  "status": "healthy",
+  "websocket": "connected",
+  "questdb": "connected",
+  "redis": "connected",
+  "lastTick": "2026-01-18T09:30:01.000Z",
+  "featuresComputed": 12500
+}
+```
+
+---
+
+## Related Documentation
+
+- [compute-engine README](../../packages/compute-engine/README.md) - Rust feature computation
+- [algo-worker README](../../apps/algo-worker/README.md) - Trading engine
+- [ML Architecture](../../docs/ml/README.md) - AI/ML overview
+
+---
+
+**Status**: Active Development  
+**Technology**: NestJS, Rust (NAPI-RS), QuestDB, Redis

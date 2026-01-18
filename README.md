@@ -1,7 +1,7 @@
 # Quantum Investments and Trades
 
 > **Institutional-grade algorithmic trading + Professional wealth management for comprehensive financial sovereignty.**
-> Event-Driven Architecture | AI-Powered Insights | SEBI 2024-2025 Compliant | Production-Ready
+> Event-Driven Architecture | Rust Feature Engine | ONNX Inference | SEBI 2024-2025 Compliant
 
 ---
 
@@ -23,21 +23,20 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 
 ### Algo Trading (algo-worker)
 
-- **🧠 ML Hierarchical Intelligence Stack** 🆕 (12-14 Models Total):
-  - **TIER 1 - Core (Always-On)**:
-    - **Level-0A: Micro-Alpha** - LiT (LOB Transformer) for 10s-1min microstructure signals from depth-20 order book
-    - **Level-0B: Macro Direction (CORE)** - LightGBM, XGBoost for 5-15min forecasting with 50+ features (Greeks, momentum, volatility)
-    - **Level-0C: Regime & Volatility** - TFT (Temporal Fusion Transformer) for multi-horizon forecasting (5min-EOD)
-  - **TIER 2 - Conditional (Regime-Activated)**:
-    - PatchTST (TREND regimes), Mamba (regime shifts), TimesNet-MLP (volatility expansion), WFTNet-MLP (news spikes)
-  - **TIER 3 - Research/Shadow**:
-    - SVM, GINN, KAN (compliance), ViT, CNN-LSTM for validation and interpretability
-  - **Level-1**: Contextual meta-learner with adaptive gating (market-state aware fusion, not simple stacking)
-  - **Key Insight**: 4-7 models run simultaneously (regime-dependent), NEVER all at once (prevents latency explosion)
-  - **Orthogonal Information**: LiT learns from LOB microstructure, LightGBM from technical+Greeks, TFT from time-series volatility
-  - Online learning: Drift detection (ADWIN) for real-time model adaptation
-  - Explainability: SHAP for feature importance monitoring (SEBI compliance)
-  - Symbolic risk rules (hard limits override AI predictions)
+- **🧠 4-Tier Hierarchical AI Stack** (2026 State-of-the-Art):
+  - **TIER 1 - Base Prediction Models**:
+    - **Micro-Alpha (10s-1min)**: LiT Transformer, TLOB for Depth-30 LOB microstructure
+    - **Macro Direction (5min-1hr)**: LightGBM, XGBoost, PatchTST with 50+ features
+    - **Regime & Volatility**: TFT (Temporal Fusion Transformer), Mamba (State Space), TimeMixer
+    - **Options-Specific**: IV Surface Predictor (VAE+MLP), Greeks Forecaster
+  - **TIER 2 - Meta-Learner**: Attention-based signal fusion with regime-aware weighting
+  - **TIER 3 - Strategy Layer**: Strike Selector (Neural Net), Risk Manager (Greeks + VaR)
+  - **TIER 4 - Execution**: PPO Agent for slippage minimization (-5 to -10 bps)
+  - **Multi-Horizon Predictions**: H1(10s) → H6(EOD) cascade as features
+  - **Validation**: CPCV (Combinatorial Purged Cross-Validation)
+  - **Drift Detection**: ADWIN for online model adaptation
+  - **Feature Store**: Feast + Redis for training-serving consistency
+  - **Explainability**: SHAP for SEBI compliance
 - **⚡ Ultra-Low Latency**:
   - Event-driven core with deterministic sequencer (<10μs event processing)
   - Worker Threads for GPU inference (eliminates main-thread blocking)
@@ -99,61 +98,54 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 
 **See [DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md) for full details.**
 
-### Compute Engine (Rust/NAPI)
+### Compute Engine (Rust/NAPI-RS)
 
-**High-performance feature computation for ML models**:
+**High-performance feature computation** - the critical bridge between market data and ML inference:
 
-- **Market State Encoder (MSE)**: Compresses 50,000+ signals/second into 33-200 features
-- **End-to-end Type Safety**: Rust types auto-generated to TypeScript via ts-rs (zero manual sync)
-- **7 Model Contracts**:
-  1. LightGBM (33 features) - Macro direction
-  2. TFT (time-series) - Regime & volatility forecasting
-  3. LiT (raw LOB) - Microstructure signals
-  4. Meta-Learner - Signal fusion
-  5. Strike Selector - Position sizing
-  6. PPO Execution - Optimal order placement
-  7. Exit Manager - Position management
-- **Performance**: <1ms MSE computation, 100K+ QuestDB writes/sec with batching
-- **Flow**: Market Feeder → Compute Engine (NAPI) → QuestDB → Training Pipeline
+```
+Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (ONNX)
+                              <5ms features          <50ms inference
+```
 
-**See [COMPUTE_ENGINE_INTEGRATION.md](docs/COMPUTE_ENGINE_INTEGRATION.md) for integration guide.**
+- **33 Trading Features**: Index breadth, futures, options, volatility, time context
+- **Parallel Execution**: All features computed simultaneously via Rayon
+- **Type Safety**: Rust types auto-generated to TypeScript via ts-rs
+- **Performance**: <5ms total, ~150µs for parallel feature computation
+- **Integration**: Used by both `market-feeder` (live) and `training-pipeline` (historical)
+
+**See [compute-engine README](packages/compute-engine/README.md) for details.**
 
 ```mermaid
 graph TD
-    subgraph "Event-Driven Core"
-        WS[Upstox WebSocket] -->|Protobuf| RS[Redis Stream]
-        NEWS[News APIs] -->|Text| RS
+    subgraph "Data Ingestion"
+        WS[Upstox WebSocket] -->|Protobuf| MF[market-feeder]
     end
 
-    subgraph "Processing Pipeline (Event Sequencer)"
-        RS --> FE[Feature Engine]
-        FE --> QDB[(QuestDB)]
-        FE --> SENT[FinBERT Sentiment]
+    subgraph "Feature Computation (Rust)"
+        MF --> CE[compute-engine]
+        CE -->|33 features, <5ms| QDB[(QuestDB)]
+        CE -->|Redis Pub/Sub| AW
     end
 
-    subgraph "AI/ML Layer"
-        QDB --> ENS["ML Ensemble (8-10 Models)"]
-        QDB --> META[Meta-Learner]
-        ENS --> META
+    subgraph "ML Inference (NestJS + ONNX)"
+        AW[algo-worker] -->|ONNX Runtime| GPU[GPU Inference]
+        GPU -->|<50ms| PRED[Predictions]
     end
 
-    subgraph "Decision Layer"
-        META --> RISK[Risk Manager]
-        RISK --> STRAT[Strategy Selection]
-    end
-
-    subgraph "Execution"
-        RISK -->|Validated Orders| EXEC[Execution Engine]
+    subgraph "Decision & Execution"
+        PRED --> RISK[Risk Manager]
+        RISK --> EXEC[Execution Engine]
         EXEC -->|API| UPSTOX[Upstox Broker]
     end
 
     subgraph "Storage"
+        QDB
         MDB[(MongoDB)]
         REDIS[(Redis)]
     end
 ```
 
-**See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design.**
+**See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed design.**
 
 ---
 
@@ -237,15 +229,16 @@ pnpm dev  # Starts on port 3001
 - **[DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md)**: Hybrid local-cloud deployment
 - **[SECURITY.md](docs/SECURITY.md)**: Security policies
 
-**AI/ML Architecture**:
+**AI/ML Architecture (2026 State-of-the-Art)**:
 
-- **[HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](docs/HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md)**: ML model hierarchy + CI/CD
-- **[MODEL_INVENTORY.md](docs/MODEL_INVENTORY.md)**: 12-14 model taxonomy
-- **[MARKET_STATE_ENCODER.md](docs/MARKET_STATE_ENCODER.md)**: **Critical** - Feature engineering (50k→200)
-- **[FEATURE_STORE_ARCHITECTURE.md](docs/FEATURE_STORE_ARCHITECTURE.md)**: Centralized feature registry
-- **[AI_MODEL_TRAINING.md](docs/AI_MODEL_TRAINING.md)**: ML training pipelines
+- **[docs/ml/README.md](docs/ml/README.md)**: 📁 **Start here** - AI documentation index
+- **[AI_TRADING_ARCHITECTURE.md](docs/ml/AI_TRADING_ARCHITECTURE.md)**: 4-tier hierarchical model architecture
+- **[TIER1_MODELS.md](docs/ml/TIER1_MODELS.md)**: TFT, Mamba, PatchTST, LiT specifications with code
+- **[META_LEARNER_EXECUTION.md](docs/ml/META_LEARNER_EXECUTION.md)**: Signal fusion, PPO execution agent
+- **[TRAINING_PIPELINE.md](docs/ml/TRAINING_PIPELINE.md)**: CPCV validation, Kedro orchestration
+- **[FEATURE_STORE.md](docs/ml/FEATURE_STORE.md)**: Feast + Redis for consistency
 
-**Research**:
+**Legacy AI Docs** (Reference Only):
 
 - **[RESEARCH_FINDINGS.md](docs/RESEARCH_FINDINGS.md)**: Research insights
 - **[AGENTIC_AI_RESEARCH.md](docs/AGENTIC_AI_RESEARCH.md)**: Multi-agent systems (R&D only)
@@ -365,5 +358,6 @@ Please read **[Copilot Instructions](.github/copilot-instructions.md)** and cons
 
 **Built with ❤️ for the Indian Algo Trading Community**
 
-**License**: Proprietary
-**Status**: Production-Ready Architecture (Implementation in Progress)
+**License**: Proprietary  
+**Status**: Production-Ready Architecture (Implementation in Progress)  
+**Last Updated**: January 18, 2026

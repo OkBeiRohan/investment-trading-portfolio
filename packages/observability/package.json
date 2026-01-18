@@ -34,7 +34,7 @@
     "@opentelemetry/sdk-node": "^0.210.0",
     "@opentelemetry/sdk-trace-base": "^2.4.0",
     "@opentelemetry/sdk-trace-node": "^2.4.0",
-    "@opentelemetry/semantic-conventions": "^1.38.0",
+    "@opentelemetry/semantic-conventions": "^1.39.0",
     "nestjs-otel": "^8.0.1",
     "nestjs-pino": "^4.5.0",
     "opentelemetry-node-metrics": "^3.0.0",
@@ -45,7 +45,7 @@
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@types/node": "^25.0.8",
+    "@types/node": "^25.0.9",
     "typescript": "^5.9.3"
   }
 }

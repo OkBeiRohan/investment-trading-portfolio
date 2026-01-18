@@ -123,7 +123,7 @@ Publish Event: DOCUMENT_TRANSACTIONS_EXTRACTED
 **F1-Score**: 92% on validation set  
 **Inference Time**: <1.5s per page
 
-**Fine-Tuning**: See `../../docs/AI_MODEL_TRAINING.md`
+**Fine-Tuning**: Export models to ONNX for inference. See [INFERENCE_PIPELINE.md](../../docs/ml/INFERENCE_PIPELINE.md).
 
 ### 3. **Donut (Unstructured Documents)**
 
@@ -176,7 +176,7 @@ pnpm run start:prod
 
 ### Training AI Models
 
-See `../../docs/AI_MODEL_TRAINING.md` for comprehensive guide:
+See [INFERENCE_PIPELINE.md](../../docs/ml/INFERENCE_PIPELINE.md) for ONNX export patterns:
 
 ```bash
 cd training
@@ -228,11 +228,11 @@ python export_to_onnx.py --quantize int8
 
 ## References
 
-- [AI Model Training Guide](../../docs/AI_MODEL_TRAINING.md)
-- [Copilot Instructions](./.github/copilot-instructions.md)
+- [ML Architecture](../../docs/ml/README.md)
+- [INFERENCE_PIPELINE.md](../../docs/ml/INFERENCE_PIPELINE.md) - ONNX inference patterns
 - [LayoutLMv3 Paper](https://arxiv.org/abs/2204.08387)
 - [Donut Paper](https://arxiv.org/abs/2111.15664)
 
 **Status**: Active Development  
 **Port**: 3006  
-**Last Updated**: December 8, 2024
+**Last Updated**: January 18, 2026

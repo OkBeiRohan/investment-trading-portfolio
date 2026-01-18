@@ -147,7 +147,7 @@ Deep investment analysis:
 **Quantization**: 4-bit GGUF for fast inference  
 **Inference Time**: <500ms on RTX 3060
 
-**Fine-Tuning**: See `../../docs/AI_MODEL_TRAINING.md` for complete guide
+**Fine-Tuning**: Export models to ONNX for NestJS inference. See [INFERENCE_PIPELINE.md](../../docs/ml/INFERENCE_PIPELINE.md).
 
 ### 2. **Isolation Forest (Anomaly Detection)**
 
@@ -213,10 +213,10 @@ pnpm run start:prod
 
 ## References
 
-- [AI Model Training Guide](../../docs/AI_MODEL_TRAINING.md)
-- [Copilot Instructions](./.github/copilot-instructions.md)
+- [ML Architecture](../../docs/ml/README.md)
+- [INFERENCE_PIPELINE.md](../../docs/ml/INFERENCE_PIPELINE.md) - ONNX inference patterns
 - [Phi-3 Documentation](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
 
 **Status**: Active Development  
 **Port**: 3007  
-**Last Updated**: December 8, 2024
+**Last Updated**: January 18, 2026

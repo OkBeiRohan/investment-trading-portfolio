@@ -1,98 +1,178 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Notification Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> **Multi-channel notification service for trading alerts, system events, and wealth insights.**
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Port**: 3004  
+**Last Updated**: January 18, 2026
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Purpose
 
-## Project setup
+The Notification Service handles all outbound notifications:
 
-```bash
-$ pnpm install
+1. **Trading Alerts**: Order fills, position updates, risk warnings
+2. **System Events**: Service health, latency degradation, circuit breakers
+3. **Wealth Insights**: Daily summaries, spending alerts, goal milestones
+
+### What This Service Does
+
+- ✅ Send email notifications (SMTP/SendGrid)
+- ✅ Send SMS alerts (Twilio)
+- ✅ Send push notifications (Firebase/APNS)
+- ✅ Subscribe to Redis events from other services
+- ✅ Rate limit notifications per user
+- ✅ User preference management (channels, quiet hours)
+
+### What This Service Should NOT Do
+
+- ❌ Trading decisions
+- ❌ ML inference
+- ❌ Market data processing
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    NOTIFICATION SERVICE (NestJS)                             │
+│                                                                              │
+│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
+│   │ Redis Pub/Sub   │ →  │ Event Router    │ →  │ Channel         │         │
+│   │ (Events)        │    │ (Templates)     │    │ Dispatcher      │         │
+│   └─────────────────┘    └─────────────────┘    └─────────────────┘         │
+│                                                          ↓                   │
+│                          ┌────────────────────────────────────────────────┐ │
+│                          │ Channels: Email | SMS | Push | Slack | Discord │ │
+│                          └────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Compile and run the project
+---
+
+## Event Types
+
+### Trading Events
+
+| Event | Channel | Priority |
+|-------|---------|----------|
+| `order:filled` | Email, Push | High |
+| `order:rejected` | Email, Push, SMS | Critical |
+| `position:opened` | Push | Medium |
+| `position:closed` | Email, Push | Medium |
+| `risk:warning` | Email, Push, SMS | Critical |
+| `circuit:breaker` | Email, SMS, Slack | Critical |
+
+### Wealth Events
+
+| Event | Channel | Priority |
+|-------|---------|----------|
+| `daily:summary` | Email | Low |
+| `spending:alert` | Push | Medium |
+| `goal:milestone` | Email, Push | Medium |
+| `bill:reminder` | Push | Medium |
+
+---
+
+## Quick Start
 
 ```bash
-# development
-$ pnpm run start
+# Install dependencies
+pnpm install
 
-# watch mode
-$ pnpm run start:dev
+# Configure environment
+cp .env.example .env
 
-# production mode
-$ pnpm run start:prod
+# Development
+pnpm dev
+
+# Production
+pnpm build
+pnpm start:prod
 ```
 
-## Run tests
+---
+
+## Configuration
+
+### Environment Variables
 
 ```bash
-# unit tests
-$ pnpm run test
+# Email (SendGrid)
+SENDGRID_API_KEY=your_api_key
+FROM_EMAIL=alerts@quantum-trades.com
 
-# e2e tests
-$ pnpm run test:e2e
+# SMS (Twilio)
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_PHONE_NUMBER=+1234567890
 
-# test coverage
-$ pnpm run test:cov
+# Push (Firebase)
+FIREBASE_PROJECT_ID=your_project
+FIREBASE_PRIVATE_KEY=your_key
+
+# Redis
+REDIS_URL=redis://localhost:6379
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## API Endpoints
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Send Notification
 
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+```typescript
+POST /notifications/send
+{
+  "userId": "user123",
+  "type": "order:filled",
+  "data": {
+    "symbol": "NIFTY24JAN18000CE",
+    "quantity": 50,
+    "price": 125.50
+  },
+  "channels": ["email", "push"]
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### User Preferences
 
-## Resources
+```typescript
+GET /notifications/preferences/:userId
+PUT /notifications/preferences/:userId
+{
+  "email": true,
+  "push": true,
+  "sms": false,
+  "quietHours": {
+    "start": "22:00",
+    "end": "08:00"
+  },
+  "criticalOnly": false
+}
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+---
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Dependencies
 
-## Support
+| Package | Purpose |
+|---------|---------|
+| `@repo/database` | MongoDB for user preferences |
+| `@repo/schema` | Type definitions |
+| `@sendgrid/mail` | Email delivery |
+| `twilio` | SMS delivery |
+| `firebase-admin` | Push notifications |
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## Related Documentation
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- [algo-worker README](../../apps/algo-worker/README.md) - Trading engine (event source)
+- [wealth-management README](../wealth-management/README.md) - Wealth events
 
-## License
+---
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**Status**: Active  
+**Technology**: NestJS, Redis, SendGrid, Twilio, Firebase

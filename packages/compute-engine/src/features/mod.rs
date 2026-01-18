@@ -189,16 +189,20 @@ impl FeatureRegistry {
 // MODULE EXPORTS
 // ============================================
 
+pub mod daily;
 pub mod index_breadth;
 pub mod nifty_future;
 pub mod options;
+pub mod order_flow;
 pub mod time_context;
 pub mod volatility;
 
 // Re-export all feature structs
+pub use daily::*;
 pub use index_breadth::*;
 pub use nifty_future::*;
 pub use options::*;
+pub use order_flow::*;
 pub use time_context::*;
 pub use volatility::*;
 

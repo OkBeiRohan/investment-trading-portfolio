@@ -1,145 +1,88 @@
-# =============================================================================
-# Training Pipeline Parameters (Updated for compute-engine architecture)
-# =============================================================================
+# Training Pipeline Parameters
+# Updated with batch training configuration
 
-# =============================================================================
-# Data Loading
-# =============================================================================
+training:
+  training_start: "2023-01-01"
+  training_end: "2026-12-31"
+  batch_days: 30 # Load 30 days at a time to reduce RAM usage
+  test_split: 0.2
 
-questdb_connection: "postgresql://admin:quest@localhost:8812/qdb"
-training_period_days: 730 # 2 years of historical data
-symbol: "NIFTY"
+validation:
+  validation_start: "2025-01-01"
+  validation_end: "2026-12-31"
+  batch_days: 30
 
-# =============================================================================
-# Walk-Forward Validation
-# =============================================================================
+features:
+  feature_columns:
+    # Index Breadth (6)
+    - pct_stocks_above_vwap
+    - pct_stocks_above_ema20
+    - weighted_return_top10
+    - advance_decline_ratio
+    - breadth_momentum_5m
+    - breadth_volatility
+    # NIFTY FUTURE (9)
+    - fut_price_vs_vwap
+    - fut_range_position
+    - fut_return_1m
+    - fut_return_5m
+    - fut_atr_percent
+    - fut_volume_zscore
+    - fut_oi_change
+    - fut_rsi_14
+    - fut_macd
+    # Options (11)
+    - atm_iv
+    - atm_iv_change
+    - iv_skew
+    - gamma_atm
+    - vega_atm
+    - theta_atm
+    - pcr_oi
+    - pcr_volume
+    - max_pain_distance
+    - charm_atm
+    - vanna_atm
+    # Volatility (4)
+    - india_vix
+    - realized_vol_5m
+    - realized_vol_15m
+    - vol_expansion_ratio
+    # Time (3)
+    - minutes_from_open
+    - minutes_to_close
+    - day_of_week
 
-training_config:
-  n_splits: 12 # 12-fold walk-forward validation
-  purge_window: 375 # 1 day (375 minutes = 9:15 AM - 3:30 PM)
-  embargo_window: 375 # 1 day embargo after test
-  random_state: 42
+  target_column: "target_direction" # Binary: 1=VOL_UP, 0=VOL_DOWN
 
-# =============================================================================
-# Volatility-Adjusted Labeling
-# =============================================================================
-
-labeling_config:
-  horizon: 5 # 5-minute forward return
-  k: 1.0 # ATR multiplier for threshold
-  atr_column: "fut_atr_percent" # Use NIFTY FUTURE ATR
-
-# =============================================================================
-# LightGBM Hyperparameters (Production-Grade)
-# =============================================================================
-
-lightgbm_config:
-  objective: "multiclass"
-  num_class: 3 # UP, NEUTRAL, DOWN
-  metric: "multi_logloss"
+lightgbm:
+  objective: "binary"
+  metric: "auc"
   boosting_type: "gbdt"
-  num_leaves: 31 # Conservative (prevents overfitting)
-  learning_rate: 0.05 # Slow learning
-  n_estimators: 400 # With early stopping
-  min_data_in_leaf: 80 # High minimum (prevents overfitting)
-  feature_fraction: 0.8 # Column sampling
-  bagging_fraction: 0.8 # Row sampling
-  bagging_freq: 5 # Bagging frequency
-  lambda_l1: 0.5 # L1 regularization
-  lambda_l2: 1.0 # L2 regularization
-  max_depth: -1 # No depth limit (controlled by num_leaves)
-  verbose: -1 # Silent
-  device: "gpu" # Use RTX GPU
-  gpu_platform_id: 0
-  gpu_device_id: 0
+  num_leaves: 31
+  learning_rate: 0.01
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 5
+  max_depth: 6
+  min_data_in_leaf: 20
+  num_boost_round: 500
+  early_stopping_rounds: 20
+  verbose: -1
 
-# =============================================================================
-# XGBoost Hyperparameters (PLACEHOLDER)
-# =============================================================================
-
-xgboost_config:
 xgboost:
-  max_depth: 8
+  objective: "binary:logistic"
+  eval_metric: "auc"
+  max_depth: 6
   learning_rate: 0.01
   n_estimators: 500
   subsample: 0.8
   colsample_bytree: 0.8
-  objective: "binary:logistic"
-  eval_metric: "logloss"
-  early_stopping_rounds: 50
+  min_child_weight: 1
+  early_stopping_rounds: 20
 
-# CNN-LSTM
-cnn_lstm:
-  conv_filters: [64, 128]
-  kernel_size: 3
-  lstm_units: 50
-  dense_units: 32
-  dropout: 0.3
-  learning_rate: 0.001
-  batch_size: 64
-  epochs: 100
-
-# GINN (GARCH-Informed Neural Network)
-ginn:
-  garch_p: 1
-  garch_q: 1
-  lstm_units: 64
-  learning_rate: 0.0005
-  batch_size: 32
-  epochs: 80
-
-# SVM
-svm:
-  kernel: "rbf"
-  C: [0.1, 1, 10] # Grid search
-  gamma: ["scale", "auto"]
-  class_weight: "balanced"
-
-# Transformer
-transformer:
-  num_layers: 4
-  d_model: 256
-  num_heads: 8
-  d_ff: 1024
-  dropout: 0.1
-  learning_rate: 0.0001
-  batch_size: 32
-  epochs: 100
-
-# LightGBM
-lightgbm:
-  num_leaves: 31
-  learning_rate: 0.05
-  n_estimators: 500
-  max_depth: -1
-  min_child_samples: 20
-  subsample: 0.8
-  colsample_bytree: 0.8
-
-# Meta-Learner (Logistic Regression Stacker)
-meta_learner:
-  solver: "lbfgs"
-  max_iter: 1000
-  C: 1.0
-
-# RL Agent (TD3)
-rl_agent:
-  algorithm: "TD3" # or "SAC"
-  actor_lr: 0.001
-  critic_lr: 0.001
-  gamma: 0.99
-  tau: 0.005
-  policy_noise: 0.2
-  noise_clip: 0.5
-  policy_delay: 2
-  buffer_size: 1000000
-  batch_size: 256
-  warmup_steps: 10000
-  total_timesteps: 1000000
-
-# ONNX Export
-onnx_export:
-  opset_version: 17
-  optimize: true
-  verify: true
-  dynamic_batch: true
+# Model export
+export:
+  output_dir: "data/06_models"
+  onnx_opset: 13
+  quantization: "fp16" # FP16 for 2x faster inference

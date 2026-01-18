@@ -201,6 +201,78 @@ impl Feature for FutMacd {
 }
 
 // ============================================
+// FEATURE: FUT_RETURN_15M
+// ============================================
+
+pub struct FutReturn15m;
+
+impl Feature for FutReturn15m {
+  fn name(&self) -> &'static str {
+    "fut_return_15m"
+  }
+
+  fn category(&self) -> &'static str {
+    "nifty_future"
+  }
+
+  fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    // Uses 15-minute return from cache (computed from nifty_future_return_5m * 3 approximation)
+    // In production, this would come from a 15-period lookback in cache
+    FeatureValue::Scalar(deps.nifty_future_return_5m * 3.0) // Approximation
+  }
+}
+
+// ============================================
+// FEATURE: FUT_OI_CHANGE_PCT
+// ============================================
+
+pub struct FutOiChangePct;
+
+impl Feature for FutOiChangePct {
+  fn name(&self) -> &'static str {
+    "fut_oi_change_pct"
+  }
+
+  fn category(&self) -> &'static str {
+    "nifty_future"
+  }
+
+  fn compute(&self, input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    // OI change percentage = (current_oi - prev_oi) / prev_oi
+    // prev_oi = current_oi - oi_change
+    let prev_oi = input.nifty_future.open_interest - deps.nifty_future_oi_change;
+    if prev_oi <= 0.0 {
+      return FeatureValue::Scalar(0.0);
+    }
+    let pct_change = deps.nifty_future_oi_change / prev_oi;
+    FeatureValue::Scalar(pct_change)
+  }
+}
+
+// ============================================
+// FEATURE: FUT_MACD_SIGNAL
+// ============================================
+
+pub struct FutMacdSignal;
+
+impl Feature for FutMacdSignal {
+  fn name(&self) -> &'static str {
+    "fut_macd_signal"
+  }
+
+  fn category(&self) -> &'static str {
+    "nifty_future"
+  }
+
+  fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
+    // MACD Signal line = EMA(9) of MACD
+    // Approximation: use MACD * 0.8 (would need proper EMA in cache)
+    let macd = deps.nifty_future_ema12 - deps.nifty_future_ema26;
+    FeatureValue::Scalar(macd * 0.8) // Approximation
+  }
+}
+
+// ============================================
 // TESTS
 // ============================================
 
@@ -224,6 +296,12 @@ mod tests {
       constituents: vec![],
       options: vec![],
       india_vix: Some(15.5),
+      is_expiry_day: Some(false),
+      days_to_expiry: Some(3),
+      current_expiry: None,
+      market_depth: None,
+      nifty_spot: Some(19480.0),
+      risk_free_rate: Some(0.07),
     }
   }
 

@@ -1,49 +1,106 @@
 /**
  * Historical Data Controller
- * REST API for manual backfill operations
+ * HTTP endpoints for triggering data bootstrap
  */
 
-import { Controller, Body, Logger, Get, Query } from '@nestjs/common';
-import { HistoricalDataBootstrapService } from './historical-data.service';
-import { SimpleUpstoxClient } from './simple-client';
+import { Controller, Post, Get, Param, Query, Logger } from "@nestjs/common";
+import { ComprehensiveBootstrapService } from "./comprehensive-bootstrap.service";
+import { ProductionUpstoxClient } from "./production-upstox-client";
 
-@Controller('historical-data')
+@Controller("historical-data")
 export class HistoricalDataController {
   private readonly logger = new Logger(HistoricalDataController.name);
 
   constructor(
-    private readonly historicalDataService: HistoricalDataBootstrapService,
-    private readonly upstoxClient: SimpleUpstoxClient,
-  ) {}
+    private readonly bootstrapService: ComprehensiveBootstrapService,
+    private readonly upstoxClient: ProductionUpstoxClient
+  ) { }
 
   /**
-   * Bootstrap NIFTY50 historical data
-   * GET /historical-data/bootstrap
+   * Run full bootstrap (ALL data)
+   * POST /historical-data/bootstrap/full
    */
-  @Get('bootstrap')
-  bootstrap() {
-    this.logger.log('Bootstrap endpoint called');
-    return this.historicalDataService.triggerBootstrap();
+  @Post("bootstrap/full")
+  async runFullBootstrap() {
+    this.logger.log("Starting full bootstrap...");
+    const results = await this.bootstrapService.runFullBootstrap();
+    return Object.fromEntries(results);
   }
 
   /**
-   * Test single instrument fetch
-   * GET /historical-data/test?instrument=NSE_EQ|INE002A01018&days=7
+   * Bootstrap indices only (quick test)
+   * POST /historical-data/bootstrap/indices
    */
-  @Get('test')
-  async testInstrument(
-    @Query('instrument') instrument?: string,
-    @Query('days') days?: string,
+  @Post("bootstrap/indices")
+  async bootstrapIndices() {
+    this.logger.log("Starting indices bootstrap...");
+    return this.bootstrapService.bootstrapIndicesOnly();
+  }
+
+  /**
+   * Bootstrap a single instrument
+   * POST /historical-data/bootstrap/instrument/:instrumentKey
+   */
+  @Post("bootstrap/instrument/:instrumentKey")
+  async bootstrapInstrument(@Param("instrumentKey") instrumentKey: string) {
+    // Decode URL-encoded instrument key
+    const decoded = decodeURIComponent(instrumentKey);
+    this.logger.log(`Starting bootstrap for ${decoded}...`);
+    return this.bootstrapService.bootstrapInstrument(decoded);
+  }
+
+  /**
+   * Discover data start date for an instrument
+   * GET /historical-data/discover/:instrumentKey?timeframe=day|minute
+   */
+  @Get("discover/:instrumentKey")
+  async discoverStartDate(
+    @Param("instrumentKey") instrumentKey: string,
+    @Query("timeframe") timeframe: "day" | "minute" = "day"
   ) {
-    const instrumentKey = instrument || 'NSE_EQ|INE002A01018'; // Default to RELIANCE
-    const daysBack = days ? parseInt(days) : 7;
+    const decoded = decodeURIComponent(instrumentKey);
+    const startDate = await this.upstoxClient.discoverDataStartDate(decoded, timeframe);
+    return {
+      instrumentKey: decoded,
+      timeframe,
+      startDate: startDate?.toISOString().split("T")[0] || null,
+    };
+  }
 
-    this.logger.log(
-      `Testing fetch for ${instrumentKey}, ${daysBack} days back`,
+  /**
+   * Get all Nifty expiries
+   * GET /historical-data/expiries
+   */
+  @Get("expiries")
+  async getExpiries() {
+    const expiries = await this.upstoxClient.getExpiries("NSE_INDEX|Nifty 50");
+    return { expiries, count: expiries.length };
+  }
+
+  /**
+   * Get option contracts for an expiry
+   * GET /historical-data/options/:expiryDate
+   */
+  @Get("options/:expiryDate")
+  async getOptionContracts(@Param("expiryDate") expiryDate: string) {
+    const options = await this.upstoxClient.getExpiredOptionContracts(
+      "NSE_INDEX|Nifty 50",
+      expiryDate
     );
+    return {
+      expiryDate,
+      contracts: options.length,
+      calls: options.filter(o => o.option_type === "CE").length,
+      puts: options.filter(o => o.option_type === "PE").length,
+    };
+  }
 
-    const result = await this.upstoxClient.testFetch(instrumentKey, daysBack);
-
-    return result;
+  /**
+   * Health check
+   * GET /historical-data/health
+   */
+  @Get("health")
+  health() {
+    return { status: "ok", timestamp: new Date().toISOString() };
   }
 }

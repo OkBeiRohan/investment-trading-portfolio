@@ -59,13 +59,14 @@
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐    │
 │  │ LightGBM View   │  │ TFT View        │  │ LiT View        │    │
 │  ├─────────────────┤  ├─────────────────┤  ├─────────────────┤    │
-│  │ Float32Array(33)│  │ (120×15) matrix │  │ (60×80) tensor  │    │
+│  │ Float32Array(54)│  │ (120×54) matrix │  │ (60×80) tensor  │    │
 │  │                 │  │                 │  │                 │    │
-│  │ • Index (10)    │  │ • Returns       │  │ • Bid prices    │    │
-│  │ • Futures (8)   │  │ • Volatility    │  │ • Ask prices    │    │
-│  │ • Options (10)  │  │ • Breadth       │  │ • Bid sizes     │    │
-│  │ • Time (5)      │  │ • Momentum      │  │ • Ask sizes     │    │
-│  │                 │  │ • IV changes    │  │ (normalized)    │    │
+│  │ • Breadth (8)   │  │ • Returns       │  │ • Bid prices    │    │
+│  │ • Futures (12)  │  │ • Volatility    │  │ • Ask prices    │    │
+│  │ • Options (14)  │  │ • Breadth       │  │ • Bid sizes     │    │
+│  │ • Vol (6)       │  │ • Momentum      │  │ • Ask sizes     │    │
+│  │ • OFI (8)       │  │ • IV changes    │  │ (normalized)    │    │
+│  │ • Time (6)      │  │ • OFI           │  │                 │    │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘    │
 │                                                                       │
 └───────────────────────────────────┬─────────────────────────────────┘
@@ -181,7 +182,7 @@ IF futures_spike > 50_points:
 └───────────────────────────────────┬─────────────────────────────────┘
                                     ↓
 ┌─────────────────────────────────────────────────────────────────────┐
-│             LightGBM Feature Vector (33 total)                      │
+│             LightGBM Feature Vector (54 total)                      │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                       │
 │  GROUP 1: Index Aggregation (10 features)                           │
@@ -354,10 +355,10 @@ IF futures_spike > 50_points:
 │ LAYER 2: CORTEX (Market State Encoder)                             │
 ├─────────────────────────────────────────────────────────────────────┤
 │  • FeatureCache.update() - Update sliding windows                   │
-│  • Parallel execution:                                               │
-│    ├─ buildLightGBMFeatures() → Float32Array(33)      [5ms]        │
-│    ├─ buildTFTFeatures() → Float32Array(120×15)       [8ms]        │
-│    └─ buildLiTTensor() → Float32Array(60×80) or null  [3ms]        │
+│  • Parallel execution (Rust compute-engine, <5ms):                   │
+│    ├─ buildLightGBMFeatures() → Float32Array(54)      [2ms]        │
+│    ├─ buildTFTFeatures() → Float32Array(120×54)       [3ms]        │
+│    └─ buildLiTTensor() → Float32Array(60×80) or null  [1ms]        │
 │  • Data quality validation (LOB staleness, spread)                  │
 │  • Publishes:                                                        │
 │    ├─ LightGBMStateReadyEvent                                       │

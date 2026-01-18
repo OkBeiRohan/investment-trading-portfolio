@@ -1,111 +1,79 @@
-# Data Processor
+# Data Processor (DEPRECATED)
 
-Feature engineering and technical indicator calculation microservice.
-
-## Overview
+> ⚠️ **DEPRECATED**: This service is being replaced by [compute-engine](../../packages/compute-engine/README.md) (Rust/NAPI-RS) for feature computation.
 
 **Port**: 3003  
-**Purpose**: Consume market data, compute technical indicators, store features for ML models
+**Status**: Deprecated - Migration in Progress
 
-## Data Flow
+---
 
-```
-Redis Pub/Sub (from market-feeder)
-  ↓
-Data Processor (this app)
-  ↓
-Compute Features (RSI, MACD, Volatility, etc.)
-  ↓
-├─> QuestDB (time-series features)
-└─> Redis Pub/Sub (real-time features to algo-worker)
-```
+## Deprecation Notice
 
-## Quick Start
+The `data-processor` service is being deprecated in favor of the **compute-engine** package which provides:
 
-```bash
-# Install dependencies
-pnpm install
+| Aspect | data-processor (Old) | compute-engine (New) |
+|--------|---------------------|---------------------|
+| Language | TypeScript | **Rust (NAPI-RS)** |
+| Performance | ~20-50ms | **<5ms** |
+| Type Safety | Runtime Zod | **Compile-time Rust** |
+| Parallelism | Single-threaded | **Rayon (parallel)** |
+| Memory | GC pauses | **Zero-copy** |
 
-# Setup environment
-cp .env.example .env
+---
 
-# Development
-pnpm dev
+## Migration Guide
 
-# Production
-pnpm build
-pnpm start:prod
+### Before (data-processor)
+
+```typescript
+// services/data-processor
+const features = await featureService.compute(candle);
 ```
 
-## Features
+### After (compute-engine)
+
+```typescript
+// packages/compute-engine (Rust)
+import { computeFeatures } from '@repo/compute-engine';
+
+const result = computeFeatures(marketTick);
+// result.features contains 33 features
+// result.totalDurationMicros shows ~2000-3000µs
+```
+
+---
+
+## What This Service Did
 
 - ✅ Real-time feature computation
-- ✅ Technical indicators (RSI, MACD, SMA, EMA, Volatility)
-- ✅ Option market features (PCR, Max Pain, ATM IV, Skew)
+- ✅ Technical indicators (RSI, MACD, SMA, EMA)
+- ✅ Option market features (PCR, Max Pain, ATM IV)
 - ✅ Batch storage to QuestDB
-- ✅ Redis pub/sub for real-time distribution
-- ✅ Configurable indicator parameters
+- ✅ Redis pub/sub for distribution
 
-## Computed Features
+---
 
-### Underlying Features
+## What to Use Instead
 
-- Realized Volatility (5d, 10d, 20d)
-- RSI (14-period)
-- MACD (12, 26, 9)
-- Moving Averages (SMA 20/50, EMA)
+| Feature | New Location |
+|---------|-------------|
+| Technical indicators | `@repo/compute-engine` |
+| Options features | `@repo/compute-engine` |
+| Feature publishing | `market-feeder` + `compute-engine` |
+| QuestDB storage | `market-feeder` |
 
-### Market Sentiment
+---
 
-- India VIX
-- Put-Call Ratio (Volume & OI)
-- Max Pain
+## Timeline
 
-### Option-Specific
+- **January 2026**: Deprecated, feature-frozen
+- **February 2026**: Remove from production
+- **March 2026**: Delete from repository
 
-- ATM Implied Volatility
-- Volatility Skew
-- Term Structure
+---
 
-## Environment Variables
+## Related Documentation
 
-See `.env.example` for configuration.
-
-## Architecture
-
-Uses shared packages:
-
-- `@repo/database` - QuestDB and Redis access
-- `@repo/schema` - Type definitions
-
-## Documentation
-
-- [Copilot Instructions](.github/copilot-instructions.md)
-
-## Stack
-
-- NestJS
-- Redis (consumer + publisher)
-- QuestDB (feature storage)
-- TypeScript
-
-## Testing
-
-```bash
-pnpm test
-pnpm test:watch
-pnpm test:cov
-```
-
-## Configuration
-
-Edit `src/config/data-processor.config.ts` to adjust:
-
-- Indicator parameters
-- Batch sizes
-- Flush intervals
-- History sizes
-
-## Contributing
-
-Follow the coding standards in `.github/copilot-instructions.md`.
+- [compute-engine README](../../packages/compute-engine/README.md) - **Replacement**
+- [market-feeder README](../market-feeder/README.md) - Uses compute-engine
+- [ML Architecture](../../docs/ml/README.md) - Feature engineering docs

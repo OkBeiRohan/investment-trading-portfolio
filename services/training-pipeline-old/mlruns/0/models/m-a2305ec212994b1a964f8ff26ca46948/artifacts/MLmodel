@@ -1,0 +1,21 @@
+artifact_path: /home/anandhuprakash/Code/investment-trading-portfolio/services/training-pipeline-old/mlruns/0/models/m-a2305ec212994b1a964f8ff26ca46948/artifacts
+flavors:
+  lightgbm:
+    code: null
+    data: model.pkl
+    lgb_version: 4.6.0
+    model_class: lightgbm.sklearn.LGBMClassifier
+  python_function:
+    data: model.pkl
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.lightgbm
+    python_version: 3.12.3
+mlflow_version: 3.8.1
+model_id: m-a2305ec212994b1a964f8ff26ca46948
+model_size_bytes: 4183507
+model_uuid: m-a2305ec212994b1a964f8ff26ca46948
+prompts: null
+run_id: 927e8297a53e4ee39c93e4c889995f3a
+utc_time_created: '2026-01-16 14:08:55.784869'
