@@ -175,6 +175,123 @@ export interface ExpiredHistoricalCandleResponse extends UpstoxHistoricalRespons
   };
 }
 
+// Active Option Contract from /v2/option/contract
+export interface ActiveOptionContract {
+  name: string;
+  segment: 'NSE_FO' | 'BSE_FO' | 'MCX_FO' | 'NCD_FO' | 'BCD_FO';
+  exchange: 'NSE' | 'BSE' | 'MCX';
+  expiry: string; // YYYY-MM-DD
+  instrument_key: string;
+  exchange_token: string;
+  trading_symbol: string;
+  tick_size: number;
+  lot_size: number;
+  instrument_type: 'CE' | 'PE';
+  freeze_quantity: number;
+  underlying_key: string;
+  underlying_type: 'INDEX' | 'EQUITY' | 'COM' | 'CUR' | 'IRD';
+  underlying_symbol: string;
+  strike_price: number;
+  minimum_lot: number;
+  weekly: boolean;
+}
+
+export interface OptionContractsResponse {
+  status: string;
+  data: ActiveOptionContract[];
+}
+
+// Active Future Contract from /v2/option/contract (futures)
+export interface ActiveFutureContract {
+  name: string;
+  segment: 'NSE_FO' | 'BSE_FO' | 'MCX_FO';
+  exchange: 'NSE' | 'BSE' | 'MCX';
+  expiry: string; // YYYY-MM-DD
+  instrument_key: string;
+  exchange_token: string;
+  trading_symbol: string;
+  tick_size: number;
+  lot_size: number;
+  instrument_type: 'FUT';
+  freeze_quantity: number;
+  underlying_key: string;
+  underlying_type: 'INDEX' | 'EQUITY' | 'COM' | 'CUR' | 'IRD';
+  underlying_symbol: string;
+  minimum_lot: number;
+}
+
+export interface FutureContractsResponse {
+  status: string;
+  data: ActiveFutureContract[];
+}
+
+// Option Chain from /v2/option/chain
+export interface OptionChainMarketData {
+  ltp: number;
+  volume: number;
+  oi: number;
+  close_price: number;
+  bid_price: number;
+  bid_qty: number;
+  ask_price: number;
+  ask_qty: number;
+  prev_oi: number;
+}
+
+export interface OptionChainGreeks {
+  vega: number;
+  theta: number;
+  gamma: number;
+  delta: number;
+  iv: number;
+  pop: number; // Probability of Profit
+}
+
+export interface OptionChainItem {
+  expiry: string;
+  pcr: number;
+  strike_price: number;
+  underlying_key: string;
+  underlying_spot_price: number;
+  call_options: {
+    instrument_key: string;
+    market_data: OptionChainMarketData;
+    option_greeks: OptionChainGreeks;
+  };
+  put_options: {
+    instrument_key: string;
+    market_data: OptionChainMarketData;
+    option_greeks: OptionChainGreeks;
+  };
+}
+
+export interface OptionChainResponse {
+  status: string;
+  data: OptionChainItem[];
+}
+
+// Option Greeks from /v3/market-quote/option-greek
+export interface OptionGreekQuote {
+  last_price: number;
+  instrument_token: string;
+  ltq: number;
+  volume: number;
+  cp: number; // Close price
+  iv: number;
+  vega: number;
+  gamma: number;
+  theta: number;
+  delta: number;
+  oi: number;
+}
+
+export interface OptionGreeksResponse {
+  status: string;
+  data: {
+    [instrumentId: string]: OptionGreekQuote;
+  };
+}
+
 @Injectable()
 export class SimpleUpstoxClient {
   private readonly logger = new Logger(SimpleUpstoxClient.name);
@@ -808,5 +925,181 @@ export class SimpleUpstoxClient {
     }
 
     return allData;
+  }
+
+  /**
+   * Fetch active option contracts for an underlying
+   * @param instrumentKey - Underlying instrument key (e.g., 'NSE_INDEX|Nifty 50')
+   * @param expiryDate - Optional expiry date filter (YYYY-MM-DD)
+   * @returns Array of active option contracts
+   */
+  async getActiveOptionContracts(
+    instrumentKey: string,
+    expiryDate?: string,
+  ): Promise<ActiveOptionContract[]> {
+    try {
+      const encodedKey = encodeURIComponent(instrumentKey);
+      let url = `/v2/option/contract?instrument_key=${encodedKey}`;
+      if (expiryDate) {
+        url += `&expiry_date=${expiryDate}`;
+      }
+
+      const response = await firstValueFrom(
+        this.api.get<OptionContractsResponse>(url),
+      );
+
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error('Failed to fetch option contracts');
+      }
+
+      this.logger.log(
+        `Fetched ${response.data.data.length} option contracts for ${instrumentKey}${expiryDate ? ` expiry ${expiryDate}` : ''}`,
+      );
+
+      return response.data.data;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching option contracts: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch option chain with greeks and market data
+   * @param instrumentKey - Underlying instrument key (e.g., 'NSE_INDEX|Nifty 50')
+   * @param expiryDate - Expiry date (YYYY-MM-DD)
+   * @returns Option chain data with greeks
+   */
+  async getOptionChain(
+    instrumentKey: string,
+    expiryDate: string,
+  ): Promise<OptionChainItem[]> {
+    try {
+      const encodedKey = encodeURIComponent(instrumentKey);
+      const response = await firstValueFrom(
+        this.api.get<OptionChainResponse>(
+          `/v2/option/chain?instrument_key=${encodedKey}&expiry_date=${expiryDate}`,
+        ),
+      );
+
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error('Failed to fetch option chain');
+      }
+
+      this.logger.log(
+        `Fetched option chain with ${response.data.data.length} strikes for ${instrumentKey} expiry ${expiryDate}`,
+      );
+
+      return response.data.data;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching option chain: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch option greeks for multiple instrument keys
+   * @param instrumentKeys - Array of option instrument keys
+   * @returns Option greek data for each instrument
+   */
+  async getOptionGreeks(
+    instrumentKeys: string[],
+  ): Promise<Map<string, OptionGreekQuote>> {
+    try {
+      const params = new URLSearchParams();
+      instrumentKeys.forEach((key) => params.append('instrument_key', key));
+
+      const response = await firstValueFrom(
+        this.api.get<OptionGreeksResponse>(
+          `/v3/market-quote/option-greek?${params.toString()}`,
+        ),
+      );
+
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error('Failed to fetch option greeks');
+      }
+
+      const result = new Map<string, OptionGreekQuote>();
+      for (const [key, quote] of Object.entries(response.data.data)) {
+        result.set(quote.instrument_token, quote);
+      }
+
+      this.logger.log(`Fetched option greeks for ${result.size} instruments`);
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching option greeks: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get unique expiry dates from option contracts
+   * @param instrumentKey - Underlying instrument key
+   * @returns Array of expiry dates in YYYY-MM-DD format
+   */
+  async getActiveExpiries(instrumentKey: string): Promise<string[]> {
+    try {
+      const contracts = await this.getActiveOptionContracts(instrumentKey);
+      const uniqueExpiries = [...new Set(contracts.map((c) => c.expiry))];
+      uniqueExpiries.sort(); // Sort chronologically
+
+      this.logger.log(
+        `Found ${uniqueExpiries.length} active expiries for ${instrumentKey}`,
+      );
+
+      return uniqueExpiries;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching active expiries: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch market quote with depth data preserved
+   * @param instrumentKeys - Array of instrument keys
+   * @returns Raw market quote response with depth data
+   */
+  async getMarketQuoteWithDepth(
+    instrumentKeys: string[],
+  ): Promise<UpstoxMarketQuoteResponse['data']> {
+    try {
+      const params = new URLSearchParams();
+      instrumentKeys.forEach((key) => params.append('instrument_key', key));
+
+      const response = await firstValueFrom(
+        this.api.get<UpstoxMarketQuoteResponse>(
+          `/v2/market-quote/quotes?${params.toString()}`,
+        ),
+      );
+
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error('Failed to fetch market quotes with depth');
+      }
+
+      return response.data.data;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching market quotes with depth: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
   }
 }

@@ -7,7 +7,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CandlesRepository, InstrumentMasterRepository } from '@repo/database';
-import { InstrumentMaster } from '@repo/schema';
+import { InstrumentMaster, OptionChainSnapshot } from '@repo/schema';
 import {
   INDIA_VIX,
   NIFTY50_CONSTITUENTS,
@@ -15,7 +15,12 @@ import {
   NIFTY50_INDEX,
   REMOVED_NIFTY50_CONSTITUENTS,
 } from './nifty50-instruments';
-import { ExpiredFutureContract, SimpleUpstoxClient } from './simple-client';
+import {
+  ActiveOptionContract,
+  ExpiredFutureContract,
+  ExpiredOptionContract,
+  SimpleUpstoxClient,
+} from './simple-client';
 import { isAxiosError } from 'axios';
 
 @Injectable()
@@ -81,36 +86,63 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       `Instruments: ${indexInstruments.length} indices, ${stockInstruments.length} stocks`,
     );
 
-    // Step 1: Populate instrument_master table
+    // ==========================================
+    // PHASE 1: Populate instrument_master table
+    // ==========================================
+    this.logger.log('\n--- Phase 1: Instrument Master Data ---');
+
+    // 1a. Index and stock instruments
     await this.populateInstrumentMaster([NIFTY50_INDEX], 'SPOT');
     await this.populateInstrumentMaster([INDIA_VIX], 'SPOT');
     await this.populateInstrumentMaster(stockInstruments, 'STOCK');
 
-    // Step 2: Fetch NIFTY50 futures dynamically
-    const { activeFutures, expiredContracts } =
+    // 1b. Active futures with full data (including expiry)
+    const { activeFutures, expiredContracts: expiredFutures } =
       await this.getFuturesForDateRange(NIFTY50_INDEX, MINUTE_START, today);
-
     this.logger.log(
-      `Found ${activeFutures.length} active futures + ${expiredContracts.length} expired futures`,
+      `Found ${activeFutures.length} active futures + ${expiredFutures.length} expired futures`,
     );
+    await this.populateActiveFutures(activeFutures);
+    await this.populateExpiredFutures(expiredFutures);
 
-    await this.populateInstrumentMaster(activeFutures, 'FUTURE');
-    await this.populateExpiredFutures(expiredContracts);
+    // 1c. Active options - fetch all current option contracts
+    const activeOptions = await this.populateActiveOptions(NIFTY50_INDEX);
+
+    // 1d. Expired options - fetch from expired-instruments API (past 6 months)
+    const expiredOptions = await this.populateExpiredOptions(NIFTY50_INDEX);
 
     const allFutureKeys = [
       ...activeFutures,
-      ...expiredContracts.map((c) => c.instrument_key),
+      ...expiredFutures.map((c) => c.instrument_key),
+    ];
+    const allOptionKeys = [
+      ...activeOptions.map((c) => c.instrument_key),
+      ...expiredOptions.map((c) => c.instrument_key),
     ];
 
-    // Step 3: Fetch DAILY candles first (2000-2026 for indices/stocks, based on available history)
-    this.logger.log('\n--- Phase 1: Daily Candles (2000-2026) ---');
-    await this.fetchDailyCandles([NIFTY50_INDEX], DAILY_START, today);
-    await this.fetchDailyCandles([INDIA_VIX], VIX_START, today); // VIX only from 2014
-    await this.fetchDailyCandles(stockInstruments, DAILY_START, today);
-    await this.fetchDailyCandles(allFutureKeys, MINUTE_START, today); // Futures only recent
+    this.logger.log(
+      `Total instruments: ${allFutureKeys.length} futures, ${allOptionKeys.length} options`,
+    );
 
-    // Step 4: Fetch MINUTE candles (2022-2026)
-    this.logger.log('\n--- Phase 2: Minute Candles (2022-2026) ---');
+    // ==========================================
+    // PHASE 2: Fetch option chain with greeks (current snapshot)
+    // ==========================================
+    this.logger.log('\n--- Phase 2: Option Chain Snapshot (Greeks) ---');
+    await this.fetchOptionChainSnapshot(NIFTY50_INDEX);
+
+    // ==========================================
+    // PHASE 3: Fetch DAILY candles (2000-2026)
+    // ==========================================
+    this.logger.log('\n--- Phase 3: Daily Candles (2000-2026) ---');
+    await this.fetchDailyCandles([NIFTY50_INDEX], DAILY_START, today);
+    await this.fetchDailyCandles([INDIA_VIX], VIX_START, today);
+    await this.fetchDailyCandles(stockInstruments, DAILY_START, today);
+    await this.fetchDailyCandles(allFutureKeys, MINUTE_START, today);
+
+    // ==========================================
+    // PHASE 4: Fetch MINUTE candles (2022-2026)
+    // ==========================================
+    this.logger.log('\n--- Phase 4: Minute Candles (2022-2026) ---');
     await this.fetchMinuteCandles(
       [NIFTY50_INDEX, INDIA_VIX],
       MINUTE_START,
@@ -118,6 +150,13 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     );
     await this.fetchMinuteCandles(stockInstruments, MINUTE_START, today);
     await this.fetchMinuteCandles(allFutureKeys, MINUTE_START, today);
+
+    // ==========================================
+    // PHASE 5: Fetch expired candle data
+    // ==========================================
+    this.logger.log('\n--- Phase 5: Expired Options Candle Data ---');
+    await this.fetchExpiredCandleData(expiredOptions, 'OPTION');
+    await this.fetchExpiredCandleData(expiredFutures, 'FUTURE');
 
     this.logger.log('='.repeat(60));
     this.logger.log('Bootstrap complete!');
@@ -505,6 +544,448 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
       throw error;
     }
+  }
+
+  /**
+   * Populate active futures with full data including expiry
+   */
+  private async populateActiveFutures(futureKeys: string[]): Promise<void> {
+    if (futureKeys.length === 0) return;
+
+    try {
+      const existingInstruments = await Promise.all(
+        futureKeys.map(async (key) => {
+          const exists = await this.instrumentMasterRepository.getByKey(key);
+          return exists ? key : null;
+        }),
+      );
+
+      const toInsert = futureKeys.filter(
+        (_, idx) => existingInstruments[idx] === null,
+      );
+
+      if (toInsert.length === 0) {
+        this.logger.log(
+          `✓ All ${futureKeys.length} active futures already exist`,
+        );
+        return;
+      }
+
+      this.logger.log(`Populating ${toInsert.length} active futures...`);
+
+      const quoteData =
+        await this.upstoxClient.getMarketQuoteWithDepth(toInsert);
+
+      const instruments: InstrumentMaster[] = toInsert.map((key) => {
+        const id = Object.keys(quoteData).find(
+          (k) =>
+            quoteData[k as keyof typeof quoteData]?.instrument_token === key,
+        );
+        const quote = id ? quoteData[id as keyof typeof quoteData] : null;
+
+        let expiry: Date | null = null;
+        if (quote?.symbol) {
+          const match = quote.symbol.match(/(\d{2})([A-Z]{3})FUT$/);
+          if (match) {
+            const [, day, month] = match;
+            const monthMap: Record<string, number> = {
+              JAN: 0,
+              FEB: 1,
+              MAR: 2,
+              APR: 3,
+              MAY: 4,
+              JUN: 5,
+              JUL: 6,
+              AUG: 7,
+              SEP: 8,
+              OCT: 9,
+              NOV: 10,
+              DEC: 11,
+            };
+            expiry = new Date(
+              new Date().getFullYear(),
+              monthMap[month],
+              parseInt(day),
+            );
+          }
+        }
+
+        return {
+          instrumentKey: key,
+          exchange: 'NSE' as const,
+          segment: 'FO' as const,
+          instrumentType: 'FUTURE' as const,
+          tradingsymbol: quote?.symbol || key,
+          name: quote?.symbol || 'NIFTY FUT',
+          expiry,
+          strike: null,
+          optionType: null,
+          lotSize: 25,
+          tickSize: 0.05,
+          underlyingKey: NIFTY50_INDEX,
+          isExpired: false,
+          lastUpdated: new Date(),
+        };
+      });
+
+      await this.instrumentMasterRepository.bulkInsert(instruments);
+      this.logger.log(`✓ Populated ${instruments.length} active futures`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to populate active futures: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Populate active option contracts from /v2/option/contract API
+   */
+  private async populateActiveOptions(
+    underlyingKey: string,
+  ): Promise<ActiveOptionContract[]> {
+    try {
+      this.logger.log(`Fetching active options for ${underlyingKey}...`);
+      const contracts =
+        await this.upstoxClient.getActiveOptionContracts(underlyingKey);
+
+      if (contracts.length === 0) {
+        this.logger.warn(`No active options found for ${underlyingKey}`);
+        return [];
+      }
+
+      this.logger.log(`Found ${contracts.length} active option contracts`);
+
+      const existingSet = new Set<string>();
+      for (const contract of contracts) {
+        const exists = await this.instrumentMasterRepository.getByKey(
+          contract.instrument_key,
+        );
+        if (exists) existingSet.add(contract.instrument_key);
+      }
+
+      const toInsert = contracts.filter(
+        (c) => !existingSet.has(c.instrument_key),
+      );
+
+      if (toInsert.length === 0) {
+        this.logger.log(
+          `✓ All ${contracts.length} active options already exist`,
+        );
+        return contracts;
+      }
+
+      this.logger.log(`Populating ${toInsert.length} new option contracts...`);
+
+      const instruments: InstrumentMaster[] = toInsert.map((c) => ({
+        instrumentKey: c.instrument_key,
+        exchange: c.exchange,
+        segment: 'FO' as const,
+        instrumentType: 'OPTION' as const,
+        tradingsymbol: c.trading_symbol,
+        name: c.name,
+        expiry: new Date(c.expiry),
+        strike: c.strike_price,
+        optionType: c.instrument_type,
+        lotSize: c.lot_size,
+        tickSize: c.tick_size,
+        underlyingKey: c.underlying_key,
+        isExpired: false,
+        lastUpdated: new Date(),
+        exchangeToken: c.exchange_token,
+        underlyingSymbol: c.underlying_symbol,
+        underlyingType: c.underlying_type,
+        freezeQuantity: c.freeze_quantity,
+        minimumLot: c.minimum_lot,
+        weekly: c.weekly,
+        isActive: true,
+      }));
+
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < instruments.length; i += BATCH_SIZE) {
+        const batch = instruments.slice(i, i + BATCH_SIZE);
+        await this.instrumentMasterRepository.bulkInsert(batch);
+      }
+
+      this.logger.log(
+        `✓ Populated ${instruments.length} active option contracts`,
+      );
+      return contracts;
+    } catch (error) {
+      this.logger.error(
+        `Failed to populate active options: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Populate expired option contracts from expired-instruments API
+   */
+  private async populateExpiredOptions(
+    underlyingKey: string,
+  ): Promise<ExpiredOptionContract[]> {
+    try {
+      this.logger.log(`Fetching expired options for ${underlyingKey}...`);
+      const expiries = await this.upstoxClient.getExpiries(underlyingKey);
+      this.logger.log(`Found ${expiries.length} historic expiries`);
+
+      const allContracts: ExpiredOptionContract[] = [];
+
+      for (const expiryDate of expiries) {
+        const contracts = await this.upstoxClient.getExpiredOptionContract(
+          underlyingKey,
+          expiryDate,
+        );
+        if (contracts.length > 0) {
+          allContracts.push(...contracts);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      if (allContracts.length === 0) {
+        this.logger.warn(`No expired options found for ${underlyingKey}`);
+        return [];
+      }
+
+      this.logger.log(
+        `Found ${allContracts.length} total expired option contracts`,
+      );
+
+      const existingSet = new Set<string>();
+      for (const contract of allContracts) {
+        const exists = await this.instrumentMasterRepository.getByKey(
+          contract.instrument_key,
+        );
+        if (exists) existingSet.add(contract.instrument_key);
+      }
+
+      const toInsert = allContracts.filter(
+        (c) => !existingSet.has(c.instrument_key),
+      );
+
+      if (toInsert.length === 0) {
+        this.logger.log(
+          `✓ All ${allContracts.length} expired options already exist`,
+        );
+        return allContracts;
+      }
+
+      this.logger.log(
+        `Populating ${toInsert.length} expired option contracts...`,
+      );
+
+      const instruments: InstrumentMaster[] = toInsert.map((c) => ({
+        instrumentKey: c.instrument_key,
+        exchange: c.exchange,
+        segment: 'FO' as const,
+        instrumentType: 'OPTION' as const,
+        tradingsymbol: c.trading_symbol,
+        name: c.name,
+        expiry: new Date(c.expiry),
+        strike: c.strike_price,
+        optionType: c.instrument_type,
+        lotSize: c.lot_size,
+        tickSize: c.tick_size,
+        underlyingKey: c.underlying_key,
+        isExpired: true,
+        lastUpdated: new Date(),
+        exchangeToken: c.exchange_token,
+        underlyingSymbol: c.underlying_symbol,
+        underlyingType: c.underlying_type,
+        freezeQuantity: c.freeze_quantity,
+        minimumLot: c.minimum_lot,
+        weekly: c.weekly,
+        isActive: false,
+      }));
+
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < instruments.length; i += BATCH_SIZE) {
+        const batch = instruments.slice(i, i + BATCH_SIZE);
+        await this.instrumentMasterRepository.bulkInsert(batch);
+      }
+
+      this.logger.log(
+        `✓ Populated ${instruments.length} expired option contracts`,
+      );
+      return allContracts;
+    } catch (error) {
+      this.logger.error(
+        `Failed to populate expired options: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Fetch option chain snapshot with Greeks for current expiries
+   */
+  private async fetchOptionChainSnapshot(underlyingKey: string): Promise<void> {
+    try {
+      const expiries = await this.upstoxClient.getActiveExpiries(underlyingKey);
+      if (expiries.length === 0) {
+        this.logger.warn(`No active expiries found for ${underlyingKey}`);
+        return;
+      }
+
+      this.logger.log(
+        `Fetching option chain for ${expiries.length} expiries...`,
+      );
+      let totalSnapshots = 0;
+
+      for (const expiryDate of expiries.slice(0, 3)) {
+        try {
+          const chain = await this.upstoxClient.getOptionChain(
+            underlyingKey,
+            expiryDate,
+          );
+          const snapshots: OptionChainSnapshot[] = [];
+
+          for (const item of chain) {
+            if (item.call_options) {
+              snapshots.push({
+                timestamp: new Date(),
+                underlyingKey,
+                instrumentKey: item.call_options.instrument_key,
+                expiry: new Date(item.expiry),
+                strike: item.strike_price,
+                optionType: 'CE',
+                lastPrice: item.call_options.market_data.ltp,
+                bidPrice: item.call_options.market_data.bid_price,
+                askPrice: item.call_options.market_data.ask_price,
+                bidQty: item.call_options.market_data.bid_qty,
+                askQty: item.call_options.market_data.ask_qty,
+                volume: item.call_options.market_data.volume,
+                openInterest: item.call_options.market_data.oi,
+                prevOi: item.call_options.market_data.prev_oi,
+                closePrice: item.call_options.market_data.close_price,
+                iv: item.call_options.option_greeks.iv,
+                delta: item.call_options.option_greeks.delta,
+                gamma: item.call_options.option_greeks.gamma,
+                vega: item.call_options.option_greeks.vega,
+                theta: item.call_options.option_greeks.theta,
+                pop: item.call_options.option_greeks.pop,
+              });
+            }
+            if (item.put_options) {
+              snapshots.push({
+                timestamp: new Date(),
+                underlyingKey,
+                instrumentKey: item.put_options.instrument_key,
+                expiry: new Date(item.expiry),
+                strike: item.strike_price,
+                optionType: 'PE',
+                lastPrice: item.put_options.market_data.ltp,
+                bidPrice: item.put_options.market_data.bid_price,
+                askPrice: item.put_options.market_data.ask_price,
+                bidQty: item.put_options.market_data.bid_qty,
+                askQty: item.put_options.market_data.ask_qty,
+                volume: item.put_options.market_data.volume,
+                openInterest: item.put_options.market_data.oi,
+                prevOi: item.put_options.market_data.prev_oi,
+                closePrice: item.put_options.market_data.close_price,
+                iv: item.put_options.option_greeks.iv,
+                delta: item.put_options.option_greeks.delta,
+                gamma: item.put_options.option_greeks.gamma,
+                vega: item.put_options.option_greeks.vega,
+                theta: item.put_options.option_greeks.theta,
+                pop: item.put_options.option_greeks.pop,
+              });
+            }
+          }
+          totalSnapshots += snapshots.length;
+          this.logger.log(
+            `✓ Fetched ${snapshots.length} option chain entries for expiry ${expiryDate}`,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `Failed to fetch option chain for ${expiryDate}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      this.logger.log(`✓ Total option chain snapshots: ${totalSnapshots}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch option chain snapshot: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Fetch candle data for expired instruments
+   */
+  private async fetchExpiredCandleData(
+    contracts: (ExpiredOptionContract | ExpiredFutureContract)[],
+    type: 'OPTION' | 'FUTURE',
+  ): Promise<void> {
+    if (contracts.length === 0) {
+      this.logger.log(
+        `No expired ${type.toLowerCase()}s to fetch candle data for`,
+      );
+      return;
+    }
+
+    this.logger.log(
+      `Fetching candle data for ${contracts.length} expired ${type.toLowerCase()}s...`,
+    );
+    let processed = 0;
+    let errors = 0;
+
+    for (const contract of contracts) {
+      try {
+        const expiryDate = new Date(contract.expiry);
+        const lookbackMonths = type === 'OPTION' ? 3 : 6;
+        const startDate = new Date(expiryDate);
+        startDate.setMonth(startDate.getMonth() - lookbackMonths);
+
+        const minDate = new Date('2022-01-01');
+        if (startDate < minDate) startDate.setTime(minDate.getTime());
+
+        const hasData = await this.hasDataInRange(
+          contract.instrument_key,
+          startDate,
+          expiryDate,
+          'minutes',
+        );
+        if (hasData) {
+          processed++;
+          continue;
+        }
+
+        await this.upstoxClient.getHistoricalCandlesBatched(
+          contract.instrument_key,
+          'minutes',
+          1,
+          startDate,
+          expiryDate,
+        );
+        await this.upstoxClient.getHistoricalCandlesBatched(
+          contract.instrument_key,
+          'days',
+          1,
+          startDate,
+          expiryDate,
+        );
+
+        processed++;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (error) {
+        errors++;
+        this.logger.warn(
+          `Failed to fetch candles for ${contract.instrument_key}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+
+      if (processed % 100 === 0) {
+        this.logger.log(
+          `Progress: ${processed}/${contracts.length} expired ${type.toLowerCase()}s processed`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `✓ Expired ${type.toLowerCase()} candle data: ${processed} processed, ${errors} errors`,
+    );
   }
 
   /**
