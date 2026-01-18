@@ -1,29 +1,26 @@
 /**
  * @repo/database
- * NestJS Mongoose database package with separate databases per module
+ * Unified database package for MongoDB, QuestDB, and Redis
  */
 
-// Export database modules
-// export {
-//   DatabaseModule,
-//   TradingDatabaseModule,
-//   UserDatabaseModule,
-//   AnalyticsDatabaseModule,
-// } from "./database.module";
+// Main Database Module (unified)
+export { DatabaseModule, type DatabaseModuleOptions } from "./database.module";
 
-// export type { DatabaseModuleOptions } from "./database.module";
+// Individual Database Modules
+export { QuestDBModule } from "./questdb/questdb.module";
+export { MongoDBModule } from "./mongodb/mongodb.module";
+export { RedisModule } from "./redis/redis.module";
 
-// Export all schemas and document types
-// export * from "./schemas";
-export * from "./redis";
-
-// Export QuestDB module
-export * from "./questdb";
+// QuestDB
+export { QuestDBService } from "./questdb/questdb.service";
+export * from "./questdb/repositories";
 
 // MongoDB
-export * from "./mongodb/repositories";
-export { MongoDBModule } from "./mongodb/mongodb.module";
 export { MongoDBService } from "./mongodb/mongodb.service";
+export * from "./mongodb/repositories";
 export * from "./mongodb/schemas";
-export * from "./mongodb/adapter/adapter.factory";
-export * from "./mongodb/adapter/auth-repositories.interface";
+export { AuthRepositoryFactory } from "./mongodb/adapter/adapter.factory";
+export type { AuthRepositories } from "./mongodb/adapter/auth-repositories.interface";
+
+// Redis
+export * from "./redis";

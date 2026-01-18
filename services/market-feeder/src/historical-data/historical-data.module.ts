@@ -43,8 +43,10 @@ import { TimeframeStrategy } from "./timeframe-strategy";
       timeout: 30000,
       maxRedirects: 5,
     }),
-    DatabaseModule,
+    // Use QuestDB + Redis for market-feeder (no MongoDB needed here)
+    DatabaseModule.forMarketFeeder(),
   ],
+
   providers: [
     // Data Fetching
     SimpleUpstoxClient,
