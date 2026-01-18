@@ -146,7 +146,7 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
     companyName: 'Hindustan Petroleum Corporation Ltd',
     symbol: 'HPCL',
     instrumentKey: 'NSE_EQ|INE094A01015',
-    effectiveFrom: '27-09-2019',
+    effectiveFrom: '29-03-2019',
     addedInstrument: {
       instrumentKey: 'NSE_EQ|INE216A01030',
       symbol: 'BRITANNIA'
@@ -392,6 +392,106 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
       symbol: 'MAXHEALTH',
     },
   },
+  {
+    companyName: 'Jet Airways (India) Ltd',
+    symbol: 'JETAIRWAYS',
+    instrumentKey: 'NSE_EQ|INE802A01018', // Delisted
+    effectiveFrom: '29-03-2019',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE148I01020',
+      symbol: 'IBULHSGFIN'
+    }
+  },
+  {
+    companyName: 'Reliance Infrastructure Ltd',
+    symbol: 'RELINFRA',
+    instrumentKey: 'NSE_EQ|INE036A01016',
+    effectiveFrom: '27-09-2013',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE076A01029',
+      symbol: 'WIPRO'
+    }
+  },
+  {
+    companyName: 'Jaiprakash Associates Ltd',
+    symbol: 'JPASSOCIAT',
+    instrumentKey: 'NSE_EQ|INE455F01025',
+    effectiveFrom: '01-10-2013',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE669C01036',
+      symbol: 'TECHM'
+    }
+  },
+  {
+    companyName: 'Idea Cellular Limited',
+    symbol: 'IDEA',
+    instrumentKey: 'NSE_EQ|INE669E01016',
+    effectiveFrom: '01-10-2013',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE089A01023',
+      symbol: 'DRREDDY'
+    }
+  },
+  {
+    companyName: 'Sterlite Industries (India) Ltd',
+    symbol: 'STERLITE',
+    instrumentKey: 'NSE_EQ|INE268A01031', // Merged
+    effectiveFrom: '28-09-2012',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE481G01011',
+      symbol: 'ULTRACEMCO'
+    }
+  },
+  {
+    companyName: 'Satyam Computer Services Ltd',
+    symbol: 'SATYAMCOMP',
+    instrumentKey: 'NSE_EQ|INE275A01028', // Merged into TechM
+    effectiveFrom: '12-01-2009',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE013A01015',
+      symbol: 'RELCAPITAL'
+    }
+  },
+  {
+    companyName: 'Colgate Palmolive (India) Ltd',
+    symbol: 'COLPAL',
+    instrumentKey: 'NSE_EQ|INE259A01022',
+    effectiveFrom: '26-09-2005',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE802A01018',
+      symbol: 'JETAIRWAYS'
+    }
+  },
+  {
+    companyName: 'The Indian Hotels Company Ltd',
+    symbol: 'INDHOTEL',
+    instrumentKey: 'NSE_EQ|INE053A01029',
+    effectiveFrom: '25-02-2005',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE467B01029',
+      symbol: 'TCS'
+    }
+  },
+  {
+    companyName: 'Asian Paints Ltd',
+    symbol: 'ASIANPAINT',
+    instrumentKey: 'NSE_EQ|INE021A01026',
+    effectiveFrom: '28-10-2002',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE860A01027',
+      symbol: 'HCLTECH'
+    }
+  },
+  {
+    companyName: 'Procter & Gamble Hygiene',
+    symbol: 'PGHH',
+    instrumentKey: 'NSE_EQ|INE179A01014',
+    effectiveFrom: '28-10-2002',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE029A01011',
+      symbol: 'BPCL'
+    }
+  }
 ];
 
 // Export metadata
