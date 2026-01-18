@@ -254,12 +254,12 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
   },
   {
     companyName: 'Cairn India Limited',
-    symbol: 'CAIRN', // Delisted/Merged into Vedanta
-    instrumentKey: 'NSE_EQ|INE911H01019', // Best guess or legacy key, but we need replacement reference mainly
+    symbol: 'CAIRN',
+    instrumentKey: 'NSE_EQ|INE911H01019',
     effectiveFrom: '01-04-2016',
     addedInstrument: {
       instrumentKey: 'NSE_EQ|INE121J01017',
-      symbol: 'INDUSTOWER' // Was Infratel
+      symbol: 'INDUSTOWER'
     }
   },
   {
@@ -270,6 +270,16 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
     addedInstrument: {
       instrumentKey: 'NSE_EQ|INE066A01021',
       symbol: 'EICHERMOT'
+    }
+  },
+  {
+    companyName: 'NMDC Limited',
+    symbol: 'NMDC',
+    instrumentKey: 'NSE_EQ|INE584A01023',
+    effectiveFrom: '28-09-2015',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE742F01042',
+      symbol: 'ADANIPORTS'
     }
   },
   {
@@ -323,60 +333,24 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
     }
   },
   {
-    // Placeholder for older 
     companyName: 'Wipro Limited',
     symbol: 'WIPRO',
     instrumentKey: 'NSE_EQ|INE076A01029',
     effectiveFrom: '01-04-2013',
-    // Note: Wipro re-entered later, but left in 2013.
-  },
-  {
-    companyName: 'Petronet LNG Ltd',
-    symbol: 'PETRONET',
-    instrumentKey: 'NSE_EQ|INE347G01014',
-    effectiveFrom: 'Other'
-  },
-  {
-    companyName: 'IDFC First Bank Ltd',
-    symbol: 'IDFCFIRSTB', // Was IDFC
-    instrumentKey: 'NSE_EQ|INE092T01019',
-    effectiveFrom: 'Other'
-  },
-  {
-    companyName: 'PFC Limited',
-    symbol: 'PFC',
-    instrumentKey: 'NSE_EQ|INE134E01011',
-    effectiveFrom: 'Other'
-  },
-  {
-    companyName: 'Havells India Ltd',
-    symbol: 'HAVELLS',
-    instrumentKey: 'NSE_EQ|INE176B01034',
-    effectiveFrom: 'Other'
-  },
-  {
-    companyName: 'Colgate Palmolive (India) Ltd',
-    symbol: 'COLPAL',
-    instrumentKey: 'NSE_EQ|INE259A01022',
-    effectiveFrom: 'Other'
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE584A01023',
+      symbol: 'NMDC'
+    }
   },
   {
     companyName: 'Dabur India Ltd',
     symbol: 'DABUR',
     instrumentKey: 'NSE_EQ|INE016A01026',
-    effectiveFrom: 'Other'
-  },
-  {
-    companyName: 'Godrej Consumer Products Ltd',
-    symbol: 'GODREJCP',
-    instrumentKey: 'NSE_EQ|INE102D01028',
-    effectiveFrom: 'Other'
-  },
-  {
-    companyName: 'Marico Limited',
-    symbol: 'MARICO',
-    instrumentKey: 'NSE_EQ|INE196A01026',
-    effectiveFrom: 'Other'
+    effectiveFrom: '24-09-2007',
+    addedInstrument: {
+      instrumentKey: 'NSE_EQ|INE733E01010',
+      symbol: 'NTPC'
+    }
   },
   {
     companyName: 'Britannia Industries Limited',
