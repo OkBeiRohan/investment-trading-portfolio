@@ -201,6 +201,86 @@ impl Feature for BreadthVolatility {
 }
 
 // ============================================
+// FEATURE: BREADTH_THRUST
+// ============================================
+
+/// Breadth thrust indicator: advances / (advances + declines)
+/// High values (>0.9) indicate strong bullish momentum
+/// Low values (<0.1) indicate strong bearish momentum
+pub struct BreadthThrust;
+
+impl Feature for BreadthThrust {
+  fn name(&self) -> &'static str {
+    "breadth_thrust"
+  }
+
+  fn category(&self) -> &'static str {
+    "index_breadth"
+  }
+
+  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+    let advances = input.constituents.iter().filter(|s| s.ltp > s.open).count();
+    let declines = input.constituents.iter().filter(|s| s.ltp < s.open).count();
+
+    let total = advances + declines;
+    if total == 0 {
+      return FeatureValue::Scalar(0.5); // Neutral when no movement
+    }
+
+    let thrust = advances as f64 / total as f64;
+    FeatureValue::Scalar(thrust)
+  }
+}
+
+// ============================================
+// FEATURE: NEW_HIGHS_LOWS_RATIO
+// ============================================
+
+/// Ratio of stocks making new highs vs lows
+/// Approximated as: stocks at intraday high - stocks at intraday low / total
+/// Positive values indicate bullish sentiment
+pub struct NewHighsLowsRatio;
+
+impl Feature for NewHighsLowsRatio {
+  fn name(&self) -> &'static str {
+    "new_highs_lows_ratio"
+  }
+
+  fn category(&self) -> &'static str {
+    "index_breadth"
+  }
+
+  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+    // Approximate new highs/lows using intraday price position
+    // If LTP is within 0.1% of high -> new high
+    // If LTP is within 0.1% of low -> new low
+    // This is an approximation since we don't have 52-week high/low data
+
+    let total = input.constituents.len();
+    if total == 0 {
+      return FeatureValue::Scalar(0.0);
+    }
+
+    // For this simplified version, count stocks with strong moves
+    // Stocks with >1% gain approximated as "bullish"
+    // Stocks with >1% loss approximated as "bearish"
+    let bullish = input
+      .constituents
+      .iter()
+      .filter(|s| (s.ltp - s.open) / s.open > 0.01)
+      .count();
+    let bearish = input
+      .constituents
+      .iter()
+      .filter(|s| (s.ltp - s.open) / s.open < -0.01)
+      .count();
+
+    let ratio = (bullish as f64 - bearish as f64) / total as f64;
+    FeatureValue::Scalar(ratio)
+  }
+}
+
+// ============================================
 // TESTS
 // ============================================
 
@@ -243,6 +323,12 @@ mod tests {
       ],
       options: vec![],
       india_vix: Some(15.5),
+      is_expiry_day: Some(false),
+      days_to_expiry: Some(3),
+      current_expiry: None,
+      market_depth: None,
+      nifty_spot: Some(19480.0),
+      risk_free_rate: Some(0.07),
     }
   }
 
