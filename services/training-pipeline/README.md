@@ -1,36 +1,36 @@
 # Training Pipeline
 
-> **Kedro-based ML training pipeline with CPCV validation and ONNX export for production inference.**
+> **Kedro-based ML training pipeline with CPCV validation and ONNX export for 3-tier model architecture.**
 
 [![Powered by Kedro](https://img.shields.io/badge/powered_by-kedro-ffc900?logo=kedro)](https://kedro.org)
 
-**Last Updated**: January 18, 2026
+**Last Updated**: January 18, 2026  
+**Architecture**: 3-Tier Multi-Model Ensemble
 
 ---
 
-## Purpose
+## Overview
 
-The training pipeline is responsible for:
+The training pipeline trains and exports **production-ready ONNX models** for the algo-worker inference engine.
 
-1. **Feature Engineering**: Process historical data from QuestDB
-2. **Label Generation**: Multi-horizon labels (10s → EOD)
-3. **Model Training**: With CPCV (Combinatorial Purged Cross-Validation)
-4. **ONNX Export**: Convert PyTorch/LightGBM models for NestJS inference
-5. **Model Registry**: Track experiments with MLflow
+### Pipeline Responsibilities
 
-### What This Service Does
+| ✅ What This Service Does | ❌ What This Service Should NOT Do |
+|---------------------------|-----------------------------------|
+| Train ML models using historical data | Real-time inference |
+| Validate with CPCV/Walk-Forward | Feature computation (use compute-engine) |
+| Export to ONNX format | Live trading decisions |
+| Track experiments with MLflow | Store raw market data |
 
-- ✅ Train ML models using historical features from QuestDB
-- ✅ Validate models using walk-forward CPCV
-- ✅ Export models to ONNX format for algo-worker
-- ✅ Track experiments and metrics with MLflow
-- ✅ Generate performance reports
+### Models Trained
 
-### What This Service Should NOT Do
-
-- ❌ Real-time inference (use algo-worker with ONNX Runtime)
-- ❌ Feature computation (use compute-engine in Rust)
-- ❌ Live trading decisions
+| Tier | Model | Features | Training Data | Output |
+|------|-------|----------|---------------|--------|
+| **1** | Regime HMM | 15 daily | 26 years daily | 4 regime states |
+| **2** | LightGBM | 46 | 4 years 1-min | Direction + confidence |
+| **2** | TFT | 46 × 120 | 4 years 1-min | Multi-horizon quantiles |
+| **3** | LiT | 14 | Live tick | Order flow signal |
+| **Meta** | Gating Network | Model outputs | OOF predictions | Weighted fusion |
 
 ---
 
@@ -38,49 +38,40 @@ The training pipeline is responsible for:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         TRAINING PIPELINE (Python/Kedro)                     │
+│                    TRAINING PIPELINE ARCHITECTURE                           │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
-│   │ Data Ingestion  │ →  │ Feature Eng.    │ →  │ Label Gen.      │         │
-│   │ (QuestDB)       │    │ (compute-engine)│    │ (Multi-horizon) │         │
-│   └─────────────────┘    └─────────────────┘    └─────────────────┘         │
-│                                    ↓                                         │
-│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
-│   │ CPCV Validation │ ←  │ Model Training  │ →  │ ONNX Export     │         │
-│   │                 │    │ (PyTorch/LGB)   │    │ (Quantized)     │         │
-│   └─────────────────┘    └─────────────────┘    └─────────────────┘         │
-│                                                          ↓                   │
-│                                                  ┌─────────────────┐         │
-│                                                  │ Model Registry  │         │
-│                                                  │ (MLflow/MinIO)  │         │
-│                                                  └─────────────────┘         │
+│  DATA SOURCES                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │ QuestDB                                                                 ││
+│  │ ├── training_features_54 (1M+ rows, 2022-2026)                          ││
+│  │ ├── training_labels (multi-horizon)                                     ││
+│  │ └── historical_ohlcv_daily (26 years)                                   ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                           ↓                                                  │
+│  KEDRO PIPELINE                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │                                                                          ││
+│  │  [data_ingestion] → [feature_prep] → [label_gen]                        ││
+│  │                           ↓                                              ││
+│  │  ┌──────────────────────────────────────────────────────────┐           ││
+│  │  │ PARALLEL MODEL TRAINING                                   │           ││
+│  │  │ ├── train_regime (Tier 1, walk-forward)                   │           ││
+│  │  │ ├── train_lightgbm (Tier 2, CPCV)                         │           ││
+│  │  │ └── train_tft (Tier 2, CPCV)                              │           ││
+│  │  └──────────────────────────────────────────────────────────┘           ││
+│  │                           ↓                                              ││
+│  │  [train_meta] → [export_onnx] → [backtest] → [validate]                 ││
+│  │                                                                          ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                           ↓                                                  │
+│  OUTPUTS                                                                     │
+│  ├── models/*.onnx → algo-worker                                            │
+│  ├── metrics → MLflow                                                        │
+│  └── reports → Compliance                                                    │
+│                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
-                                                          ↓
-                                                  algo-worker (NestJS)
-                                                  loads ONNX models
 ```
-
----
-
-## Dependencies
-
-### Internal
-
-| Package | Purpose |
-|---------|---------|
-| `compute-engine` | Used for historical feature computation |
-| `@repo/database` | QuestDB connection for training data |
-
-### External
-
-| Library | Purpose |
-|---------|---------|
-| Kedro | Pipeline orchestration |
-| PyTorch | Neural network training |
-| LightGBM | Gradient boosting |
-| ONNX | Model export format |
-| onnxruntime | ONNX export and validation |
-| MLflow | Experiment tracking |
 
 ---
 
@@ -97,12 +88,14 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Run training pipeline
+# 4. Run full training pipeline
 kedro run
 
 # 5. Run specific pipeline
+kedro run --pipeline=data
 kedro run --pipeline=training
 kedro run --pipeline=export
+kedro run --pipeline=backtest
 ```
 
 ---
@@ -115,9 +108,9 @@ kedro run --pipeline=export
 kedro run --pipeline=data
 ```
 
-- Loads historical OHLCV data from QuestDB
-- Computes features using compute-engine (via Python bindings or direct query)
-- Generates multi-horizon labels
+- Loads features from QuestDB `training_features_54`
+- Filters valid samples (`is_valid = TRUE`)
+- Creates train/validation/test splits
 
 ### 2. Training Pipeline
 
@@ -125,9 +118,11 @@ kedro run --pipeline=data
 kedro run --pipeline=training
 ```
 
-- Trains LightGBM, TFT, Mamba, Meta-learner models
-- Uses CPCV for robust validation
-- Logs metrics to MLflow
+- Trains LightGBM with CPCV (10 folds)
+- Trains TFT with CPCV
+- Trains Regime HMM with walk-forward
+- Generates OOF predictions for meta-learner
+- Trains meta-learner on stacked predictions
 
 ### 3. Export Pipeline
 
@@ -135,48 +130,59 @@ kedro run --pipeline=training
 kedro run --pipeline=export
 ```
 
-- Exports trained models to ONNX format
-- Applies dynamic quantization for faster inference
-- Validates ONNX models
-- Uploads to model registry
+- Exports all models to ONNX format
+- Applies quantization for faster inference
+- Validates ONNX models with test samples
+- Uploads to MLflow model registry
+
+### 4. Backtest Pipeline
+
+```bash
+kedro run --pipeline=backtest
+```
+
+- Runs backtest with realistic NSE F&O costs
+- Calculates Sharpe, Sortino, max drawdown
+- Generates trade statistics
+- Compares new model vs production
 
 ---
 
-## ONNX Export
+## Validation Strategy
 
-### Supported Models
+### CPCV: Combinatorial Purged Cross-Validation
 
-| Model | Framework | Export Method |
-|-------|-----------|---------------|
-| LightGBM | LightGBM | sklearn-onnx |
-| TFT | PyTorch | torch.onnx.export |
-| Mamba | PyTorch | torch.onnx.export |
-| PatchTST | PyTorch | torch.onnx.export |
-| Meta-Learner | PyTorch | torch.onnx.export |
+For Tier 2 intraday models (LightGBM, TFT):
 
-### Export Code Example
+```
+Timeline: ═══════════════════════════════════════════════════════════════
 
-```python
-import torch
-import onnx
-from onnxruntime.quantization import quantize_dynamic
+CPCV with K=5, M=2 → 10 combinations
 
-def export_to_onnx(model, path, input_shape):
-    model.eval()
-    dummy_input = torch.randn(*input_shape)
-    
-    torch.onnx.export(
-        model,
-        dummy_input,
-        path,
-        input_names=['input'],
-        output_names=['output'],
-        dynamic_axes={'input': {0: 'batch'}, 'output': {0: 'batch'}},
-        opset_version=17,
-    )
-    
-    # Quantize for faster inference
-    quantize_dynamic(path, path.replace('.onnx', '_quantized.onnx'))
+Fold 1:  [═ TRAIN ═][P][═ TEST ═][E][═ TRAIN ═][P][═ TEST ═][E][═ TRAIN ═]
+Fold 2:  [═ TRAIN ═][P][═ TEST ═][E][═ TRAIN ═][═ TRAIN ═][P][═ TEST ═]
+...
+Fold 10: [═ TEST ═][E][═ TRAIN ═][═ TRAIN ═][═ TRAIN ═][P][═ TEST ═]
+
+[P] = Purge (removed)   [E] = Embargo (60 bars)
+```
+
+**Why CPCV?**
+- Tests ALL time periods (not just recent)
+- Prevents lookahead bias via purge + embargo
+- Robust to regime changes
+
+### Walk-Forward: Expanding Window
+
+For Tier 1 regime models (26 years daily):
+
+```
+26 Years: 2000 ═══════════════════════════════════════════════════════> 2026
+
+Fold 1:   [═══ 5yr Train ═══][6mo Test]
+Fold 2:   [═════ 5.5yr Train ═════][6mo Test]
+...
+Fold 40:  [════════════════════ 24yr Train ════════════════════][6mo Test]
 ```
 
 ---
@@ -186,68 +192,78 @@ def export_to_onnx(model, path, input_shape):
 ### Parameters (`conf/base/parameters.yml`)
 
 ```yaml
-training:
-  epochs: 100
-  batch_size: 256
-  learning_rate: 0.001
-  early_stopping_patience: 10
+# Data configuration
+data:
+  start_date: "2022-01-01"
+  end_date: "2026-01-18"
+  train_end: "2025-06-30"
+  val_end: "2025-09-30"
 
+# Feature configuration
+features:
+  num_features: 54
+  lightgbm_features: 46  # Excludes Order Flow (8)
+  lit_features: 14       # Order Flow + returns
+  sequence_length: 120   # For TFT
+
+# CPCV configuration
 cpcv:
   n_splits: 5
   n_test_splits: 2
-  embargo_gap: 5  # minutes
+  purge_pct: 0.01
+  embargo_bars: 60
 
+# LightGBM configuration
+lightgbm:
+  n_estimators: 1000
+  max_depth: 8
+  num_leaves: 64
+  learning_rate: 0.01
+  feature_fraction: 0.8
+  early_stopping_rounds: 50
+
+# TFT configuration
+tft:
+  hidden_size: 64
+  attention_head_size: 4
+  dropout: 0.1
+  max_epochs: 100
+  sequence_length: 120
+  prediction_horizons: [5, 15, 30]
+
+# Export configuration
 export:
-  output_path: "models/"
+  output_path: "../../apps/algo-worker/models/"
   quantize: true
   opset_version: 17
-
-features:
-  num_features: 33
-  sequence_length: 100  # for TFT/Mamba
-```
-
-### Catalog (`conf/base/catalog.yml`)
-
-```yaml
-historical_features:
-  type: pandas.ParquetDataset
-  filepath: data/01_raw/features.parquet
-
-trained_lightgbm:
-  type: pickle.PickleDataset
-  filepath: data/06_models/lightgbm.pkl
-
-onnx_models:
-  type: kedro_mlflow.io.artifacts.MlflowArtifactDataSet
-  data_set:
-    type: PartitionedDataset
-    path: data/07_onnx/
-    dataset: pickle.PickleDataset
 ```
 
 ---
 
-## CPCV (Combinatorial Purged Cross-Validation)
+## ONNX Export
 
-CPCV prevents information leakage in time-series data:
+### Supported Models
+
+| Model | Framework | Export Method | Size |
+|-------|-----------|---------------|------|
+| LightGBM | LightGBM | onnxmltools | ~5MB |
+| TFT | PyTorch | torch.onnx | ~50MB |
+| Regime HMM | hmmlearn | Custom | ~1MB |
+| Meta-Learner | PyTorch | torch.onnx | ~5MB |
+
+### Export Code
 
 ```python
-from cpcv import CombinatorialPurgedKFold
+# LightGBM
+from onnxmltools import convert_lightgbm
+onnx_model = convert_lightgbm(model, initial_types=[('input', FloatTensorType([None, 46]))])
 
-cv = CombinatorialPurgedKFold(
-    n_splits=5,
-    n_test_splits=2,
-    embargo_td=pd.Timedelta(minutes=5)
-)
+# PyTorch (TFT, Meta-Learner)
+torch.onnx.export(model, dummy_input, path, opset_version=17)
 
-for train_idx, test_idx in cv.split(X, y, timestamps):
-    X_train, X_test = X[train_idx], X[test_idx]
-    y_train, y_test = y[train_idx], y[test_idx]
-    
-    model.fit(X_train, y_train)
-    predictions = model.predict(X_test)
-    # Evaluate...
+# Quantize for faster inference
+from onnxruntime.quantization import quantize_dynamic
+quantize_dynamic(path, quantized_path)
 ```
 
 ---
@@ -256,18 +272,90 @@ for train_idx, test_idx in cv.split(X, y, timestamps):
 
 | Output | Location | Consumer |
 |--------|----------|----------|
-| ONNX Models | `models/*.onnx` | algo-worker |
+| `lightgbm_46.onnx` | `algo-worker/models/` | Inference engine |
+| `tft_sequence.onnx` | `algo-worker/models/` | Inference engine |
+| `regime_hmm.onnx` | `algo-worker/models/` | Inference engine |
+| `meta_learner.onnx` | `algo-worker/models/` | Inference engine |
 | Metrics | MLflow | Dashboard |
-| Feature Importance | `reports/shap/` | Compliance |
+| SHAP plots | `reports/shap/` | Compliance |
+| Backtest report | `reports/backtest/` | Review |
+
+---
+
+## Model Update Schedule
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ WEEKLY UPDATE SCHEDULE                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  SUNDAY 23:00   → Data refresh + drift detection                            │
+│  MONDAY 00:00   → Retrain (if needed)                                       │
+│  MONDAY 08:00   → Deploy (if improved by >0.5% Sharpe)                      │
+│                                                                              │
+│  RETRAIN FREQUENCY:                                                          │
+│  ├── Tier 1 (Regime):  Monthly                                              │
+│  ├── Tier 2 (LightGBM): Weekly                                              │
+│  └── Tier 3 (LiT):     Daily (online fine-tune)                             │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Performance Targets
+
+| Model | Metric | Target |
+|-------|--------|--------|
+| LightGBM | AUC-ROC | >0.68 |
+| TFT | MAE (returns) | <0.3% |
+| Ensemble | Sharpe Ratio | >1.5 |
+| Ensemble | Max Drawdown | <15% |
+
+---
+
+## Project Structure
+
+```
+services/training-pipeline/
+├── conf/
+│   ├── base/
+│   │   ├── catalog.yml         # Data catalog
+│   │   └── parameters.yml      # Training params
+│   └── local/                  # Local overrides
+├── data/
+│   ├── 01_raw/                 # Raw data from QuestDB
+│   ├── 02_intermediate/        # Processed features
+│   ├── 03_primary/             # Training datasets
+│   ├── 06_models/              # Trained models
+│   └── 07_onnx/                # Exported ONNX
+├── docs/
+│   ├── TRAINING_DATA_GUIDE.md  # Data access guide
+│   └── source/                 # API docs
+├── notebooks/                  # Exploration notebooks
+├── src/
+│   └── training_pipeline/
+│       ├── pipelines/
+│       │   ├── data/           # Data ingestion
+│       │   ├── training/       # Model training
+│       │   ├── export/         # ONNX export
+│       │   └── backtest/       # Backtesting
+│       └── utils/              # Shared utilities
+├── tests/                      # Unit & integration tests
+├── pyproject.toml              # Dependencies
+└── README.md                   # This file
+```
 
 ---
 
 ## Documentation
 
-- [ML Architecture](../../docs/ml/README.md) - AI/ML overview
-- [TRAINING_PIPELINE.md](../../docs/ml/TRAINING_PIPELINE.md) - Detailed training docs
-- [INFERENCE_PIPELINE.md](../../docs/ml/INFERENCE_PIPELINE.md) - ONNX inference in NestJS
-- [Kedro Documentation](https://docs.kedro.org)
+| Document | Description |
+|----------|-------------|
+| [TRAINING_STRATEGY.md](../../docs/ml/TRAINING_STRATEGY.md) | In-depth validation guide |
+| [TRAINING_DATA_GUIDE.md](./docs/TRAINING_DATA_GUIDE.md) | QuestDB queries |
+| [MODEL_ARCHITECTURE.md](../../docs/ml/MODEL_ARCHITECTURE.md) | 3-tier model design |
+| [DATA_ARCHITECTURE.md](../../docs/ml/DATA_ARCHITECTURE.md) | Data sources |
 
 ---
 
@@ -282,4 +370,4 @@ for train_idx, test_idx in cv.split(X, y, timestamps):
 ---
 
 **Status**: Active Development  
-**Technology**: Python 3.11+, Kedro, PyTorch, LightGBM, ONNX
+**Technology**: Python 3.11+, Kedro, PyTorch, LightGBM, ONNX, MLflow
