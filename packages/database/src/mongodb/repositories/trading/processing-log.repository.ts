@@ -6,7 +6,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { ProcessingLog, ProcessingLogDocument } from "../schemas/trading/processing-log.schema";
+import { ProcessingLog, ProcessingLogDocument } from "../../schemas/trading/processing-log.schema";
 
 @Injectable()
 export class ProcessingLogRepository {

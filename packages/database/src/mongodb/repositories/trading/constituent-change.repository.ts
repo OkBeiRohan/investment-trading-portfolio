@@ -6,7 +6,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { ConstituentChange, ConstituentChangeDocument } from "../schemas/trading/constituent-change.schema";
+import { ConstituentChange, ConstituentChangeDocument } from "../../schemas/trading/constituent-change.schema";
 
 @Injectable()
 export class ConstituentChangeRepository {
@@ -98,7 +98,7 @@ export class ConstituentChangeRepository {
                     $set: {
                         indexName: "Nifty 50",
                         effectiveDate: asOfDate,
-                        changeType: "ADD",
+                        changeType: "ADD" as const,
                         addedInstrumentKey: c.instrumentKey,
                         addedSymbol: c.symbol,
                         addedCompanyName: c.companyName,

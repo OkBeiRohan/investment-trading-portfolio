@@ -6,7 +6,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Instrument, InstrumentDocument } from "../schemas/trading/instrument.schema";
+import { Instrument, InstrumentDocument } from "../../schemas/trading/instrument.schema";
 
 @Injectable()
 export class InstrumentRepository {
