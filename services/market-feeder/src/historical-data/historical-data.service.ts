@@ -27,7 +27,7 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     private readonly instrumentMasterRepository: InstrumentMasterRepository,
     private readonly configService: ConfigService,
     private readonly upstoxClient: SimpleUpstoxClient,
-  ) { }
+  ) {}
 
   onModuleInit() {
     // Auto-bootstrap on startup (can be disabled via env var)
@@ -44,11 +44,11 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
   /**
    * Bootstrap historical data for NIFTY50 ecosystem
    * Full 26-year range: 2000-2026
-   * 
+   *
    * Upstox API Availability:
    * - Daily candles: Available for all history (2000+)
    * - Minute candles: Only from Jan 2022 (Upstox V3 API limit)
-   * 
+   *
    * Rate Limits:
    * - 50 requests/second
    * - 500 requests/minute
@@ -71,9 +71,15 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     this.logger.log('='.repeat(60));
     this.logger.log('HISTORICAL DATA BOOTSTRAP - 2000-2026');
     this.logger.log('='.repeat(60));
-    this.logger.log(`Daily candles: ${DAILY_START.toISOString().split('T')[0]} to today`);
-    this.logger.log(`Minute candles: ${MINUTE_START.toISOString().split('T')[0]} to today`);
-    this.logger.log(`Instruments: ${indexInstruments.length} indices, ${stockInstruments.length} stocks`);
+    this.logger.log(
+      `Daily candles: ${DAILY_START.toISOString().split('T')[0]} to today`,
+    );
+    this.logger.log(
+      `Minute candles: ${MINUTE_START.toISOString().split('T')[0]} to today`,
+    );
+    this.logger.log(
+      `Instruments: ${indexInstruments.length} indices, ${stockInstruments.length} stocks`,
+    );
 
     // Step 1: Populate instrument_master table
     await this.populateInstrumentMaster([NIFTY50_INDEX], 'SPOT');
@@ -105,7 +111,11 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     // Step 4: Fetch MINUTE candles (2022-2026)
     this.logger.log('\n--- Phase 2: Minute Candles (2022-2026) ---');
-    await this.fetchMinuteCandles([NIFTY50_INDEX, INDIA_VIX], MINUTE_START, today);
+    await this.fetchMinuteCandles(
+      [NIFTY50_INDEX, INDIA_VIX],
+      MINUTE_START,
+      today,
+    );
     await this.fetchMinuteCandles(stockInstruments, MINUTE_START, today);
     await this.fetchMinuteCandles(allFutureKeys, MINUTE_START, today);
 
@@ -127,9 +137,16 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     for (const instrumentKey of instrumentKeys) {
       try {
-        const hasData = await this.hasDataInRange(instrumentKey, startDate, endDate, 'days');
+        const hasData = await this.hasDataInRange(
+          instrumentKey,
+          startDate,
+          endDate,
+          'days',
+        );
         if (hasData) {
-          this.logger.debug(`✓ Daily data exists for ${instrumentKey}, skipping`);
+          this.logger.debug(
+            `✓ Daily data exists for ${instrumentKey}, skipping`,
+          );
           skipped++;
           continue;
         }
@@ -145,7 +162,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
         if (candles && candles.length > 0) {
           fetched += candles.length;
-          this.logger.log(`✓ Fetched ${candles.length} daily candles for ${instrumentKey}`);
+          this.logger.log(
+            `✓ Fetched ${candles.length} daily candles for ${instrumentKey}`,
+          );
         } else {
           this.logger.warn(`No daily data for ${instrumentKey}`);
         }
@@ -158,7 +177,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       }
     }
 
-    this.logger.log(`Daily phase: ${fetched} candles fetched, ${skipped} skipped`);
+    this.logger.log(
+      `Daily phase: ${fetched} candles fetched, ${skipped} skipped`,
+    );
   }
 
   /**
@@ -174,9 +195,16 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
     for (const instrumentKey of instrumentKeys) {
       try {
-        const hasData = await this.hasDataInRange(instrumentKey, startDate, endDate, 'minutes');
+        const hasData = await this.hasDataInRange(
+          instrumentKey,
+          startDate,
+          endDate,
+          'minutes',
+        );
         if (hasData) {
-          this.logger.debug(`✓ Minute data exists for ${instrumentKey}, skipping`);
+          this.logger.debug(
+            `✓ Minute data exists for ${instrumentKey}, skipping`,
+          );
           skipped++;
           continue;
         }
@@ -192,7 +220,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
 
         if (candles && candles.length > 0) {
           fetched += candles.length;
-          this.logger.log(`✓ Fetched ${candles.length} minute candles for ${instrumentKey}`);
+          this.logger.log(
+            `✓ Fetched ${candles.length} minute candles for ${instrumentKey}`,
+          );
         } else {
           // Try 5-minute if 1-minute fails
           const candles5m = await this.upstoxClient.getHistoricalCandlesBatched(
@@ -204,7 +234,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
           );
           if (candles5m && candles5m.length > 0) {
             fetched += candles5m.length;
-            this.logger.log(`✓ Fetched ${candles5m.length} x 5-min candles for ${instrumentKey}`);
+            this.logger.log(
+              `✓ Fetched ${candles5m.length} x 5-min candles for ${instrumentKey}`,
+            );
           } else {
             this.logger.warn(`No minute data for ${instrumentKey}`);
           }
@@ -218,7 +250,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       }
     }
 
-    this.logger.log(`Minute phase: ${fetched} candles fetched, ${skipped} skipped`);
+    this.logger.log(
+      `Minute phase: ${fetched} candles fetched, ${skipped} skipped`,
+    );
   }
 
   /**
@@ -288,9 +322,9 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         );
 
         if (contract) {
-          expiredContracts.push(contract);
+          expiredContracts.push(...contract);
           this.logger.debug(
-            `Added future: ${contract.trading_symbol} (${contract.instrument_key})`,
+            `Added future: ${contract.map((c) => c.trading_symbol).join(', ')}`,
           );
         }
 
@@ -306,7 +340,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       };
     } catch (error) {
       this.logger.error(
-        `Error fetching futures for date range: ${error instanceof Error ? error.message : String(error)
+        `Error fetching futures for date range: ${
+          error instanceof Error ? error.message : String(error)
         }`,
       );
       // Fallback to hardcoded futures if API fails
@@ -384,7 +419,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
         );
     } catch (error) {
       this.logger.error(
-        `Failed to populate expired futures: ${error instanceof Error ? error.message : String(error)
+        `Failed to populate expired futures: ${
+          error instanceof Error ? error.message : String(error)
         }`,
       );
     }
@@ -428,8 +464,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
       // Transform to InstrumentMaster format
       const instruments: InstrumentMaster[] = instrumentData.map((inst) => ({
         instrumentKey: inst.instrumentKey,
-        exchange: (inst.exchange as 'NSE' | 'BSE' | 'MCX') || 'NSE',
-        segment: inst.segment as 'INDEX' | 'EQ' | 'FO' | 'COMMODITY',
+        exchange: inst.exchange || 'NSE',
+        segment: inst.segment,
         instrumentType: type,
         tradingsymbol: inst.tradingSymbol,
         name: inst.name,
@@ -458,8 +494,8 @@ export class HistoricalDataBootstrapService implements OnModuleInit {
     } catch (error) {
       const errorMessage = isAxiosError(error)
         ? `Axios error: ${error.message}, Response data: ${JSON.stringify(
-          error.response?.data,
-        )}. Status: ${error.response?.status}`
+            error.response?.data,
+          )}. Status: ${error.response?.status}`
         : error instanceof Error
           ? error.message
           : String(error);

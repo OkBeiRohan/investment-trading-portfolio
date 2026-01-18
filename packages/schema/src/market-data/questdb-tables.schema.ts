@@ -53,7 +53,7 @@ export const MarketCandleSchema = z.object({
   high: z.number(),
   low: z.number(),
   close: z.number(),
-  volume: z.number(), // Can be fractional
+  volume: z.number().nullable(), // Can be fractional, null for index
   openInterest: z.number().nullable(), // NULL for spot/stocks
 });
 

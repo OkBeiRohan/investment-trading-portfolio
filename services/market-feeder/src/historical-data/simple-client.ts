@@ -15,25 +15,29 @@ export interface UpstoxCandleData {
   high: number;
   low: number;
   close: number;
-  volume: number;
-  open_interest?: number;
+  volume: number | null;
+  open_interest: number | null;
 }
 
 export interface UpstoxHistoricalResponse {
   status: string;
   data: {
-    candles: [string, number, number, number, number, number, number?][];
+    candles: [
+      timestamp: string,
+      open: number,
+      high: number,
+      low: number,
+      close: number,
+      volume: number | null,
+      open_interest: number | null,
+    ][];
   };
 }
 
 export interface UpstoxMarketQuoteResponse {
   status: string;
   data: {
-    [instrumentKey: string]: {
-      timestamp: string;
-      instrument_token: string;
-      symbol: string;
-      last_price: number;
+    [instrumentId: `${string}:${string}`]: {
       ohlc: {
         open: number;
         high: number;
@@ -44,6 +48,20 @@ export interface UpstoxMarketQuoteResponse {
         buy: Array<{ quantity: number; price: number; orders: number }>;
         sell: Array<{ quantity: number; price: number; orders: number }>;
       };
+      timestamp: string;
+      instrument_token: `${
+        | 'NSE_EQ'
+        | 'NSE_INDEX'
+        | 'NSE_FO'
+        | 'NCD_FO'
+        | 'BSE_EQ'
+        | 'BSE_INDEX'
+        | 'BSE_FO'
+        | 'BCD_FO'
+        | 'MCX_FO'
+        | 'MCX_COM'}|${string}`;
+      symbol: string;
+      last_price: number;
       volume: number;
       average_price: number;
       oi?: number;
@@ -60,9 +78,9 @@ export interface UpstoxMarketQuoteResponse {
 }
 
 export interface InstrumentMasterData {
-  instrumentKey: string;
-  exchange: string;
-  segment: string;
+  instrumentKey: `${string}|${string}`;
+  exchange: 'NSE' | 'BSE' | 'MCX';
+  segment: 'INDEX' | 'EQ' | 'FO' | 'COMMODITY';
   tradingSymbol: string;
   name: string;
   isin?: string;
@@ -72,20 +90,30 @@ export interface InstrumentMasterData {
 
 export interface ExpiriesResponse {
   status: string;
-  data: string[]; // Array of expiry dates in YYYY-MM-DD format
+  data: `${string}-${string}-${string}`[]; // Array of expiry dates in YYYY-MM-DD format
 }
 
 export interface ExpiredFutureContract {
   name: string;
-  segment: string;
-  exchange: string;
-  expiry: string;
-  instrument_key: string; // expired_instrument_key format: NSE_FO|54452|24-04-2025
+  segment:
+    | 'NSE_EQ'
+    | 'NSE_INDEX'
+    | 'NSE_FO'
+    | 'NCD_FO'
+    | 'BSE_EQ'
+    | 'BSE_INDEX'
+    | 'BSE_FO'
+    | 'BCD_FO'
+    | 'MCX_FO'
+    | 'MCX_COM';
+  exchange: 'NSE' | 'BSE' | 'MCX';
+  expiry: `${string}-${string}-${string}`;
+  instrument_key: `${string}|${string}`; // expired_instrument_key format: NSE_FO|54452|24-04-2025
   exchange_token: string;
-  trading_symbol: string;
+  trading_symbol: `${string} ${number} ${'CE' | 'PE'} ${string}`; // <underlying_symbol> <strike_price> <CE/PE> <expiry_date in dd MMM yy>
   tick_size: number;
   lot_size: number;
-  instrument_type: string;
+  instrument_type: 'FUT';
   freeze_quantity: number;
   underlying_key: string;
   underlying_type: string;
@@ -93,15 +121,57 @@ export interface ExpiredFutureContract {
   minimum_lot: number;
 }
 
+export interface ExpiredOptionContract {
+  name: string;
+  segment:
+    | 'NSE_EQ'
+    | 'NSE_INDEX'
+    | 'NSE_FO'
+    | 'NCD_FO'
+    | 'BSE_EQ'
+    | 'BSE_INDEX'
+    | 'BSE_FO'
+    | 'BCD_FO'
+    | 'MCX_FO'
+    | 'MCX_COM';
+  exchange: 'NSE' | 'BSE' | 'MCX';
+  expiry: `${string}-${string}-${string}`;
+  instrument_key: `${string}|${string}`; // expired_instrument_key format: NSE_FO|54452|24-04-2025
+  exchange_token: string;
+  trading_symbol: `${string} ${number} ${'CE' | 'PE'} ${string}`; // <underlying_symbol> <strike_price> <CE/PE> <expiry_date in dd MMM yy>
+  tick_size: number;
+  lot_size: number;
+  instrument_type: 'CE' | 'PE';
+  freeze_quantity: number;
+  underlying_key: `${string}|${string}`; // NSE_INDEX|Nifty 50
+  underlying_type: 'COM' | 'INDEX' | 'EQUITY' | 'CUR' | 'IRD';
+  underlying_symbol: string;
+  strike_price: number;
+  minimum_lot: number;
+  weekly: boolean;
+}
+
 export interface ExpiredFutureContractsResponse {
   status: string;
   data: ExpiredFutureContract[];
 }
 
-export interface ExpiredHistoricalCandleResponse {
+export interface ExpiredOptionContractsResponse {
   status: string;
+  data: ExpiredOptionContract[];
+}
+
+export interface ExpiredHistoricalCandleResponse extends UpstoxHistoricalResponse {
   data: {
-    candles: [string, number, number, number, number, number, number?][];
+    candles: [
+      timestamp: string,
+      open: number,
+      high: number,
+      low: number,
+      close: number,
+      volume: number,
+      open_interest: number,
+    ][];
   };
 }
 
@@ -532,19 +602,20 @@ export class SimpleUpstoxClient {
       }
 
       // Transform to InstrumentMasterData
-      return Object.entries(response.data.data).map(([key, quote]) => {
-        // Parse segment from instrument key (e.g. NSE_EQ:HDFCLIFE) or from instrument_token (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
+      return Object.entries(response.data.data).map(([id, quote]) => {
+        // Parse segment from instrument id (e.g. NSE_EQ:HDFCLIFE) or from instrument_token (e.g., NSE_EQ|INE002A01018 -> NSE_EQ)
+        // For futures instrument id will be like: NSE_FO:NIFTY26JANFUT
 
         const [exchange, segment] = quote.instrument_token
           .split('|')[0]
           .split('_');
         const isin = quote.instrument_token.split('|')[1];
-        const symbol = key.split(':')[0];
+        const symbol = id.split(':')[1];
 
         return {
           instrumentKey: quote.instrument_token,
-          exchange: exchange,
-          segment: segment,
+          exchange: exchange as 'NSE' | 'BSE' | 'MCX',
+          segment: segment as 'INDEX' | 'EQ' | 'FO' | 'COMMODITY',
           tradingSymbol: quote.symbol || symbol,
           name: quote.symbol || symbol, // API doesn't provide full name, use symbol
           isin: isin,
@@ -606,7 +677,7 @@ export class SimpleUpstoxClient {
   async getExpiredFutureContract(
     instrumentKey: string,
     expiryDate: string,
-  ): Promise<ExpiredFutureContract | null> {
+  ): Promise<ExpiredFutureContract[]> {
     try {
       const encodedKey = encodeURIComponent(instrumentKey);
       const response = await firstValueFrom(
@@ -615,22 +686,37 @@ export class SimpleUpstoxClient {
         ),
       );
 
-      if (
-        response.data.status !== 'success' ||
-        !response.data.data ||
-        response.data.data.length === 0
-      ) {
-        return null;
-      }
-
-      return response.data.data[0];
+      return response.data.data;
     } catch (error) {
       this.logger.error(
         `Error fetching expired future contract for ${expiryDate}: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      return null;
+      return [];
+    }
+  }
+
+  async getExpiredOptionContract(
+    instrumentKey: string,
+    expiryDate: string,
+  ): Promise<ExpiredOptionContract[]> {
+    try {
+      const encodedKey = encodeURIComponent(instrumentKey);
+      const response = await firstValueFrom(
+        this.api.get<ExpiredOptionContractsResponse>(
+          `/v2/expired-instruments/option/contract?instrument_key=${encodedKey}&expiry_date=${expiryDate}`,
+        ),
+      );
+
+      return response.data.data;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching expired option contract for ${expiryDate}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return [];
     }
   }
 

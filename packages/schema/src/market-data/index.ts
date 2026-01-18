@@ -18,7 +18,3 @@ export * from "./candle.schema";
 // export * from "./raw-market-data.types";
 export * from "./market-state.types";
 export * from "./model-contracts.schema";
-
-// Auto-generated types from Rust (via ts-rs)
-// These are the SOURCE OF TRUTH for compute-engine <-> market-feeder
-export * from "./generated";

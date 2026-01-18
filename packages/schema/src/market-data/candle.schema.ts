@@ -26,7 +26,7 @@ export interface IMarketCandle {
   close: number;
 
   /** Trading volume */
-  volume: number;
+  volume?: number;
 
   /** Open interest (for derivatives) */
   open_interest?: number;
