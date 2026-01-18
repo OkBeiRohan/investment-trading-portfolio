@@ -1,284 +1,247 @@
-# Algo Worker - Event-Driven Trading Architecture
+# Algo Worker - 6-Layer Architecture
 
-## Overview
-
-The `algo-worker` implements an **event-driven, microservices-based architecture** designed for institutional-grade algorithmic trading with sub-150ms end-to-end latency. This design aligns with the comprehensive [Algo Trading Architecture](../../../docs/ALGO_TRADING_ARCHITECTURE.md) while providing implementation-specific details for the NestJS-based system.
-
-**Key Architectural Principle**: This implementation uses an event-driven message bus (Redis Streams) with modular microservices for each processing stage—enabling adaptive regime detection, continuous learning, and ultra-low latency execution.
-
-## The 9-Layer Architecture
-
-This implementation follows the comprehensive [Algo Trading Architecture](../../../docs/ALGO_TRADING_ARCHITECTURE.md) with all 9 layers:
-
-### 1. Data Ingestion Layer
-
-- **Service**: `MarketDataConsumer`, `NewsConsumer`
-- **Tech**: Redis Streams (event-driven), Upstox WebSocket
-- **Data**: 1s OHLCV, L20 order book, Greeks, spot/futures
-- **Output**: Timestamped market events
-- **See**: [layers/01-DATA-INGESTION.md](./layers/01-DATA-INGESTION.md)
-
-### 2. Cortex (Feature Engineering + Market State Encoder)
-
-- **Service**: `MarketStateEncoder`, `FeatureEngineService`, `FeatureCacheService`, `IndexAggregator`, `BreadthComputer`, `AlignmentScorer`, `LOBTensorBuilder`, `RegimeFeatureBuilder`, `ExecutionStateBuilder`
-- **Tech**: **Rust compute-engine (NAPI-RS)** + TypedArrays, parallel computation via Rayon
-- **Architecture**: Multi-instrument aggregation → **54 features** in <5ms
-- **Key Principle**: Models NEVER see raw 50+ instruments, they see aggregated state
-- **Inputs**: NIFTY FUTURE (OHLCV + LOB depth-20) + 50 constituents + Option chain (Greeks + OI + LOB)
-- **Outputs** (54 features):
-  - Index Breadth (8): `pct_stocks_above_vwap`, `breadth_thrust`, etc.
-  - NIFTY Future (12): `fut_rsi_14`, `fut_macd_signal`, etc.
-  - Options (14): `atm_iv`, `pcr_oi`, `total_gamma_exposure`, etc.
-  - Volatility (6): `india_vix`, `iv_rv_ratio`, etc.
-  - Order Flow (8): `ofi_1s`, `depth_imbalance_5`, etc.
-  - Time Context (6): `minutes_from_open`, `is_expiry_day`, etc.
-- **Data Quality**: Staleness checks, spread validation, depth completeness
-- **See**: [layers/02-CORTEX.md](./layers/02-CORTEX.md), [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md), [../../../docs/ml/FEATURE_SPECIFICATION.md](../../../docs/ml/FEATURE_SPECIFICATION.md)
-
-### 3. Market Structure & Regime Detector
-
-- **Service**: `RegimeDetectorService`, `SwingZoneDetector`
-- **Tech**: HMMs, Kalman filters, technical heuristics
-- **Regimes**: Trending, ranging, volatile, low-volatility
-- **Output**: Regime classification + swing zones
-- **See**: [layers/03-REGIME-DETECTOR.md](./layers/03-REGIME-DETECTOR.md)
-
-### 4. Signal/Prediction Engine (Multi-Scale Intelligence)
-
-- **Service**: `ModelLoaderService`, `EnsembleInferenceService`, `PredictionWorkerPool`
-- **Architecture**: 3-tier hierarchical prediction system with **54 features input**
-- **Models**:
-  - **Level-0A: Micro-Alpha** - LiT (14 Order Flow features) for 10s-1min signals
-  - **Level-0B: Macro Direction** - LightGBM (46 features), XGBoost for 5-15min forecasting
-  - **Level-0C: Regime & Volatility** - TFT (46 features × 120 timesteps)
-  - **Optional**: Mamba, PatchTST, KAN for research
-  - **Level-1 Meta-Learner**: Contextual gating network for adaptive model fusion
-- **Tech**: ONNX Runtime (TensorRT/OpenVINO), Worker Threads, <50ms inference
-- **Output**: Trading signals (VOL_UP/VOL_DOWN/NEUTRAL) + confidence + model weights
-- **See**: [layers/04-PREDICTION-ENGINE.md](./layers/04-PREDICTION-ENGINE.md), [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md)
-
-**Key Innovation**: Hierarchical intelligence where:
-
-- LiT detects microstructure pressure (LOB depth-20)
-- LightGBM provides core directional forecast (50+ features)
-- TFT classifies regime and forecasts volatility
-- Meta-learner adaptively weights based on market state
-
-### 5. Strategy Manager
-
-- **Service**: `StrategySelectionService`, `StrikeSelector`
-- **Strategies**: LONG_CALL, LONG_PUT, LONG_STRADDLE, IRON_CONDOR, spreads
-- **Logic**: Regime-based strategy routing, RL-based selection (optional)
-- **Output**: Selected strategy with strike/expiry
-- **See**: [layers/05-STRATEGY-MANAGER.md](./layers/05-STRATEGY-MANAGER.md)
-
-### 6. Risk & Portfolio Manager
-
-- **Service**: `RiskValidationService`, `PositionSizingService`, `CircuitBreaker`
-- **Logic**: Kelly criterion, Greeks limits, VIX-scaled stop loss
-- **Output**: Validated orders with position sizes
-- **See**: [layers/06-RISK-MANAGER.md](./layers/06-RISK-MANAGER.md)
-
-### 7. Order Management & Execution
-
-- **Service**: `OrderManagerService`, `ExecutionEngineService`, `PositionManagerService`, `DRLExecutionAgent` (optional)
-- **Logic**: Smart order routing (NSE/BSE), Traditional execution (TWAP/VWAP) + DRL PPO optimization
-- **API**: Upstox REST API
-- **Output**: Order fills, position tracking, exit signals, execution analytics
-- **See**: [layers/07-ORDER-MANAGEMENT.md](./layers/07-ORDER-MANAGEMENT.md)
-
-**DRL PPO Execution Agent** (Advanced):
-
-- **Purpose**: Minimize slippage through learned optimal execution
-- **Scope**: ONLY execution optimization (never decides direction/strategy)
-- **State**: LOB snapshot, remaining qty, spread, volatility
-- **Actions**: Limit price offset, slice size, wait time
-- **Reward**: -slippage - delay_penalty - adverse_selection
-- **Fallback**: Traditional execution if agent underperforms
-
-### 8. Logging & Monitoring
-
-- **Service**: `LoggingService`, `MetricsCollector`, `HealthCheckService`, `AlertingService`
-- **Tech**: Prometheus, Grafana, Winston/Pino, MongoDB audit trail
-- **Output**: Real-time metrics, alerts, 5-year audit trail
-- **See**: [layers/08-LOGGING-MONITORING.md](./layers/08-LOGGING-MONITORING.md)
-
-### 9. Offline Training & Deployment
-
-- **Service**: External `training-pipeline` (Kedro + Python)
-- **Logic**: CPCV, ensemble training, backtesting, ONNX export
-- **Output**: Production-ready ONNX models, MLflow registry
-- **See**: [layers/09-OFFLINE-TRAINING.md](./layers/09-OFFLINE-TRAINING.md), [training-pipeline docs](../../../services/training-pipeline/)
-
-## Data Flow
-
-```
-[Upstox WebSocket] → Redis Streams (market-data)
-         ↓
-[Layer 1: Data Ingestion] - MarketDataGateway
-         ↓ (MarketDataEvent)
-[Layer 2: Feature Engine] - Feature Computation
-         ↓ (FeaturesComputedEvent)
-[Layer 3: Regime Detector] - HMM/Kalman Classification
-         ↓ (RegimeDetectedEvent)
-[Layer 4: Prediction Engine] - ONNX Ensemble (Worker Threads)
-         ↓ (TradingSignal)
-[Layer 5: Strategy Manager] - Strategy Selection
-         ↓ (Strategy)
-[Layer 6: Risk Manager] - Pre-trade Validation
-         ↓ (ValidatedOrder)
-[Layer 7: Order Management] - Smart Routing & Execution
-         ↓ (OrderFilledEvent)
-[Layer 7: Position Manager] - Track & Monitor Exits
-         ↓ (PositionOpenedEvent, ExitSignalEvent, PositionClosedEvent)
-[Layer 8: Logging & Monitoring] - Metrics + Audit Trail
-         ↓
-[Layer 9: Offline Training] - Model Updates (Weekly)
-```
-
-## Key Design Principles
-
-1. **Event-Driven Microservices**: Message bus (Redis Streams) with microsecond delivery, eliminates HTTP latency
-2. **Adaptive Learning**: Real-time regime detection with online model updates and drift detection
-3. **User-Configurable Trading**: Each user has custom trading preferences stored in MongoDB (permissions, limits, strategies)
-4. **Resource-Efficient**: Only analyze instruments and strategies enabled by at least one active user (95% cost reduction)
-5. **Sub-150ms Latency**: GPU-accelerated inference, pre-allocated buffers, no blocking I/O
-6. **Fail-Safe**: Circuit breakers halt trading on anomalies (stale data, risk breach, latency spike)
-7. **SEBI 2024-2026 Compliant**: Unique Algo IDs, pre-trade checks, SHAP explainability, 5-year audit trail
-8. **Ensemble Approach**: 6-10 diverse ML models for robust predictions (AUC >0.75-0.77)
-9. **Smart Order Routing**: Strike selection with Greeks, IOC orders for large sizes, NSE/BSE optimization
+**Version**: 2026 Institutional-Grade  
+**Target Latency**: <80ms End-to-End  
+**Features**: 54 (Rust compute-engine)
 
 ---
 
-## Architecture Design Principles
+## Architecture Overview
 
-1. **9-Layer Separation**: Each layer has single responsibility with clear boundaries
-2. **Event-Driven Core**: All inter-layer communication via Redis Streams (microsecond latency)
-3. **Adaptive Learning**: Real-time regime detection with HMMs/Kalman filters
-4. **User-Configurable**: Only analyze instruments/strategies enabled by active users
-5. **Sub-100ms Latency**: GPU inference in Worker Threads, zero-copy buffers
-6. **Fail-Safe**: Circuit breakers at every layer (data, prediction, risk, execution)
-7. **SEBI Compliant**: Unique algo IDs, pre-trade checks, 5-year audit trail
-8. **Production-Grade**: Prometheus metrics, health checks, comprehensive testing
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     ALGO-WORKER 6-LAYER ARCHITECTURE                        │
+│                           Target: <80ms E2E                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 1: DATA INGESTION (<5ms)                                         │ │
+│  │ market-feeder → Redis Pub/Sub → algo-worker                           │ │
+│  │ Components: MarketDataConsumer, NewsConsumer, EventNormalizer          │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                      ↓                                       │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 2: FEATURE ENGINE (<5ms)                                         │ │
+│  │ Rust compute-engine (NAPI-RS) with Rayon parallelism                  │ │
+│  │ 54 features: Breadth(8) + Futures(12) + Options(14) + Vol(6) +        │ │
+│  │              OrderFlow(8) + Time(6)                                    │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                      ↓                                       │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 3: PREDICTION (<50ms)                                            │ │
+│  │ ONNX Runtime ensemble inference + regime detection                     │ │
+│  │ Models: LightGBM (46f) + LiT (14f) + TFT (seq) + Meta-Learner         │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                      ↓                                       │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 4: STRATEGY & RISK (<10ms)                                       │ │
+│  │ Regime-based strategy selection + pre-trade risk validation           │ │
+│  │ Components: StrategySelector, StrikeSelector, RiskValidator            │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                      ↓                                       │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 5: EXECUTION (<20ms)                                             │ │
+│  │ Smart order routing + position management + exit logic                 │ │
+│  │ Components: OrderManager, PositionTracker, ExitEngine                  │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                      ↓                                       │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 6: OBSERVABILITY (Async)                                         │ │
+│  │ Metrics, logging, storage, SEBI audit trail                           │ │
+│  │ Storage: Redis (hot) → QuestDB (warm) → MongoDB (cold, 5yr)           │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## User Trading Configuration
+## Layer Summary
 
-### **Configuration-Driven Architecture**
+| Layer | Purpose | Components | Target |
+|-------|---------|------------|--------|
+| **1. Data Ingestion** | Market data subscription | MarketDataConsumer, NewsConsumer | <5ms |
+| **2. Feature Engine** | 54 features via Rust | compute-engine (NAPI-RS), FeatureCache | <5ms |
+| **3. Prediction** | ONNX ensemble inference | ModelPool, InferenceWorkers, RegimeDetector | <50ms |
+| **4. Strategy & Risk** | Strategy selection + risk | StrategySelector, RiskValidator | <10ms |
+| **5. Execution** | Order routing + positions | OrderManager, PositionTracker, ExitEngine | <20ms |
+| **6. Observability** | Metrics + persistence | Prometheus, QuestDB, MongoDB | Async |
 
-Algo-worker analyzes **only what users need** to optimize computational resources:
+**Total E2E**: <80ms (p95)
 
-```typescript
-// Example: Two users with different configs
-User A: { allowBuyCalls: true, allowSellCalls: false, strategies: ['LONG_STRADDLE'] }
-User B: { allowBuyCalls: false, allowSellCalls: true, strategies: ['IRON_CONDOR'] }
+---
 
-// System analyzes: Buy Calls + Sell Calls (union of both users)
-// Signals generated: LONG_STRADDLE (User A), IRON_CONDOR (User B)
-// Orders executed: Based on individual user permissions
-```
+## Layer 1: Data Ingestion
 
-### **Configuration Schema** (MongoDB `user_trading_configs` collection)
+**Purpose**: Subscribe to market data from Redis Streams
 
-```typescript
-interface UserTradingConfig {
-  userId: string;
-  enabled: boolean; // Master switch
+**Data Sources**:
+- NIFTY/BANKNIFTY futures (OHLCV + LOB 20-level)
+- 50 constituents (OHLCV + basic depth)
+- Option chain (Greeks, OI, prices)
+- India VIX
 
-  // Trading Permissions
-  permissions: {
-    allowBuyCalls: boolean;
-    allowSellCalls: boolean; // Naked call writing
-    allowBuyPuts: boolean;
-    allowSellPuts: boolean; // Naked put writing
-    allowSpreads: boolean; // Multi-leg strategies
-    allowNakedPositions: boolean;
-    allowCoveredPositions: boolean;
-    allowIntraday: boolean;
-    allowOvernightPositions: boolean;
-  };
+**Event Output**: `MarketDataReceivedEvent`
 
-  // Financial Limits
-  limits: {
-    maxDailyTradeAmount: number; // ₹50,000
-    maxSingleTradeAmount: number; // ₹10,000
-    maxTotalExposure: number; // ₹100,000
-    maxPositionSizePerSymbol: number; // ₹25,000
-    maxConcurrentPositions: number; // 5
-    minCashReservePercent: number; // 20%
-  };
+See [01-DATA-INGESTION.md](./layers/01-DATA-INGESTION.md)
 
-  // Risk Management
-  risk: {
-    stopLossPercent: number; // User adjustment: -10% to +10% of algo default
-    takeProfitPercent: number; // Optional, null = let algo decide
-    maxDailyDrawdown: number; // ₹5,000
-    maxWeeklyDrawdown: number; // ₹15,000
-    maxLeverage: number; // 1.0 - 3.0
-    positionSizingStrategy: 'FIXED' | 'KELLY' | 'RL_BASED';
-    greeksLimits: {
-      maxDelta: number; // Portfolio delta exposure
-      maxGamma: number;
-      maxTheta: number;
-      maxVega: number;
-    };
-  };
+---
 
-  // Strategy Preferences
-  strategies: {
-    allowed: string[]; // ['LONG_STRADDLE', 'IRON_CONDOR', ...]
-    minSignalConfidence: number; // 0.5 - 0.9
-    preferredVolatilityRegime: 'HIGH' | 'LOW' | 'ALL';
-    timeHorizons: string[]; // ['5m', '15m', '1h', 'EOD']
-  };
+## Layer 2: Feature Engine
 
-  // Model Preferences
-  models: {
-    enabledModels: string[]; // ['xgboost', 'lightgbm', 'cnn_lstm', ...]
-    minEnsembleAgreement: number; // 0.6 = 60% models must agree
-  };
+**Purpose**: Compute 54 features in parallel using Rust
 
-  // Execution Preferences
-  execution: {
-    algorithm: 'MARKET' | 'TWAP' | 'VWAP';
-    slippageTolerance: number; // 0.1%
-    orderValidity: 'IOC' | 'DAY' | 'GTC';
-    maxRetryAttempts: number; // 3
-  };
+**Technology**: 
+- Rust + NAPI-RS for Node.js integration
+- Rayon for parallel computation
+- Two-phase architecture (dependencies → features)
 
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
+**Feature Categories** (54 total):
 
-### **Configuration Loading Strategy**
+| Category | Count | Examples |
+|----------|-------|----------|
+| Index Breadth | 8 | `pct_stocks_above_vwap`, `breadth_thrust` |
+| NIFTY Future | 12 | `fut_rsi_14`, `fut_macd_signal` |
+| Options | 14 | `atm_iv`, `pcr_oi`, `total_gamma_exposure` |
+| Volatility | 6 | `india_vix`, `iv_rv_ratio` |
+| Order Flow | 8 | `ofi_1s`, `depth_imbalance_5` |
+| Time Context | 6 | `minutes_from_open`, `is_expiry_day` |
 
-1. **On Market Open**: Load all active user configs (where `enabled: true`)
-2. **Compute Union**:
-   ```typescript
-   const activeInstruments = getUnionOfEnabledInstruments(allConfigs);
-   const activeStrategies = getUnionOfEnabledStrategies(allConfigs);
-   ```
-3. **Filter Before Prediction**: Only pass relevant features to ML models
-4. **Filter Before Execution**: Validate each order against user-specific config
+**Event Output**: `FeaturesComputedEvent`
 
-### **Resource Optimization Example**
+See [02-FEATURE-ENGINE.md](./layers/02-FEATURE-ENGINE.md)
 
-**Scenario**: 100 users, only 2 active today
+---
 
-- User A: Enabled CALL buying on NIFTY
-- User B: Enabled PUT buying on BANKNIFTY
+## Layer 3: Prediction
 
-**Traditional Approach** (Wasteful):
+**Purpose**: Multi-model ONNX inference + regime detection
 
-- Analyze: NIFTY + BANKNIFTY + 48 other symbols (all) ❌
-- Strategies: All 8 strategies for all symbols ❌
-- Models: Run full ensemble for everything ❌
+**Models**:
 
-**Config-Driven Approach** (Efficient):
+| Model | Features | Purpose | Latency |
+|-------|----------|---------|---------|
+| LightGBM | 46 | Macro direction (5-15min) | ~20ms |
+| LiT | 14 (Order Flow) | Microstructure (10s-1min) | ~8ms |
+| TFT | 46 × 120 | Regime + volatility | ~35ms |
+| Meta-Learner | 3 | Adaptive fusion | ~2ms |
 
-- Analyze: NIFTY (calls) + BANKNIFTY (puts) ✅
-- Strategies: Only relevant strategies per symbol ✅
-- Models: Filter predictions for enabled permissions ✅
-- **Result**: ~95% resource reduction
+**Regime Types**:
+- `TRENDING` → Trust LightGBM
+- `VOLATILE` → Trust LiT
+- `RANGING` → Balanced weights
+- `LOW_VOLATILITY` → Trust TFT
+
+**Event Output**: `TradingSignalEvent`
+
+See [03-PREDICTION.md](./layers/03-PREDICTION.md)
+
+---
+
+## Layer 4: Strategy & Risk
+
+**Purpose**: Strategy selection + pre-trade risk validation
+
+**Strategy Matrix**:
+
+| Regime | VOL_UP | VOL_DOWN | NEUTRAL |
+|--------|--------|----------|---------|
+| TRENDING | LONG_CALL | LONG_PUT | Skip |
+| VOLATILE | BULL_CALL_SPREAD | BEAR_PUT_SPREAD | LONG_STRADDLE |
+| RANGING | Skip | Skip | IRON_CONDOR |
+
+**Risk Checks**:
+- Position limits
+- Greeks limits (delta, gamma, theta, vega)
+- Daily loss limit
+- Leverage limit
+
+**Circuit Breakers**:
+- Data staleness >5s
+- Latency >150ms
+- Daily drawdown >5%
+
+**Event Output**: `ValidatedOrderEvent`
+
+See [04-STRATEGY-RISK.md](./layers/04-STRATEGY-RISK.md)
+
+---
+
+## Layer 5: Execution
+
+**Purpose**: Order routing + position management + exits
+
+**Order Types**:
+- `MARKET` - Immediate fill
+- `TWAP` - Time-weighted average
+- `VWAP` - Volume-weighted average
+
+**Exit Criteria** (priority order):
+1. Stop loss (HIGH)
+2. Risk breach (HIGH)
+3. Trailing stop (MEDIUM)
+4. Take profit (MEDIUM)
+5. ML signal (LOW)
+6. Time-based (LOW)
+
+**Event Output**: `OrderFilledEvent`, `PositionClosedEvent`
+
+See [05-EXECUTION.md](./layers/05-EXECUTION.md)
+
+---
+
+## Layer 6: Observability
+
+**Purpose**: Metrics, logging, persistence
+
+**Storage Tiers**:
+
+| Tier | Technology | Data | Retention |
+|------|------------|------|-----------|
+| HOT | Redis | Positions, prices | <5 min |
+| WARM | QuestDB | Features, ticks | 180 days |
+| COLD | MongoDB | Orders, signals, audit | 5 years |
+
+**Metrics** (Prometheus):
+- `algo_e2e_latency_ms` - End-to-end latency
+- `algo_inference_duration_ms` - Per-model inference
+- `algo_signals_total` - Signal counts
+- `algo_daily_pnl` - PnL tracking
+
+See [06-OBSERVABILITY.md](./layers/06-OBSERVABILITY.md)
+
+---
+
+## Design Principles
+
+1. **Event-Driven**: Redis Streams for all inter-layer communication
+2. **Rust Performance**: 54 features in <5ms via Rayon
+3. **Multi-Model**: Ensemble with adaptive regime-based weighting
+4. **User-Configurable**: Per-user permissions, limits, strategies
+5. **SEBI Compliant**: Unique Algo ID, 5-year audit trail
+6. **Fail-Safe**: Multi-layer circuit breakers
+
+---
+
+## Performance Targets
+
+| Metric | Target | Current |
+|--------|--------|---------|
+| Data Ingestion | <5ms | ✅ |
+| Feature Computation | <5ms | ✅ |
+| ML Inference | <50ms | ✅ |
+| Strategy + Risk | <10ms | 🔄 |
+| Execution | <20ms | 🔄 |
+| **Total E2E** | **<80ms** | 🎯 |
+
+---
+
+## Related Documentation
+
+- [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) - Detailed inference pipeline
+- [VISUAL_FLOW.md](./VISUAL_FLOW.md) - ASCII flow diagrams
+- [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) - 54 features
+
+---
+
+**Last Updated**: January 18, 2026
