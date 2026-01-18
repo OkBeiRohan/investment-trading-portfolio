@@ -35,6 +35,18 @@ export const InstrumentMasterSchema = z.object({
   underlyingKey: z.string().nullable(), // Links option/future → spot
   isExpired: z.boolean(), // Historical vs active
   lastUpdated: z.date(), // When this record was updated
+  // Extended fields from Upstox API (optional for backward compat)
+  isin: z.string().nullable().optional(),
+  exchangeToken: z.string().nullable().optional(),
+  underlyingSymbol: z.string().nullable().optional(),
+  underlyingType: z
+    .enum(["INDEX", "EQUITY", "COMMODITY", "CUR", "IRD", "COM"])
+    .nullable()
+    .optional(),
+  freezeQuantity: z.number().int().nullable().optional(),
+  minimumLot: z.number().int().nullable().optional(),
+  weekly: z.boolean().nullable().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export type InstrumentMaster = z.infer<typeof InstrumentMasterSchema>;
@@ -71,6 +83,7 @@ export const OrderbookL2SnapshotSchema = z.object({
   level: z.number().int().min(1).max(30), // Depth level 1-30
   price: z.number(),
   quantity: z.number(),
+  orders: z.number().int().optional(), // Number of orders at this level
 });
 
 export type OrderbookL2Snapshot = z.infer<typeof OrderbookL2SnapshotSchema>;
@@ -144,8 +157,12 @@ export const OptionChainSnapshotSchema = z.object({
   lastPrice: z.number(),
   bidPrice: z.number(),
   askPrice: z.number(),
+  bidQty: z.number().optional(), // New: from option chain API
+  askQty: z.number().optional(), // New: from option chain API
   volume: z.number(),
   openInterest: z.number(),
+  prevOi: z.number().nullable().optional(), // New: previous day OI
+  closePrice: z.number().optional(), // New: previous day close
 
   // Greeks
   iv: z.number(), // Implied volatility
@@ -153,6 +170,7 @@ export const OptionChainSnapshotSchema = z.object({
   gamma: z.number(),
   vega: z.number(),
   theta: z.number(),
+  pop: z.number().nullable().optional(), // New: Probability of Profit
 });
 
 export type OptionChainSnapshot = z.infer<typeof OptionChainSnapshotSchema>;
