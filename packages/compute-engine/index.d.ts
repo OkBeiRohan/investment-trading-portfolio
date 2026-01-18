@@ -31,6 +31,13 @@ export interface ConstituentTick {
   volume: number
 }
 
+/** Single level of order book depth */
+export interface DepthLevel {
+  price: number
+  quantity: number
+  orders?: number
+}
+
 /** Complete feature computation input (passed directly from Node.js) */
 export interface FeatureInput {
   timestamp: number
@@ -38,6 +45,20 @@ export interface FeatureInput {
   constituents: Array<ConstituentTick>
   options: Array<OptionTick>
   indiaVix?: number
+}
+
+/** Feature computation mode (Historical vs Live) */
+export declare const enum FeatureMode {
+  /**
+   * Historical mode: No market depth, compute Greeks from IV
+   * Used for training on 2022-2026 1-minute data
+   */
+  Historical = 0,
+  /**
+   * Live mode: Full depth-30, pre-computed Greeks from exchange
+   * Used for real-time inference
+   */
+  Live = 1
 }
 
 /** Complete feature output (33 features + timestamp = 34 fields) - returned directly to Node.js */
@@ -93,6 +114,14 @@ export interface FutureTick {
   close: number
   volume: number
   openInterest: number
+}
+
+/** Full market depth (30 levels bid/ask) */
+export interface MarketDepth {
+  bids: Array<DepthLevel>
+  asks: Array<DepthLevel>
+  totalBidQty: number
+  totalAskQty: number
 }
 
 /** Single option tick data */

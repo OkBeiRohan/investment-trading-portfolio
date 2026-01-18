@@ -577,3 +577,4 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.computeFeatures = nativeBinding.computeFeatures
+module.exports.FeatureMode = nativeBinding.FeatureMode
