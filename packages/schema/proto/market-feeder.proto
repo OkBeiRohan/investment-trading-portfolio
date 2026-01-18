@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package historical_data;
+package market_feeder;
 
 // Historical data backfill service
 service HistoricalDataService {
