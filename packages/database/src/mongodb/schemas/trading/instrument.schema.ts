@@ -1,12 +1,9 @@
 /**
  * Instrument Master Schema (MongoDB)
- * Stores metadata about all instruments fetched from Upstox
+ * Rich metadata for operational monitoring and inventory
  * 
- * Types:
- * - INDEX: Nifty 50, India VIX, etc.
- * - EQUITY: Individual stocks
- * - FUTURE: Futures contracts (current + expired)
- * - OPTION: Option contracts (current + expired)
+ * Purpose: Track data availability, fetch status, errors
+ * QuestDB has minimal instrument_master for fast JOINs
  */
 
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
@@ -14,29 +11,100 @@ import { HydratedDocument } from "mongoose";
 
 export type InstrumentDocument = HydratedDocument<Instrument>;
 
+/**
+ * Data availability info discovered during fetching
+ */
+@Schema({ _id: false })
+export class DataAvailability {
+    @Prop()
+    dailyStartDate?: Date;
+
+    @Prop()
+    dailyEndDate?: Date;
+
+    @Prop({ default: 0 })
+    dailyCandleCount!: number;
+
+    @Prop()
+    minuteStartDate?: Date;
+
+    @Prop()
+    minuteEndDate?: Date;
+
+    @Prop({ default: 0 })
+    minuteCandleCount!: number;
+
+    @Prop()
+    discoveredAt?: Date;
+}
+
+const DataAvailabilitySchema = SchemaFactory.createForClass(DataAvailability);
+
+/**
+ * Fetch status tracking
+ */
+@Schema({ _id: false })
+export class FetchStatus {
+    @Prop({ enum: ["PENDING", "FETCHING", "COMPLETE", "ERROR", "PARTIAL"], default: "PENDING" })
+    status!: "PENDING" | "FETCHING" | "COMPLETE" | "ERROR" | "PARTIAL";
+
+    @Prop()
+    lastFetchedAt?: Date;
+
+    @Prop()
+    lastSuccessAt?: Date;
+
+    @Prop()
+    lastErrorAt?: Date;
+
+    @Prop()
+    lastErrorMessage?: string;
+
+    @Prop({ default: 0 })
+    fetchAttempts!: number;
+
+    @Prop({ default: 0 })
+    successfulFetches!: number;
+
+    @Prop({ default: 0 })
+    failedFetches!: number;
+}
+
+const FetchStatusSchema = SchemaFactory.createForClass(FetchStatus);
+
+/**
+ * Feature computation status
+ */
+@Schema({ _id: false })
+export class FeatureStatus {
+    @Prop({ default: 0 })
+    dailyFeaturesComputed!: number;
+
+    @Prop({ default: 0 })
+    minuteFeaturesComputed!: number;
+
+    @Prop()
+    lastComputedAt?: Date;
+
+    @Prop({ default: 0 })
+    invalidFeatureCount!: number;
+
+    @Prop()
+    lastInvalidReason?: string;
+}
+
+const FeatureStatusSchema = SchemaFactory.createForClass(FeatureStatus);
+
 @Schema({
     collection: "instruments",
     timestamps: true,
-    toJSON: { virtuals: true },
 })
 export class Instrument {
     /**
-     * Upstox instrument key (e.g., 'NSE_EQ|INE002A01018', 'NSE_FO|54452|24-04-2025')
+     * Upstox instrument key (unique identifier)
      */
     @Prop({ required: true, unique: true, index: true })
     instrumentKey!: string;
-
-    /**
-     * Exchange (NSE, BSE, MCX)
-     */
-    @Prop({ required: true, index: true })
-    exchange!: string;
-
-    /**
-     * Segment (EQ, FO, INDEX)
-     */
-    @Prop({ required: true, index: true })
-    segment!: string;
 
     /**
      * Instrument type
@@ -49,139 +117,87 @@ export class Instrument {
     instrumentType!: "INDEX" | "EQUITY" | "FUTURE" | "OPTION";
 
     /**
-     * Trading symbol (e.g., RELIANCE, NIFTY, NIFTY23JAN22500CE)
+     * Exchange (NSE, BSE, MCX)
+     */
+    @Prop({ required: true })
+    exchange!: string;
+
+    /**
+     * Segment (EQ, FO, INDEX)
+     */
+    @Prop({ required: true })
+    segment!: string;
+
+    /**
+     * Trading symbol
      */
     @Prop({ required: true, index: true })
     tradingSymbol!: string;
 
     /**
-     * Company/Instrument name
+     * Full name
      */
     @Prop({ required: true })
     name!: string;
 
     /**
-     * ISIN code (for equities)
+     * ISIN code (equities only)
      */
-    @Prop({ sparse: true, index: true })
+    @Prop({ sparse: true })
     isin?: string;
 
-    /**
-     * Exchange token
-     */
-    @Prop()
-    exchangeToken?: string;
+    // ============= F&O FIELDS =============
 
-    // ============= FOR FUTURES/OPTIONS =============
-
-    /**
-     * Underlying instrument key (for F&O)
-     */
     @Prop({ sparse: true, index: true })
     underlyingKey?: string;
 
-    /**
-     * Underlying symbol
-     */
     @Prop({ sparse: true })
     underlyingSymbol?: string;
 
-    /**
-     * Expiry date (for F&O)
-     */
     @Prop({ sparse: true, index: true })
     expiry?: Date;
 
-    /**
-     * Strike price (for options)
-     */
-    @Prop({ sparse: true, index: true })
+    @Prop({ sparse: true })
     strikePrice?: number;
 
-    /**
-     * Option type (for options)
-     */
-    @Prop({ enum: ["CE", "PE"], sparse: true, index: true })
+    @Prop({ enum: ["CE", "PE"], sparse: true })
     optionType?: "CE" | "PE";
 
-    /**
-     * Lot size
-     */
     @Prop()
     lotSize?: number;
 
-    /**
-     * Tick size
-     */
     @Prop()
     tickSize?: number;
 
-    /**
-     * Freeze quantity
-     */
-    @Prop()
-    freezeQuantity?: number;
+    // ============= DATA INVENTORY =============
 
-    // ============= DATA AVAILABILITY =============
+    @Prop({ type: DataAvailabilitySchema })
+    dataAvailability?: DataAvailability;
 
-    /**
-     * Earliest daily data available
-     */
-    @Prop()
-    dailyDataStart?: Date;
+    @Prop({ type: FetchStatusSchema })
+    fetchStatus?: FetchStatus;
 
-    /**
-     * Earliest minute data available
-     */
-    @Prop()
-    minuteDataStart?: Date;
-
-    /**
-     * Last data fetch timestamp
-     */
-    @Prop()
-    lastFetchedAt?: Date;
-
-    /**
-     * Data fetch status
-     */
-    @Prop({
-        enum: ["PENDING", "FETCHING", "COMPLETE", "ERROR"],
-        default: "PENDING"
-    })
-    fetchStatus?: "PENDING" | "FETCHING" | "COMPLETE" | "ERROR";
-
-    /**
-     * Total candles fetched
-     */
-    @Prop({ default: 0 })
-    totalCandles?: number;
+    @Prop({ type: FeatureStatusSchema })
+    featureStatus?: FeatureStatus;
 
     // ============= FLAGS =============
 
-    /**
-     * Is this a current/active contract?
-     */
     @Prop({ default: true })
     isActive!: boolean;
 
-    /**
-     * Is part of Nifty 50?
-     */
     @Prop({ default: false, index: true })
     isNifty50!: boolean;
 
-    /**
-     * Industry sector
-     */
     @Prop()
     industry?: string;
+
+    @Prop()
+    notes?: string;
 }
 
 export const InstrumentSchema = SchemaFactory.createForClass(Instrument);
 
-// Compound indexes for common queries
+// Compound indexes
 InstrumentSchema.index({ instrumentType: 1, isActive: 1 });
-InstrumentSchema.index({ underlyingKey: 1, expiry: 1 });
 InstrumentSchema.index({ isNifty50: 1, instrumentType: 1 });
-InstrumentSchema.index({ optionType: 1, strikePrice: 1, expiry: 1 });
+InstrumentSchema.index({ "fetchStatus.status": 1 });
