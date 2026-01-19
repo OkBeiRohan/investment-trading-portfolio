@@ -3,8 +3,6 @@
  * Used for historical and intraday candlestick data
  */
 
-import { MarketInstrumentSegment } from "./instrument.schema";
-
 export type MarketCandleIntervalUnit =
   | "second"
   | "minute"
@@ -13,9 +11,7 @@ export type MarketCandleIntervalUnit =
   | "week"
   | "month";
 
-export interface IMarketCandle<
-  Segment extends MarketInstrumentSegment = "EQUITY",
-> {
+export interface IMarketCandleBase {
   /** Candle timestamp (start of interval) */
   timestamp: string;
 
@@ -39,13 +35,26 @@ export interface IMarketCandle<
 
   /** Closing price */
   close: number;
+}
 
+export interface IMarketCandleDerivative {
   /** Trading volume */
-  volume: Segment extends "INDEX" ? never : number;
+  volume: number;
 
   /** Open interest (for derivatives and commodity) */
-  openInterest: Segment extends "INDEX" | "EQUITY" ? never : number;
+  openInterest: number;
 }
+
+export interface IMarketCandleEquity {
+  /** Trading volume */
+  volume: number;
+
+  openInterest: never;
+}
+
+type MarketCandle = IMarketCandleBase &
+  (IMarketCandleDerivative | IMarketCandleEquity);
+export default MarketCandle;
 
 export interface ICandleQuery {
   /** Instrument identifier */

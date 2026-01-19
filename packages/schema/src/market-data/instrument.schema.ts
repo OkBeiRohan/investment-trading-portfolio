@@ -21,14 +21,25 @@ import {
   MarketInstrumentIndexType,
 } from "./type";
 
+/** Market Instrument Base Details */
 export interface IMarketInstrumentBase {
+  /** Unique identifier for the instrument. Eg. NSE_INDEX|Nifty 50 */
   instrumentKey: string;
-  tradingSymbol: string;
+
+  /** Instrument symbol/code. Eg. AAPL, BTC, EURUSD, RELIANCE, NIFTY 50 */
+  symbol: string;
+
+  /** Instrument display name. Eg. Apple Inc., Bitcoin, Euro/USD, Reliance Industries, Nifty 50 */
   name: string;
 
+  /** Last updated timestamp in ISO 8601 format. Eg. 2024-06-01T12:00:00Z */
   lastUpdated: string;
+
+  /** Is the instrument currently active/tradable */
+  isActive: boolean;
 }
 
+/** Market Index Instrument */
 export interface IMarketIndexInstrument {
   exchange: MarketEquityExchange;
   segment: MarketIndexSegment;
