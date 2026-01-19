@@ -15,7 +15,7 @@ import DatabaseConnections from "../../connections/connections";
 @Injectable()
 export class ProcessingLogRepository {
   constructor(
-    @InjectModel(ProcessingLog.name, DatabaseConnections.MarketData)
+    @InjectModel(ProcessingLog.name, DatabaseConnections.Logging)
     private readonly model: Model<ProcessingLogDocument>,
   ) {}
 

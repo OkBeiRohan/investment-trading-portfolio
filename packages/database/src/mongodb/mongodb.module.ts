@@ -93,6 +93,17 @@ import {
         writeConcern: { w: "majority" },
       },
     ),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || "mongodb://localhost:27017",
+      {
+        connectionName: DatabaseConnections.Logging,
+        dbName: DatabaseConnections.Logging,
+        retryWrites: true,
+        retryAttempts: 5,
+        retryDelay: 3000,
+        writeConcern: { w: "majority" },
+      },
+    ),
     MongooseModule.forFeature(
       [
         { name: User.name, schema: UserSchema, collection: "user" },
@@ -136,11 +147,6 @@ import {
     MongooseModule.forFeature(
       [
         {
-          name: IngestionLog.name,
-          schema: IngestionLogSchema,
-          collection: "ingestion_log",
-        },
-        {
           name: DataInventory.name,
           schema: DataInventorySchema,
           collection: "data_inventory",
@@ -151,17 +157,27 @@ import {
           collection: "instrument",
         },
         {
-          name: ProcessingLog.name,
-          schema: ProcessingLogSchema,
-          collection: "processing_log",
-        },
-        {
           name: ConstituentChange.name,
           schema: ConstituentChangeSchema,
           collection: "constituent_change",
         },
       ],
       DatabaseConnections.MarketData,
+    ),
+    MongooseModule.forFeature(
+      [
+        {
+          name: IngestionLog.name,
+          schema: IngestionLogSchema,
+          collection: "ingestion_log",
+        },
+        {
+          name: ProcessingLog.name,
+          schema: ProcessingLogSchema,
+          collection: "processing_log",
+        },
+      ],
+      DatabaseConnections.Logging,
     ),
   ],
   providers: [

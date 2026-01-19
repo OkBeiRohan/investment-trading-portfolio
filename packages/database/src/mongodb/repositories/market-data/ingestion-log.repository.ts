@@ -11,7 +11,7 @@ import DatabaseConnections from "../../connections/connections";
 @Injectable()
 export class IngestionLogRepository {
   constructor(
-    @InjectModel(IngestionLog.name, DatabaseConnections.MarketData)
+    @InjectModel(IngestionLog.name, DatabaseConnections.Logging)
     private readonly model: Model<IngestionLog>,
   ) {}
 
