@@ -8,7 +8,7 @@ export type MarketInstrumentIndexType =
 export type MarketInstrumentEquityType = "STOCK" | "ETF" | "MUTUAL_FUND";
 export type MarketInstrumentDerivativeType = "FUTURE" | "OPTION";
 export type MarketInstrumentCommodityType = "FUTURE" | "OPTION";
-export type MarketInstrumentCurrencyType = "FOREX" | "FUTURE";
+export type MarketInstrumentCurrencyType = "CURRENCY" | "FUTURE";
 export type MarketInstrumentCryptoType = "COIN" | "FUTURE" | "TOKEN" | "NFT";
 
 type MarketInstrumentType =
@@ -84,9 +84,9 @@ export const MarketInstrumentTypeDetails: {
     },
   },
   CUR: {
-    FOREX: {
-      name: "Forex",
-      description: "Foreign exchange currency trading instruments",
+    CURRENCY: {
+      name: "Currency",
+      description: "Foreign exchange currency",
     },
     FUTURE: {
       name: "Currency Future",
