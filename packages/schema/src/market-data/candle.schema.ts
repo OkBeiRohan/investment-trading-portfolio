@@ -3,15 +3,26 @@
  * Used for historical and intraday candlestick data
  */
 
-export interface IMarketCandle {
+export type MarketCandleIntervalUnit =
+  | "second"
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month";
+
+export interface IMarketCandle<Type = string> {
   /** Candle timestamp (start of interval) */
   timestamp: Date;
 
   /** Instrument identifier (e.g., NSE_EQ|INE848E01016) */
-  instrument_key: string;
+  instrumentKey: string;
 
   /** Candle interval */
-  interval: string;
+  intervalValue: number;
+
+  /** Candle interval unit */
+  intervalUnit: MarketCandleIntervalUnit;
 
   /** Opening price */
   open: number;
@@ -29,7 +40,7 @@ export interface IMarketCandle {
   volume?: number;
 
   /** Open interest (for derivatives) */
-  open_interest?: number;
+  openInterest?: number;
 }
 
 export interface ICandleInsert {
