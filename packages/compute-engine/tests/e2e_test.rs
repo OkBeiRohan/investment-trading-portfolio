@@ -1,9 +1,9 @@
 //! End-to-End Integration Tests
 //! Tests full pipeline: Input → Dependencies → Features → Output
 
+use compute_engine::HistoricalCache;
 use compute_engine::processor::FeatureProcessor;
 use compute_engine::types::{ComputeResult, ConstituentTick, FeatureInput, FutureTick, OptionTick};
-use compute_engine::HistoricalCache;
 
 fn create_realistic_input() -> FeatureInput {
   // Realistic NIFTY Future data (19,500 level)
@@ -158,6 +158,12 @@ fn create_realistic_input() -> FeatureInput {
     constituents,
     options,
     india_vix: Some(14.5),
+    is_expiry_day: todo!(),
+    days_to_expiry: todo!(),
+    current_expiry: todo!(),
+    market_depth: todo!(),
+    nifty_spot: todo!(),
+    risk_free_rate: todo!(),
   }
 }
 

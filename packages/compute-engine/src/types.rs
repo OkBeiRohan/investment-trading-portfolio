@@ -4,15 +4,13 @@
 
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 
 // ============================================
 // FEATURE MODE
 // ============================================
 
 /// Feature computation mode (Historical vs Live)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS, PartialEq)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[napi]
 pub enum FeatureMode {
   /// Historical mode: No market depth, compute Greeks from IV
@@ -34,8 +32,7 @@ impl Default for FeatureMode {
 // ============================================
 
 /// Single level of order book depth
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct DepthLevel {
   pub price: f64,
@@ -44,8 +41,7 @@ pub struct DepthLevel {
 }
 
 /// Full market depth (30 levels bid/ask)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct MarketDepth {
   pub bids: Vec<DepthLevel>, // Up to 30 levels
@@ -59,8 +55,7 @@ pub struct MarketDepth {
 // ============================================
 
 /// Single tick data for NIFTY Future
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct FutureTick {
   pub ltp: f64,
@@ -74,8 +69,7 @@ pub struct FutureTick {
 }
 
 /// Single tick data for NIFTY 50 constituent
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct ConstituentTick {
   pub symbol: String,
@@ -86,8 +80,7 @@ pub struct ConstituentTick {
 }
 
 /// Single option tick data
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct OptionTick {
   pub strike: f64,
@@ -103,8 +96,7 @@ pub struct OptionTick {
 }
 
 /// Complete feature computation input (passed directly from Node.js)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct FeatureInput {
   pub timestamp: i64, // Unix timestamp in milliseconds
@@ -129,8 +121,7 @@ pub struct FeatureInput {
 // ============================================
 
 /// Complete feature output (54 features + timestamp = 55 fields) - returned directly to Node.js
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct FeatureOutput {
   pub timestamp: i64,
@@ -208,8 +199,7 @@ pub struct FeatureOutput {
 }
 
 /// Per-feature timing log
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct FeatureTimingLog {
   pub feature_name: String,
@@ -217,8 +207,7 @@ pub struct FeatureTimingLog {
 }
 
 /// Complete computation result with features and timings (returned directly to Node.js)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../schema/src/compute-engine/")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct ComputeResult {
   pub features: FeatureOutput,
@@ -360,39 +349,7 @@ mod tests {
     // Count features: 8 + 12 + 14 + 6 + 8 + 6 = 54
     // (Not including timestamp as it's metadata)
   }
-
-  #[test]
-  fn export_typescript_bindings() {
-    // This test exports TypeScript bindings to @repo/schema
-    // Run with: cargo test export_typescript_bindings
-
-    FutureTick::export().unwrap();
-    ConstituentTick::export().unwrap();
-    OptionTick::export().unwrap();
-    FeatureInput::export().unwrap();
-    FeatureOutput::export().unwrap();
-    FeatureTimingLog::export().unwrap();
-    ComputeResult::export().unwrap();
-
-    println!("✅ TypeScript bindings exported to packages/schema/src/compute-engine/");
-  }
 }
 // ============================================
 // JSON HELPERS (for testing/debugging only)
 // ============================================
-
-impl FeatureInput {
-  /// Deserialize from JSON string (for testing)
-  #[allow(dead_code)]
-  pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
-    serde_json::from_str(json)
-  }
-}
-
-impl ComputeResult {
-  /// Serialize to JSON string (for testing)
-  #[allow(dead_code)]
-  pub fn to_json(&self) -> Result<String, serde_json::Error> {
-    serde_json::to_string(self)
-  }
-}

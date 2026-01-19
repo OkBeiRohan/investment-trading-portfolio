@@ -29,6 +29,3 @@ export * from "./upstox";
 
 // Environment-related schemas
 export * from "./environment";
-
-// Compute Engine schemas (Rust ↔ TypeScript)
-export * from "./compute-engine";
