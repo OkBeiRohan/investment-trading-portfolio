@@ -282,38 +282,3 @@ export const TrainingLabelsSchema = z.object({
 export type TrainingLabels = z.infer<typeof TrainingLabelsSchema>;
 
 // ============================================
-// Table name constants
-// ============================================
-
-export const QuestDBTables = {
-  INSTRUMENT_MASTER: "instrument_master",
-  MARKET_CANDLES: "market_candles",
-  ORDERBOOK_L2_SNAPSHOTS: "orderbook_l2_snapshots",
-  TICK_DATA: "tick_data",
-  OPTION_CHAIN_SNAPSHOT: "option_chain_snapshot",
-  INSTRUMENT_FEATURES: "instrument_features",
-  TRAINING_LABELS: "training_labels",
-} as const;
-
-export type QuestDBTableName =
-  (typeof QuestDBTables)[keyof typeof QuestDBTables];
-
-// Map of table names to their Zod schemas
-export const TableSchemaMap = {
-  [QuestDBTables.INSTRUMENT_MASTER]: InstrumentMasterSchema,
-  [QuestDBTables.MARKET_CANDLES]: MarketCandleSchema,
-  [QuestDBTables.ORDERBOOK_L2_SNAPSHOTS]: OrderbookL2SnapshotSchema,
-  [QuestDBTables.OPTION_CHAIN_SNAPSHOT]: OptionChainSnapshotSchema,
-  [QuestDBTables.INSTRUMENT_FEATURES]: InstrumentFeaturesSchema,
-  [QuestDBTables.TRAINING_LABELS]: TrainingLabelsSchema,
-} as const;
-
-// Map of table names to their TypeScript types
-export type TableTypeMap = {
-  [QuestDBTables.INSTRUMENT_MASTER]: InstrumentMaster;
-  [QuestDBTables.MARKET_CANDLES]: MarketCandle;
-  [QuestDBTables.ORDERBOOK_L2_SNAPSHOTS]: OrderbookL2Snapshot;
-  [QuestDBTables.OPTION_CHAIN_SNAPSHOT]: OptionChainSnapshot;
-  [QuestDBTables.INSTRUMENT_FEATURES]: InstrumentFeatures;
-  [QuestDBTables.TRAINING_LABELS]: TrainingLabels;
-};
