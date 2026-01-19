@@ -6,10 +6,20 @@ export type MarketInstrumentIndexType =
   | "THEMATIC"
   | "OTHER";
 export type MarketInstrumentEquityType = "STOCK" | "ETF" | "MUTUAL_FUND";
-export type MarketInstrumentDerivativeType = "FUTURE" | "OPTION";
-export type MarketInstrumentCommodityType = "FUTURE" | "OPTION";
-export type MarketInstrumentCurrencyType = "CURRENCY" | "FUTURE";
-export type MarketInstrumentCryptoType = "COIN" | "FUTURE" | "TOKEN" | "NFT";
+export type MarketInstrumentFutureType = "FUTURE";
+export type MarketInstrumentOptionType = "OPTION";
+export type MarketInstrumentDerivativeType =
+  | MarketInstrumentFutureType
+  | MarketInstrumentOptionType;
+export type MarketInstrumentCommodityType =
+  | MarketInstrumentFutureType
+  | MarketInstrumentOptionType;
+export type MarketInstrumentCurrencyType = MarketInstrumentFutureType;
+export type MarketInstrumentCryptoType =
+  | "COIN"
+  | MarketInstrumentFutureType
+  | "TOKEN"
+  | "NFT";
 
 type MarketInstrumentType =
   | MarketInstrumentIndexType
@@ -84,10 +94,6 @@ export const MarketInstrumentTypeDetails: {
     },
   },
   CUR: {
-    CURRENCY: {
-      name: "Currency",
-      description: "Foreign exchange currency",
-    },
     FUTURE: {
       name: "Currency Future",
       description: "Futures contracts for currency trading",

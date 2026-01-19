@@ -18,7 +18,9 @@ import {
   MarketInstrumentCurrencyType,
   MarketInstrumentDerivativeType,
   MarketInstrumentEquityType,
+  MarketInstrumentFutureType,
   MarketInstrumentIndexType,
+  MarketInstrumentOptionType,
 } from "./type";
 
 /** Market Instrument Base Details */
@@ -31,6 +33,9 @@ export interface IMarketInstrumentBase {
 
   /** Instrument display name. Eg. Apple Inc., Bitcoin, Euro/USD, Reliance Industries, Nifty 50 */
   name: string;
+
+  /** Tick size for the instrument. Eg. 0.01, 1 */
+  tickSize: number;
 
   /** Last updated timestamp in ISO 8601 format. Eg. 2024-06-01T12:00:00Z */
   lastUpdated: string;
@@ -52,28 +57,57 @@ export interface IMarketEquityInstrument {
   type: MarketInstrumentEquityType;
 }
 
-export interface IMarketDerivativeInstrument {
+export interface IMarketDerivativeBaseInstrument {
   exchange: MarketDerivativeExchange;
   segment: MarketDerivativeSegment;
   type: MarketInstrumentDerivativeType;
+  underlyingKey: string;
+  expiry: string;
+  isExpired: boolean;
 }
+
+export interface IMarketFutureInstrument {
+  type: MarketInstrumentFutureType;
+}
+
+export interface IMarketOptionInstrument {
+  type: MarketInstrumentOptionType;
+  strike: number;
+  optionType: "CALL" | "PUT";
+  lotSize: number;
+  minimumLots: number;
+
+  /** Maximum permissible order quantity for a single trade */
+  freezeQuantity: number;
+  weeklyExpiry: boolean;
+}
+
+export type IMarketDerivativeInstrument =
+  | (IMarketDerivativeBaseInstrument & IMarketFutureInstrument)
+  | (IMarketDerivativeBaseInstrument & IMarketOptionInstrument);
 
 export interface IMarketCommodityInstrument {
   exchange: MarketCommodityExchange;
   segment: MarketCommoditySegment;
   type: MarketInstrumentCommodityType;
+  expiry: string;
+  isExpired: boolean;
 }
 
 export interface IMarketCurrencyInstrument {
   exchange: MarketCurrencyExchange;
   segment: MarketCurrencySegment;
   type: MarketInstrumentCurrencyType;
+  expiry: string;
+  isExpired: boolean;
 }
 
 export interface IMarketCryptoInstrument {
   exchange: MarketCryptoExchange;
   segment: MarketCurrencySegment;
   type: MarketInstrumentCryptoType;
+  expiry?: string;
+  isExpired?: boolean;
 }
 
 type IMarketInstrument = IMarketInstrumentBase &

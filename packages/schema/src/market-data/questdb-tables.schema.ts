@@ -22,43 +22,6 @@
  */
 
 import { z } from "zod";
-import { IMarketCandle, MarketCandleIntervalUnit } from "./candle.schema";
-
-// ============================================
-// TABLE 1: instrument_master
-// Instrument registry - MANDATORY for all joins
-// ============================================
-
-export const InstrumentMasterSchema = z.object({
-  instrumentKey: z.string(),
-  exchange: z.enum(["NSE", "BSE", "MCX"]),
-  segment: z.enum(["INDEX", "EQ", "FO", "COMMODITY"]),
-  instrumentType: z.enum(["SPOT", "STOCK", "FUTURE", "OPTION"]),
-  tradingsymbol: z.string(),
-  name: z.string(),
-  expiry: z.date().nullable(),
-  strike: z.number().nullable(),
-  optionType: z.enum(["CE", "PE"]).nullable(),
-  lotSize: z.number().int(),
-  tickSize: z.number(),
-  underlyingKey: z.string().nullable(),
-  isExpired: z.boolean(),
-  lastUpdated: z.date(),
-  // Extended fields from Upstox API
-  isin: z.string().nullable().optional(),
-  exchangeToken: z.string().nullable().optional(),
-  underlyingSymbol: z.string().nullable().optional(),
-  underlyingType: z
-    .enum(["INDEX", "EQUITY", "COMMODITY", "CUR", "IRD", "COM"])
-    .nullable()
-    .optional(),
-  freezeQuantity: z.number().int().nullable().optional(),
-  minimumLot: z.number().int().nullable().optional(),
-  weekly: z.boolean().nullable().optional(),
-  isActive: z.boolean().optional(),
-});
-
-export type InstrumentMaster = z.infer<typeof InstrumentMasterSchema>;
 
 // ============================================
 // TABLE 3: orderbook_l2_snapshots
