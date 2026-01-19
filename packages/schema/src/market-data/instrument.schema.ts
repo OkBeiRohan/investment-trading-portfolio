@@ -1,27 +1,77 @@
-import { MarketExchange } from "./exchange";
-import { MarketInstrumentSegment, MarketInstrumentType } from "./segment";
+import {
+  MarketCommodityExchange,
+  MarketCryptoExchange,
+  MarketCurrencyExchange,
+  MarketDerivativeExchange,
+  MarketEquityExchange,
+} from "./exchange";
+import {
+  MarketCommoditySegment,
+  MarketCurrencySegment,
+  MarketDerivativeSegment,
+  MarketEquitySegment,
+  MarketIndexSegment,
+} from "./segment";
+import {
+  MarketInstrumentCommodityType,
+  MarketInstrumentCryptoType,
+  MarketInstrumentCurrencyType,
+  MarketInstrumentDerivativeType,
+  MarketInstrumentEquityType,
+  MarketInstrumentIndexType,
+} from "./type";
 
-export default interface IMarketInstrument<
-  Exchange extends MarketExchange = "NSE",
-  Segment extends MarketInstrumentSegment = "EQ",
-  Type extends MarketInstrumentType<Segment> = MarketInstrumentType<Segment>,
-> {
+export interface IMarketInstrumentBase {
   instrumentKey: string;
-  exchange: Exchange;
-  segment: Segment extends "CRYPTO" ? "CUR" : Segment;
-  type: Segment extends "CRYPTO" ? "CRYPTO" : Type;
-  symbol: string;
+  tradingSymbol: string;
   name: string;
-  expiry: Segment extends "DERIVATIVE" | "COMMODITY" ? Date : never;
-  strike: Segment extends "DERIVATIVE"
-    ? Type extends "OPTION"
-      ? number
-      : never
-    : never;
-  optionType: Segment extends "DERIVATIVE"
-    ? Type extends "OPTION"
-      ? "CE" | "PE"
-      : never
-    : never;
-  isin: string;
+
+  lastUpdated: string;
 }
+
+export interface IMarketIndexInstrument {
+  exchange: MarketEquityExchange;
+  segment: MarketIndexSegment;
+  type: MarketInstrumentIndexType;
+}
+
+export interface IMarketEquityInstrument {
+  exchange: MarketEquityExchange;
+  segment: MarketEquitySegment;
+  type: MarketInstrumentEquityType;
+}
+
+export interface IMarketDerivativeInstrument {
+  exchange: MarketDerivativeExchange;
+  segment: MarketDerivativeSegment;
+  type: MarketInstrumentDerivativeType;
+}
+
+export interface IMarketCommodityInstrument {
+  exchange: MarketCommodityExchange;
+  segment: MarketCommoditySegment;
+  type: MarketInstrumentCommodityType;
+}
+
+export interface IMarketCurrencyInstrument {
+  exchange: MarketCurrencyExchange;
+  segment: MarketCurrencySegment;
+  type: MarketInstrumentCurrencyType;
+}
+
+export interface IMarketCryptoInstrument {
+  exchange: MarketCryptoExchange;
+  segment: MarketCurrencySegment;
+  type: MarketInstrumentCryptoType;
+}
+
+type IMarketInstrument = IMarketInstrumentBase &
+  (
+    | IMarketIndexInstrument
+    | IMarketEquityInstrument
+    | IMarketDerivativeInstrument
+    | IMarketCommodityInstrument
+    | IMarketCurrencyInstrument
+    | IMarketCryptoInstrument
+  );
+export default IMarketInstrument;
