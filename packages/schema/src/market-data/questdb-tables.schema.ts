@@ -61,27 +61,6 @@ export const InstrumentMasterSchema = z.object({
 export type InstrumentMaster = z.infer<typeof InstrumentMasterSchema>;
 
 // ============================================
-// TABLE 2: market_candles
-// Unified historical candle data
-// ============================================
-
-export const MarketCandleIntervalUnitEnum: z.ZodType<MarketCandleIntervalUnit> =
-  z.enum(["second", "minute", "hour", "day", "week", "month"]);
-
-export const MarketCandleSchema: z.ZodType<IMarketCandle> = z.object({
-  timestamp: z.date(),
-  instrumentKey: z.string(),
-  intervalValue: z.number().int(),
-  intervalUnit: MarketCandleIntervalUnitEnum,
-  open: z.number(),
-  high: z.number(),
-  low: z.number(),
-  close: z.number(),
-  volume: z.number().optional(),
-  openInterest: z.number().optional(),
-});
-
-// ============================================
 // TABLE 3: orderbook_l2_snapshots
 // Level 2 order book snapshots
 // ============================================

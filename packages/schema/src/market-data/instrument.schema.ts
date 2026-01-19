@@ -1,32 +1,27 @@
-export type MarketInstrumentSegment =
-  | "INDEX"
-  | "EQUITY"
-  | "DERIVATIVE"
-  | "COMMODITY";
-
-export type MarketInstrumentType<Segment extends MarketInstrumentSegment> =
-  Segment extends "INDEX"
-    ? "MARKET_INDEX" | "SECTOR_INDEX" | "THEMATIC_INDEX"
-    : Segment extends "EQUITY"
-      ? "STOCK" | "ETF" | "MUTUAL_FUND"
-      : Segment extends "DERIVATIVE"
-        ? "FUTURE" | "OPTION"
-        : Segment extends "COMMODITY"
-          ? "METAL" | "ENERGY" | "AGRICULTURE"
-          : never;
-
-export type MarketExchange = "NSE" | "BSE" | "MCX" | "FOREX" | "CRYPTO";
+import { MarketExchange } from "./exchange";
+import { MarketInstrumentSegment, MarketInstrumentType } from "./segment";
 
 export default interface IMarketInstrument<
-  Segment extends MarketInstrumentSegment = MarketInstrumentSegment,
+  Exchange extends MarketExchange = "NSE",
+  Segment extends MarketInstrumentSegment = "EQ",
+  Type extends MarketInstrumentType<Segment> = MarketInstrumentType<Segment>,
 > {
   instrumentKey: string;
-  exchange: MarketExchange;
-  segment: Segment;
-  type: MarketInstrumentType<Segment>;
+  exchange: Exchange;
+  segment: Segment extends "CRYPTO" ? "CUR" : Segment;
+  type: Segment extends "CRYPTO" ? "CRYPTO" : Type;
   symbol: string;
-  companyName: string;
-  isin?: string;
-  lotSize?: number;
-  expiryDate?: Date;
+  name: string;
+  expiry: Segment extends "DERIVATIVE" | "COMMODITY" ? Date : never;
+  strike: Segment extends "DERIVATIVE"
+    ? Type extends "OPTION"
+      ? number
+      : never
+    : never;
+  optionType: Segment extends "DERIVATIVE"
+    ? Type extends "OPTION"
+      ? "CE" | "PE"
+      : never
+    : never;
+  isin: string;
 }

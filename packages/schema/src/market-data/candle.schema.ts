@@ -14,10 +14,10 @@ export type MarketCandleIntervalUnit =
   | "month";
 
 export interface IMarketCandle<
-  Segment extends MarketInstrumentSegment = MarketInstrumentSegment,
+  Segment extends MarketInstrumentSegment = "EQUITY",
 > {
   /** Candle timestamp (start of interval) */
-  timestamp: Date;
+  timestamp: string;
 
   /** Instrument identifier (e.g., NSE_EQ|INE848E01016) */
   instrumentKey: string;
@@ -41,53 +41,24 @@ export interface IMarketCandle<
   close: number;
 
   /** Trading volume */
-  volume: Segment extends "INDEX" ? undefined : number;
+  volume: Segment extends "INDEX" ? never : number;
 
   /** Open interest (for derivatives and commodity) */
-  openInterest: Segment extends "INDEX" | "EQUITY" ? undefined : number;
-}
-
-export interface ICandleInsert {
-  /** Candle timestamp (Unix ms or Date) */
-  timestamp: number | Date;
-
-  /** Instrument identifier */
-  instrument_key: string;
-
-  /** Candle interval */
-  interval: string;
-
-  /** Opening price */
-  open: number;
-
-  /** Highest price */
-  high: number;
-
-  /** Lowest price */
-  low: number;
-
-  /** Closing price */
-  close: number;
-
-  /** Trading volume */
-  volume: number;
-
-  /** Open interest (optional) */
-  open_interest?: number;
+  openInterest: Segment extends "INDEX" | "EQUITY" ? never : number;
 }
 
 export interface ICandleQuery {
   /** Instrument identifier */
-  instrument_key: string;
+  instrumentKey: string;
 
   /** Candle interval */
   interval: string;
 
   /** Start time (inclusive) */
-  start_time: Date;
+  startTime: string;
 
   /** End time (inclusive) */
-  end_time: Date;
+  endTime: string;
 
   /** Limit results */
   limit?: number;
