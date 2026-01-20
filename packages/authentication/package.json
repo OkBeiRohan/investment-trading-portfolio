@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@better-auth/core": "^1.4.15",
-    "@better-auth/passkey": "^1.4.15",
+    "@better-auth/passkey": "^1.4.16",
     "@nestjs/common": "^11.1.12",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.12",
