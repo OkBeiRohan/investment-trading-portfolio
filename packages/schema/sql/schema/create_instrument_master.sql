@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS instrument_master (
   -- Primary identifier
-  instrumentKey SYMBOL CAPACITY 900000 NOCACHE INDEX,
+  instrumentKey SYMBOL CAPACITY 1000000 NOCACHE INDEX,
   
   -- Exchange info
   exchange SYMBOL CAPACITY 10,           -- 'NSE', 'BSE', 'NFO'
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS instrument_master (
   instrument_type SYMBOL CAPACITY 20,    -- 'INDEX', 'STOCK', 'FUTURE', 'OPTION_CE', 'OPTION_PE'
   
   -- Naming
-  trading_symbol SYMBOL CAPACITY 100,    -- e.g., 'NIFTY 20400 PE 17 APR 25'
+  trading_symbol SYMBOL CAPACITY 1000000,    -- e.g., 'NIFTY 20400 PE 17 APR 25'
   name STRING,                           -- e.g., 'NIFTY', 'RELIANCE'
   isin STRING,                           -- For stocks
   
