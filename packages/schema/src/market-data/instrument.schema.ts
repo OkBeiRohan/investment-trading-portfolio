@@ -1,18 +1,19 @@
-import {
+import MarketExchange, {
   MarketCommodityExchange,
   MarketCryptoExchange,
   MarketCurrencyExchange,
   MarketDerivativeExchange,
   MarketEquityExchange,
 } from "./exchange";
-import {
+import MarketSegment from "./segment";
+import MarketInstrumentSegment, {
   MarketCommoditySegment,
   MarketCurrencySegment,
   MarketDerivativeSegment,
   MarketEquitySegment,
   MarketIndexSegment,
 } from "./segment";
-import {
+import MarketInstrumentType, {
   MarketInstrumentCommodityType,
   MarketInstrumentCryptoType,
   MarketInstrumentCurrencyType,
@@ -42,6 +43,15 @@ export interface IMarketInstrumentBase {
 
   /** Is the instrument currently active/tradable */
   isActive: boolean;
+
+  /** Market exchange where the instrument is listed/traded */
+  exchange: MarketExchange;
+
+  /** Market segment/category of the instrument */
+  segment: MarketSegment;
+
+  /** Type/category of the instrument */
+  type: MarketInstrumentType;
 }
 
 /** Market Index Instrument */
@@ -86,13 +96,17 @@ export type IMarketDerivativeInstrument =
   | (IMarketDerivativeBaseInstrument & IMarketFutureInstrument)
   | (IMarketDerivativeBaseInstrument & IMarketOptionInstrument);
 
-export interface IMarketCommodityInstrument {
+export interface IMarketCommodityBaseInstrument {
   exchange: MarketCommodityExchange;
   segment: MarketCommoditySegment;
   type: MarketInstrumentCommodityType;
   expiry: string;
   isExpired: boolean;
 }
+
+export type IMarketCommodityInstrument =
+  | (IMarketCommodityBaseInstrument & IMarketFutureInstrument)
+  | (IMarketCommodityBaseInstrument & IMarketOptionInstrument);
 
 export interface IMarketCurrencyInstrument {
   exchange: MarketCurrencyExchange;

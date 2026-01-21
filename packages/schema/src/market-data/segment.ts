@@ -4,16 +4,16 @@ export type MarketDerivativeSegment = "FO";
 export type MarketCommoditySegment = "COM";
 export type MarketCurrencySegment = "CUR";
 
-type MarketInstrumentSegment =
+type MarketSegment =
   | MarketIndexSegment
   | MarketEquitySegment
   | MarketDerivativeSegment
   | MarketCommoditySegment
   | MarketCurrencySegment;
-export default MarketInstrumentSegment;
+export default MarketSegment;
 
 export const MarketInstrumentSegmentDetails: {
-  [key in MarketInstrumentSegment]: {
+  [key in MarketSegment]: {
     name: string;
     description: string;
   };
