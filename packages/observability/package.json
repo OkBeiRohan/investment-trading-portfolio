@@ -32,7 +32,7 @@
     "@opentelemetry/instrumentation-pino": "^0.56.0",
     "@opentelemetry/propagator-b3": "^2.4.0",
     "@opentelemetry/sdk-node": "^0.210.0",
-    "@opentelemetry/sdk-trace-base": "^2.4.0",
+    "@opentelemetry/sdk-trace-base": "^2.5.0",
     "@opentelemetry/sdk-trace-node": "^2.4.0",
     "@opentelemetry/semantic-conventions": "^1.39.0",
     "nestjs-otel": "^8.0.1",
