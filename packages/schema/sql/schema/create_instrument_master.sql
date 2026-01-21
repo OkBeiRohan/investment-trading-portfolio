@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS instrument_master (
   -- Primary identifier
-  instrument_key SYMBOL CAPACITY 100000 NOCACHE INDEX,
+  instrumentKey SYMBOL CAPACITY 900000 NOCACHE INDEX,
   
   -- Exchange info
   exchange SYMBOL CAPACITY 10,           -- 'NSE', 'BSE', 'NFO'
