@@ -648,8 +648,8 @@ importers:
         specifier: ^8.19.0
         version: 8.19.0(bufferutil@4.1.0)
       yahoo-finance2:
-        specifier: ^3.11.2
-        version: 3.11.2
+        specifier: ^3.13.0
+        version: 3.13.0
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -8017,6 +8017,7 @@ packages:
   tar@7.5.2:
     resolution: {integrity: sha512-7NyxrTE4Anh8km8iEy7o0QYPs+0JKBTj5ZaqHg6B39erLg0qYXN3BijtShwbsNSvQ+LN75+KV+C4QR/f6Gwnpg==}
     engines: {node: '>=18'}
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me
 
   temp-dir@3.0.0:
     resolution: {integrity: sha512-nHc6S/bwIilKHNRgK/3jlhDoIHcp45YgyiwcAk46Tr0LfEqGBVpmiAyuiuxeVE44m3mXnEeVhaipLOEWmH+Njw==}
@@ -8530,8 +8531,8 @@ packages:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
 
-  yahoo-finance2@3.11.2:
-    resolution: {integrity: sha512-SIvMXjrOktBRD8m+qXAGCK+vR1vwBKuMgCnvmbxv29+t6LTDu0vAUxNYfbigsMRTmBzS4F9TQwbYF90g3Om4HA==}
+  yahoo-finance2@3.13.0:
+    resolution: {integrity: sha512-czBj2q/MD68YEsB7aXNnGhJvWxYZn01O5r/i7VYiQV2m2sWwhca6tKgjwf/LT7zHHEVxhKNiGLB46glLnmq9Ag==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
@@ -16240,7 +16241,7 @@ snapshots:
 
   y18n@5.0.8: {}
 
-  yahoo-finance2@3.11.2:
+  yahoo-finance2@3.13.0:
     dependencies:
       '@deno/shim-deno': 0.18.2
       fetch-mock-cache: 2.3.1
