@@ -29,7 +29,7 @@
     "@opentelemetry/host-metrics": "^0.38.1",
     "@opentelemetry/instrumentation-graphql": "^0.57.0",
     "@opentelemetry/instrumentation-nestjs-core": "^0.56.0",
-    "@opentelemetry/instrumentation-pino": "^0.56.0",
+    "@opentelemetry/instrumentation-pino": "^0.57.0",
     "@opentelemetry/propagator-b3": "^2.4.0",
     "@opentelemetry/sdk-node": "^0.210.0",
     "@opentelemetry/sdk-trace-base": "^2.4.0",
