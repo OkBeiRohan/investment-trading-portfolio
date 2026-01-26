@@ -21,7 +21,7 @@
     "@trpc/server": "^11.8.1",
     "@trpc/tanstack-react-query": "^11.8.1",
     "superjson": "^2.2.6",
-    "zod": "^4.3.5"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
