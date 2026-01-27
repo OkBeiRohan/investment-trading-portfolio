@@ -27,7 +27,7 @@
     "@nestjs/core": "^11.1.12",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
-    "@thallesp/nestjs-better-auth": "^2.2.2",
+    "@thallesp/nestjs-better-auth": "^2.2.5",
     "better-auth": "^1.4.15"
   },
   "devDependencies": {
