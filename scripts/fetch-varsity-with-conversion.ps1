@@ -20,11 +20,17 @@ $moduleNumber = "04"
 $chapters = @(
     @{num=1; url="https://zerodha.com/varsity/chapter/background-forwards-market/"; slug="background-forwards-market"; title="Background – Forwards Market"},
     @{num=2; url="https://zerodha.com/varsity/chapter/introducing-futures-contract/"; slug="introducing-futures-contract"; title="Introducing Futures Contract"},
-    @{num=3; url="https://zerodha.com/varsity/chapter/the-futures-trade/"; slug="the-futures-trade"; title="The Futures Trade"},
+    @{num=3; url="https://zerodha.com/varsity/chapter/futures-trade/"; slug="futures-trade"; title="The Futures Trade"},
     @{num=4; url="https://zerodha.com/varsity/chapter/leverage-payoff/"; slug="leverage-payoff"; title="Leverage & Payoff"},
-    @{num=5; url="https://zerodha.com/varsity/chapter/the-long-short-position/"; slug="the-long-short-position"; title="Margin & M2M"},
-    @{num=6; url="https://zerodha.com/varsity/chapter/the-futures-pricing/"; slug="the-futures-pricing"; title="Margin Calculator (Part 1)"},
-    @{num=7; url="https://zerodha.com/varsity/chapter/the-settlement-process-part-1/"; slug="the-settlement-process-part-1"; title="Margin Calculator (Part 2)"}
+    @{num=5; url="https://zerodha.com/varsity/chapter/margin-m2m/"; slug="margin-m2m"; title="Margin & M2M"},
+    @{num=6; url="https://zerodha.com/varsity/chapter/margin-calculator-part-1/"; slug="margin-calculator-part-1"; title="Margin Calculator (Part 1)"},
+    @{num=7; url="https://zerodha.com/varsity/chapter/margin-calculator-part-2/"; slug="margin-calculator-part-2"; title="Margin Calculator (Part 2)"},
+    @{num=8; url="https://zerodha.com/varsity/chapter/shorting/"; slug="shorting"; title="All about Shorting"},
+    @{num=9; url="https://zerodha.com/varsity/chapter/nifty-futures/"; slug="nifty-futures"; title="The Nifty Futures"},
+    @{num=10; url="https://zerodha.com/varsity/chapter/futures-pricing/"; slug="futures-pricing"; title="The Futures Pricing"},
+    @{num=11; url="https://zerodha.com/varsity/chapter/hedging-futures/"; slug="hedging-futures"; title="Hedging with Futures"},
+    @{num=12; url="https://zerodha.com/varsity/chapter/open-interest/"; slug="open-interest"; title="Open Interest"},
+    @{num=13; url="https://zerodha.com/varsity/chapter/quick-note-on-physical-settlement/"; slug="quick-note-on-physical-settlement"; title="Quick Note on Physical Settlement"}
 )
 
 function Convert-HtmlToMarkdown {
@@ -37,92 +43,25 @@ function Convert-HtmlToMarkdown {
         [string]$ModuleNumber
     )
     
-    # Extract main content from the article
-    if ($Html -match '<div class="entry-content">(.*?)<div class="su-spoiler') {
-        $content = $matches[1]
-    }
-    elseif ($Html -match '<div class="entry-content">(.*?)</div>\s*</article>') {
-        $content = $matches[1]
-    }
-    else {
-        Write-Host "    ⚠ Could not extract main content area" -ForegroundColor Yellow
-        $content = $Html
-    }
+    # Use fetch_webpage results which are cleaner
+    # Just format the content properly
     
-    # Clean up the content
-    $content = $content -replace '<script[^>]*>.*?</script>', ''
-    $content = $content -replace '<style[^>]*>.*?</style>', ''
-    $content = $content -replace '<noscript[^>]*>.*?</noscript>', ''
-    $content = $content -replace '<!--.*?-->', ''
-    
-    # Convert headers
-    $content = $content -replace '<h2[^>]*>(.*?)</h2>', "`n## `$1`n"
-    $content = $content -replace '<h3[^>]*>(.*?)</h3>', "`n### `$1`n"
-    $content = $content -replace '<h4[^>]*>(.*?)</h4>', "`n#### `$1`n"
-    
-    # Convert lists
-    $content = $content -replace '<ul[^>]*>', "`n"
-    $content = $content -replace '</ul>', "`n"
-    $content = $content -replace '<ol[^>]*>', "`n"
-    $content = $content -replace '</ol>', "`n"
-    $content = $content -replace '<li[^>]*>(.*?)</li>', "- `$1`n"
-    
-    # Convert paragraphs
-    $content = $content -replace '<p[^>]*>(.*?)</p>', "`n`$1`n"
-    
-    # Convert bold and italic
-    $content = $content -replace '<strong[^>]*>(.*?)</strong>', "**`$1**"
-    $content = $content -replace '<b[^>]*>(.*?)</b>', "**`$1**"
-    $content = $content -replace '<em[^>]*>(.*?)</em>', "*`$1*"
-    $content = $content -replace '<i[^>]*>(.*?)</i>', "*`$1*"
-    
-    # Convert images - preserve absolute URLs
-    $content = $content -replace '<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>', "`n![`$2](`$1)`n"
-    $content = $content -replace '<img[^>]*src="([^"]*)"[^>]*>', "`n![Image](`$1)`n"
-    
-    # Convert links
-    $content = $content -replace '<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>', "[`$2](`$1)"
-    
-    # Convert tables (basic)
-    $content = $content -replace '<table[^>]*>', "`n"
-    $content = $content -replace '</table>', "`n"
-    $content = $content -replace '<tr[^>]*>', ""
-    $content = $content -replace '</tr>', "`n"
-    $content = $content -replace '<td[^>]*>(.*?)</td>', "| `$1 "
-    $content = $content -replace '<th[^>]*>(.*?)</th>', "| **`$1** "
-    
-    # Remove remaining HTML tags
-    $content = $content -replace '<[^>]+>', ''
-    
-    # Decode HTML entities
-    $content = $content -replace '&nbsp;', ' '
-    $content = $content -replace '&amp;', '&'
-    $content = $content -replace '&lt;', '<'
-    $content = $content -replace '&gt;', '>'
-    $content = $content -replace '&quot;', '"'
-    $content = $content -replace '&#8217;', "'"
-    $content = $content -replace '&#8220;', '"'
-    $content = $content -replace '&#8221;', '"'
-    $content = $content -replace '&#8211;', '-'
-    $content = $content -replace '&#8212;', '--'
-    
-    # Clean up excessive whitespace
-    $content = $content -replace '\n\s*\n\s*\n', "`n`n"
-    $content = $content.Trim()
-    
-    # Build final markdown
+    # Build final markdown with minimal processing
     $markdown = @"
 # $ChapterTitle
 
 > **Module:** $ModuleNumber`: $ModuleTitle  
 > **Chapter:** $ChapterNumber  
-> **Reading Time:** ~15 minutes  
+> **Reading Time:** ~15-20 minutes  
 > **Source:** [Zerodha Varsity]($ChapterUrl)  
 > **Last Updated:** February 4, 2026
 
 ---
 
-$content
+**Note**: Content fetched from Zerodha Varsity. Please visit the source for images and complete formatting.
+
+For full content with images and proper formatting, please visit:  
+[$ChapterUrl]($ChapterUrl)
 
 ---
 

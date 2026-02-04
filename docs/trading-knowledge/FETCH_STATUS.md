@@ -1,7 +1,13 @@
 # Zerodha Varsity Fetch Status - Derivatives Modules
 
-**Date**: 2026-02-04
-**Status**: IN PROGRESS - Rate Limited
+**Date**: 2026-02-04  
+**Status**: IN PROGRESS - Rate Limited (Partial Success)
+
+## Current Session Summary
+
+**Fetched**: 2 chapters (Chapter 2, Chapter 4)  
+**Status**: ✅ Saved but needs cleaning (CSS/HTML debris)  
+**Rate Limit**: Hit after 2 requests - requires 60+ minute wait
 
 ## Target Modules
 
@@ -9,22 +15,23 @@
 
 - **URL**: https://zerodha.com/varsity/module/futures-trading/
 - **Target Location**: `04-futures-trading/`
+- **PDF Available**: https://zerodha-common.s3.ap-south-1.amazonaws.com/Varsity/Modules/Module%204_Futures%20Trading.pdf
 
 #### Chapter List:
 
-1. Background – Forwards Market ❌ (Rate Limited)
-2. Introducing Futures Contract ❌ (Rate Limited)
-3. The Futures Trade ✅ (Successfully fetched - ready to save)
-4. Leverage & Payoff ✅ (Successfully fetched - ready to save)
-5. Margin & M2M
-6. Margin Calculator (Part 1)
-7. Margin Calculator (Part 2)
-8. All about Shorting
-9. The Nifty Futures
-10. The Futures Pricing
-11. Hedging with Futures
-12. Open Interest
-13. Quick Note on Physical Settlement
+1. Background – Forwards Market ⏳ (Pending - rate limited)
+2. Introducing Futures Contract ✅ (Fetched - needs cleaning)
+3. The Futures Trade ⏳ (Pending)
+4. Leverage & Payoff ✅ (Fetched - needs cleaning)
+5. Margin & M2M ⏳ (Pending)
+6. Margin Calculator (Part 1) ⏳ (Pending)
+7. Margin Calculator (Part 2) ⏳ (Pending)
+8. All about Shorting ⏳ (Pending)
+9. The Nifty Futures ⏳ (Pending)
+10. The Futures Pricing ⏳ (Pending)
+11. Hedging with Futures ⏳ (Pending)
+12. Open Interest ⏳ (Pending)
+13. Quick Note on Physical Settlement ⏳ (Pending)
 
 ### Module 5: Options Theory (25 chapters)
 
