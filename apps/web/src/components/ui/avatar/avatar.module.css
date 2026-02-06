@@ -1,0 +1,92 @@
+/* Avatar Base Styles */
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.initials,
+.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+/* Sizes */
+.size-xs {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: var(--font-size-xs);
+}
+
+.size-sm {
+  width: 2rem;
+  height: 2rem;
+  font-size: var(--font-size-xs);
+}
+
+.size-md {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: var(--font-size-sm);
+}
+
+.size-lg {
+  width: 3rem;
+  height: 3rem;
+  font-size: var(--font-size-base);
+}
+
+.size-xl {
+  width: 4rem;
+  height: 4rem;
+  font-size: var(--font-size-lg);
+}
+
+/* Avatar Group */
+.group {
+  display: flex;
+  align-items: center;
+}
+
+.group > * {
+  position: relative;
+  margin-left: -0.5rem;
+  border: 2px solid var(--color-bg-card);
+}
+
+.group > *:first-child {
+  margin-left: 0;
+}
+
+.overflow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-left: -0.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border: 2px solid var(--color-bg-card);
+}

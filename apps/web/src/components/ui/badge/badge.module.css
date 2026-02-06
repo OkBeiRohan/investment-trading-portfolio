@@ -1,0 +1,64 @@
+/* Badge Base Styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+/* Sizes */
+.size-sm {
+  padding: 0.125rem var(--spacing-2);
+  font-size: var(--font-size-xs);
+}
+
+.size-md {
+  padding: var(--spacing-1) var(--spacing-3);
+  font-size: var(--font-size-sm);
+}
+
+/* Variants */
+.variant-default {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.variant-success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.variant-warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.variant-error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.variant-info {
+  background-color: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+.variant-neutral {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+/* Icon */
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon svg {
+  width: 0.875em;
+  height: 0.875em;
+}

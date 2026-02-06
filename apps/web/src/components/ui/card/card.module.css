@@ -1,0 +1,105 @@
+/* Card Base Styles */
+.card {
+  border-radius: var(--card-radius);
+  transition:
+    box-shadow var(--transition-base),
+    transform var(--transition-base);
+}
+
+/* Variants */
+.variant-default {
+  background-color: var(--color-bg-card);
+  box-shadow: var(--card-shadow);
+}
+
+.variant-default:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.variant-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+}
+
+.variant-elevated {
+  background-color: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.variant-yellow {
+  background-color: var(--card-yellow-bg);
+  color: var(--color-text-inverse);
+}
+
+.variant-mint {
+  background-color: var(--card-mint-bg);
+  color: var(--color-text-inverse);
+}
+
+.variant-coral {
+  background-color: var(--card-coral-bg);
+  color: #ffffff;
+}
+
+.variant-blue {
+  background-color: var(--card-blue-bg);
+  color: var(--color-text-inverse);
+}
+
+.variant-dark {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  box-shadow: var(--card-shadow);
+}
+
+[data-theme="dark"] .variant-dark {
+  background-color: #2d3138;
+}
+
+/* Padding */
+.padding-none {
+  padding: 0;
+}
+
+.padding-compact {
+  padding: var(--spacing-4);
+}
+
+.padding-default {
+  padding: var(--card-padding);
+}
+
+.padding-spacious {
+  padding: var(--spacing-8);
+}
+
+/* Card Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+/* Card Body */
+.body {
+  flex: 1;
+}
+
+/* Card Footer */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-4);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--color-border);
+}
