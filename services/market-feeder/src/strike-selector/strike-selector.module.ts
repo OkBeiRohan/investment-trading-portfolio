@@ -7,6 +7,7 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { StrikeSelectorService } from './strike-selector.service';
+import { StrikeSelectorBootstrap } from './strike-selector.bootstrap';
 import { UpstoxClient } from '../historical-data/upstox-client';
 import { DatabaseModule } from '@repo/database';
 
@@ -28,7 +29,7 @@ import { DatabaseModule } from '@repo/database';
     }),
     DatabaseModule.forMarketFeeder(),
   ],
-  providers: [UpstoxClient, StrikeSelectorService],
+  providers: [UpstoxClient, StrikeSelectorService, StrikeSelectorBootstrap],
   exports: [StrikeSelectorService],
 })
 export class StrikeSelectorModule {}
