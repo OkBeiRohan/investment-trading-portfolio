@@ -181,33 +181,66 @@ export class StrikeSelectorService {
     };
     const bearishAnalyses = this.analyzeStrikes(marketContext, bearishConfig);
 
-    // Filter and sort for bullish scenario
-    const bullishCalls = bullishAnalyses
-      .filter((s) => s.optionType === 'CE' && !s.filterReason && s.maxLots > 0)
+    // Filter valid strikes
+    const validBullishCalls = bullishAnalyses.filter(
+      (s) => s.optionType === 'CE' && !s.filterReason && s.maxLots > 0,
+    );
+    const validBullishPuts = bullishAnalyses.filter(
+      (s) => s.optionType === 'PE' && !s.filterReason && s.maxLots > 0,
+    );
+    const validBearishPuts = bearishAnalyses.filter(
+      (s) => s.optionType === 'PE' && !s.filterReason && s.maxLots > 0,
+    );
+    const validBearishCalls = bearishAnalyses.filter(
+      (s) => s.optionType === 'CE' && !s.filterReason && s.maxLots > 0,
+    );
+
+    // ═══════════════════════════════════════════════════════════════
+    // RANKING 1: By RAROC Utility Score (risk-adjusted, OTM-friendly)
+    // ═══════════════════════════════════════════════════════════════
+    const bullishCalls = [...validBullishCalls]
       .sort((a, b) => b.utilityScore - a.utilityScore)
       .slice(0, 3);
 
-    const bullishPuts = bullishAnalyses
-      .filter((s) => s.optionType === 'PE' && !s.filterReason && s.maxLots > 0)
+    const bullishPuts = [...validBullishPuts]
       .sort((a, b) => b.utilityScore - a.utilityScore)
       .slice(0, 3);
 
-    // Filter and sort for bearish scenario
-    const bearishPuts = bearishAnalyses
-      .filter((s) => s.optionType === 'PE' && !s.filterReason && s.maxLots > 0)
+    const bearishPuts = [...validBearishPuts]
       .sort((a, b) => b.utilityScore - a.utilityScore)
       .slice(0, 3);
 
-    const bearishCalls = bearishAnalyses
-      .filter((s) => s.optionType === 'CE' && !s.filterReason && s.maxLots > 0)
+    const bearishCalls = [...validBearishCalls]
       .sort((a, b) => b.utilityScore - a.utilityScore)
       .slice(0, 3);
 
-    // Assign ranks
+    // ═══════════════════════════════════════════════════════════════
+    // RANKING 2: By ABSOLUTE Profit (ATM-friendly, higher delta)
+    // For 1 lot only - shows which strike gives max profit per lot
+    // ═══════════════════════════════════════════════════════════════
+    const highestProfitBullishCalls = [...validBullishCalls]
+      .sort(
+        (a, b) =>
+          (b.predictedProfitPerLot || 0) - (a.predictedProfitPerLot || 0),
+      )
+      .slice(0, 3);
+
+    const highestProfitBearishPuts = [...validBearishPuts]
+      .sort(
+        (a, b) =>
+          (b.predictedProfitPerLot || 0) - (a.predictedProfitPerLot || 0),
+      )
+      .slice(0, 3);
+
+    // Assign ranks for utility-ranked
     bullishCalls.forEach((s, i) => (s.rank = i + 1));
     bullishPuts.forEach((s, i) => (s.rank = i + 1));
     bearishPuts.forEach((s, i) => (s.rank = i + 1));
     bearishCalls.forEach((s, i) => (s.rank = i + 1));
+
+    // Assign ranks for profit-ranked
+    highestProfitBullishCalls.forEach((s, i) => (s.rank = i + 1));
+    highestProfitBearishPuts.forEach((s, i) => (s.rank = i + 1));
 
     // Calculate stats
     const allCalls = bullishAnalyses.filter((s) => s.optionType === 'CE');
@@ -228,12 +261,14 @@ export class StrikeSelectorService {
         direction: 'BULLISH',
         expectedSpot: marketContext.spotPrice + Math.abs(expectedMove),
         topCalls: bullishCalls,
+        highestProfitCalls: highestProfitBullishCalls,
         topPuts: bullishPuts,
       },
       bearishScenario: {
         direction: 'BEARISH',
         expectedSpot: marketContext.spotPrice - Math.abs(expectedMove),
         topPuts: bearishPuts,
+        highestProfitPuts: highestProfitBearishPuts,
         topCalls: bearishCalls,
       },
       stats: {
@@ -319,13 +354,31 @@ export class StrikeSelectorService {
       `║  📈 BULLISH SCENARIO: Nifty moves UP to ₹${bullishScenario.expectedSpot.toFixed(2)} (+${analysis.expectedMove} pts)  ║`,
       '╚═══════════════════════════════════════════════════════════════════════════╝',
       '',
-      '┌─ TOP 3 CALL OPTIONS (CE) ─────────────────────────────────────────────────',
+      '┌─ 🎯 BEST RISK-ADJUSTED (RAROC Utility) ─────────────────────────────────────',
       '',
     ];
 
-    // Add bullish calls
+    // Add bullish calls (utility-ranked)
     if (bullishScenario.topCalls.length > 0) {
       bullishScenario.topCalls.forEach((s) => {
+        lines.push(...formatStrike(s, 'bullish'));
+        lines.push('');
+      });
+    } else {
+      lines.push(
+        '   ❌ No suitable CE strikes found within capital constraints',
+      );
+      lines.push('');
+    }
+
+    // Add HIGHEST PROFIT section for bullish
+    lines.push(
+      '┌─ 💰 HIGHEST PROFIT (ATM-friendly, 1 lot) ──────────────────────────────────',
+    );
+    lines.push('');
+
+    if (bullishScenario.highestProfitCalls.length > 0) {
+      bullishScenario.highestProfitCalls.forEach((s) => {
         lines.push(...formatStrike(s, 'bullish'));
         lines.push('');
       });
@@ -348,13 +401,31 @@ export class StrikeSelectorService {
     );
     lines.push('');
     lines.push(
-      '┌─ TOP 3 PUT OPTIONS (PE) ──────────────────────────────────────────────────',
+      '┌─ 🎯 BEST RISK-ADJUSTED (RAROC Utility) ─────────────────────────────────────',
     );
     lines.push('');
 
-    // Add bearish puts
+    // Add bearish puts (utility-ranked)
     if (bearishScenario.topPuts.length > 0) {
       bearishScenario.topPuts.forEach((s) => {
+        lines.push(...formatStrike(s, 'bearish'));
+        lines.push('');
+      });
+    } else {
+      lines.push(
+        '   ❌ No suitable PE strikes found within capital constraints',
+      );
+      lines.push('');
+    }
+
+    // Add HIGHEST PROFIT section for bearish
+    lines.push(
+      '┌─ 💰 HIGHEST PROFIT (ATM-friendly, 1 lot) ──────────────────────────────────',
+    );
+    lines.push('');
+
+    if (bearishScenario.highestProfitPuts.length > 0) {
+      bearishScenario.highestProfitPuts.forEach((s) => {
         lines.push(...formatStrike(s, 'bearish'));
         lines.push('');
       });
@@ -374,19 +445,38 @@ export class StrikeSelectorService {
       '├─────────────────────────────────────────────────────────────────────────────',
     );
 
-    const bestBullish = bullishScenario.topCalls[0];
-    const bestBearish = bearishScenario.topPuts[0];
+    const bestUtilityBullish = bullishScenario.topCalls[0];
+    const bestProfitBullish = bullishScenario.highestProfitCalls[0];
+    const bestUtilityBearish = bearishScenario.topPuts[0];
+    const bestProfitBearish = bearishScenario.highestProfitPuts[0];
 
-    if (bestBullish) {
+    lines.push('│');
+    lines.push('│ 📈 BULLISH (CE):');
+    if (bestUtilityBullish) {
       lines.push(
-        `│ Best BULLISH: ${bestBullish.strikePrice} CE @ ₹${bestBullish.premium.toFixed(2)} → Profit: ₹${(bestBullish.predictedTotalProfit || 0).toFixed(2)} (${bestBullish.maxLots} lots)`,
+        `│   🎯 Risk-Adj:  ${bestUtilityBullish.strikePrice} CE @ ₹${bestUtilityBullish.premium.toFixed(2)} → ₹${(bestUtilityBullish.predictedProfitPerLot || 0).toFixed(2)}/lot (Utility: ${bestUtilityBullish.utilityScore.toFixed(4)})`,
       );
     }
-    if (bestBearish) {
+    if (bestProfitBullish) {
       lines.push(
-        `│ Best BEARISH: ${bestBearish.strikePrice} PE @ ₹${bestBearish.premium.toFixed(2)} → Profit: ₹${(bestBearish.predictedTotalProfit || 0).toFixed(2)} (${bestBearish.maxLots} lots)`,
+        `│   💰 Max Profit: ${bestProfitBullish.strikePrice} CE @ ₹${bestProfitBullish.premium.toFixed(2)} → ₹${(bestProfitBullish.predictedProfitPerLot || 0).toFixed(2)}/lot (Δ=${bestProfitBullish.delta.toFixed(2)})`,
       );
     }
+
+    lines.push('│');
+    lines.push('│ 📉 BEARISH (PE):');
+    if (bestUtilityBearish) {
+      lines.push(
+        `│   🎯 Risk-Adj:  ${bestUtilityBearish.strikePrice} PE @ ₹${bestUtilityBearish.premium.toFixed(2)} → ₹${(bestUtilityBearish.predictedProfitPerLot || 0).toFixed(2)}/lot (Utility: ${bestUtilityBearish.utilityScore.toFixed(4)})`,
+      );
+    }
+    if (bestProfitBearish) {
+      lines.push(
+        `│   💰 Max Profit: ${bestProfitBearish.strikePrice} PE @ ₹${bestProfitBearish.premium.toFixed(2)} → ₹${(bestProfitBearish.predictedProfitPerLot || 0).toFixed(2)}/lot (Δ=${bestProfitBearish.delta.toFixed(2)})`,
+      );
+    }
+
+    lines.push('│');
 
     lines.push(
       '└─────────────────────────────────────────────────────────────────────────────',

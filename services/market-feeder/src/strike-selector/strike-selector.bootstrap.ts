@@ -75,9 +75,9 @@ export class StrikeSelectorBootstrap implements OnModuleInit {
         );
 
       // Print formatted dual-direction analysis
-      console.log(
-        this.strikeSelectorService.formatDualDirectionAnalysis(dualAnalysis),
-      );
+      const formattedOutput =
+        this.strikeSelectorService.formatDualDirectionAnalysis(dualAnalysis);
+      console.log(formattedOutput);
 
       // Output JSON if enabled
       if (this.configService.get<string>('OUTPUT_JSON') === 'true') {

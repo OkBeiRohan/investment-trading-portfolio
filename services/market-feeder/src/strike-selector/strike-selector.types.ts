@@ -176,7 +176,10 @@ export interface DualDirectionAnalysis {
   bullishScenario: {
     direction: 'BULLISH';
     expectedSpot: number;
+    /** Top calls by RAROC utility (risk-adjusted) */
     topCalls: StrikeAnalysis[];
+    /** Top calls by ABSOLUTE profit (ATM-friendly) */
+    highestProfitCalls: StrikeAnalysis[];
     topPuts: StrikeAnalysis[]; // For comparison/hedging
   };
 
@@ -184,7 +187,10 @@ export interface DualDirectionAnalysis {
   bearishScenario: {
     direction: 'BEARISH';
     expectedSpot: number;
+    /** Top puts by RAROC utility (risk-adjusted) */
     topPuts: StrikeAnalysis[];
+    /** Top puts by ABSOLUTE profit (ATM-friendly) */
+    highestProfitPuts: StrikeAnalysis[];
     topCalls: StrikeAnalysis[]; // For comparison/hedging
   };
 
