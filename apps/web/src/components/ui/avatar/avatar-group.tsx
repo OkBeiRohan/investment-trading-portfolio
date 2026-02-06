@@ -1,4 +1,4 @@
-import { Children, isValidElement, cloneElement } from "react";
+import { Children, isValidElement, cloneElement, ReactElement } from "react";
 import styles from "./avatar.module.css";
 import { AvatarGroupProps } from "./avatar.types";
 
@@ -17,7 +17,7 @@ export function AvatarGroup({
   return (
     <div className={classes} {...props}>
       {visibleChildren.map((child, index) =>
-        cloneElement(child as React.ReactElement, {
+        cloneElement(child as ReactElement<{ style?: React.CSSProperties }>, {
           key: index,
           style: { zIndex: visibleChildren.length - index },
         })

@@ -15,11 +15,18 @@
   --color-bg-tertiary: #e4e8ed;
   --color-bg-elevated: #ffffff;
   --color-bg-card: #ffffff;
+  --color-bg-accent: #e0e7ff;
   --color-bg-hover: rgba(0, 0, 0, 0.04);
 
   /* Gradient backgrounds */
   --color-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #eef1f5 100%);
   --color-bg-gradient-warm: linear-gradient(135deg, #fff8f5 0%, #fff0eb 100%);
+
+  /* Auth page gradients */
+  --color-auth-gradient-start: #f0f4ff;
+  --color-auth-gradient-end: #fdf2f8;
+  --color-panel-gradient-start: #6366f1;
+  --color-panel-gradient-end: #4f46e5;
 
   /* ================================
      TEXT
