@@ -215,20 +215,18 @@ export class StrikeSelectorService {
       .slice(0, 3);
 
     // ═══════════════════════════════════════════════════════════════
-    // RANKING 2: By ABSOLUTE Profit (ATM-friendly, higher delta)
-    // For 1 lot only - shows which strike gives max profit per lot
+    // RANKING 2: By TOTAL Profit (considering max lots you can afford)
+    // A cheaper OTM with 3 lots may beat expensive ATM with 1 lot
     // ═══════════════════════════════════════════════════════════════
     const highestProfitBullishCalls = [...validBullishCalls]
       .sort(
-        (a, b) =>
-          (b.predictedProfitPerLot || 0) - (a.predictedProfitPerLot || 0),
+        (a, b) => (b.predictedTotalProfit || 0) - (a.predictedTotalProfit || 0),
       )
       .slice(0, 3);
 
     const highestProfitBearishPuts = [...validBearishPuts]
       .sort(
-        (a, b) =>
-          (b.predictedProfitPerLot || 0) - (a.predictedProfitPerLot || 0),
+        (a, b) => (b.predictedTotalProfit || 0) - (a.predictedTotalProfit || 0),
       )
       .slice(0, 3);
 
@@ -371,9 +369,9 @@ export class StrikeSelectorService {
       lines.push('');
     }
 
-    // Add HIGHEST PROFIT section for bullish
+    // Add HIGHEST TOTAL PROFIT section for bullish
     lines.push(
-      '┌─ 💰 HIGHEST PROFIT (ATM-friendly, 1 lot) ──────────────────────────────────',
+      '┌─ 💰 HIGHEST TOTAL PROFIT (max lots × profit/lot) ─────────────────────────',
     );
     lines.push('');
 
@@ -418,9 +416,9 @@ export class StrikeSelectorService {
       lines.push('');
     }
 
-    // Add HIGHEST PROFIT section for bearish
+    // Add HIGHEST TOTAL PROFIT section for bearish
     lines.push(
-      '┌─ 💰 HIGHEST PROFIT (ATM-friendly, 1 lot) ──────────────────────────────────',
+      '┌─ 💰 HIGHEST TOTAL PROFIT (max lots × profit/lot) ─────────────────────────',
     );
     lines.push('');
 
@@ -454,12 +452,12 @@ export class StrikeSelectorService {
     lines.push('│ 📈 BULLISH (CE):');
     if (bestUtilityBullish) {
       lines.push(
-        `│   🎯 Risk-Adj:  ${bestUtilityBullish.strikePrice} CE @ ₹${bestUtilityBullish.premium.toFixed(2)} → ₹${(bestUtilityBullish.predictedProfitPerLot || 0).toFixed(2)}/lot (Utility: ${bestUtilityBullish.utilityScore.toFixed(4)})`,
+        `│   🎯 Risk-Adj:    ${bestUtilityBullish.strikePrice} CE @ ₹${bestUtilityBullish.premium.toFixed(2)} → ₹${(bestUtilityBullish.predictedTotalProfit || 0).toFixed(0)} total (${bestUtilityBullish.maxLots} lots)`,
       );
     }
     if (bestProfitBullish) {
       lines.push(
-        `│   💰 Max Profit: ${bestProfitBullish.strikePrice} CE @ ₹${bestProfitBullish.premium.toFixed(2)} → ₹${(bestProfitBullish.predictedProfitPerLot || 0).toFixed(2)}/lot (Δ=${bestProfitBullish.delta.toFixed(2)})`,
+        `│   💰 Max Profit:  ${bestProfitBullish.strikePrice} CE @ ₹${bestProfitBullish.premium.toFixed(2)} → ₹${(bestProfitBullish.predictedTotalProfit || 0).toFixed(0)} total (${bestProfitBullish.maxLots} lots)`,
       );
     }
 
@@ -467,12 +465,12 @@ export class StrikeSelectorService {
     lines.push('│ 📉 BEARISH (PE):');
     if (bestUtilityBearish) {
       lines.push(
-        `│   🎯 Risk-Adj:  ${bestUtilityBearish.strikePrice} PE @ ₹${bestUtilityBearish.premium.toFixed(2)} → ₹${(bestUtilityBearish.predictedProfitPerLot || 0).toFixed(2)}/lot (Utility: ${bestUtilityBearish.utilityScore.toFixed(4)})`,
+        `│   🎯 Risk-Adj:    ${bestUtilityBearish.strikePrice} PE @ ₹${bestUtilityBearish.premium.toFixed(2)} → ₹${(bestUtilityBearish.predictedTotalProfit || 0).toFixed(0)} total (${bestUtilityBearish.maxLots} lots)`,
       );
     }
     if (bestProfitBearish) {
       lines.push(
-        `│   💰 Max Profit: ${bestProfitBearish.strikePrice} PE @ ₹${bestProfitBearish.premium.toFixed(2)} → ₹${(bestProfitBearish.predictedProfitPerLot || 0).toFixed(2)}/lot (Δ=${bestProfitBearish.delta.toFixed(2)})`,
+        `│   💰 Max Profit:  ${bestProfitBearish.strikePrice} PE @ ₹${bestProfitBearish.premium.toFixed(2)} → ₹${(bestProfitBearish.predictedTotalProfit || 0).toFixed(0)} total (${bestProfitBearish.maxLots} lots)`,
       );
     }
 
