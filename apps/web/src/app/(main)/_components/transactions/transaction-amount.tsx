@@ -2,7 +2,10 @@ import styles from "./transactions.module.css";
 import { TransactionAmountProps } from "./transactions.types";
 import { formatCurrency } from "../../_utilities";
 
-export function TransactionAmount({ amount, type }: TransactionAmountProps) {
+export function TransactionAmount({
+  amount,
+  type: _type,
+}: TransactionAmountProps) {
   const isPositive = amount > 0;
   const displayAmount = Math.abs(amount);
 

@@ -1,6 +1,5 @@
 import { SectionCard, StatCard, ListItem } from "../_components/page-layout";
 import { DonutChart, ProgressRing } from "../_components/charts";
-import { Card } from "@/components/ui/card";
 
 export default function OrganizationOverviewPage() {
   return (

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import styles from "./charts.module.css";
 import { DonutChartProps } from "./chart.types";
 
@@ -15,7 +16,17 @@ export function DonutChart({
   const circumference = 2 * Math.PI * radius;
   const total = segments.reduce((sum, s) => sum + s.value, 0);
 
-  let accumulatedOffset = 0;
+  // Pre-calculate all segment data to avoid reassignment during render
+  const segmentData = useMemo(() => {
+    let offset = 0;
+    return segments.map((segment) => {
+      const percentage = segment.value / total;
+      const strokeDasharray = `${percentage * circumference} ${circumference}`;
+      const rotation = offset * 360 - 90;
+      offset += percentage;
+      return { segment, percentage, strokeDasharray, rotation };
+    });
+  }, [segments, total, circumference]);
 
   return (
     <div className={styles.donutContainer}>
@@ -36,28 +47,21 @@ export function DonutChart({
         />
 
         {/* Segments */}
-        {segments.map((segment, index) => {
-          const percentage = segment.value / total;
-          const strokeDasharray = `${percentage * circumference} ${circumference}`;
-          const rotation = accumulatedOffset * 360 - 90;
-          accumulatedOffset += percentage;
-
-          return (
-            <circle
-              key={index}
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke={segment.color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={strokeDasharray}
-              strokeLinecap="round"
-              transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
-              className={styles.donutSegment}
-            />
-          );
-        })}
+        {segmentData.map((data, index) => (
+          <circle
+            key={index}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={data.segment.color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={data.strokeDasharray}
+            strokeLinecap="round"
+            transform={`rotate(${data.rotation} ${size / 2} ${size / 2})`}
+            className={styles.donutSegment}
+          />
+        ))}
       </svg>
 
       {/* Center content */}
@@ -75,15 +79,15 @@ export function DonutChart({
       {/* Legend */}
       {showLabels && (
         <div className={styles.donutLegend}>
-          {segments.map((segment, index) => (
+          {segmentData.map((data, index) => (
             <div key={index} className={styles.legendItem}>
               <span
                 className={styles.legendDot}
-                style={{ backgroundColor: segment.color }}
+                style={{ backgroundColor: data.segment.color }}
               />
-              <span className={styles.legendLabel}>{segment.label}</span>
+              <span className={styles.legendLabel}>{data.segment.label}</span>
               <span className={styles.legendValue}>
-                {((segment.value / total) * 100).toFixed(0)}%
+                {(data.percentage * 100).toFixed(0)}%
               </span>
             </div>
           ))}

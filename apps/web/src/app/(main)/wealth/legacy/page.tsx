@@ -1,7 +1,6 @@
 import { SectionCard, StatCard, ListItem } from "../../_components/page-layout";
 import { ProgressRing } from "../../_components/charts";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export default function LegacyPage() {
   return (

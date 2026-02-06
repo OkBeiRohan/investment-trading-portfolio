@@ -1,4 +1,4 @@
-import { SectionCard, StatCard } from "../../_components/page-layout";
+import { StatCard } from "../../_components/page-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -35,7 +35,7 @@ export default function TeamsPage() {
         }}
       >
         {mockTeams.map((team, i) => (
-          <Card key={i} variant="default" padding="lg">
+          <Card key={i} variant="default" padding="spacious">
             <div
               style={{
                 display: "flex",
@@ -119,7 +119,7 @@ export default function TeamsPage() {
         {/* Add Team Card */}
         <Card
           variant="default"
-          padding="lg"
+          padding="spacious"
           style={{
             display: "flex",
             alignItems: "center",

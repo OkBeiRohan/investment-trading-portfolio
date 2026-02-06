@@ -1,4 +1,4 @@
-import { SectionCard, StatCard, ListItem } from "../../_components/page-layout";
+import { SectionCard, StatCard } from "../../_components/page-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +57,7 @@ export default function AccessControlPage() {
           }}
         >
           {mockRoles.map((role, i) => (
-            <Card key={i} variant="default" padding="md">
+            <Card key={i} variant="default" padding="compact">
               <div
                 style={{
                   display: "flex",

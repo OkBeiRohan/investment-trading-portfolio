@@ -1,4 +1,4 @@
-import { SectionCard, StatCard } from "../../_components/page-layout";
+import { StatCard } from "../../_components/page-layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 

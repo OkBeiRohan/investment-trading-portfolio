@@ -7,8 +7,8 @@ export default function ForbiddenPage() {
       <div className={styles.forbiddenIcon}>🚫</div>
       <h1 className={styles.errorTitle}>Access Denied</h1>
       <p className={styles.errorMessage}>
-        You don't have permission to access this resource.
-        Please contact your administrator if you believe this is an error.
+        You don&apos;t have permission to access this resource. Please contact
+        your administrator if you believe this is an error.
       </p>
       <div className={styles.errorActions}>
         <Link
