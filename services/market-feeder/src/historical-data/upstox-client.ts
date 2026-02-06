@@ -308,6 +308,25 @@ export interface OptionGreeksResponse {
   };
 }
 
+// User Fund and Margin from /v2/user/get-funds-and-margin
+export interface FundMarginSegment {
+  used_margin: number;
+  payin_amount: number;
+  span_margin: number;
+  adhoc_margin: number;
+  notional_cash: number;
+  available_margin: number;
+  exposure_margin: number;
+}
+
+export interface FundsAndMarginResponse {
+  status: string;
+  data: {
+    equity: FundMarginSegment;
+    commodity: FundMarginSegment;
+  };
+}
+
 @Injectable()
 export class UpstoxClient {
   private readonly logger = new Logger(UpstoxClient.name);
@@ -1148,6 +1167,43 @@ export class UpstoxClient {
         }`,
       );
       return [];
+    }
+  }
+
+  /**
+   * Fetch user funds and margin data
+   * @param segment - Optional segment filter: 'SEC' for Equity, 'COM' for Commodity
+   * @returns Fund and margin data for equity and commodity segments
+   */
+  async getFundsAndMargin(
+    segment?: 'SEC' | 'COM',
+  ): Promise<FundsAndMarginResponse['data']> {
+    try {
+      let url = '/v2/user/get-funds-and-margin';
+      if (segment) {
+        url += `?segment=${segment}`;
+      }
+
+      const response = await firstValueFrom(
+        this.api.get<FundsAndMarginResponse>(url),
+      );
+
+      if (response.data.status !== 'success' || !response.data.data) {
+        throw new Error('Failed to fetch funds and margin');
+      }
+
+      this.logger.log(
+        `Fetched funds - Available margin: ₹${response.data.data.equity.available_margin.toLocaleString()}`,
+      );
+
+      return response.data.data;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching funds and margin: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
     }
   }
 }

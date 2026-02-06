@@ -18,6 +18,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "strike-selector": "ts-node src/strike-selector/select-strike.ts",
+    "strike-selector:bullish": "STRIKE_SELECTOR_ENABLED=true EXPECTED_MOVE=50 OPTION_TYPE=CE ts-node src/strike-selector/select-strike.ts",
+    "strike-selector:bearish": "STRIKE_SELECTOR_ENABLED=true EXPECTED_MOVE=-50 OPTION_TYPE=PE ts-node src/strike-selector/select-strike.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org rohan-hc --project node-nestjs ./dist && sentry-cli sourcemaps upload --org rohan-hc --project node-nestjs ./dist"
   },
   "dependencies": {
