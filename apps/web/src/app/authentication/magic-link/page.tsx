@@ -10,7 +10,7 @@ export default function MagicLinkPage() {
         <div className={styles.magicHeader}>
           <h1 className={styles.title}>Sign In with Magic Link</h1>
           <p className={styles.subtitle}>
-            We'll send you a secure link to sign in without a password
+            We&apos;ll send you a secure link to sign in without a password
           </p>
         </div>
         <MagicLinkForm />

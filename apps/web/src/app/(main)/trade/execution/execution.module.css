@@ -1,0 +1,185 @@
+.executionGrid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.orderForm {
+  grid-column: span 4;
+}
+
+.orderBook {
+  grid-column: span 4;
+}
+
+.marketData {
+  grid-column: span 4;
+}
+
+.openOrders {
+  grid-column: span 12;
+}
+
+/* Order Form */
+.formCard {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.formTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.formTabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.formTab {
+  flex: 1;
+  padding: var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.formTabBuy {
+  composes: formTab;
+}
+
+.formTabBuy.active {
+  background: var(--color-success);
+  color: white;
+}
+
+.formTabSell {
+  composes: formTab;
+}
+
+.formTabSell.active {
+  background: var(--color-error);
+  color: white;
+}
+
+.formGroup {
+  margin-bottom: var(--spacing-md);
+}
+
+.formLabel {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.formInput {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Order Book */
+.orderBookTable {
+  width: 100%;
+  font-size: var(--font-size-sm);
+}
+
+.orderBookHeader {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.orderBookRow {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0;
+  position: relative;
+}
+
+.orderBookRow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  opacity: 0.1;
+}
+
+.orderBookRowBid::before {
+  background: var(--color-success);
+}
+
+.orderBookRowAsk::before {
+  background: var(--color-error);
+}
+
+.priceAsk {
+  color: var(--color-error);
+}
+
+.priceBid {
+  color: var(--color-success);
+}
+
+/* Market Data */
+.marketDataItem {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.marketDataItem:last-child {
+  border-bottom: none;
+}
+
+.marketDataLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.marketDataValue {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .orderForm,
+  .orderBook,
+  .marketData {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 768px) {
+  .orderForm,
+  .orderBook,
+  .marketData {
+    grid-column: span 12;
+  }
+}

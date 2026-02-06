@@ -14,8 +14,8 @@ async function bootstrap() {
       {
         transport: Transport.GRPC,
         options: {
-          package: 'historical_data',
-          protoPath: require.resolve('@repo/schema/proto/historical-data'),
+          package: 'market_feeder',
+          protoPath: require.resolve('@repo/schema/proto/market-feeder'),
           host: '0.0.0.0',
           port: grpcPort,
         },

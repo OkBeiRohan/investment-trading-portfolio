@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   CandlesRepository,
-  MarketStateRepository,
-  TrainingLabelsRepository,
+  FeaturesRepository,
+  LabelsRepository,
   InstrumentMasterRepository,
 } from '@repo/database';
 import { ComputeEngineService } from './compute-engine.service';
-import { MarketCandle, MarketState1m, TrainingLabels1m } from '@repo/schema';
+import { MarketCandle, InstrumentFeatures, TrainingLabels } from '@repo/schema';
 import { ContinuousContractBuilder } from './continuous-contract.builder';
 import { ConstituentManagerService } from './constituent-manager.service';
 import type { FeatureInput, FeatureOutput } from '@repo/compute-engine';
@@ -37,8 +37,8 @@ export class FeatureComputationService {
   constructor(
     private readonly computeEngine: ComputeEngineService,
     private readonly candleRepository: CandlesRepository,
-    private readonly marketStateRepository: MarketStateRepository,
-    private readonly trainingLabelsRepository: TrainingLabelsRepository,
+    private readonly marketStateRepository: FeaturesRepository,
+    private readonly trainingLabelsRepository: LabelsRepository,
     private readonly instrumentMasterRepository: InstrumentMasterRepository,
     private readonly continuousContractBuilder: ContinuousContractBuilder,
     private readonly constituentManager: ConstituentManagerService,
@@ -167,8 +167,8 @@ export class FeatureComputationService {
     );
 
     // 6. Process each timestamp and accumulate results for batch insert
-    const marketStatesToInsert: MarketState1m[] = [];
-    const trainingLabelsToInsert: TrainingLabels1m[] = [];
+    const marketStatesToInsert: InstrumentFeatures[] = [];
+    const trainingLabelsToInsert: TrainingLabels[] = [];
     let batchTimeTaken = 0;
 
     for (const timestamp of timestamps) {
@@ -210,10 +210,12 @@ export class FeatureComputationService {
         const sanitizedFeatures = this.sanitizeFeatures(computeResult.features);
 
         // Accumulate market state for batch insert
-        const marketState: MarketState1m = {
+        const marketState: InstrumentFeatures = {
           ...sanitizedFeatures,
           timestamp,
-          instrumentKey: 'NSE_INDEX|Nifty 50', // NIFTY 50 index
+          instrumentKey: 'NSE_INDEX|Nifty 50',
+          intervalValue: 1,
+          intervalUnit: 'minute',
         };
         marketStatesToInsert.push(marketState);
 
@@ -249,7 +251,7 @@ export class FeatureComputationService {
     // 6. Batch insert market states to QuestDB
     if (marketStatesToInsert.length > 0) {
       try {
-        await this.marketStateRepository.insertBatch(marketStatesToInsert);
+        await this.marketStateRepository.bulkInsert(marketStatesToInsert);
         this.logger.log(
           `Batch inserted ${marketStatesToInsert.length} market states`,
         );
@@ -261,7 +263,7 @@ export class FeatureComputationService {
     // 7. Batch insert training labels to QuestDB
     if (trainingLabelsToInsert.length > 0) {
       try {
-        await this.trainingLabelsRepository.insertBatch(trainingLabelsToInsert);
+        await this.trainingLabelsRepository.bulkInsert(trainingLabelsToInsert);
         this.logger.log(
           `Batch inserted ${trainingLabelsToInsert.length} training labels`,
         );
@@ -389,7 +391,7 @@ export class FeatureComputationService {
             high: futuresCandle.high,
             low: futuresCandle.low,
             close: futuresCandle.close,
-            volume: futuresCandle.volume,
+            volume: futuresCandle.volume ?? 0,
             openInterest: futuresCandle.openInterest ?? 0,
           }
         : {
@@ -405,7 +407,7 @@ export class FeatureComputationService {
         symbol: candle.instrumentKey,
         ltp: candle.close,
         open: candle.open,
-        volume: candle.volume,
+        volume: candle.volume ?? 0,
       })),
       options: [], // Placeholder for now - will add option chain data later
       indiaVix: indiaVixCandle?.close, // Use close price from India VIX candle
@@ -492,7 +494,7 @@ export class FeatureComputationService {
     spotCandleMap: Map<number, MarketCandle>,
     futAtrPercent: number,
     horizonMinutes: number,
-  ): TrainingLabels1m | null {
+  ): TrainingLabels | null {
     if (!currentCandle) return null;
 
     // Skip if ATR is invalid (NaN, 0, or unreasonably high)
@@ -539,10 +541,9 @@ export class FeatureComputationService {
     // Return label for batch insertion
     return {
       timestamp,
-      horizonMinutes,
-      label,
-      futureReturn,
-      atrThreshold,
+      instrumentKey: '',
+      intervalValue: 0,
+      intervalUnit: 'day',
     };
   }
 }

@@ -1,0 +1,149 @@
+.balanceCard {
+  background-color: var(--card-yellow-bg);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  color: var(--color-text-inverse);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  min-width: 320px;
+}
+
+/* Balance Display */
+.balanceDisplay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.currencyLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.exchangeInfo {
+  font-size: var(--font-size-xs);
+  opacity: 0.8;
+}
+
+.amount {
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.change {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.positive {
+  color: #065f46;
+}
+
+.negative {
+  color: #b91c1c;
+}
+
+/* Action Buttons */
+.actionButtons {
+  display: flex;
+  gap: var(--spacing-4);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.actionButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  flex: 1;
+}
+
+.actionButton:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.actionButton span {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Currency Badges */
+.currencyBadges {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+.currencyBadge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-lg);
+}
+
+.currencySymbol {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.currencyInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.currencyName {
+  font-size: var(--font-size-xs);
+  opacity: 0.8;
+}
+
+.currencyRate {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Hide Icon */
+.hideIcon {
+  position: absolute;
+  top: var(--spacing-4);
+  right: var(--spacing-4);
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.hideIcon:hover {
+  opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .balanceCard {
+    min-width: 100%;
+  }
+
+  .amount {
+    font-size: var(--font-size-4xl);
+  }
+
+  .currencyBadges {
+    flex-wrap: wrap;
+  }
+}

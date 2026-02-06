@@ -1,4 +1,4 @@
-import { DynamicModule, Global, Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import DatabaseConnections from "./connections/connections";
 import { User, UserSchema } from "./schemas/user/user.schema";
@@ -35,6 +35,25 @@ import {
 import { BrokerAccount, BrokerAccountSchema } from "./schemas/trading";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 import { MongoDBService } from "./mongodb.service";
+import {
+  ConstituentChangeRepository,
+  InstrumentRepository,
+  ProcessingLogRepository,
+  IngestionLogRepository,
+  DataInventoryRepository,
+} from "./repositories/market-data";
+import {
+  IngestionLog,
+  IngestionLogSchema,
+  DataInventory,
+  DataInventorySchema,
+  Instrument,
+  InstrumentSchema,
+  ProcessingLog,
+  ProcessingLogSchema,
+  ConstituentChange,
+  ConstituentChangeSchema,
+} from "./schemas/market-data";
 
 @Global()
 @Module({
@@ -50,7 +69,7 @@ import { MongoDBService } from "./mongodb.service";
         writeConcern: { w: "majority" },
         // For replica set with transactions, ensure MONGODB_URI includes ?replicaSet=rs0
         // Example: mongodb://localhost:27017/?replicaSet=rs0
-      }
+      },
     ),
     MongooseModule.forRoot(
       process.env.MONGODB_URI || "mongodb://localhost:27017",
@@ -61,7 +80,29 @@ import { MongoDBService } from "./mongodb.service";
         retryAttempts: 5,
         retryDelay: 3000,
         writeConcern: { w: "majority" },
-      }
+      },
+    ),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || "mongodb://localhost:27017",
+      {
+        connectionName: DatabaseConnections.MarketData,
+        dbName: DatabaseConnections.MarketData,
+        retryWrites: true,
+        retryAttempts: 5,
+        retryDelay: 3000,
+        writeConcern: { w: "majority" },
+      },
+    ),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || "mongodb://localhost:27017",
+      {
+        connectionName: DatabaseConnections.Logging,
+        dbName: DatabaseConnections.Logging,
+        retryWrites: true,
+        retryAttempts: 5,
+        retryDelay: 3000,
+        writeConcern: { w: "majority" },
+      },
     ),
     MongooseModule.forFeature(
       [
@@ -91,7 +132,7 @@ import { MongoDBService } from "./mongodb.service";
           collection: "invitation",
         },
       ],
-      DatabaseConnections.User
+      DatabaseConnections.User,
     ),
     MongooseModule.forFeature(
       [
@@ -101,7 +142,42 @@ import { MongoDBService } from "./mongodb.service";
           collection: "broker_accounts",
         },
       ],
-      DatabaseConnections.Trading
+      DatabaseConnections.Trading,
+    ),
+    MongooseModule.forFeature(
+      [
+        {
+          name: DataInventory.name,
+          schema: DataInventorySchema,
+          collection: "data_inventory",
+        },
+        {
+          name: Instrument.name,
+          schema: InstrumentSchema,
+          collection: "instrument",
+        },
+        {
+          name: ConstituentChange.name,
+          schema: ConstituentChangeSchema,
+          collection: "constituent_change",
+        },
+      ],
+      DatabaseConnections.MarketData,
+    ),
+    MongooseModule.forFeature(
+      [
+        {
+          name: IngestionLog.name,
+          schema: IngestionLogSchema,
+          collection: "ingestion_log",
+        },
+        {
+          name: ProcessingLog.name,
+          schema: ProcessingLogSchema,
+          collection: "processing_log",
+        },
+      ],
+      DatabaseConnections.Logging,
     ),
   ],
   providers: [
@@ -113,6 +189,11 @@ import { MongoDBService } from "./mongodb.service";
     TwoFactorRepository,
     PasskeyRepository,
     BrokerAccountRepository,
+    InstrumentRepository,
+    ProcessingLogRepository,
+    IngestionLogRepository,
+    DataInventoryRepository,
+    ConstituentChangeRepository,
     AuthRepositoryFactory,
     MongoDBService,
   ],
@@ -125,6 +206,11 @@ import { MongoDBService } from "./mongodb.service";
     TwoFactorRepository,
     PasskeyRepository,
     BrokerAccountRepository,
+    InstrumentRepository,
+    ProcessingLogRepository,
+    IngestionLogRepository,
+    DataInventoryRepository,
+    ConstituentChangeRepository,
     AuthRepositoryFactory,
     MongoDBService,
   ],

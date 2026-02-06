@@ -12,13 +12,18 @@ CREATE TABLE IF NOT EXISTS option_chain_snapshot (
   last_price DOUBLE,
   bid_price DOUBLE,
   ask_price DOUBLE,
+  bid_qty LONG,                              -- NEW: Bid quantity
+  ask_qty LONG,                              -- NEW: Ask quantity
   volume DOUBLE,
   open_interest DOUBLE,
+  prev_oi LONG,                              -- NEW: Previous day OI
+  close_price DOUBLE,                        -- NEW: Previous close
   
   iv DOUBLE,
   delta DOUBLE,
   gamma DOUBLE,
   vega DOUBLE,
-  theta DOUBLE
+  theta DOUBLE,
+  pop DOUBLE                                 -- NEW: Probability of Profit
 ) TIMESTAMP(timestamp) PARTITION BY DAY WAL
 DEDUP UPSERT KEYS(timestamp, underlying_key, instrument_key);

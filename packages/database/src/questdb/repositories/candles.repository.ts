@@ -31,7 +31,6 @@ export class CandlesRepository {
 
     const query = `${sqlPrefix} ${values}`;
     await this.pool.query(query);
-    this.logger.log(`Inserted ${candles.length} candles`);
   }
 
   /**
@@ -43,7 +42,7 @@ export class CandlesRepository {
     intervalUnit: "minute" | "day",
     startTime: Date,
     endTime: Date,
-    limit = 10000
+    limit = 10000,
   ): Promise<MarketCandle[]> {
     const sql = loadSqlQueryCached("candles/get-by-time-range");
     const result = await this.pool.query(sql, [
@@ -64,7 +63,7 @@ export class CandlesRepository {
   async findLatest(
     instrumentKey: string,
     intervalValue: number,
-    intervalUnit: "minute" | "day"
+    intervalUnit: "minute" | "day",
   ): Promise<MarketCandle | null> {
     const sql = loadSqlQueryCached("candles/get-latest");
     const result = await this.pool.query(sql, [
@@ -85,7 +84,7 @@ export class CandlesRepository {
     intervalValue: number,
     intervalUnit: "minute" | "day",
     startTime: Date,
-    endTime: Date
+    endTime: Date,
   ): Promise<boolean> {
     const sql = loadSqlQueryCached("candles/check-exists");
     const result = await this.pool.query(sql, [

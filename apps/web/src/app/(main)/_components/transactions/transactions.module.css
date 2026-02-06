@@ -1,0 +1,103 @@
+.transactionsList {
+  background-color: var(--color-bg-card);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--card-shadow);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-4);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.viewAll {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.viewAll:hover {
+  color: var(--color-primary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+/* Transaction Item */
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-3);
+  border-radius: var(--radius-lg);
+  transition: background-color var(--transition-fast);
+}
+
+.item:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.itemLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.itemName {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.itemType {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+/* Amount */
+.amount {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.positive {
+  color: var(--color-profit);
+}
+
+.negative {
+  color: var(--color-loss);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .transactionsList {
+    padding: var(--spacing-4);
+  }
+
+  .item {
+    padding: var(--spacing-2);
+  }
+}

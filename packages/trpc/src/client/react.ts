@@ -1,16 +1,14 @@
 import { createTRPCReact, httpBatchLink } from "@trpc/react-query";
 import { AppRouter } from "../server";
-import { getQueryClient } from "./query-client";
+import { getQueryClient, createServerQueryClient } from "./query-client";
 import { authLink } from "./auth-link";
 import { authClient } from "@repo/auth-client";
 
 /**
  * tRPC React client with classic API.
- * Provides simpler hooks: trpc.router.procedure.useQuery() instead of useQuery(trpc.router.procedure.queryOptions())
+ * Provides simpler hooks: trpc.router.procedure.useQuery()
  */
 export const trpc = createTRPCReact<AppRouter>();
-
-export const queryClient = getQueryClient();
 
 export const trpcClient = trpc.createClient({
   links: [
@@ -30,3 +28,6 @@ export const trpcClient = trpc.createClient({
     }),
   ],
 });
+
+// Re-export query client utilities for SSR
+export { getQueryClient, createServerQueryClient };

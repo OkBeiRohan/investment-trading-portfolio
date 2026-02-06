@@ -1,6 +1,27 @@
 /* Global CSS Variables - Base and Shared */
 :root {
-  /* Typography */
+  /* ================================
+     PRIMARY ACCENT COLORS
+     ================================ */
+  --color-coral: #e07a5f;
+  --color-coral-hover: #d16a4f;
+  --color-coral-light: rgba(224, 122, 95, 0.15);
+
+  --color-mint: #a8e6cf;
+  --color-mint-hover: #8fd9bc;
+  --color-mint-dark: #6bbf9a;
+
+  --color-yellow: #ffd93d;
+  --color-yellow-hover: #f5cc2e;
+  --color-yellow-light: rgba(255, 217, 61, 0.2);
+
+  --color-blue: #6ec6ff;
+  --color-blue-hover: #5ab8f5;
+  --color-blue-dark: #4ca8e8;
+
+  /* ================================
+     TYPOGRAPHY
+     ================================ */
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -9,47 +30,93 @@
   --font-size-2xl: 1.5rem;
   --font-size-3xl: 1.875rem;
   --font-size-4xl: 2.25rem;
+  --font-size-5xl: 3rem;
+  --font-size-6xl: 3.75rem;
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
 
+  --line-height-none: 1;
   --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
   --line-height-normal: 1.5;
-  --line-height-relaxed: 1.75;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
 
-  /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-2xl: 3rem;
-  --spacing-3xl: 4rem;
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
 
-  /* Border Radius */
-  --radius-sm: 0.375rem;
+  /* ================================
+     SPACING
+     ================================ */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  --spacing-24: 6rem;
+
+  /* Named spacing aliases (backward compatibility) */
+  --spacing-xs: var(--spacing-1);
+  --spacing-sm: var(--spacing-2);
+  --spacing-md: var(--spacing-4);
+  --spacing-lg: var(--spacing-6);
+  --spacing-xl: var(--spacing-8);
+  --spacing-2xl: var(--spacing-12);
+
+  /* ================================
+     BORDER RADIUS
+     ================================ */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  /* ================================
+     SHADOWS
+     ================================ */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg:
     0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl:
     0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
 
-  /* Transitions */
+  /* ================================
+     TRANSITIONS
+     ================================ */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slower: 500ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Z-index */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ================================
+     Z-INDEX SCALE
+     ================================ */
+  --z-base: 0;
   --z-dropdown: 1000;
   --z-sticky: 1020;
   --z-fixed: 1030;
@@ -57,4 +124,35 @@
   --z-modal: 1050;
   --z-popover: 1060;
   --z-tooltip: 1070;
+
+  /* ================================
+     CHART COLORS
+     ================================ */
+  --chart-1: var(--color-coral);
+  --chart-2: var(--color-mint);
+  --chart-3: var(--color-yellow);
+  --chart-4: var(--color-blue);
+  --chart-5: #9b87f5;
+  --chart-6: #f5a3c7;
+  --chart-positive: #10b981;
+  --chart-negative: #ef4444;
+
+  /* ================================
+     LAYOUT
+     ================================ */
+  --header-height: 4rem;
+  --content-padding: var(--spacing-6);
+
+  /* ================================
+     GLASSMORPHISM
+     ================================ */
+  --glass-blur: 12px;
+  --glass-saturate: 180%;
+
+  /* ================================
+     CARD STYLES
+     ================================ */
+  --card-padding: var(--spacing-6);
+  --card-radius: var(--radius-2xl);
+  --card-shadow: var(--shadow-md);
 }

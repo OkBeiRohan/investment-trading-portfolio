@@ -27,23 +27,23 @@
   "dependencies": {
     "@binance/connector": "^3.6.1",
     "@nestjs/axios": "^4.0.1",
-    "@nestjs/common": "^11.1.12",
+    "@nestjs/common": "^11.1.13",
     "@nestjs/event-emitter": "^3.0.1",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
-    "axios": "^1.13.2",
+    "axios": "^1.13.4",
     "dhanhq": "^1.0.6",
     "got": "^14.6.6",
     "long": "^5.3.2",
     "protobufjs": "^8.0.0",
     "ws": "^8.19.0",
-    "yahoo-finance2": "^3.11.2"
+    "yahoo-finance2": "^3.13.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.0.9",
+    "@types/node": "^25.2.1",
     "@types/ws": "^8.18.1",
     "jest": "^30.2.0",
     "ts-jest": "^29.4.6",

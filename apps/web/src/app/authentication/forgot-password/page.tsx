@@ -10,7 +10,7 @@ export default function ForgotPasswordPage() {
         <div className={styles.forgotHeader}>
           <h1 className={styles.title}>Reset Password</h1>
           <p className={styles.subtitle}>
-            Enter your email and we'll send you a reset link
+            Enter your email and we&apos;ll send you a reset link
           </p>
         </div>
         <ForgotPasswordForm />

@@ -1,0 +1,127 @@
+.pageSkeletonContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  width: 100%;
+}
+
+.skeletonHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.skeletonRow {
+  display: flex;
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+.skeletonCard {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonBox {
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonCircle {
+  border-radius: 50%;
+  background: var(--color-bg-tertiary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonText {
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-tertiary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonTextSm {
+  composes: skeletonText;
+  height: 12px;
+}
+
+.skeletonTextLg {
+  composes: skeletonText;
+  height: 24px;
+}
+
+.skeletonTextXl {
+  composes: skeletonText;
+  height: 32px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Dashboard Skeleton */
+.dashboardSkeleton {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-lg);
+  width: 100%;
+}
+
+.dashboardSkeletonWelcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.dashboardSkeletonMain {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.dashboardSkeletonBalance {
+  grid-column: span 8;
+}
+
+.dashboardSkeletonTransactions {
+  grid-column: span 4;
+}
+
+.dashboardSkeletonCharts {
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}
+
+@media (max-width: 768px) {
+  .dashboardSkeletonBalance,
+  .dashboardSkeletonTransactions {
+    grid-column: span 12;
+  }
+
+  .dashboardSkeletonCharts {
+    grid-template-columns: 1fr;
+  }
+}

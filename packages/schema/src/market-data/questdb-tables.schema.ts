@@ -1,66 +1,30 @@
 /**
- * QuestDB Table Schemas - Production Grade v2.0
- * Aligned with Upstox V3 APIs and ML architecture
+ * QuestDB Table Schemas - Production Grade v3.0
+ * Unified schema with interval-based feature/label storage
  *
  * Design Principles:
  * 1. One unified raw table per data "shape"
- * 2. No derived data mixed with raw
+ * 2. Interval-based storage (like market_candles) for features/labels
  * 3. Instrument identity matches Upstox instrument_key
  * 4. Time-series first (timestamp is king)
  * 5. Training must be reproducible from DB alone
  *
+ * Tables (7 total):
+ * 1. instrument_master - Instrument registry
+ * 2. market_candles - OHLCV data
+ * 3. orderbook_l2_snapshots - Order book depth
+ * 4. tick_data - Live tick data
+ * 5. option_chain_snapshot - Options with Greeks
+ * 6. instrument_features - All ML features (1m + 1d)
+ * 7. training_labels - All ML labels (1m + 1d)
+ *
  * NOTE: SQL CREATE TABLE statements are in packages/schema/sql/schema/
- * Import them in QuestDB service using sql-loader utility.
  */
 
 import { z } from "zod";
 
 // ============================================
-// TABLE 1: instrument_master
-// Instrument registry - MANDATORY for all joins
-// ============================================
-
-export const InstrumentMasterSchema = z.object({
-  instrumentKey: z.string(), // e.g. NSE_INDEX|Nifty 50, NSE_FO|NIFTY24JANFUT
-  exchange: z.enum(["NSE", "BSE", "MCX"]),
-  segment: z.enum(["INDEX", "EQ", "FO", "COMMODITY"]),
-  instrumentType: z.enum(["SPOT", "STOCK", "FUTURE", "OPTION"]),
-  tradingsymbol: z.string(), // NIFTY, RELIANCE, NIFTY24JANFUT
-  name: z.string(), // Human readable name
-  expiry: z.date().nullable(), // NULL for spot/stocks
-  strike: z.number().nullable(), // NULL unless option
-  optionType: z.enum(["CE", "PE"]).nullable(), // NULL for non-options
-  lotSize: z.number().int(), // Contract multiplier
-  tickSize: z.number(), // Minimum price movement
-  underlyingKey: z.string().nullable(), // Links option/future → spot
-  isExpired: z.boolean(), // Historical vs active
-  lastUpdated: z.date(), // When this record was updated
-});
-
-export type InstrumentMaster = z.infer<typeof InstrumentMasterSchema>;
-
-// ============================================
-// TABLE 2: market_candles
-// Unified historical candle data
-// ============================================
-
-export const MarketCandleSchema = z.object({
-  timestamp: z.date(), // TIMESTAMP (designated timestamp column)
-  instrumentKey: z.string(),
-  intervalValue: z.number().int(), // 1, 5, 15, 30, 60
-  intervalUnit: z.enum(["second", "minute", "hour", "day"]),
-  open: z.number(),
-  high: z.number(),
-  low: z.number(),
-  close: z.number(),
-  volume: z.number(), // Can be fractional
-  openInterest: z.number().nullable(), // NULL for spot/stocks
-});
-
-export type MarketCandle = z.infer<typeof MarketCandleSchema>;
-
-// ============================================
-// TABLE 3: orderbook_l2_snapshots (OPTIONAL)
+// TABLE 3: orderbook_l2_snapshots
 // Level 2 order book snapshots
 // ============================================
 
@@ -68,239 +32,253 @@ export const OrderbookL2SnapshotSchema = z.object({
   timestamp: z.date(),
   instrumentKey: z.string(),
   side: z.enum(["bid", "ask"]),
-  level: z.number().int().min(1).max(30), // Depth level 1-30
+  level: z.number().int().min(1).max(30),
   price: z.number(),
   quantity: z.number(),
+  orders: z.number().int().optional(),
 });
 
 export type OrderbookL2Snapshot = z.infer<typeof OrderbookL2SnapshotSchema>;
 
 // ============================================
-// TABLE 4: instrument_features_1m
-// Per-instrument features (BEFORE aggregation)
-// ============================================
-
-export const InstrumentFeatures1mSchema = z.object({
-  timestamp: z.date(),
-  instrumentKey: z.string(),
-
-  // ========== PRICE & STRUCTURE ==========
-  lastPrice: z.number(), // Current price
-  vwap: z.number(), // Volume-weighted average price
-  priceVsVwap: z.number(), // (price - vwap) / vwap
-
-  dayHigh: z.number(), // Day high
-  dayLow: z.number(), // Day low
-  priceVsDayHigh: z.number(), // (price - day_high) / day_high
-  priceVsDayLow: z.number(), // (price - day_low) / day_low
-  rangePosition: z.number(), // (price - day_low) / (day_high - day_low)
-
-  prevDayHighDist: z.number(), // Distance from previous day high
-  prevDayLowDist: z.number(), // Distance from previous day low
-  weeklyHighDist: z.number(), // Distance from weekly high
-  weeklyLowDist: z.number(), // Distance from weekly low
-
-  // ========== MOMENTUM & TREND ==========
-  rsi5: z.number(), // RSI (5-period)
-  rsi14: z.number(), // RSI (14-period)
-  rsi21: z.number(), // RSI (21-period)
-  macdHist: z.number(), // MACD histogram
-  ema9: z.number(), // 9-period EMA
-  ema21: z.number(), // 21-period EMA
-  ema9Slope: z.number(), // 9-period EMA slope
-  ema21Slope: z.number(), // 21-period EMA slope
-  adx: z.number(), // Average Directional Index
-  roc5: z.number(), // Rate of change (5-period)
-
-  // ========== VOLATILITY ==========
-  atr: z.number(), // Average True Range (14-period)
-  atrPercent: z.number(), // ATR as % of price
-  realizedVol5m: z.number(), // 5-min realized volatility
-  realizedVol15m: z.number(), // 15-min realized volatility
-  volExpansionRatio: z.number(), // Short-term vol / long-term vol
-
-  // ========== TIME CONTEXT ==========
-  minutesFromOpen: z.number().int(), // Minutes since 9:15 AM
-  minutesToClose: z.number().int(), // Minutes until 3:30 PM
-  dayOfWeek: z.number().int().min(1).max(7), // 1=Monday, 7=Sunday
-});
-
-export type InstrumentFeatures1m = z.infer<typeof InstrumentFeatures1mSchema>;
-
-// ============================================
-// TABLE 5: option_chain_snapshot
+// TABLE 4: option_chain_snapshot
 // Option chain with Greeks
 // ============================================
 
 export const OptionChainSnapshotSchema = z.object({
   timestamp: z.date(),
-  underlyingKey: z.string(), // e.g. NSE_INDEX|Nifty 50
-  instrumentKey: z.string(), // Option instrument
+  underlyingKey: z.string(),
+  instrumentKey: z.string(),
   expiry: z.date(),
   strike: z.number(),
   optionType: z.enum(["CE", "PE"]),
-
-  // Pricing
   lastPrice: z.number(),
   bidPrice: z.number(),
   askPrice: z.number(),
+  bidQty: z.number().optional(),
+  askQty: z.number().optional(),
   volume: z.number(),
   openInterest: z.number(),
-
-  // Greeks
-  iv: z.number(), // Implied volatility
+  prevOi: z.number().nullable().optional(),
+  closePrice: z.number().optional(),
+  iv: z.number(),
   delta: z.number(),
   gamma: z.number(),
   vega: z.number(),
   theta: z.number(),
+  pop: z.number().nullable().optional(),
 });
 
 export type OptionChainSnapshot = z.infer<typeof OptionChainSnapshotSchema>;
 
 // ============================================
-// TABLE 6: market_state_1m
-// Market State Encoder output - feeds LightGBM (33 features from compute-engine)
-// CRITICAL: Must exactly match FeatureOutput from @repo/compute-engine
+// TABLE 5: instrument_features (Unified)
+// All ML features with interval-based storage
 // ============================================
 
-export const MarketState1mSchema = z.object({
+export const InstrumentFeaturesSchema = z.object({
   timestamp: z.date(),
-  instrumentKey: z.string(), // Index/spot instrument key (e.g., 'NSE_INDEX|Nifty 50')
+  instrumentKey: z.string(),
+  intervalValue: z.number().int(), // 1, 5, 15, 30, 60
+  intervalUnit: z.enum(["minute", "day"]),
 
-  // ========== INDEX BREADTH (6) - from NIFTY 50 constituents ==========
-  pctStocksAboveVwap: z.number(), // % of stocks above their VWAP
-  pctStocksAboveEma20: z.number(), // % of stocks above their 20-period EMA
-  weightedReturnTop10: z.number(), // Weighted return of top 10 stocks by market cap
-  advanceDeclineRatio: z.number(), // Ratio of advancing vs declining stocks
-  breadthMomentum5M: z.number(), // 5-minute breadth momentum
-  breadthVolatility: z.number(), // Breadth volatility measure
+  // Index Breadth (8)
+  pctStocksAboveVwap: z.number().optional(),
+  pctStocksAboveEma20: z.number().optional(),
+  weightedReturnTop10: z.number().optional(),
+  advanceDeclineRatio: z.number().optional(),
+  breadthMomentum5m: z.number().optional(),
+  breadthVolatility: z.number().optional(),
+  breadthThrust: z.number().optional(),
+  newHighsLowsRatio: z.number().optional(),
 
-  // ========== NIFTY FUTURE (9) - primary price discovery instrument ==========
-  futPriceVsVwap: z.number(), // Future price distance from VWAP
-  futRangePosition: z.number(), // Position within daily range (0-1)
-  futReturn1M: z.number(), // 1-minute return
-  futReturn5M: z.number(), // 5-minute return
-  futAtrPercent: z.number(), // ATR as % of price
-  futVolumeZscore: z.number(), // Volume z-score
-  futOiChange: z.number(), // Open interest change
-  futRsi14: z.number(), // 14-period RSI
-  futMacd: z.number(), // MACD histogram
+  // Futures (12)
+  futPriceVsVwap: z.number().optional(),
+  futRangePosition: z.number().optional(),
+  futReturn1m: z.number().optional(),
+  futReturn5m: z.number().optional(),
+  futReturn15m: z.number().optional(),
+  futAtrPercent: z.number().optional(),
+  futVolumeZscore: z.number().optional(),
+  futOiChange: z.number().optional(),
+  futOiChangePct: z.number().optional(),
+  futRsi14: z.number().optional(),
+  futMacd: z.number().optional(),
+  futMacdSignal: z.number().optional(),
 
-  // ========== OPTIONS (11) - from option chain Greeks and PCR ==========
-  atmIv: z.number(), // ATM implied volatility
-  atmIvChange: z.number(), // Change in ATM IV
-  ivSkew: z.number(), // IV skew (put vs call)
-  gammaAtm: z.number(), // ATM gamma
-  vegaAtm: z.number(), // ATM vega
-  thetaAtm: z.number(), // ATM theta
-  pcrOi: z.number(), // Put-Call Ratio (Open Interest)
-  pcrVolume: z.number(), // Put-Call Ratio (Volume)
-  maxPainDistance: z.number(), // Distance from max pain strike
-  charmAtm: z.number(), // ATM charm (delta decay)
-  vannaAtm: z.number(), // ATM vanna (delta sensitivity to IV)
+  // Options (14)
+  atmIv: z.number().optional(),
+  atmIvChange: z.number().optional(),
+  ivSkew: z.number().optional(),
+  ivTermStructure: z.number().optional(),
+  gammaAtm: z.number().optional(),
+  vegaAtm: z.number().optional(),
+  thetaAtm: z.number().optional(),
+  pcrOi: z.number().optional(),
+  pcrVolume: z.number().optional(),
+  maxPainDistance: z.number().optional(),
+  totalGammaExposure: z.number().optional(),
+  charmAtm: z.number().optional(),
+  vannaAtm: z.number().optional(),
+  ivPercentile30d: z.number().optional(),
 
-  // ========== VOLATILITY (4) - market-wide volatility measures ==========
-  indiaVix: z.number(), // India VIX
-  realizedVol5M: z.number(), // 5-minute realized volatility
-  realizedVol15M: z.number(), // 15-minute realized volatility
-  volExpansionRatio: z.number(), // Current vol vs historical avg
+  // Volatility (10)
+  indiaVix: z.number().optional(),
+  realizedVol5m: z.number().optional(),
+  realizedVol15m: z.number().optional(),
+  realizedVol20d: z.number().optional(),
+  realizedVol60d: z.number().optional(),
+  volExpansionRatio: z.number().optional(),
+  ivRvRatio: z.number().optional(),
+  vixPercentile30d: z.number().optional(),
+  vixPercentile1yr: z.number().optional(),
+  vixSma10: z.number().optional(),
 
-  // ========== TIME CONTEXT (3) - market timing ==========
-  minutesFromOpen: z.number().int(), // Minutes since market open (9:15 AM)
-  minutesToClose: z.number().int(), // Minutes until market close (3:30 PM)
-  dayOfWeek: z.number().int().min(1).max(7), // Day of week (1=Monday, 7=Sunday)
+  // Order Flow (8) - live only
+  bidAskSpreadBps: z.number().optional(),
+  depthImbalance5: z.number().optional(),
+  ofi1s: z.number().optional(),
+  ofi5s: z.number().optional(),
+  ofi30s: z.number().optional(),
+  tradeImbalance: z.number().optional(),
+  bidSlope: z.number().optional(),
+  askSlope: z.number().optional(),
+
+  // Price Structure (8) - daily primarily
+  close: z.number().optional(),
+  return1d: z.number().optional(),
+  return5d: z.number().optional(),
+  return20d: z.number().optional(),
+  rangeHl: z.number().optional(),
+  gapOpen: z.number().optional(),
+  closeVsHigh20d: z.number().optional(),
+  closeVsLow20d: z.number().optional(),
+
+  // Momentum (8)
+  rsi14: z.number().optional(),
+  rsi5: z.number().optional(),
+  macd: z.number().optional(),
+  macdSignal: z.number().optional(),
+  macdHist: z.number().optional(),
+  adx14: z.number().optional(),
+  plusDi: z.number().optional(),
+  minusDi: z.number().optional(),
+
+  // Moving Averages (10)
+  sma10: z.number().optional(),
+  sma20: z.number().optional(),
+  sma50: z.number().optional(),
+  sma200: z.number().optional(),
+  ema12: z.number().optional(),
+  ema26: z.number().optional(),
+  priceVsSma20: z.number().optional(),
+  priceVsSma50: z.number().optional(),
+  priceVsSma200: z.number().optional(),
+  goldenCross: z.number().int().optional(),
+
+  // Bollinger (2)
+  bollingerWidth: z.number().optional(),
+  bollingerPosition: z.number().optional(),
+
+  // Volume (4)
+  volumeSma20Ratio: z.number().optional(),
+  volumeTrend: z.number().optional(),
+  obvChange: z.number().optional(),
+  accumulationDist: z.number().optional(),
+
+  // Regime (4)
+  trendStrength: z.number().optional(),
+  meanReversionSignal: z.number().optional(),
+  momentumRegime: z.number().int().optional(),
+  volatilityRegime: z.number().int().optional(),
+
+  // Time Context (9)
+  minutesFromOpen: z.number().int().optional(),
+  minutesToClose: z.number().int().optional(),
+  dayOfWeek: z.number().int().optional(),
+  monthOfYear: z.number().int().optional(),
+  isExpiryDay: z.number().int().optional(),
+  daysToExpiry: z.number().int().optional(),
+  sessionPhase: z.number().int().optional(),
+  isMonthEnd: z.boolean().optional(),
+  isQuarterEnd: z.boolean().optional(),
+
+  // Validity
+  isValid: z.boolean().optional(),
+  invalidReason: z.string().optional(),
+  featureMode: z.enum(["HISTORICAL", "LIVE"]).optional(),
+  computationLatencyUs: z.number().int().optional(),
+  featureVersion: z.string().optional(),
 });
 
-export type MarketState1m = z.infer<typeof MarketState1mSchema>;
+export type InstrumentFeatures = z.infer<typeof InstrumentFeaturesSchema>;
 
 // ============================================
-// TABLE 7: training_labels_1m
-// Supervised learning labels
+// TABLE 6: training_labels (Unified)
+// All ML labels with interval-based storage
 // ============================================
 
-export const TrainingLabels1mSchema = z.object({
+export const TrainingLabelsSchema = z.object({
   timestamp: z.date(),
-  horizonMinutes: z.number().int(), // Forward-looking horizon (e.g. 5, 15)
-  label: z.number().int().min(-1).max(1), // -1 (down), 0 (neutral), +1 (up)
-  futureReturn: z.number(), // Actual return at horizon
-  atrThreshold: z.number(), // ATR used for labeling threshold
+  instrumentKey: z.string(),
+  intervalValue: z.number().int(),
+  intervalUnit: z.enum(["minute", "day"]),
+
+  // Regression Targets - Short Term
+  targetReturn5m: z.number().optional(),
+  targetReturn15m: z.number().optional(),
+  targetReturn30m: z.number().optional(),
+  targetReturn1h: z.number().optional(),
+  targetReturnEod: z.number().optional(),
+
+  // Regression Targets - Long Term
+  targetReturn1d: z.number().optional(),
+  targetReturn5d: z.number().optional(),
+  targetReturn20d: z.number().optional(),
+
+  // Volatility Targets
+  targetVolatility5m: z.number().optional(),
+  targetVolatility15m: z.number().optional(),
+  targetMaxDrawdown5m: z.number().optional(),
+  targetMaxRunup5m: z.number().optional(),
+  targetVolatility5d: z.number().optional(),
+  targetVolatility20d: z.number().optional(),
+  targetMaxDrawdown5d: z.number().optional(),
+
+  // Classification Targets
+  targetDirection5m: z.number().int().optional(),
+  targetDirection15m: z.number().int().optional(),
+  targetDirection30m: z.number().int().optional(),
+  targetDirection1d: z.number().int().optional(),
+  targetDirection5d: z.number().int().optional(),
+  targetDirection20d: z.number().int().optional(),
+
+  // Regime Labels
+  regimeLabel: z
+    .enum([
+      "TRENDING_UP",
+      "TRENDING_DOWN",
+      "RANGING",
+      "VOLATILE",
+      "BULL",
+      "BEAR",
+    ])
+    .optional(),
+  regimeConfidence: z.number().optional(),
+
+  // Event Flags
+  hadRegimeChange: z.boolean().optional(),
+  hadSpikeEvent: z.boolean().optional(),
+  hadGapEvent: z.boolean().optional(),
+  hadCrash: z.boolean().optional(),
+  hadRally: z.boolean().optional(),
+
+  // Validity
+  isValid: z.boolean().optional(),
+  invalidReason: z.string().optional(),
+  labelQuality: z.enum(["CLEAN", "NOISY", "OUTLIER"]).optional(),
 });
 
-export type TrainingLabels1m = z.infer<typeof TrainingLabels1mSchema>;
-
-/**
- * Training Label Distribution by Horizon
- * Used for analyzing class balance before training
- */
-export interface TrainingLabelDistribution {
-  horizonMinutes: number;
-  totalLabels: number;
-  upLabels: number;
-  neutralLabels: number;
-  downLabels: number;
-  avgReturn: number;
-  avgThreshold: number;
-}
+export type TrainingLabels = z.infer<typeof TrainingLabelsSchema>;
 
 // ============================================
-// TABLE 8: system_audit
-// Distributed tracing audit log
-// ============================================
-
-export const SystemAuditSchema = z.object({
-  timestamp: z.date(),
-  traceId: z.string(),
-  service: z.string(),
-  level: z.enum(["DEBUG", "INFO", "WARN", "ERROR", "FATAL"]),
-  action: z.string(),
-  userId: z.string().optional(),
-  metadata: z.string(), // JSON string
-});
-
-export type SystemAudit = z.infer<typeof SystemAuditSchema>;
-
-// ============================================
-// Table name constants
-// ============================================
-
-export const QuestDBTables = {
-  INSTRUMENT_MASTER: "instrument_master",
-  MARKET_CANDLES: "market_candles",
-  ORDERBOOK_L2_SNAPSHOTS: "orderbook_l2_snapshots",
-  INSTRUMENT_FEATURES_1M: "instrument_features_1m",
-  OPTION_CHAIN_SNAPSHOT: "option_chain_snapshot",
-  MARKET_STATE_1M: "market_state_1m",
-  TRAINING_LABELS_1M: "training_labels_1m",
-  SYSTEM_AUDIT: "system_audit",
-} as const;
-
-// ============================================
-// Helper types
-// ============================================
-
-export type QuestDBTableName =
-  (typeof QuestDBTables)[keyof typeof QuestDBTables];
-
-// Map of table names to their Zod schemas
-export const TableSchemaMap = {
-  [QuestDBTables.INSTRUMENT_MASTER]: InstrumentMasterSchema,
-  [QuestDBTables.MARKET_CANDLES]: MarketCandleSchema,
-  [QuestDBTables.ORDERBOOK_L2_SNAPSHOTS]: OrderbookL2SnapshotSchema,
-  [QuestDBTables.INSTRUMENT_FEATURES_1M]: InstrumentFeatures1mSchema,
-  [QuestDBTables.OPTION_CHAIN_SNAPSHOT]: OptionChainSnapshotSchema,
-  [QuestDBTables.MARKET_STATE_1M]: MarketState1mSchema,
-  [QuestDBTables.TRAINING_LABELS_1M]: TrainingLabels1mSchema,
-  [QuestDBTables.SYSTEM_AUDIT]: SystemAuditSchema,
-} as const;
-
-// Map of table names to their TypeScript types
-export type TableTypeMap = {
-  [QuestDBTables.INSTRUMENT_MASTER]: InstrumentMaster;
-  [QuestDBTables.MARKET_CANDLES]: MarketCandle;
-  [QuestDBTables.ORDERBOOK_L2_SNAPSHOTS]: OrderbookL2Snapshot;
-  [QuestDBTables.INSTRUMENT_FEATURES_1M]: InstrumentFeatures1m;
-  [QuestDBTables.OPTION_CHAIN_SNAPSHOT]: OptionChainSnapshot;
-  [QuestDBTables.MARKET_STATE_1M]: MarketState1m;
-  [QuestDBTables.TRAINING_LABELS_1M]: TrainingLabels1m;
-  [QuestDBTables.SYSTEM_AUDIT]: SystemAudit;
-};

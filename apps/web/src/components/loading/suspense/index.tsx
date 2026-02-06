@@ -10,7 +10,6 @@ interface LoadWithSuspenseProps {
   errorFallback?: ReactNode;
   errorClassName?: string;
   defaultErrorMessage?: string;
-  defer?: boolean;
 }
 
 function LoadWithSuspenseAndError(
@@ -36,7 +35,7 @@ function LoadWithSuspenseAndError(
         console.log(`Resetting Suspense component (${name}).`, details);
       }}
     >
-      <Suspense name={props.name} fallback={props.fallback} defer={props.defer}>
+      <Suspense name={props.name} fallback={props.fallback}>
         {props.children}
       </Suspense>
     </ErrorBoundary>

@@ -260,6 +260,12 @@ mod tests {
       constituents: vec![],
       options: vec![],
       india_vix: Some(15.5),
+      is_expiry_day: todo!(),
+      days_to_expiry: todo!(),
+      current_expiry: todo!(),
+      market_depth: todo!(),
+      nifty_spot: todo!(),
+      risk_free_rate: todo!(),
     };
 
     let deps = ComputedDependencies {

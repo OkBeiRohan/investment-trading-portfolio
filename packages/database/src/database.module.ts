@@ -1,7 +1,7 @@
 /**
  * Database Module v2.0
  * Unified NestJS module for all database connections
- * 
+ *
  * Includes:
  * - QuestDB: Time-series data (candles, features, labels)
  * - MongoDB: User, auth, trading metadata
@@ -35,7 +35,7 @@ export interface DatabaseModuleOptions {
 
 /**
  * Unified Database Module
- * 
+ *
  * Usage:
  * ```typescript
  * // Import all databases (default)
@@ -43,7 +43,7 @@ export interface DatabaseModuleOptions {
  *   imports: [DatabaseModule.forRoot()],
  * })
  * export class AppModule {}
- * 
+ *
  * // Import only specific databases
  * @Module({
  *   imports: [DatabaseModule.forRoot({ questdb: true, mongodb: false })],
@@ -58,11 +58,7 @@ export class DatabaseModule {
    * Import all or selected databases
    */
   static forRoot(options: DatabaseModuleOptions = {}): DynamicModule {
-    const {
-      questdb = true,
-      mongodb = true,
-      redis = true,
-    } = options;
+    const { questdb = true, mongodb = true, redis = true } = options;
 
     const imports: Type[] = [];
     const exports: Type[] = [];
@@ -107,7 +103,7 @@ export class DatabaseModule {
    * Import QuestDB + Redis (for market-feeder)
    */
   static forMarketFeeder(): DynamicModule {
-    return this.forRoot({ questdb: true, mongodb: false, redis: true });
+    return this.forRoot({ questdb: true, mongodb: true, redis: true });
   }
 
   /**

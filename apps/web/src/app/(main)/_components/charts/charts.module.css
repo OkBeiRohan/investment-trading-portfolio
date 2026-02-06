@@ -1,0 +1,245 @@
+/* ================================
+   DONUT CHART
+   ================================ */
+.donutContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.donutSvg {
+  transform: rotate(0deg);
+}
+
+.donutSegment {
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.donutCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.donutCenterValue {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.donutCenterLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.donutLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  justify-content: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-sm);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  color: var(--color-text-secondary);
+}
+
+.legendValue {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ================================
+   PROGRESS RING
+   ================================ */
+.progressRingContainer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progressRingSvg {
+  transform: rotate(0deg);
+}
+
+.progressRingValue {
+  transition:
+    stroke-dashoffset 0.6s ease,
+    stroke 0.3s ease;
+}
+
+.progressRingCenter {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.progressRingPercent {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.progressRingLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ================================
+   BAR CHART
+   ================================ */
+.barChartContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.barChartBars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-1);
+  width: 100%;
+}
+
+.barChartColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.barChartBar {
+  width: 100%;
+  max-width: 32px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition:
+    height 0.6s ease,
+    background-color 0.3s ease;
+}
+
+.barChartBarAnimated {
+  animation: barGrow 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  height: 0 !important;
+}
+
+@keyframes barGrow {
+  to {
+    height: var(--bar-height, 100%);
+  }
+}
+
+.barChartLabels {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.barChartLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* ================================
+   SPARKLINE
+   ================================ */
+.sparkline {
+  display: block;
+}
+
+/* ================================
+   DOT MATRIX
+   ================================ */
+.dotMatrixContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.dotMatrixLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.dotMatrixGrid {
+  display: grid;
+  gap: 4px;
+}
+
+.dotMatrixDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  transition: background-color 0.3s ease;
+}
+
+.dotMatrixPercent {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+/* ================================
+   STAT CARD (for cozy displays)
+   ================================ */
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.statValue {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.statChange {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.statChangePositive {
+  color: var(--color-success);
+}
+
+.statChangeNegative {
+  color: var(--color-error);
+}

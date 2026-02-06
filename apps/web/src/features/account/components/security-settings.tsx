@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, KeyRound, Smartphone, Lock } from "lucide-react";
+import { Shield, KeyRound, Lock } from "lucide-react";
 import styles from "./security-settings.module.css";
 import PrimaryButton from "@/components/form/button";
 import Input from "@/components/form/input";
@@ -107,7 +107,9 @@ export function SecuritySettings() {
           </div>
 
           {passwordError && <Message type="error">{passwordError}</Message>}
-          {passwordSuccess && <Message type="success">{passwordSuccess}</Message>}
+          {passwordSuccess && (
+            <Message type="success">{passwordSuccess}</Message>
+          )}
         </form>
       </div>
 
@@ -128,16 +130,17 @@ export function SecuritySettings() {
           <div className={styles.tfaStatus}>
             <div className={styles.tfaInfo}>
               <p className={styles.tfaLabel}>Status</p>
-              <span className={`${styles.badge} ${styles.disabled}`}>Disabled</span>
+              <span className={`${styles.badge} ${styles.disabled}`}>
+                Disabled
+              </span>
             </div>
             <p className={styles.tfaDetail}>
-              Two-factor authentication is currently not enabled on your account.
+              Two-factor authentication is currently not enabled on your
+              account.
             </p>
           </div>
-          
-          <button className={styles.enableButton}>
-            Enable 2FA
-          </button>
+
+          <button className={styles.enableButton}>Enable 2FA</button>
         </div>
       </div>
     </div>

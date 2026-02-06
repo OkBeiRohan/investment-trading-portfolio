@@ -3,15 +3,26 @@
  * Used for historical and intraday candlestick data
  */
 
-export interface IMarketCandle {
+export type MarketCandleIntervalUnit =
+  | "second"
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month";
+
+export interface IMarketCandleBase {
   /** Candle timestamp (start of interval) */
-  timestamp: Date;
+  timestamp: string;
 
   /** Instrument identifier (e.g., NSE_EQ|INE848E01016) */
-  instrument_key: string;
+  instrumentKey: string;
 
   /** Candle interval */
-  interval: string;
+  intervalValue: number;
+
+  /** Candle interval unit */
+  intervalUnit: MarketCandleIntervalUnit;
 
   /** Opening price */
   open: number;
@@ -24,55 +35,39 @@ export interface IMarketCandle {
 
   /** Closing price */
   close: number;
+}
 
+export interface IMarketCandleDerivative {
   /** Trading volume */
   volume: number;
 
-  /** Open interest (for derivatives) */
-  open_interest?: number;
+  /** Open interest (for derivatives and commodity) */
+  openInterest: number;
 }
 
-export interface ICandleInsert {
-  /** Candle timestamp (Unix ms or Date) */
-  timestamp: number | Date;
-
-  /** Instrument identifier */
-  instrument_key: string;
-
-  /** Candle interval */
-  interval: string;
-
-  /** Opening price */
-  open: number;
-
-  /** Highest price */
-  high: number;
-
-  /** Lowest price */
-  low: number;
-
-  /** Closing price */
-  close: number;
-
+export interface IMarketCandleEquity {
   /** Trading volume */
   volume: number;
 
-  /** Open interest (optional) */
-  open_interest?: number;
+  openInterest: never;
 }
+
+type MarketCandle = IMarketCandleBase &
+  (IMarketCandleDerivative | IMarketCandleEquity);
+export default MarketCandle;
 
 export interface ICandleQuery {
   /** Instrument identifier */
-  instrument_key: string;
+  instrumentKey: string;
 
   /** Candle interval */
   interval: string;
 
   /** Start time (inclusive) */
-  start_time: Date;
+  startTime: string;
 
   /** End time (inclusive) */
-  end_time: Date;
+  endTime: string;
 
   /** Limit results */
   limit?: number;
