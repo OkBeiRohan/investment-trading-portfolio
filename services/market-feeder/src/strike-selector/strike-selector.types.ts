@@ -171,7 +171,7 @@ export interface StrikeSelectorResult {
 // Constants
 // ============================================
 
-export const NIFTY50_LOT_SIZE = 75; // Updated Nifty 50 lot size (from 50 to 75 as of recent changes)
+export const NIFTY50_LOT_SIZE = 65; // Updated Nifty 50 lot size
 
 export const DEFAULT_CONFIG: Partial<StrikeSelectorConfig> = {
   maxRiskPercent: 0.05, // 5% max capital per trade

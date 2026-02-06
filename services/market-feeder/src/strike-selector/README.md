@@ -16,31 +16,35 @@ This tool analyzes the Nifty 50 option chain and recommends the optimal strike b
 
 The strike selection uses the following **Utility Function** to score each strike:
 
-```
-U(S) = [(Δ × M) + (0.5 × Γ × M²) - (θ × H)] / [P × √(IV/100)] × [1 - (Cap/Balance)]
-```
+$$U_K = \left[ \frac{(|\Delta_K| \times M_{view}) + (0.5 \times \Gamma_K \times M_{view}^2) - (|\Theta_K| \times T_{hold})}{P_K \times L \times \sigma_{imp}} \right] \times \left( 1 - \frac{P_K \times L}{B_{avail}} \right)$$
+
+**Constraint (Gatekeeper):**
+$$\text{IF } (P_K \times L) > (B_{avail} \times R_{max}) \implies U_K = 0$$
 
 Where:
 
-| Symbol      | Description                     |
-| ----------- | ------------------------------- |
-| **Δ**       | Delta - directional sensitivity |
-| **Γ**       | Gamma - acceleration of delta   |
-| **θ**       | Theta - time decay per day      |
-| **M**       | Expected market move in points  |
-| **H**       | Holding period in days          |
-| **P**       | Premium (LTP)                   |
-| **IV**      | Implied Volatility              |
-| **Cap**     | Capital required for position   |
-| **Balance** | Available trading balance       |
+| Symbol             | Name               | Description                                                                 |
+| ------------------ | ------------------ | --------------------------------------------------------------------------- |
+| **$U_K$**          | Utility Score      | The final "grade" of the strike. Higher is better.                          |
+| **$K$**            | Strike Price       | The specific option strike you are analyzing (e.g., 24500 CE).              |
+| **$\Delta_K$**     | Delta              | How much the option price moves for every 1 point move in Nifty (0 to 1).   |
+| **$M_{view}$**     | Market View        | Your expected Nifty point movement (e.g., "+50 points" or "-100 points").   |
+| **$\Gamma_K$**     | Gamma              | The acceleration of Delta. Important for capturing "explosive" moves.       |
+| **$\Theta_K$**     | Theta              | The money lost per day due to time decay.                                   |
+| **$T_{hold}$**     | Holding Period     | How many days (or fraction of days) you plan to hold the trade.             |
+| **$P_K$**          | Premium            | The current price of the option (LTP).                                      |
+| **$L$**            | Lot Size           | Fixed at 75 (Nifty Lot Size).                                               |
+| **$\sigma_{imp}$** | Implied Volatility | The specific IV of that strike (used to normalize risk).                    |
+| **$B_{avail}$**    | Total Balance      | Your total trading capital available.                                       |
+| **$R_{max}$**      | Max Risk %         | The max % of capital you are willing to deploy per trade (e.g., 5% = 0.05). |
 
 ### Why This Equation Works
 
-1. **Numerator (Projected P&L)**: Calculates profit based on direction (Δ) and acceleration (Γ), while subtracting time decay cost (θ × H).
+1. **Numerator (Projected P&L)**: Calculates profit based on direction ($\Delta$) and acceleration ($\Gamma$), while subtracting time decay cost ($\Theta \times T_{hold}$). Institutions love Gamma because it increases your profit speed as the market moves in your favor.
 
-2. **Denominator (Volatility Risk)**: Penalizes expensive options with high IV (crush risk).
+2. **Denominator (Volatility Risk)**: We divide by Premium × Lot Size × IV. This penalizes "expensive" options where the IV is already too high (IV crush risk).
 
-3. **Capital Preservation Factor**: Forces selection of strikes that leave free cash, preventing over-leveraging.
+3. **Capital Preservation Factor (Liquidity Penalty)**: As the cost of the option ($P_K \times L$) gets closer to your total balance ($B_{avail}$), this multiplier shrinks toward zero. It forces you to pick strikes that leave you with free cash, preventing "blowing up" your account on one trade.
 
 ## Quick Start
 

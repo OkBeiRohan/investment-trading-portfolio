@@ -187,17 +187,21 @@ function printUsage() {
 
   The utility function used is:
 
-  U(S) = [(Δ × M) + (0.5 × Γ × M²) - (θ × H)] / [P × √(IV/100)] × [1 - Cap/Balance]
+  U(K) = [(|Δ| × M) + (0.5 × Γ × M²) - (|θ| × T)] / [P × L × σ] × [1 - (P × L)/B]
+
+  Constraint: IF (P × L) > (B × R_max) => U(K) = 0
 
   Where:
-  • Δ (Delta)  = Directional sensitivity
-  • Γ (Gamma)  = Acceleration of delta  
+  • Δ (Delta)  = Directional sensitivity (0 to 1)
+  • Γ (Gamma)  = Acceleration of delta
   • θ (Theta)  = Time decay per day
-  • M          = Expected market move
-  • H          = Holding period in days
+  • M          = Expected market move (points)
+  • T          = Holding period in days
   • P          = Premium (LTP)
-  • IV         = Implied Volatility
-  • Cap        = Capital required for position
+  • L          = Lot size (75 for Nifty)
+  • σ (IV)     = Implied Volatility (decimal)
+  • B          = Available trading balance
+  • R_max      = Max risk % per trade (e.g., 0.05)
   • Balance    = Available trading balance
 
 `);

@@ -280,27 +280,30 @@ export class StrikeSelectorService {
     // Theta cost: θ × H (theta is typically negative, so we use absolute)
     const thetaCost = Math.abs(theta) * config.holdingPeriodDays;
 
-    // Projected P&L for single lot
-    const projectedPnLPerLot =
-      (deltaAdjustedMove + gammaBonus - thetaCost) * NIFTY50_LOT_SIZE;
+    // Numerator: Directional Gain + Convexity Boost - Time Decay
+    // (|Δ| × M_view) + (0.5 × Γ × M_view²) - (|θ| × T_hold)
+    const numerator = deltaAdjustedMove + gammaBonus - thetaCost;
 
-    // Total projected P&L with max lots
-    const projectedPnL = projectedPnLPerLot * maxLots;
+    // Denominator: Volatility Risk = P_K × L × σ_imp
+    // Using IV as σ_imp (implied volatility as decimal)
+    const volatilityRisk = premium * NIFTY50_LOT_SIZE * (iv / 100);
 
-    // Volatility risk factor: P × √(IV/100)
-    const volatilityRisk = premium * Math.sqrt(iv / 100);
-
-    // Capital preservation factor: 1 - (P × L × 65) / B_total
+    // Capital Preservation Factor (Liquidity Penalty): 1 - (P_K × L) / B_avail
+    // This uses SINGLE lot cost, not max lots
+    const singleLotCost = premium * NIFTY50_LOT_SIZE;
     const capitalPreservationFactor =
       context.availableBalance > 0
-        ? 1 - capitalRequired / context.availableBalance
+        ? 1 - singleLotCost / context.availableBalance
         : 0;
 
-    // Final Utility Score: U(S)
+    // Projected P&L for display purposes (using max lots)
+    const projectedPnL = numerator * NIFTY50_LOT_SIZE * maxLots;
+
+    // Final Utility Score: U(K)
+    // U_K = [Numerator / Volatility Risk] × Capital Preservation Factor
     let utilityScore = 0;
     if (volatilityRisk > 0 && capitalPreservationFactor > 0) {
-      utilityScore =
-        (projectedPnLPerLot / volatilityRisk) * capitalPreservationFactor;
+      utilityScore = (numerator / volatilityRisk) * capitalPreservationFactor;
     }
 
     // Apply directional bonus/penalty based on expected move direction
