@@ -133,7 +133,7 @@ export default function WealthOverviewPage() {
                   change: "+24.1%",
                 },
               ].map((holding, i) => (
-                <Card key={i} variant="default" padding="md">
+                <Card key={i} variant="default" padding="compact">
                   <div
                     style={{
                       display: "flex",

@@ -32,7 +32,7 @@ export default function BillingPage() {
         {/* Current Plan */}
         <div style={{ gridColumn: "span 6" }}>
           <SectionCard title="Current Plan">
-            <Card variant="mint" padding="lg">
+            <Card variant="mint" padding="spacious">
               <div
                 style={{
                   display: "flex",
