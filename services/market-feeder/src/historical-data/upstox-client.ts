@@ -62,15 +62,15 @@ export interface UpstoxMarketQuoteResponse {
         | 'MCX_COM'}|${string}`;
       symbol: string;
       last_price: number;
-      volume: number;
-      average_price: number;
+      volume?: number;
+      average_price?: number;
       oi?: number;
       net_change: number;
-      total_buy_quantity: number;
-      total_sell_quantity: number;
-      lower_circuit_limit: number;
-      upper_circuit_limit: number;
-      last_trade_time: string;
+      total_buy_quantity?: number;
+      total_sell_quantity?: number;
+      lower_circuit_limit?: number;
+      upper_circuit_limit?: number;
+      last_trade_time?: string;
       oi_day_high?: number;
       oi_day_low?: number;
     };
@@ -1129,11 +1129,20 @@ export class UpstoxClient {
 
       return response.data.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching market quotes with depth: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error) && error.response) {
+        this.logger.error(
+          `Error fetching market quotes with depth: Status ${error.response.status} - ${JSON.stringify(error.response.data)}`,
+        );
+        this.logger.error(
+          `Request URL: ${error.config?.url}, Headers: ${JSON.stringify(error.config?.headers)}`,
+        );
+      } else {
+        this.logger.error(
+          `Error fetching market quotes with depth: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
       throw error;
     }
   }

@@ -241,6 +241,82 @@ Rank & Return Top N
 - **Nifty 50 Index Key**: `NSE_INDEX|Nifty 50`
 - **India VIX Key**: `NSE_INDEX|India VIX`
 
+## Typed Fallback (Offline Mode)
+
+If the Upstox API is blocked (e.g., by enterprise proxy/Cloudflare), you can manually paste API responses into typed TypeScript files.
+
+### Fallback Files
+
+| File                                | Required | Description                                    |
+| ----------------------------------- | -------- | ---------------------------------------------- |
+| `fallback/index.ts`                 | -        | Toggle `USE_FALLBACK_DATA = true` to enable    |
+| `fallback/option-chain.fallback.ts` | ✅ Yes   | Paste `/v2/option/chain` response data array   |
+| `fallback/market-quote.fallback.ts` | ✅ Yes   | Paste `/v2/market-quote/quotes` response data  |
+| `fallback/funds-margin.fallback.ts` | Optional | Paste `/v2/user/get-funds-and-margin` response |
+
+### How to Use Typed Fallback
+
+**Step 1: Get API responses** using Postman, cURL, or browser dev tools:
+
+```bash
+# 1. Option Chain (REQUIRED)
+GET https://api.upstox.com/v2/option/chain?instrument_key=NSE_INDEX|Nifty%2050&expiry_date=2026-02-12
+Authorization: Bearer <your_access_token>
+
+# 2. Market Quote (REQUIRED)
+GET https://api.upstox.com/v2/market-quote/quotes?instrument_key=NSE_INDEX|Nifty%2050,NSE_INDEX|India%20VIX
+Authorization: Bearer <your_access_token>
+
+# 3. Funds & Margin (OPTIONAL)
+GET https://api.upstox.com/v2/user/get-funds-and-margin?segment=SEC
+Authorization: Bearer <your_access_token>
+```
+
+**Step 2: Paste data into fallback files:**
+
+```typescript
+// fallback/option-chain.fallback.ts
+export const OPTION_CHAIN_FALLBACK: OptionChainItem[] = [
+  // Paste the "data" array from option chain response here
+  {
+    expiry: '2026-02-12',
+    strike_price: 24000,
+    // ... rest of strike data
+  },
+];
+```
+
+```typescript
+// fallback/market-quote.fallback.ts
+export const MARKET_QUOTE_FALLBACK: UpstoxMarketQuoteResponse['data'] = {
+  'NSE_INDEX:Nifty 50': {
+    instrument_token: 'NSE_INDEX|Nifty 50',
+    symbol: 'Nifty 50',
+    last_price: 24150.5,
+    // ... rest of quote data
+  },
+  'NSE_INDEX:India VIX': {
+    instrument_token: 'NSE_INDEX|India VIX',
+    symbol: 'India VIX',
+    last_price: 13.25,
+    // ... rest of quote data
+  },
+};
+```
+
+**Step 3: Enable fallback mode:**
+
+```typescript
+// fallback/index.ts
+export const USE_FALLBACK_DATA = true; // <-- Set to true
+```
+
+**Step 4: Run the selector:**
+
+```bash
+STRIKE_SELECTOR_ENABLED=true EXPECTED_MOVE=50 pnpm run strike-selector
+```
+
 ## Notes
 
 - The funds API is unavailable between 12:00 AM to 5:30 AM IST

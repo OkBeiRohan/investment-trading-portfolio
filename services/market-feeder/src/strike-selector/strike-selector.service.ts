@@ -32,6 +32,12 @@ import {
   NIFTY50_INDEX_KEY,
   INDIA_VIX_KEY,
 } from './strike-selector.types';
+import {
+  USE_FALLBACK_DATA,
+  OPTION_CHAIN_FALLBACK,
+  MARKET_QUOTE_FALLBACK,
+  FUNDS_MARGIN_FALLBACK,
+} from './fallback';
 
 @Injectable()
 export class StrikeSelectorService {
@@ -135,10 +141,114 @@ export class StrikeSelectorService {
 
   /**
    * Fetch all required market context from Upstox APIs
+   * Supports typed fallback when APIs are blocked (e.g., by enterprise proxy)
+   *
+   * To use fallback:
+   * 1. Set USE_FALLBACK_DATA = true in ./fallback/index.ts
+   * 2. Paste API responses in ./fallback/option-chain.fallback.ts
+   * 3. Update ./fallback/config.fallback.ts with spot price, VIX, etc.
    */
   private async fetchMarketContext(
     expiryDate?: string,
   ): Promise<MarketContext> {
+    // Check if typed fallback is enabled
+    if (USE_FALLBACK_DATA) {
+      this.logger.log(
+        '📦 Using typed fallback data (USE_FALLBACK_DATA = true)',
+      );
+      return this.loadTypedFallback(expiryDate);
+    }
+
+    // Otherwise, fetch from APIs
+    return this.fetchFromApis(expiryDate);
+  }
+
+  /**
+   * Load typed fallback data from ./fallback/ files
+   */
+  private loadTypedFallback(expiryDate?: string): MarketContext {
+    // Validate option chain fallback
+    if (!OPTION_CHAIN_FALLBACK || OPTION_CHAIN_FALLBACK.length === 0) {
+      throw new Error(
+        'Fallback enabled but OPTION_CHAIN_FALLBACK is empty. ' +
+          'Paste option chain data in ./fallback/option-chain.fallback.ts',
+      );
+    }
+
+    // Validate market quote fallback
+    if (!MARKET_QUOTE_FALLBACK) {
+      throw new Error(
+        'Fallback enabled but MARKET_QUOTE_FALLBACK is null. ' +
+          'Paste market quote data in ./fallback/market-quote.fallback.ts',
+      );
+    }
+
+    // Get spot price from market quote (Nifty 50)
+    const niftyQuote = Object.values(MARKET_QUOTE_FALLBACK).find(
+      (q) =>
+        q.instrument_token === NIFTY50_INDEX_KEY ||
+        q.symbol === 'Nifty 50' ||
+        q.symbol === 'NIFTY 50',
+    );
+
+    if (!niftyQuote) {
+      throw new Error(
+        'Nifty 50 quote not found in MARKET_QUOTE_FALLBACK. ' +
+          'Ensure NSE_INDEX:Nifty 50 is included in market-quote.fallback.ts',
+      );
+    }
+
+    const spotPrice = niftyQuote.last_price;
+
+    // Get VIX from market quote (India VIX)
+    const vixQuote = Object.values(MARKET_QUOTE_FALLBACK).find(
+      (q) =>
+        q.instrument_token === INDIA_VIX_KEY ||
+        q.symbol === 'India VIX' ||
+        q.symbol === 'INDIA VIX',
+    );
+
+    const vix = vixQuote?.last_price || 15; // Default VIX if not provided
+
+    // Get expiry from option chain
+    const targetExpiry = expiryDate || OPTION_CHAIN_FALLBACK[0]?.expiry;
+
+    if (!targetExpiry) {
+      throw new Error(
+        'Expiry date not found in option chain fallback. ' +
+          'Ensure option chain data includes expiry field.',
+      );
+    }
+
+    // Get available balance from funds fallback or default
+    let availableBalance = 50000; // Default
+    if (FUNDS_MARGIN_FALLBACK) {
+      availableBalance = FUNDS_MARGIN_FALLBACK.equity.available_margin;
+    } else {
+      this.logger.warn(
+        '⚠️ FUNDS_MARGIN_FALLBACK is null, using default balance: ₹50,000',
+      );
+    }
+
+    this.logger.log(
+      `📦 Loaded typed fallback - Spot: ₹${spotPrice}, VIX: ${vix}, ` +
+        `Balance: ₹${availableBalance.toLocaleString()}, ` +
+        `Strikes: ${OPTION_CHAIN_FALLBACK.length}, Expiry: ${targetExpiry}`,
+    );
+
+    return {
+      spotPrice,
+      vix,
+      optionChain: OPTION_CHAIN_FALLBACK,
+      availableBalance,
+      expiryDate: targetExpiry,
+    };
+  }
+
+  /**
+   * Fetch market context from Upstox APIs
+   */
+  private async fetchFromApis(expiryDate?: string): Promise<MarketContext> {
     // Fetch market quotes for Nifty 50 and India VIX
     const marketQuotes = await this.upstoxClient.getMarketQuoteWithDepth([
       NIFTY50_INDEX_KEY,
