@@ -66,19 +66,23 @@ export class StrikeSelectorBootstrap implements OnModuleInit {
       // Get optional expiry date from env (otherwise uses nearest)
       const expiryDate = this.configService.get<string>('EXPIRY_DATE');
 
-      // Run strike selection
-      const result = await this.strikeSelectorService.selectOptimalStrike(
-        config,
-        expiryDate,
-      );
+      // Run dual-direction analysis (shows both bullish and bearish scenarios)
+      const dualAnalysis =
+        await this.strikeSelectorService.analyzeDualDirection(
+          config.expectedMove || 50,
+          config.holdingPeriodDays || 1,
+          expiryDate,
+        );
 
-      // Print formatted recommendation
-      console.log(this.strikeSelectorService.formatRecommendation(result));
+      // Print formatted dual-direction analysis
+      console.log(
+        this.strikeSelectorService.formatDualDirectionAnalysis(dualAnalysis),
+      );
 
       // Output JSON if enabled
       if (this.configService.get<string>('OUTPUT_JSON') === 'true') {
         console.log('\n📊 JSON Output:');
-        console.log(JSON.stringify(result, null, 2));
+        console.log(JSON.stringify(dualAnalysis, null, 2));
       }
 
       this.logger.log('✅ Strike selection bootstrap complete');

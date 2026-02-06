@@ -101,6 +101,7 @@ async function main() {
   };
 
   const expiryDate = process.env.EXPIRY_DATE;
+  const dualMode = process.env.DUAL_DIRECTION === 'true';
 
   logger.log('🎯 Strike Selector - Starting Analysis');
   logger.log('════════════════════════════════════════');
@@ -116,16 +117,37 @@ async function main() {
 
     const service = app.get(StrikeSelectorService);
 
-    // Run analysis
-    const result = await service.selectOptimalStrike(config, expiryDate);
+    if (dualMode) {
+      // Run dual-direction analysis (both bullish AND bearish scenarios)
+      const absMove = Math.abs(expectedMove);
+      const holdingDays = config.holdingPeriodDays || 1;
 
-    // Print formatted result
-    console.log(service.formatRecommendation(result));
+      const dualResult = await service.analyzeDualDirection(
+        absMove,
+        holdingDays,
+        expiryDate,
+      );
 
-    // Print JSON for programmatic use
-    if (process.env.OUTPUT_JSON === 'true') {
-      console.log('\n📊 JSON Output:');
-      console.log(JSON.stringify(result, null, 2));
+      // Print formatted result
+      console.log(service.formatDualDirectionAnalysis(dualResult));
+
+      // Print JSON for programmatic use
+      if (process.env.OUTPUT_JSON === 'true') {
+        console.log('\n📊 JSON Output:');
+        console.log(JSON.stringify(dualResult, null, 2));
+      }
+    } else {
+      // Run single-direction analysis (original behavior)
+      const result = await service.selectOptimalStrike(config, expiryDate);
+
+      // Print formatted result
+      console.log(service.formatRecommendation(result));
+
+      // Print JSON for programmatic use
+      if (process.env.OUTPUT_JSON === 'true') {
+        console.log('\n📊 JSON Output:');
+        console.log(JSON.stringify(result, null, 2));
+      }
     }
 
     await app.close();
@@ -157,6 +179,7 @@ function printUsage() {
 ║                                                                           ║
 ║  OPTIONAL ENVIRONMENT VARIABLES:                                          ║
 ║  ────────────────────────────────────────────────────────────────────────║
+║  DUAL_DIRECTION=true              Analyze BOTH bullish & bearish moves    ║
 ║  HOLDING_PERIOD_DAYS=1            Days to hold (0.5 = 12 hours)           ║
 ║  OPTION_TYPE=BOTH                 CE, PE, or BOTH                         ║
 ║  MAX_RISK_PERCENT=0.05            Max capital per trade (5%)              ║
@@ -170,6 +193,10 @@ function printUsage() {
 ║                                                                           ║
 ║  EXAMPLES:                                                                ║
 ║  ────────────────────────────────────────────────────────────────────────║
+║                                                                           ║
+║  # 🔥 RECOMMENDED: Dual-direction analysis (bullish AND bearish)          ║
+║  STRIKE_SELECTOR_ENABLED=true DUAL_DIRECTION=true EXPECTED_MOVE=50 \\      ║
+║    npx ts-node src/strike-selector/select-strike.ts                       ║
 ║                                                                           ║
 ║  # Bullish view, expecting +50 point move, buy calls                      ║
 ║  STRIKE_SELECTOR_ENABLED=true EXPECTED_MOVE=50 OPTION_TYPE=CE \\           ║
@@ -198,7 +225,7 @@ function printUsage() {
   • M          = Expected market move (points)
   • T          = Holding period in days
   • P          = Premium (LTP)
-  • L          = Lot size (75 for Nifty)
+  • L          = Lot size (65 for Nifty)
   • σ (IV)     = Implied Volatility (decimal)
   • B          = Available trading balance
   • R_max      = Max risk % per trade (e.g., 0.05)

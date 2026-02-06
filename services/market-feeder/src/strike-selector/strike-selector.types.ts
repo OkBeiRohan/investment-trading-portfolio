@@ -129,6 +129,73 @@ export interface StrikeAnalysis {
 
   /** Reason if strike was filtered out */
   filterReason?: string;
+
+  // ============================================
+  // Enhanced Projections (for detailed analysis)
+  // ============================================
+
+  /** Predicted option price after expected move */
+  predictedPremium?: number;
+
+  /** Predicted price change in rupees */
+  predictedPriceChange?: number;
+
+  /** Predicted price change in percentage */
+  predictedPriceChangePct?: number;
+
+  /** Predicted profit per lot */
+  predictedProfitPerLot?: number;
+
+  /** Predicted total profit (all lots) */
+  predictedTotalProfit?: number;
+
+  /** Risk-Reward ratio */
+  riskRewardRatio?: number;
+
+  /** Breakeven point (spot price) */
+  breakevenSpot?: number;
+
+  /** Probability of profit (simplified) */
+  probabilityOfProfit?: number;
+}
+
+/** Dual-direction analysis result */
+export interface DualDirectionAnalysis {
+  timestamp: Date;
+  context: {
+    spotPrice: number;
+    vix: number;
+    availableBalance: number;
+    expiryDate: string;
+    daysToExpiry: number;
+  };
+  expectedMove: number;
+  holdingPeriodDays: number;
+
+  /** Bullish scenario: If market moves UP by expectedMove points */
+  bullishScenario: {
+    direction: 'BULLISH';
+    expectedSpot: number;
+    topCalls: StrikeAnalysis[];
+    topPuts: StrikeAnalysis[]; // For comparison/hedging
+  };
+
+  /** Bearish scenario: If market moves DOWN by expectedMove points */
+  bearishScenario: {
+    direction: 'BEARISH';
+    expectedSpot: number;
+    topPuts: StrikeAnalysis[];
+    topCalls: StrikeAnalysis[]; // For comparison/hedging
+  };
+
+  /** Summary statistics */
+  stats: {
+    totalStrikesAnalyzed: number;
+    callsAnalyzed: number;
+    putsAnalyzed: number;
+    avgCallIV: number;
+    avgPutIV: number;
+  };
 }
 
 export interface StrikeSelectorResult {

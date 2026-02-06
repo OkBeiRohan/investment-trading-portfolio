@@ -27,6 +27,7 @@ import {
   MarketContext,
   StrikeAnalysis,
   StrikeSelectorResult,
+  DualDirectionAnalysis,
   NIFTY50_LOT_SIZE,
   DEFAULT_CONFIG,
   NIFTY50_INDEX_KEY,
@@ -137,6 +138,266 @@ export class StrikeSelectorService {
     );
 
     return result;
+  }
+
+  /**
+   * Analyze both bullish and bearish scenarios
+   * Shows top 3 CE and PE strikes for each direction
+   */
+  async analyzeDualDirection(
+    expectedMove: number,
+    holdingPeriodDays: number = 1,
+    expiryDate?: string,
+  ): Promise<DualDirectionAnalysis> {
+    const startTime = Date.now();
+
+    this.logger.log(
+      `Starting dual-direction analysis - Move: ±${expectedMove} pts, Holding: ${holdingPeriodDays}d`,
+    );
+
+    // Fetch market context
+    const marketContext = await this.fetchMarketContext(expiryDate);
+    const daysToExpiry = this.calculateDaysToExpiry(marketContext.expiryDate);
+
+    // Base config for analysis
+    const baseConfig: StrikeSelectorConfig = {
+      ...DEFAULT_CONFIG,
+      holdingPeriodDays,
+      optionType: 'BOTH',
+      maxRiskPercent: 1, // Allow all strikes for comparison
+    } as StrikeSelectorConfig;
+
+    // Analyze for BULLISH scenario (+expectedMove)
+    const bullishConfig = {
+      ...baseConfig,
+      expectedMove: Math.abs(expectedMove),
+    };
+    const bullishAnalyses = this.analyzeStrikes(marketContext, bullishConfig);
+
+    // Analyze for BEARISH scenario (-expectedMove)
+    const bearishConfig = {
+      ...baseConfig,
+      expectedMove: -Math.abs(expectedMove),
+    };
+    const bearishAnalyses = this.analyzeStrikes(marketContext, bearishConfig);
+
+    // Filter and sort for bullish scenario
+    const bullishCalls = bullishAnalyses
+      .filter((s) => s.optionType === 'CE' && !s.filterReason && s.maxLots > 0)
+      .sort((a, b) => b.utilityScore - a.utilityScore)
+      .slice(0, 3);
+
+    const bullishPuts = bullishAnalyses
+      .filter((s) => s.optionType === 'PE' && !s.filterReason && s.maxLots > 0)
+      .sort((a, b) => b.utilityScore - a.utilityScore)
+      .slice(0, 3);
+
+    // Filter and sort for bearish scenario
+    const bearishPuts = bearishAnalyses
+      .filter((s) => s.optionType === 'PE' && !s.filterReason && s.maxLots > 0)
+      .sort((a, b) => b.utilityScore - a.utilityScore)
+      .slice(0, 3);
+
+    const bearishCalls = bearishAnalyses
+      .filter((s) => s.optionType === 'CE' && !s.filterReason && s.maxLots > 0)
+      .sort((a, b) => b.utilityScore - a.utilityScore)
+      .slice(0, 3);
+
+    // Assign ranks
+    bullishCalls.forEach((s, i) => (s.rank = i + 1));
+    bullishPuts.forEach((s, i) => (s.rank = i + 1));
+    bearishPuts.forEach((s, i) => (s.rank = i + 1));
+    bearishCalls.forEach((s, i) => (s.rank = i + 1));
+
+    // Calculate stats
+    const allCalls = bullishAnalyses.filter((s) => s.optionType === 'CE');
+    const allPuts = bullishAnalyses.filter((s) => s.optionType === 'PE');
+
+    const result: DualDirectionAnalysis = {
+      timestamp: new Date(),
+      context: {
+        spotPrice: marketContext.spotPrice,
+        vix: marketContext.vix,
+        availableBalance: marketContext.availableBalance,
+        expiryDate: marketContext.expiryDate,
+        daysToExpiry,
+      },
+      expectedMove: Math.abs(expectedMove),
+      holdingPeriodDays,
+      bullishScenario: {
+        direction: 'BULLISH',
+        expectedSpot: marketContext.spotPrice + Math.abs(expectedMove),
+        topCalls: bullishCalls,
+        topPuts: bullishPuts,
+      },
+      bearishScenario: {
+        direction: 'BEARISH',
+        expectedSpot: marketContext.spotPrice - Math.abs(expectedMove),
+        topPuts: bearishPuts,
+        topCalls: bearishCalls,
+      },
+      stats: {
+        totalStrikesAnalyzed: bullishAnalyses.length,
+        callsAnalyzed: allCalls.length,
+        putsAnalyzed: allPuts.length,
+        avgCallIV:
+          allCalls.length > 0
+            ? allCalls.reduce((sum, s) => sum + s.iv, 0) / allCalls.length
+            : 0,
+        avgPutIV:
+          allPuts.length > 0
+            ? allPuts.reduce((sum, s) => sum + s.iv, 0) / allPuts.length
+            : 0,
+      },
+    };
+
+    const elapsed = Date.now() - startTime;
+    this.logger.log(`Dual-direction analysis complete in ${elapsed}ms`);
+
+    return result;
+  }
+
+  /**
+   * Format dual-direction analysis as human-readable output
+   */
+  formatDualDirectionAnalysis(analysis: DualDirectionAnalysis): string {
+    const { context, bullishScenario, bearishScenario, stats } = analysis;
+
+    const formatStrike = (
+      s: StrikeAnalysis,
+      scenario: 'bullish' | 'bearish',
+    ): string[] => {
+      const profitEmoji = (s.predictedTotalProfit || 0) > 0 ? '📈' : '📉';
+      const pctChange = s.predictedPriceChangePct?.toFixed(1) || '0';
+      const arrow = (s.predictedPriceChange || 0) > 0 ? '↑' : '↓';
+
+      return [
+        `   ┌─────────────────────────────────────────────────────────`,
+        `   │ ${s.rank}. ${s.strikePrice} ${s.optionType}  ${profitEmoji}`,
+        `   ├─────────────────────────────────────────────────────────`,
+        `   │ Premium:     ₹${s.premium.toFixed(2)} → ₹${(s.predictedPremium || 0).toFixed(2)} (${arrow}${Math.abs(parseFloat(pctChange))}%)`,
+        `   │ Greeks:      Δ=${s.delta.toFixed(3)} | Γ=${s.gamma.toFixed(5)} | θ=₹${s.theta.toFixed(2)}/day | IV=${s.iv.toFixed(1)}%`,
+        `   │`,
+        `   │ 💰 PROFIT PROJECTIONS:`,
+        `   │   • Price Change:     ₹${(s.predictedPriceChange || 0).toFixed(2)} per unit`,
+        `   │   • Profit/Lot:       ₹${(s.predictedProfitPerLot || 0).toFixed(2)} (${NIFTY50_LOT_SIZE} qty)`,
+        `   │   • Max Lots:         ${s.maxLots} (Capital: ₹${s.capitalRequired.toLocaleString()})`,
+        `   │   • TOTAL PROFIT:     ₹${(s.predictedTotalProfit || 0).toFixed(2)}`,
+        `   │`,
+        `   │ 📊 RISK METRICS:`,
+        `   │   • Breakeven Spot:   ₹${(s.breakevenSpot || 0).toFixed(2)}`,
+        `   │   • Risk:Reward:      1:${(s.riskRewardRatio || 0).toFixed(2)}`,
+        `   │   • Theta Decay:      ₹${s.thetaCost.toFixed(2)} over ${analysis.holdingPeriodDays}d`,
+        `   │   • Utility Score:    ${s.utilityScore.toFixed(4)}`,
+        `   │   • OI:               ${s.openInterest.toLocaleString()} | Vol: ${s.volume.toLocaleString()}`,
+        `   └─────────────────────────────────────────────────────────`,
+      ];
+    };
+
+    const lines: string[] = [
+      '',
+      '╔═══════════════════════════════════════════════════════════════════════════╗',
+      '║           🎯 DUAL-DIRECTION STRIKE ANALYSIS (INSTITUTIONAL GRADE)          ║',
+      '╚═══════════════════════════════════════════════════════════════════════════╝',
+      '',
+      '┌─────────────────────────────────────────────────────────────────────────────',
+      '│ 📊 MARKET CONTEXT',
+      '├─────────────────────────────────────────────────────────────────────────────',
+      `│ Nifty Spot:       ₹${context.spotPrice.toFixed(2)}`,
+      `│ India VIX:        ${context.vix.toFixed(2)}%`,
+      `│ Available Capital: ₹${context.availableBalance.toLocaleString()}`,
+      `│ Expiry:           ${context.expiryDate} (${context.daysToExpiry.toFixed(1)} days)`,
+      `│ Expected Move:    ±${analysis.expectedMove} points`,
+      `│ Holding Period:   ${analysis.holdingPeriodDays} day(s)`,
+      '├─────────────────────────────────────────────────────────────────────────────',
+      `│ Strikes Analyzed: ${stats.totalStrikesAnalyzed} (${stats.callsAnalyzed} CE, ${stats.putsAnalyzed} PE)`,
+      `│ Avg CE IV:        ${stats.avgCallIV.toFixed(2)}%  |  Avg PE IV: ${stats.avgPutIV.toFixed(2)}%`,
+      '└─────────────────────────────────────────────────────────────────────────────',
+      '',
+      '',
+      '╔═══════════════════════════════════════════════════════════════════════════╗',
+      `║  📈 BULLISH SCENARIO: Nifty moves UP to ₹${bullishScenario.expectedSpot.toFixed(2)} (+${analysis.expectedMove} pts)  ║`,
+      '╚═══════════════════════════════════════════════════════════════════════════╝',
+      '',
+      '┌─ TOP 3 CALL OPTIONS (CE) ─────────────────────────────────────────────────',
+      '',
+    ];
+
+    // Add bullish calls
+    if (bullishScenario.topCalls.length > 0) {
+      bullishScenario.topCalls.forEach((s) => {
+        lines.push(...formatStrike(s, 'bullish'));
+        lines.push('');
+      });
+    } else {
+      lines.push(
+        '   ❌ No suitable CE strikes found within capital constraints',
+      );
+      lines.push('');
+    }
+
+    lines.push('');
+    lines.push(
+      '╔═══════════════════════════════════════════════════════════════════════════╗',
+    );
+    lines.push(
+      `║  📉 BEARISH SCENARIO: Nifty moves DOWN to ₹${bearishScenario.expectedSpot.toFixed(2)} (-${analysis.expectedMove} pts) ║`,
+    );
+    lines.push(
+      '╚═══════════════════════════════════════════════════════════════════════════╝',
+    );
+    lines.push('');
+    lines.push(
+      '┌─ TOP 3 PUT OPTIONS (PE) ──────────────────────────────────────────────────',
+    );
+    lines.push('');
+
+    // Add bearish puts
+    if (bearishScenario.topPuts.length > 0) {
+      bearishScenario.topPuts.forEach((s) => {
+        lines.push(...formatStrike(s, 'bearish'));
+        lines.push('');
+      });
+    } else {
+      lines.push(
+        '   ❌ No suitable PE strikes found within capital constraints',
+      );
+      lines.push('');
+    }
+
+    lines.push('');
+    lines.push(
+      '┌─────────────────────────────────────────────────────────────────────────────',
+    );
+    lines.push('│ 📋 QUICK COMPARISON');
+    lines.push(
+      '├─────────────────────────────────────────────────────────────────────────────',
+    );
+
+    const bestBullish = bullishScenario.topCalls[0];
+    const bestBearish = bearishScenario.topPuts[0];
+
+    if (bestBullish) {
+      lines.push(
+        `│ Best BULLISH: ${bestBullish.strikePrice} CE @ ₹${bestBullish.premium.toFixed(2)} → Profit: ₹${(bestBullish.predictedTotalProfit || 0).toFixed(2)} (${bestBullish.maxLots} lots)`,
+      );
+    }
+    if (bestBearish) {
+      lines.push(
+        `│ Best BEARISH: ${bestBearish.strikePrice} PE @ ₹${bestBearish.premium.toFixed(2)} → Profit: ₹${(bestBearish.predictedTotalProfit || 0).toFixed(2)} (${bestBearish.maxLots} lots)`,
+      );
+    }
+
+    lines.push(
+      '└─────────────────────────────────────────────────────────────────────────────',
+    );
+    lines.push('');
+    lines.push(
+      '═══════════════════════════════════════════════════════════════════════════════',
+    );
+    lines.push('');
+
+    return lines.join('\n');
   }
 
   /**
@@ -426,6 +687,40 @@ export class StrikeSelectorService {
       utilityScore *= 0.1; // Heavy penalty for wrong direction
     }
 
+    // ============================================
+    // Enhanced Predictions
+    // ============================================
+
+    // Predicted premium after move = current premium + (delta × move) + (0.5 × gamma × move²) - (theta × days)
+    const predictedPriceChange = deltaAdjustedMove + gammaBonus - thetaCost;
+    const predictedPremium = Math.max(0, premium + predictedPriceChange);
+    const predictedPriceChangePct =
+      premium > 0 ? (predictedPriceChange / premium) * 100 : 0;
+
+    // Predicted profit per lot
+    const predictedProfitPerLot = predictedPriceChange * NIFTY50_LOT_SIZE;
+
+    // Predicted total profit (using max lots)
+    const predictedTotalProfit = predictedProfitPerLot * maxLots;
+
+    // Risk-Reward ratio (potential gain vs premium paid)
+    const riskRewardRatio =
+      premium > 0 ? Math.abs(predictedPriceChange) / premium : 0;
+
+    // Breakeven point calculation
+    let breakevenSpot: number;
+    if (optionType === 'CE') {
+      // CE breakeven = strike + premium
+      breakevenSpot = strikeData.strike_price + premium;
+    } else {
+      // PE breakeven = strike - premium
+      breakevenSpot = strikeData.strike_price - premium;
+    }
+
+    // Simplified probability of profit (based on delta and moneyness)
+    // Delta roughly approximates probability of expiring ITM
+    const probabilityOfProfit = Math.min(100, Math.max(0, adjustedDelta * 100));
+
     // Create analysis object
     const analysis: StrikeAnalysis = {
       strikePrice: strikeData.strike_price,
@@ -454,6 +749,15 @@ export class StrikeSelectorService {
       capitalPreservationFactor,
       utilityScore,
       rank: 0, // Will be assigned after sorting
+      // Enhanced predictions
+      predictedPremium,
+      predictedPriceChange,
+      predictedPriceChangePct,
+      predictedProfitPerLot,
+      predictedTotalProfit,
+      riskRewardRatio,
+      breakevenSpot,
+      probabilityOfProfit,
     };
 
     // Apply filters
