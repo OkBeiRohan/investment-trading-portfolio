@@ -202,7 +202,6 @@ function printUsage() {
   • σ (IV)     = Implied Volatility (decimal)
   • B          = Available trading balance
   • R_max      = Max risk % per trade (e.g., 0.05)
-  • Balance    = Available trading balance
 
 `);
 }
