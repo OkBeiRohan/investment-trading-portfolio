@@ -35,7 +35,7 @@
     "@repo/schema": "workspace:*",
     "bullmq": "^5.67.3",
     "ioredis": "^5.9.2",
-    "onnxruntime-node": "^1.23.2",
+    "onnxruntime-node": "^1.24.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
