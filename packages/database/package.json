@@ -26,15 +26,15 @@
     "@nestjs/mongoose": "^11.0.4",
     "@questdb/nodejs-client": "^4.2.0",
     "@repo/schema": "workspace:*",
-    "ioredis": "^5.9.2",
-    "mongoose": "^9.1.6",
+    "ioredis": "^5.9.3",
+    "mongoose": "^9.2.1",
     "pg": "^8.18.0",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@types/node": "^25.2.1",
+    "@types/node": "^25.2.3",
     "@types/pg": "^8.16.0",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
