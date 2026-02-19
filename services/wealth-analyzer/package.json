@@ -22,7 +22,7 @@
   "dependencies": {
     "@nestjs/common": "^11.1.13",
     "@nestjs/core": "^11.1.13",
-    "@nestjs/microservices": "^11.1.13",
+    "@nestjs/microservices": "^11.1.14",
     "@nestjs/platform-express": "^11.1.13",
     "@repo/observability": "workspace:*",
     "reflect-metadata": "^0.2.2",
