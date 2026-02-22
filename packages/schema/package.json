@@ -52,7 +52,7 @@
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "eslint": "^10.0.0",
+    "eslint": "^10.0.1",
     "tsx": "^4.21.0",
     "zod-to-json-schema": "^3.25.1"
   }
