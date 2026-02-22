@@ -22,9 +22,9 @@
   "dependencies": {
     "@better-auth/core": "^1.4.18",
     "@better-auth/passkey": "^1.4.18",
-    "@nestjs/common": "^11.1.13",
+    "@nestjs/common": "^11.1.14",
     "@nestjs/config": "^4.0.3",
-    "@nestjs/core": "^11.1.13",
+    "@nestjs/core": "^11.1.14",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "@thallesp/nestjs-better-auth": "^2.4.0",
