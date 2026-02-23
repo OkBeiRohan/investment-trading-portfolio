@@ -20,7 +20,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@better-auth/core": "^1.4.18",
+    "@better-auth/core": "^1.4.19",
     "@better-auth/passkey": "^1.4.18",
     "@nestjs/common": "^11.1.13",
     "@nestjs/config": "^4.0.3",
