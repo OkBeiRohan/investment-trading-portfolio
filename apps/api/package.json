@@ -27,7 +27,7 @@
     "@nestjs/devtools-integration": "^0.2.1",
     "@nestjs/mapped-types": "*",
     "@nestjs/microservices": "^11.1.13",
-    "@nestjs/platform-express": "^11.1.13",
+    "@nestjs/platform-express": "^11.1.14",
     "@repo/authentication": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
