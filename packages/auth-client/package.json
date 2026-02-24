@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "better-auth": "^1.4.18",
-    "@better-auth/passkey": "^1.4.18"
+    "@better-auth/passkey": "^1.4.19"
   },
   "peerDependencies": {
     "next": ">=14.0.0",
