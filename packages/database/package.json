@@ -27,7 +27,7 @@
     "@questdb/nodejs-client": "^4.2.0",
     "@repo/schema": "workspace:*",
     "ioredis": "^5.9.3",
-    "mongoose": "^9.2.1",
+    "mongoose": "^9.2.2",
     "pg": "^8.18.0",
     "rxjs": "^7.8.2"
   },
