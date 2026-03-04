@@ -22,7 +22,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.13",
+    "@nestjs/common": "^11.1.15",
     "@nestjs/mongoose": "^11.0.4",
     "@questdb/nodejs-client": "^4.2.0",
     "@repo/schema": "workspace:*",
