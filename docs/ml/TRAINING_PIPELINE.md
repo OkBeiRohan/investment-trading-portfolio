@@ -1,17 +1,17 @@
 # Training Pipeline Architecture
 
-> **Comprehensive training infrastructure for multi-horizon prediction models with CPCV validation.**
+> **Comprehensive training infrastructure for 5-tier hierarchical prediction models with CPCV validation.**
 
 ---
 
 ## Overview
 
-The training pipeline uses **Kedro** for orchestration and implements:
+The training pipeline uses a **standard Python pipeline** (no Kedro required) and implements:
 - **CPCV (Combinatorial Purged Cross-Validation)** for robust model evaluation
 - **Multi-horizon label generation** for hierarchical predictions
-- **Feature store integration** with Feast + Redis
-- **Model registry** with versioning and rollback
-- **ONNX export** for production inference
+- **Direct Redis writes** for the online feature store (no Feast)
+- **MLflow model registry** with versioning and rollback
+- **ONNX export** for production inference (PyTorch models only; LightGBM uses native inference)
 
 ---
 
@@ -28,7 +28,7 @@ The training pipeline uses **Kedro** for orchestration and implements:
 │                              ↓                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ 2. FEATURE ENGINEERING                                    │  │
-│  │    Raw Data → 50+ Features → Feature Store (Feast)       │  │
+│  │    Raw Data → 100+ Features → Redis Feature Store        │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                              ↓                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -43,7 +43,7 @@ The training pipeline uses **Kedro** for orchestration and implements:
 │                              ↓                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ 5. MODEL TRAINING                                         │  │
-│  │    Parallel training of all Tier 1 models                │  │
+│  │    Tier 0-3 models + Meta-Learner (Tier 4)              │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                              ↓                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │

@@ -1,7 +1,7 @@
 # Training Strategy: In-Depth Validation & Deployment Guide
 
-**Last Updated**: January 18, 2026  
-**Architecture Version**: 2026 Institutional-Grade  
+**Last Updated**: March 11, 2026  
+**Architecture Version**: 2026 5-Tier Data-Bound Hierarchical  
 **Status**: Production Ready
 
 ---
@@ -14,7 +14,7 @@
 4. [Walk-Forward Validation](#walk-forward-validation)
 5. [Label Generation](#label-generation)
 6. [Model Training Configuration](#model-training-configuration)
-7. [Kedro Pipeline](#kedro-pipeline)
+7. [Training Pipeline](#training-pipeline)
 8. [ONNX Export](#onnx-export)
 9. [Backtesting Framework](#backtesting-framework)
 10. [Model Update Strategy](#model-update-strategy)
@@ -41,7 +41,7 @@ The training strategy is designed for **financial time-series** with specific ch
 │                                                                              │
 │  RAW DATA (4 years: 2022-2026)                                              │
 │  ├── ~1,000,000 1-minute candles                                            │
-│  ├── 54 computed features                                                   │
+│  ├── 100+ computed features                                                 │
 │  └── Multi-horizon labels (5m, 15m, 30m)                                    │
 │                                                                              │
 │  SPLIT STRATEGY                                                              │
@@ -563,13 +563,13 @@ regime_hmm:
 
 ---
 
-## Kedro Pipeline
+## Training Pipeline
 
 ### Pipeline Structure
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ KEDRO TRAINING PIPELINE DAG                                                 │
+│ TRAINING PIPELINE DAG                                                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌───────────────┐                                                          │

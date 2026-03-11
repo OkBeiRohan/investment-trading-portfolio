@@ -1,6 +1,15 @@
 # Feature Store Architecture
 
-> **Feast + Redis feature store for consistent training and serving.**
+> **Direct Redis feature store for consistent training and serving.**
+
+**Last Updated**: March 11, 2026  
+**Architecture**: 5-Tier Data-Bound Hierarchical
+
+> [!IMPORTANT]
+> **Architecture Decision**: Feast was evaluated and deemed overkill for our use case.
+> We use **direct Redis writes** from the compute-engine and Python pipeline.
+> The code examples below illustrate the feature computation and Redis serving patterns.
+> Feast-specific code is preserved for reference only.
 
 ---
 
@@ -8,9 +17,9 @@
 
 The feature store ensures **training-serving consistency** by providing a single source of truth for all ML features. It uses:
 
-- **Feast**: Open-source feature store for feature management
-- **Redis**: Online store for sub-millisecond serving latency
-- **QuestDB**: Offline store for historical feature retrieval
+- **Direct Redis writes**: Online store for sub-millisecond serving latency (no Feast overhead)
+- **QuestDB**: Offline store via `instrument_features` table for historical feature retrieval
+- **100+ features**: Computed by Rust compute-engine (real-time) and Python pipeline (batch)
 
 ---
 

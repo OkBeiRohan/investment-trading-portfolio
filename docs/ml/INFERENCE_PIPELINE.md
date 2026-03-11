@@ -2,13 +2,14 @@
 
 > **Production-grade ML inference in NestJS using ONNX Runtime with GPU acceleration.**
 
-**Last Updated**: January 18, 2026
+**Last Updated**: March 11, 2026  
+**Architecture**: 5-Tier Data-Bound Hierarchical
 
 ---
 
 ## Overview
 
-This document describes how trained models from the **Python/Kedro training pipeline** are deployed for **real-time inference in NestJS** using ONNX Runtime.
+This document describes how trained models from the **Python training pipeline** are deployed for **real-time inference in NestJS** using ONNX Runtime.
 
 ### Why ONNX?
 

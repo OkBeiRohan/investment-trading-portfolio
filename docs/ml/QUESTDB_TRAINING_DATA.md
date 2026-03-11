@@ -2,9 +2,14 @@
 
 > **Complete schema for 26 years of historical data (2000-2026) plus tick-by-tick depth for ML training.**
 
-**Last Updated**: January 18, 2026  
-**Status**: Production Schema  
-**Purpose**: **ONLY for training models. Not for live inference.**
+**Last Updated**: March 11, 2026  
+**Status**: Production Schema (8 tables)  
+**Purpose**: **Training data storage + live feature persistence**
+
+> [!NOTE]
+> The unified schema uses `market_candles` (not `historical_ohlcv`) and `instrument_features`
+> (not `training_features_54`). See the actual SQL DDL in `packages/schema/sql/schema/`.
+> The `macro_sentiment` table was added for news/sentiment data.
 
 ---
 
@@ -12,11 +17,14 @@
 
 QuestDB stores:
 
-1. **Historical OHLCV Data**: Jan 2000 - Present (26+ years)
-2. **Tick-by-Tick Data**: Real-time from Upstox WebSocket (2024+)
-3. **Market Depth (LOB)**: 20-level order book snapshots
-4. **Pre-Computed Features**: 54 features for training
-5. **Training Labels**: Multi-horizon targets with validity flags
+1. **Historical OHLCV Data**: Jan 2000 - Present (26+ years) → `market_candles` table
+2. **Tick-by-Tick Data**: Real-time from Upstox WebSocket (2024+) → `tick_data` table
+3. **Market Depth (LOB)**: 30-level order book in tick_data (Depth-30 Plus)
+4. **Pre-Computed Features**: 100+ features → `instrument_features` table
+5. **Training Labels**: Multi-horizon targets → `training_labels` table
+6. **Option Chain**: Greeks + IV snapshots → `option_chain_snapshot` table
+7. **Macro Sentiment**: NLP news data → `macro_sentiment` table (NEW)
+8. **Instrument Registry**: Metadata → `instrument_master` table
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -538,6 +546,6 @@ def get_training_data(
 
 ## Related Documentation
 
-- [FEATURE_SPECIFICATION.md](./FEATURE_SPECIFICATION.md) - 54 feature definitions
-- [TRAINING_PIPELINE.md](./TRAINING_PIPELINE.md) - Kedro training orchestration
+- [FEATURE_SPECIFICATION.md](./FEATURE_SPECIFICATION.md) - 100+ feature definitions
+- [TRAINING_PIPELINE.md](./TRAINING_PIPELINE.md) - Python training pipeline
 - [compute-engine README](../../packages/compute-engine/README.md) - Rust feature computation
