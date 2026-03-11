@@ -22,20 +22,20 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.13",
+    "@nestjs/common": "^11.1.16",
     "@nestjs/mongoose": "^11.0.4",
     "@questdb/nodejs-client": "^4.2.0",
     "@repo/schema": "workspace:*",
-    "ioredis": "^5.9.3",
-    "mongoose": "^9.2.1",
-    "pg": "^8.18.0",
+    "ioredis": "^5.10.0",
+    "mongoose": "^9.3.0",
+    "pg": "^8.20.0",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@types/node": "^25.2.3",
-    "@types/pg": "^8.16.0",
+    "@types/node": "^25.4.0",
+    "@types/pg": "^8.18.0",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "typescript": "5.9.3"

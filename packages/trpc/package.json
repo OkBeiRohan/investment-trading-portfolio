@@ -16,17 +16,17 @@
     "@repo/auth-client": "workspace:*",
     "@repo/schema": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
-    "@trpc/client": "^11.10.0",
-    "@trpc/react-query": "^11.10.0",
-    "@trpc/server": "^11.10.0",
-    "@trpc/tanstack-react-query": "^11.10.0",
+    "@trpc/client": "^11.12.0",
+    "@trpc/react-query": "^11.12.0",
+    "@trpc/server": "^11.12.0",
+    "@trpc/tanstack-react-query": "^11.12.0",
     "superjson": "^2.2.6",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@types/node": "^25.2.3",
+    "@types/node": "^25.4.0",
     "@types/react": "^19.2.14",
     "react": "^19.2.4",
     "typescript": "5.9.3"
