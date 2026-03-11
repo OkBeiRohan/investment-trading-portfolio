@@ -81,6 +81,87 @@ xgboost:
   min_child_weight: 1
   early_stopping_rounds: 20
 
+tier0:
+  target: "actualGapPct"
+  features:
+    - "giftNiftyPremium"
+    - "sp500OvernightReturn"
+    - "nasdaqOvernightReturn"
+    - "nikkeiReturn"
+    - "ftseReturn"
+    - "brentCrudeChange"
+    - "wtiCrudeChange"
+    - "goldChange"
+    - "usdInrChange"
+    - "us10yYieldChange"
+  xgboost:
+    objective: "reg:squarederror"
+    eval_metric: "rmse"
+    max_depth: 4
+    learning_rate: 0.05
+    n_estimators: 200
+
+tier1:
+  features:
+    - "return1d"
+    - "rangeHl"
+    - "macd"
+    - "rsi14"
+    - "realizedVol20d"
+    - "indiaVix"
+    - "sma50"
+    - "sma200"
+  hmm:
+    n_components: 4
+    covariance_type: "full"
+    n_iter: 200
+  patchtst:
+    sequence_length: 60
+    patch_length: 5
+    epochs: 10
+    batch_size: 64
+    learning_rate: 0.001
+    forecast_horizon: 5
+
+tier2:
+  dataset_name: "nse_index_nifty_50_cpcv_25folds"
+  instrument_key: "NSE_INDEX|Nifty 50"
+  lightgbm:
+    objective: "binary"
+    metric: "auc"
+    boosting_type: "gbdt"
+    num_leaves: 31
+    learning_rate: 0.01
+    feature_fraction: 0.8
+    bagging_fraction: 0.8
+    bagging_freq: 5
+    max_depth: 6
+    min_data_in_leaf: 20
+    num_boost_round: 500
+    early_stopping_rounds: 30
+    verbose: -1
+
+tier3:
+  features:
+    - "bidAskSpreadBps"
+    - "depthImbalance5"
+    - "ofi1s"
+    - "ofi5s"
+    - "tradeImbalance"
+  lit:
+    sequence_length: 20
+    epochs: 5
+    batch_size: 256
+    learning_rate: 0.005
+    forecast_horizon: 1
+
+meta:
+  epochs: 20
+  batch_size: 128
+  learning_rate: 0.001
+  num_regimes: 4
+  volatile_regime_idx: 3
+
 # Model export
 export:
   output_dir: "data/06_models"
