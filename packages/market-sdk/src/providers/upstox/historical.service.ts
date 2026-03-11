@@ -148,7 +148,7 @@ export class UpstoxHistoricalService {
     });
 
     // Normalize to QuestDB schema
-    const normalizedCandles: ICandleInsert[] = rawCandles.map((candle) => ({
+    const normalizedCandles: ICandleInsert[] = rawCandles.map((candle: any[]) => ({
       timestamp: new Date(candle[0]),
       instrument_key: request.instrument_key,
       interval: `${request.interval}${request.unit.charAt(0)}`, // e.g., '5m', '1h', '1d'
@@ -198,7 +198,7 @@ export class UpstoxHistoricalService {
       unit,
     });
 
-    return rawCandles.map((candle) => ({
+    return rawCandles.map((candle: any[]) => ({
       timestamp: new Date(candle[0]),
       instrument_key,
       interval: `${interval}${unit.charAt(0)}`,
