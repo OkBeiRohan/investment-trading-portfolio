@@ -170,7 +170,7 @@ export class GlobalDataService {
     candles: YahooCandle[],
   ): Promise<void> {
     const marketCandles = candles.map((c) => ({
-      timestamp: c.timestamp.toISOString(),
+      timestamp: c.timestamp,
       instrumentKey,
       intervalValue: 1,
       intervalUnit: 'day' as const,

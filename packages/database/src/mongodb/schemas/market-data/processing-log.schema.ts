@@ -31,10 +31,10 @@ export class ProcessingLog {
    */
   @Prop({
     required: true,
-    enum: ["FETCH", "COMPUTE", "TRAIN", "TRADE", "SYSTEM"],
+    enum: ["FETCH", "COMPUTE", "TRAIN", "TRADE", "SYSTEM", "CRON"],
     index: true,
   })
-  category!: "FETCH" | "COMPUTE" | "TRAIN" | "TRADE" | "SYSTEM";
+  category!: "FETCH" | "COMPUTE" | "TRAIN" | "TRADE" | "SYSTEM" | "CRON";
 
   /**
    * Log level

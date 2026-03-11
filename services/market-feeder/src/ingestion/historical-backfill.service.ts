@@ -409,7 +409,7 @@ export class HistoricalBackfillService {
     intervalUnit: 'day' | 'minute',
   ): Promise<void> {
     const marketCandles = candles.map((c) => ({
-      timestamp: new Date(c.timestamp).toISOString(),
+      timestamp: new Date(c.timestamp),
       instrumentKey,
       intervalValue,
       intervalUnit,

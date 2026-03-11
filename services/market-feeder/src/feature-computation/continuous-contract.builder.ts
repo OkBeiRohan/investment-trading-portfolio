@@ -117,7 +117,7 @@ export class ContinuousContractBuilder {
         inst.instrumentType === 'FUTURE' &&
         inst.segment === 'FO' &&
         inst.underlyingKey === underlyingKey &&
-        inst.expiry !== null &&
+        !!inst.expiry &&
         inst.expiry >= startTime, // Include contracts that were active during our time range
     );
 

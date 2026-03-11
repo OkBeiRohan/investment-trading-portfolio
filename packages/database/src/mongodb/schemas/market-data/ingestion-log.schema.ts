@@ -17,7 +17,10 @@ export class IngestionLog extends Document {
     | "FETCH_MINUTE"
     | "FETCH_TICK"
     | "FETCH_EXPIRED_FUTURE"
-    | "FETCH_EXPIRED_OPTION";
+    | "FETCH_EXPIRED_OPTION"
+    | "BACKFILL_ALL"
+    | "INSTRUMENT_SYNC"
+    | "PRE_MARKET_GLOBAL";
 
   @Prop({ type: Object, required: true })
   requestedRange: {

@@ -528,8 +528,8 @@ export class UpstoxClient {
           high: c.high,
           low: c.low,
           close: c.close,
-          volume: c.volume,
-          openInterest: c.open_interest || null,
+          volume: c.volume || 0,
+          openInterest: c.open_interest || 0,
         }));
 
         const CHUNK_SIZE = 5000;
@@ -656,8 +656,8 @@ export class UpstoxClient {
           high: c.high,
           low: c.low,
           close: c.close,
-          volume: c.volume,
-          openInterest: c.open_interest || null,
+          volume: c.volume || 0,
+          openInterest: c.open_interest || 0,
         }));
 
         // Insert in chunks to avoid connection timeout
