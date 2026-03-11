@@ -28,6 +28,7 @@ dependencies = [
     "onnxmltools>=1.12.0",
     "vectorbt>=0.24.5",
     "empyrical-reloaded>=0.5.7",
+    "transformers>=4.40.0",
 ]
 
 [project.scripts]
