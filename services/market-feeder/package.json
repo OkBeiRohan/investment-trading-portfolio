@@ -41,7 +41,9 @@
     "@repo/observability": "workspace:*",
     "@repo/schema": "workspace:*",
     "axios": "^1.13.6",
+    "duckdb-async": "^1.4.2",
     "ioredis": "^5.10.0",
+    "pg-query-stream": "^4.14.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },

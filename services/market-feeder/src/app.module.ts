@@ -10,6 +10,7 @@ import { IngestionModule } from './ingestion/ingestion.module';
 import configuration from './config/configuration';
 import { FeatureComputationModule } from './feature-computation/feature-computation.module';
 import { StrikeSelectorModule } from './strike-selector/strike-selector.module';
+import { DatasetGenerationModule } from './dataset-generation/dataset-generation.module';
 
 @Module({
   imports: [
@@ -58,6 +59,12 @@ import { StrikeSelectorModule } from './strike-selector/strike-selector.module';
     ConditionalModule.registerWhen(
       StrikeSelectorModule,
       'STRIKE_SELECTOR_ENABLED',
+    ),
+
+    // Dataset Generation (Feature export to Parquet files via CPCV splits)
+    ConditionalModule.registerWhen(
+      DatasetGenerationModule,
+      'DATASET_GENERATION_ENABLED',
     ),
   ],
   controllers: [AppController],
