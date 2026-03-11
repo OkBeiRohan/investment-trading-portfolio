@@ -6,6 +6,7 @@ import { ComputeEngineService } from './compute-engine.service';
 import { ComputeEngineAdapter } from './compute-engine.adapter';
 import { ConstituentManagerService } from './constituent-manager.service';
 import { ContinuousContractBuilder } from './continuous-contract.builder';
+import { RealtimeFeaturesService } from './realtime-features.service';
 
 /**
  * Feature Computation Module
@@ -27,6 +28,7 @@ import { ContinuousContractBuilder } from './continuous-contract.builder';
     ComputeEngineAdapter,
     ConstituentManagerService,
     ContinuousContractBuilder,
+    RealtimeFeaturesService,
   ],
   exports: [FeatureComputationService],
 })

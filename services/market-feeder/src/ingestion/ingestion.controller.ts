@@ -7,6 +7,7 @@ import { Controller, Post, Get, Query, Logger } from '@nestjs/common';
 import { InstrumentSyncService } from './instrument-sync.service';
 import { HistoricalBackfillService } from './historical-backfill.service';
 import { GlobalDataService } from './global-data.service';
+import { LiveDataService } from './live-data.service';
 
 @Controller('ingestion')
 export class IngestionController {
@@ -16,6 +17,7 @@ export class IngestionController {
     private readonly instrumentSync: InstrumentSyncService,
     private readonly historicalBackfill: HistoricalBackfillService,
     private readonly globalData: GlobalDataService,
+    private readonly liveData: LiveDataService,
   ) {}
 
   /**
@@ -111,6 +113,24 @@ export class IngestionController {
   }
 
   /**
+   * Start Live Tick Data Ingestion
+   */
+  @Post('live/start')
+  async startLive() {
+    await this.liveData.startLiveIngestion();
+    return { success: true, message: 'Live data ingestion started' };
+  }
+
+  /**
+   * Stop Live Tick Data Ingestion
+   */
+  @Post('live/stop')
+  async stopLive() {
+    await this.liveData.stopLiveIngestion();
+    return { success: true, message: 'Live data ingestion stopped' };
+  }
+
+  /**
    * Health check
    */
   @Get('health')
@@ -127,6 +147,8 @@ export class IngestionController {
         backfillInstrument: 'POST /ingestion/backfill-instrument',
         globalData: 'POST /ingestion/global-data',
         overnightData: 'POST /ingestion/overnight-data',
+        startLive: 'POST /ingestion/live/start',
+        stopLive: 'POST /ingestion/live/stop',
       },
       cronJobs: {
         nightlyBackfill: '12:00 AM IST (Mon-Fri)',

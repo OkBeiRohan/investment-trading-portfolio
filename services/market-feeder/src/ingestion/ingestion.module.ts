@@ -15,6 +15,8 @@ import {
   FinnhubProvider,
   UpstoxHistoricalAPIService,
   HistoricalApiRepository,
+  WebSocketModule,
+  UpstoxModule,
 } from '@repo/market-sdk';
 
 // Services
@@ -23,6 +25,7 @@ import { InstrumentSyncService } from './instrument-sync.service';
 import { HistoricalBackfillService } from './historical-backfill.service';
 import { GlobalDataService } from './global-data.service';
 import { SchedulerService } from './scheduler.service';
+import { LiveDataService } from './live-data.service';
 
 // Controller
 import { IngestionController } from './ingestion.controller';
@@ -31,6 +34,8 @@ import { IngestionController } from './ingestion.controller';
   imports: [
     HttpModule,
     DatabaseModule.forMarketFeeder(),
+    WebSocketModule,
+    UpstoxModule,
   ],
   controllers: [IngestionController],
   providers: [
@@ -49,12 +54,14 @@ import { IngestionController } from './ingestion.controller';
     HistoricalBackfillService,
     GlobalDataService,
     SchedulerService,
+    LiveDataService,
   ],
   exports: [
     InstrumentSyncService,
     HistoricalBackfillService,
     GlobalDataService,
     GapDetectorService,
+    LiveDataService,
   ],
 })
 export class IngestionModule {}
