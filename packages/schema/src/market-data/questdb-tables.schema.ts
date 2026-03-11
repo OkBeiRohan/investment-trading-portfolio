@@ -308,3 +308,59 @@ export const TrainingLabelsSchema = z.object({
 export type TrainingLabels = z.infer<typeof TrainingLabelsSchema>;
 
 // ============================================
+// TABLE 1: instrument_master
+// QuestDB instrument registry
+// ============================================
+
+export const InstrumentMasterSchema = z.object({
+  instrumentKey: z.string(),
+  exchange: z.string(),
+  segment: z.string(),
+  instrumentType: z.string(),
+  tradingsymbol: z.string(),
+  name: z.string(),
+  expiry: z.date().nullable().optional(),
+  strike: z.number().nullable().optional(),
+  optionType: z.string().nullable().optional(),
+  lotSize: z.number(),
+  tickSize: z.number(),
+  underlyingKey: z.string().nullable().optional(),
+  isExpired: z.boolean(),
+  lastUpdated: z.date(),
+  // Extended fields
+  isin: z.string().nullable().optional(),
+  exchangeToken: z.string().nullable().optional(),
+  underlyingSymbol: z.string().nullable().optional(),
+  underlyingType: z.string().nullable().optional(),
+  freezeQuantity: z.number().nullable().optional(),
+  minimumLot: z.number().nullable().optional(),
+  weekly: z.boolean().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export type InstrumentMaster = z.infer<typeof InstrumentMasterSchema>;
+
+// ============================================
+// TABLE 2: market_candles
+// QuestDB OHLCV with interval-based storage
+// ============================================
+
+export const MarketCandleSchema = z.object({
+  timestamp: z.union([z.date(), z.string()]).transform((v) =>
+    typeof v === "string" ? new Date(v) : v
+  ),
+  instrumentKey: z.string(),
+  intervalValue: z.number().int(),
+  intervalUnit: z.enum(["second", "minute", "hour", "day", "week", "month"]),
+  open: z.number(),
+  high: z.number(),
+  low: z.number(),
+  close: z.number(),
+  volume: z.number(),
+  openInterest: z.number().nullable().optional(),
+});
+
+export type MarketCandle = z.infer<typeof MarketCandleSchema>;
+
+// ============================================
+
