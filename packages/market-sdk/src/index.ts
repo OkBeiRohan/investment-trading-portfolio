@@ -65,6 +65,7 @@ export type { HeartbeatConfig } from "./websocket/heartbeat.service";
 export { UpstoxProvider } from "./providers/upstox/upstox.provider";
 export { UpstoxModule } from "./providers/upstox/upstox.module";
 export { UpstoxWebSocketService } from "./providers/upstox/websocket/upstox-websocket.service";
+export { UpstoxWebSocketModule } from "./providers/upstox/websocket/upstox-websocket.module";
 export type { UpstoxMarketData } from "./providers/upstox/websocket/upstox-websocket.service";
 export { UpstoxHistoricalService } from "./providers/upstox/historical.service";
 export { UpstoxHistoricalAPIService } from "./providers/upstox/api/historical/historical.service";

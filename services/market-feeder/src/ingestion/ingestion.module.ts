@@ -17,6 +17,7 @@ import {
   HistoricalApiRepository,
   WebSocketModule,
   UpstoxModule,
+  UpstoxWebSocketModule,
 } from '@repo/market-sdk';
 
 // Services
@@ -36,6 +37,7 @@ import { IngestionController } from './ingestion.controller';
     DatabaseModule.forMarketFeeder(),
     WebSocketModule,
     UpstoxModule,
+    UpstoxWebSocketModule,
   ],
   controllers: [IngestionController],
   providers: [
