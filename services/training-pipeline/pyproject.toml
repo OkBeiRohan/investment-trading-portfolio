@@ -26,6 +26,8 @@ dependencies = [
     "torch>=2.4.0",
     "onnx>=1.15.0",
     "onnxmltools>=1.12.0",
+    "vectorbt>=0.24.5",
+    "empyrical-reloaded>=0.5.7",
 ]
 
 [project.scripts]

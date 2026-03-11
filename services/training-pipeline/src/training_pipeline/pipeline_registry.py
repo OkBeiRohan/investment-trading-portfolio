@@ -17,6 +17,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     from .pipelines import train_tier3 as t3
     from .pipelines import train_meta as tm
     from .pipelines import onnx_export as ox
+    from .pipelines import evaluate_strategy as es
 
     pipelines = find_pipelines()
     pipelines["train_ensemble"] = te.create_pipeline()
@@ -26,6 +27,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     pipelines["train_tier3"] = t3.create_pipeline()
     pipelines["train_meta"] = tm.create_pipeline()
     pipelines["onnx_export"] = ox.create_pipeline()
+    pipelines["evaluate_strategy"] = es.create_pipeline()
     pipelines["__default__"] = Pipeline(
         [node for pipeline in pipelines.values() for node in pipeline.nodes]
     )

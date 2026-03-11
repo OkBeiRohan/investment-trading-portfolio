@@ -162,6 +162,12 @@ meta:
   num_regimes: 4
   volatile_regime_idx: 3
 
+evaluation:
+  initial_capital: 100000  # Example: 1 Lakh INR
+  fees: 0.0004            # 4 bps (Upstox estimate + taxes/STT)
+  slippage: 0.0001        # 1 bps slippage expectation
+  prob_threshold: 0.65    # Required ML confidence to enter a trade
+
 # Model export
 export:
   output_dir: "data/06_models"
