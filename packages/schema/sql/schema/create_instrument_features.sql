@@ -131,6 +131,32 @@ CREATE TABLE IF NOT EXISTS instrument_features (
   is_month_end BOOLEAN,
   is_quarter_end BOOLEAN,
   
+  -- ========== CYCLICAL TIME ENCODING (4) ==========
+  time_sin DOUBLE,                          -- sin(2π × minutes_from_open / 375)
+  time_cos DOUBLE,                          -- cos(2π × minutes_from_open / 375)
+  day_of_week_sin DOUBLE,                   -- sin(2π × day_of_week / 5)
+  day_of_week_cos DOUBLE,                   -- cos(2π × day_of_week / 5)
+  
+  -- ========== GLOBAL MACRO (12) ==========
+  gift_nifty_premium DOUBLE,                -- GIFT Nifty LTP - prev NIFTY close
+  sp500_overnight_return DOUBLE,            -- S&P 500 E-mini overnight %
+  nasdaq_overnight_return DOUBLE,           -- Nasdaq 100 E-mini overnight %
+  nikkei_return DOUBLE,                     -- Nikkei 225 session return %
+  ftse_return DOUBLE,                       -- FTSE 100 session return %
+  brent_crude_change DOUBLE,                -- Brent crude overnight % change
+  wti_crude_change DOUBLE,                  -- WTI crude overnight % change
+  brent_wti_spread DOUBLE,                  -- Brent - WTI price spread
+  gold_change DOUBLE,                       -- Gold overnight % change
+  silver_change DOUBLE,                     -- Silver overnight % change
+  usd_inr_change DOUBLE,                   -- USD/INR overnight % change
+  us_10y_yield_change DOUBLE,              -- US 10Y Treasury yield change
+  
+  -- ========== PRE-MARKET (4) ==========
+  actual_gap_pct DOUBLE,                    -- (9:08 price - prev close) / prev close
+  expected_opening_volatility DOUBLE,       -- Tier 0 model output
+  pre_market_bias DOUBLE,                   -- -1 to 1 directional bias
+  overnight_news_sentiment DOUBLE,          -- Aggregated overnight sentiment
+  
   -- ========== VALIDITY FLAGS ==========
   is_valid BOOLEAN,
   invalid_reason STRING,
@@ -142,3 +168,4 @@ CREATE TABLE IF NOT EXISTS instrument_features (
   
 ) TIMESTAMP(timestamp) PARTITION BY MONTH WAL
 DEDUP UPSERT KEYS(timestamp, instrument_key, interval_value, interval_unit);
+
