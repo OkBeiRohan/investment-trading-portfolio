@@ -4,7 +4,6 @@ import { ConfigModule } from '@nestjs/config';
 
 import { DataQualityService } from './data-quality.service';
 import { CpcvSplitter } from './cpcv-splitter.service';
-import { ParquetExportService } from './parquet-export.service';
 import { DatasetGenerationService } from './dataset-generation.service';
 import { DatasetController } from './dataset.controller';
 
@@ -24,7 +23,6 @@ import { DatasetController } from './dataset.controller';
   providers: [
     DataQualityService,
     CpcvSplitter,
-    ParquetExportService,
     DatasetGenerationService,
   ],
   exports: [DatasetGenerationService],

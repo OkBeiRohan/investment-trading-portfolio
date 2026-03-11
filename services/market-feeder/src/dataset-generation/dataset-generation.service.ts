@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataQualityService } from './data-quality.service';
 import { CpcvSplitter, CpcvSplit } from './cpcv-splitter.service';
-import { ParquetExportService } from './parquet-export.service';
-import * as path from 'path';
+import { DatasetFoldsRepository } from '@repo/database';
+import { DatasetFolds } from '@repo/schema';
 
 /**
  * Configuration for the dataset export job
@@ -14,7 +14,6 @@ export interface DatasetExportConfig {
   cvFolds?: number;
   testGroupRatio?: number; // e.g. 5 means 1/5th are test groups per fold
   embargoMinutes?: number;
-  outputDirectory?: string;
 }
 
 @Injectable()
@@ -23,7 +22,7 @@ export class DatasetGenerationService {
 
   constructor(
     private readonly dataQualityService: DataQualityService,
-    private readonly parquetExportService: ParquetExportService,
+    private readonly datasetFoldsRepo: DatasetFoldsRepository,
   ) {}
 
   /**
@@ -42,7 +41,6 @@ export class DatasetGenerationService {
       cvFolds = 5,
       testGroupRatio = 5, // 1/5th for test
       embargoMinutes = 30, // Default 30 min purge for max label horizon (30m)
-      outputDirectory = path.join(process.cwd(), 'data', 'datasets'),
     } = config;
 
     this.logger.log(`Starting dataset export for ${instrumentKey}`);
@@ -74,39 +72,54 @@ export class DatasetGenerationService {
 
       this.logger.log(`Generated ${splits.length} valid CPCV folds.`);
 
-      // 3. Export splits to Parquet
-      const outputPaths: string[] = [];
-      const timestamp = Date.now();
-      const jobDir = path.join(outputDirectory, `${instrumentKey.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}`);
+      // 3. Save splits into QuestDB dataset_folds table
+      const datasetName = `${instrumentKey.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${groups}folds`;
+      
+      const foldsToInsert: DatasetFolds[] = [];
 
       for (const split of splits) {
-        // Export Training subset
-        const trainPath = await this.parquetExportService.exportSplitToParquet(
-          instrumentKey,
-          'train',
-          split.fold,
-          split.trainRanges,
-          jobDir
-        );
-        outputPaths.push(trainPath);
+        // Collect Train blocks
+        for (const tr of split.trainRanges) {
+          foldsToInsert.push({
+            instrumentKey,
+            datasetName,
+            foldId: split.fold,
+            splitType: 'TRAIN',
+            rangeStart: new Date(tr.start),
+            rangeEnd: new Date(tr.end),
+          });
+        }
 
-        // Export Testing subset
-        const testPath = await this.parquetExportService.exportSplitToParquet(
-          instrumentKey,
-          'test',
-          split.fold,
-          split.testRanges,
-          jobDir
-        );
-        outputPaths.push(testPath);
+        // Collect Test blocks
+        for (const te of split.testRanges) {
+          foldsToInsert.push({
+            instrumentKey,
+            datasetName,
+            foldId: split.fold,
+            splitType: 'TEST',
+            rangeStart: new Date(te.start),
+            rangeEnd: new Date(te.end),
+          });
+        }
       }
 
-      this.logger.log(`Successfully exported ${outputPaths.length} parquet files to ${jobDir}`);
+      this.logger.log(`Saving ${foldsToInsert.length} dataset fold blocks to QuestDB [${datasetName}]...`);
+      
+      // Delete previous dataset if exact same name logic
+      await this.datasetFoldsRepo.deleteFolds(instrumentKey, datasetName);
+      
+      // Save new
+      const saved = await this.datasetFoldsRepo.bulkInsert(foldsToInsert);
+
+      if (!saved) {
+         throw new Error('Failed to bulk insert dataset folds into QuestDB');
+      }
+
+      this.logger.log(`Successfully mapped and stored Dataset Folds to QuestDB`);
 
       return {
         success: true,
         splits,
-        outputPaths,
       };
 
     } catch (error: any) {

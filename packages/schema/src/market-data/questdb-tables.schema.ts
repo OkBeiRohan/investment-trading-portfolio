@@ -17,6 +17,7 @@
  * 5. option_chain_snapshot - Options with Greeks
  * 6. instrument_features - All ML features (1m + 1d)
  * 7. training_labels - All ML labels (1m + 1d)
+ * 8. dataset_folds - Stores dataset split allocations for training
  *
  * NOTE: SQL CREATE TABLE statements are in packages/schema/sql/schema/
  */
@@ -364,3 +365,20 @@ export type MarketCandle = z.infer<typeof MarketCandleSchema>;
 
 // ============================================
 
+
+// ============================================
+// TABLE 7: dataset_folds
+// Machine Learning CPCV Fold ranges for deterministic datasets
+// ============================================
+
+export const DatasetFoldsSchema = z.object({
+  instrumentKey: z.string(),
+  datasetName: z.string(),       // e.g. 'nifty50_1m_lightgbm'
+  foldId: z.number().int(),      // Fold number (1 to K)
+  splitType: z.enum(['TRAIN', 'TEST']),
+  rangeStart: z.date(),          // Start of contiguous training/testing block
+  rangeEnd: z.date(),            // End of contiguous training/testing block
+  createdAt: z.date().optional()
+});
+
+export type DatasetFolds = z.infer<typeof DatasetFoldsSchema>;

@@ -12,3 +12,4 @@ export * from "./tick-data.repository";
 export * from "./features.repository";
 export * from "./labels.repository";
 export * from "./orderbook.repository";
+export * from "./dataset-folds.repository";
