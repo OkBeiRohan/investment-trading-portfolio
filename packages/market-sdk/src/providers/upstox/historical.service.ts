@@ -18,8 +18,20 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { UpstoxHistoricalAPI } from "./api/historical/historical.service";
-import type { ICandleInsert } from "@repo/schema";
+import { UpstoxHistoricalAPIService } from "./api/historical/historical.service";
+
+/** Normalized candle for QuestDB insertion */
+export interface ICandleInsert {
+  timestamp: Date;
+  instrument_key: string;
+  interval: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  open_interest: number;
+}
 
 export interface HistoricalDataRequest {
   instrument_key: string;
@@ -51,7 +63,7 @@ export class UpstoxHistoricalService {
   private readonly logger = new Logger(UpstoxHistoricalService.name);
 
   constructor(
-    private readonly historicalAPI: UpstoxHistoricalAPI,
+    private readonly historicalAPI: UpstoxHistoricalAPIService,
     private readonly eventEmitter: EventEmitter2
   ) {}
 
@@ -136,7 +148,7 @@ export class UpstoxHistoricalService {
     });
 
     // Normalize to QuestDB schema
-    const normalizedCandles: ICandleInsert[] = rawCandles.map((candle) => ({
+    const normalizedCandles: ICandleInsert[] = rawCandles.map((candle: any[]) => ({
       timestamp: new Date(candle[0]),
       instrument_key: request.instrument_key,
       interval: `${request.interval}${request.unit.charAt(0)}`, // e.g., '5m', '1h', '1d'
@@ -186,7 +198,7 @@ export class UpstoxHistoricalService {
       unit,
     });
 
-    return rawCandles.map((candle) => ({
+    return rawCandles.map((candle: any[]) => ({
       timestamp: new Date(candle[0]),
       instrument_key,
       interval: `${interval}${unit.charAt(0)}`,

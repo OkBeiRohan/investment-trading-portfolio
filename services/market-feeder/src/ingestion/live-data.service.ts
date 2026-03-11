@@ -1,0 +1,209 @@
+import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UpstoxWebSocketService, UpstoxMarketData } from '@repo/market-sdk';
+import { TickDataRepository, TickData, InstrumentMasterRepository } from '@repo/database';
+
+@Injectable()
+export class LiveDataService implements OnApplicationBootstrap, OnApplicationShutdown {
+  private readonly logger = new Logger(LiveDataService.name);
+
+  // Buffer to batch QuestDB inserts
+  private tickBuffer: TickData[] = [];
+  private readonly MAX_BUFFER_SIZE = 5000;
+  private flushTimer: NodeJS.Timeout | null = null;
+  private readonly FLUSH_INTERVAL_MS = 1000; // Flush every second
+
+  private subscriptionId: string | null = null;
+  private isRunning = false;
+
+  constructor(
+    private readonly upstoxWs: UpstoxWebSocketService,
+    private readonly tickRepo: TickDataRepository,
+    private readonly instrumentRepo: InstrumentMasterRepository,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  async onApplicationBootstrap() {
+    this.logger.log('Live Data Service initialized');
+  }
+
+  async onApplicationShutdown() {
+    await this.stopLiveIngestion();
+    await this.flushBuffer();
+  }
+
+  /**
+   * Start fetching live ticks for indices and active options/futures
+   */
+  async startLiveIngestion(userId = 'system_ingestion') {
+    if (this.isRunning) {
+      this.logger.warn('Live ingestion is already running');
+      return;
+    }
+
+    this.logger.log('Starting live data ingestion...');
+
+    // 1. Get high-priority instruments (Indices + Front Month Options/Futures)
+    const instruments = await this.getActiveInstruments();
+
+    if (instruments.length === 0) {
+      this.logger.warn('No active instruments found to subscribe to.');
+      return;
+    }
+
+    this.logger.log(`Subscribing to ${instruments.length} instruments for live ticks...`);
+
+    try {
+      // 2. Subscribe to Upstox WebSocket
+      // Using 'full' mode to get Market Level Depth (bids/asks/greeks/oi)
+      this.subscriptionId = await this.upstoxWs.subscribe(
+        userId,
+        instruments,
+        'full',
+        20, // CRITICAL Priority
+        this.handleMarketData.bind(this)
+      );
+
+      // 3. Start flush timer
+      this.startFlushTimer();
+      this.isRunning = true;
+      this.logger.log(`Successfully started live ingestion (sub: ${this.subscriptionId})`);
+    } catch (error) {
+      this.logger.error('Failed to start live ingestion', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Stop Fetching Live Ticks
+   */
+  async stopLiveIngestion() {
+    if (!this.isRunning || !this.subscriptionId) return;
+
+    this.logger.log('Stopping live data ingestion...');
+    
+    this.stopFlushTimer();
+    await this.flushBuffer();
+
+    await this.upstoxWs.unsubscribe(this.subscriptionId);
+    
+    this.subscriptionId = null;
+    this.isRunning = false;
+
+    this.logger.log('Live data ingestion stopped.');
+  }
+
+  /**
+   * Find front-month important instruments
+   */
+  private async getActiveInstruments(): Promise<string[]> {
+    const all = await this.instrumentRepo.getAllInstruments();
+    const now = new Date();
+    
+    const active = all.filter(inst => {
+      // Always include indices
+      if (inst.instrumentType === 'INDEX') return true;
+      
+      // Include active derivatives (not expired)
+      if (inst.expiry && inst.expiry > now) {
+        // Just as a filter to avoid blowing up limits: only fetch near term expiries
+        const daysToExpiry = (inst.expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+        return daysToExpiry <= 14; 
+      }
+      return false;
+    });
+
+    return active.map(i => i.instrumentKey);
+  }
+
+  /**
+   * Handle incoming WebSocket message payload from Upstox
+   */
+  private handleMarketData(data: UpstoxMarketData) {
+    if (!data.lastTradeTime) return; // Skip updates with no explicit tick time
+
+    // Extract bids/asks flattening
+    const bidPrices: number[] = Array(30).fill(0);
+    const bidQtys: number[] = Array(30).fill(0);
+    const askPrices: number[] = Array(30).fill(0);
+    const askQtys: number[] = Array(30).fill(0);
+
+    if (data.bid && data.bid.length > 0) {
+      for (let i = 0; i < Math.min(data.bid.length, 30); i++) {
+        bidPrices[i] = data.bid[i].price;
+        bidQtys[i] = data.bid[i].quantity;
+      }
+    }
+
+    if (data.ask && data.ask.length > 0) {
+      for (let i = 0; i < Math.min(data.ask.length, 30); i++) {
+        askPrices[i] = data.ask[i].price;
+        askQtys[i] = data.ask[i].quantity;
+      }
+    }
+
+    const tick: TickData = {
+      timestamp: data.lastTradeTime,
+      instrumentKey: data.instrumentKey,
+      ltp: data.ltp || 0,
+      ltq: 0, 
+      cp: 0,  
+      atp: 0, 
+      vtt: data.volume || 0,
+      oi: data.oi || 0,
+      tbq: bidQtys.reduce((a, b) => a + b, 0),
+      tsq: askQtys.reduce((a, b) => a + b, 0),
+      bidPrices,
+      bidQtys,
+      askPrices,
+      askQtys,
+    };
+
+    this.tickBuffer.push(tick);
+    
+    // Broadcast internal event for Real-time Feature computation
+    this.eventEmitter.emit('market.tick', tick);
+
+    if (this.tickBuffer.length >= this.MAX_BUFFER_SIZE) {
+      this.flushBuffer().catch(e => this.logger.error('Error flushing tick buffer', e));
+    }
+  }
+
+  /**
+   * Timer to ensure data is flushed even during low activity
+   */
+  private startFlushTimer() {
+    this.stopFlushTimer();
+    this.flushTimer = setInterval(() => {
+      if (this.tickBuffer.length > 0) {
+        this.flushBuffer().catch(e => this.logger.error('Error in interval flush', e));
+      }
+    }, this.FLUSH_INTERVAL_MS);
+  }
+
+  private stopFlushTimer() {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
+    }
+  }
+
+  /**
+   * Insert buffered ticks into QuestDB
+   */
+  private async flushBuffer() {
+    if (this.tickBuffer.length === 0) return;
+
+    // Local swap to not block incoming ticks
+    const ticksToInsert = [...this.tickBuffer];
+    this.tickBuffer = [];
+
+    try {
+      await this.tickRepo.insertBatch(ticksToInsert);
+    } catch (error) {
+      this.logger.error(`Failed to insert ${ticksToInsert.length} ticks to DB`, error);
+      // Re-insert into beginning of buffer if failed so we don't lose data
+      this.tickBuffer.unshift(...ticksToInsert);
+    }
+  }
+}

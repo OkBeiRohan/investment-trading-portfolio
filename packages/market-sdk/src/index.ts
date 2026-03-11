@@ -61,16 +61,55 @@ export type { Subscription } from "./websocket/subscription-manager.service";
 export { HeartbeatService } from "./websocket/heartbeat.service";
 export type { HeartbeatConfig } from "./websocket/heartbeat.service";
 
-// Providers
+// Providers — Upstox
 export { UpstoxProvider } from "./providers/upstox/upstox.provider";
 export { UpstoxModule } from "./providers/upstox/upstox.module";
-export {
-  SimpleUpstoxClient,
-  type UpstoxCandleData,
-  type UpstoxHistoricalResponse,
-} from "./providers/upstox/simple-client";
+export { UpstoxWebSocketService } from "./providers/upstox/websocket/upstox-websocket.service";
+export { UpstoxWebSocketModule } from "./providers/upstox/websocket/upstox-websocket.module";
+export type { UpstoxMarketData } from "./providers/upstox/websocket/upstox-websocket.service";
 export { UpstoxHistoricalService } from "./providers/upstox/historical.service";
-export { YahooProvider } from "./providers/yahoo/yahoo.provider";
+export { UpstoxHistoricalAPIService } from "./providers/upstox/api/historical/historical.service";
+export { HistoricalApiRepository } from "./providers/upstox/api/historical/historical.repository";
+export { HistoricalModule as UpstoxHistoricalModule } from "./providers/upstox/api/historical/historical.module";
+export {
+  UPSTOX_CONSTANTS,
+  UPSTOX_API_URLS,
+  UPSTOX_ENDPOINTS,
+  UPSTOX_DATA_AVAILABILITY,
+  UPSTOX_PLUS_LIMITS,
+  GLOBAL_SYMBOL_MAPPINGS,
+} from "./providers/upstox/constants";
+export type {
+  HistoricalCandleRequest,
+  CandleResponse,
+  IntradayCandleRequest,
+  ExpiredInstrument,
+  ActiveOptionContract,
+  OptionChainStrike,
+  UpstoxCandleData as UpstoxCandleDataTyped,
+} from "./providers/upstox/api/historical/dto/historical.request.dto";
+export { parseCandleArray } from "./providers/upstox/api/historical/dto/historical.request.dto";
+
+// Providers — Yahoo Finance
+export {
+  YahooProvider,
+  type YahooCandle,
+  type YahooQuote,
+} from "./providers/yahoo/yahoo.provider";
+
+// Providers — Alpha Vantage
+export {
+  AlphaVantageProvider,
+  type AlphaVantageTreasuryYield,
+  type AlphaVantageForexDaily,
+} from "./providers/alpha-vantage/alpha-vantage.provider";
+
+// Providers — Finnhub
+export {
+  FinnhubProvider,
+  type FinnhubNewsArticle,
+  type FinnhubMarketStatus,
+} from "./providers/finnhub/finnhub.provider";
+
+// Providers — Binance
 export { BinanceProvider } from "./providers/binance/binance.provider";
-
-

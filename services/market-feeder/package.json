@@ -37,9 +37,11 @@
     "@nestjs/schedule": "^6.1.1",
     "@repo/compute-engine": "workspace:*",
     "@repo/database": "workspace:*",
+    "@repo/market-sdk": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/schema": "workspace:*",
     "axios": "^1.13.6",
+    "ioredis": "^5.10.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },

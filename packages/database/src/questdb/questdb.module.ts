@@ -17,6 +17,7 @@ import {
   OptionChainTickRepository,
   TickDataRepository,
   OrderbookRepository,
+  DatasetFoldsRepository,
 } from "./repositories";
 
 @Global()
@@ -47,6 +48,9 @@ import {
 
     // Orderbook
     OrderbookRepository,
+
+    // Machine Learning Folds
+    DatasetFoldsRepository,
   ],
   exports: [
     QuestDBService,
@@ -70,6 +74,9 @@ import {
 
     // Orderbook
     OrderbookRepository,
+
+    // Machine Learning Folds
+    DatasetFoldsRepository,
   ],
 })
 export class QuestDBModule {}

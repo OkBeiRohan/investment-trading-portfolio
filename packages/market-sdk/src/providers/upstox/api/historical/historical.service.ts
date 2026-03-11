@@ -26,7 +26,17 @@ import {
   IntradayCandleRequest,
   ExpiredContractsRequest,
   ExpiredContractsResponse,
+  ExpiredDerivativesResponse,
+  ExpiredInstrument,
+  ActiveOptionContractsResponse,
+  ActiveOptionContract,
+  ExpiryDatesResponse,
+  OptionChainResponse,
+  OptionChainStrike,
+  UpstoxCandleData,
+  parseCandleArray,
 } from "./dto/historical.request.dto";
+import { UPSTOX_CONSTANTS } from "../../constants";
 
 /**
  * Date range chunk for API requests
@@ -37,7 +47,7 @@ interface DateChunk {
 }
 
 /**
- * Simple token bucket rate limiter (50 req/sec for Upstox)
+ * Simple token bucket rate limiter (50 req/sec for Upstox Plus)
  */
 class TokenBucket {
   private tokens: number;
@@ -82,8 +92,8 @@ export class UpstoxHistoricalAPIService {
   private readonly rateLimiter: TokenBucket;
 
   constructor(private readonly historicalRepository: HistoricalApiRepository) {
-    // Rate limit: 50 requests/second (Upstox limit)
-    this.rateLimiter = new TokenBucket(50, 50 / 1000); // 50 tokens, refill at 50/1000 = 0.05 tokens/ms
+    // Rate limit: 50 requests/second (Upstox Plus limit)
+    this.rateLimiter = new TokenBucket(50, 50 / 1000);
   }
 
   /**
@@ -92,7 +102,7 @@ export class UpstoxHistoricalAPIService {
    */
   setAccessToken(accessToken: string): void {
     this.client = axios.create({
-      baseURL: "https://api.upstox.com/v3",
+      baseURL: UPSTOX_CONSTANTS.API.BASE_URL_V3,
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -114,12 +124,13 @@ export class UpstoxHistoricalAPIService {
     return this.client;
   }
 
+  // ═══════════════════════════════════════════════════════
+  // Historical Candle Endpoints
+  // ═══════════════════════════════════════════════════════
+
   /**
    * Fetch historical candles with automatic chunking
    * Handles API date range limits transparently
-   *
-   * @param request Historical candle request
-   * @returns All candles across all chunks
    */
   async fetchHistoricalCandles(
     request: HistoricalCandleRequest
@@ -138,7 +149,7 @@ export class UpstoxHistoricalAPIService {
     const allCandles: CandleResponse["data"]["candles"] = [];
 
     for (const chunk of chunks) {
-      await this.rateLimiter.wait(); // Enforce rate limit
+      await this.rateLimiter.wait();
 
       try {
         const chunkRequest: HistoricalCandleRequest = {
@@ -162,7 +173,6 @@ export class UpstoxHistoricalAPIService {
         if (error.response?.status === 429) {
           this.logger.warn("Rate limit exceeded, waiting 1 second...");
           await new Promise((resolve) => setTimeout(resolve, 1000));
-          // Retry this chunk
           continue;
         }
 
@@ -178,10 +188,28 @@ export class UpstoxHistoricalAPIService {
   }
 
   /**
+   * Fetch historical candles and return as typed objects
+   */
+  async fetchHistoricalCandlesTyped(
+    instrumentKey: string,
+    unit: string,
+    interval: string,
+    fromDate: Date,
+    toDate: Date,
+  ): Promise<UpstoxCandleData[]> {
+    const raw = await this.fetchHistoricalCandles({
+      instrument_key: instrumentKey,
+      interval,
+      unit: unit as any,
+      from_date: fromDate.toISOString().split("T")[0],
+      to_date: toDate.toISOString().split("T")[0],
+    });
+
+    return raw.map((c) => parseCandleArray(c as any));
+  }
+
+  /**
    * Fetch intraday candles (current trading day only)
-   *
-   * @param request Intraday candle request
-   * @returns Today's candles
    */
   async fetchIntradayCandles(
     request: IntradayCandleRequest
@@ -205,12 +233,172 @@ export class UpstoxHistoricalAPIService {
     }
   }
 
+  // ═══════════════════════════════════════════════════════
+  // V3 Expired Derivatives Endpoints
+  // ═══════════════════════════════════════════════════════
+
   /**
-   * Get list of expired option contracts for a specific expiry date
-   * Critical for training data (historical options)
-   *
-   * @param request Expired contracts request
-   * @returns List of expired instrument keys
+   * Get all expiry dates for an instrument
+   * GET /v3/option/contract/expiry?instrument_key=...
+   */
+  async getExpiryDates(instrumentKey: string): Promise<string[]> {
+    await this.rateLimiter.wait();
+    const client = this.ensureClient();
+
+    try {
+      const response = await client.get<ExpiryDatesResponse>(
+        "/option/contract/expiry",
+        { params: { instrument_key: instrumentKey } }
+      );
+
+      if (response.data.status === "success" && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error: any) {
+      this.logger.error(`Failed to get expiry dates for ${instrumentKey}`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get active option contracts for an underlying + expiry
+   * GET /v3/option/contract?instrument_key=...&expiry_date=...
+   */
+  async getActiveOptionContracts(
+    instrumentKey: string,
+    expiryDate?: string,
+  ): Promise<ActiveOptionContract[]> {
+    await this.rateLimiter.wait();
+    const client = this.ensureClient();
+
+    try {
+      const params: Record<string, string> = { instrument_key: instrumentKey };
+      if (expiryDate) params.expiry_date = expiryDate;
+
+      const response = await client.get<ActiveOptionContractsResponse>(
+        "/option/contract",
+        { params }
+      );
+
+      if (response.data.status === "success" && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error: any) {
+      this.logger.error(`Failed to get option contracts for ${instrumentKey}`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get option chain with Greeks for an underlying + expiry
+   * GET /v3/option/chain?instrument_key=...&expiry_date=...
+   */
+  async getOptionChainV3(
+    instrumentKey: string,
+    expiryDate: string,
+  ): Promise<OptionChainStrike[]> {
+    await this.rateLimiter.wait();
+    const client = this.ensureClient();
+
+    try {
+      const response = await client.get<OptionChainResponse>(
+        "/option/chain",
+        { params: { instrument_key: instrumentKey, expiry_date: expiryDate } }
+      );
+
+      if (response.data.status === "success" && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error: any) {
+      this.logger.error(`Failed to get option chain for ${instrumentKey}`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get expired futures for an underlying + expiry date
+   * GET /v3/expired-derivatives/future?instrument_key=...&expiry_date=...
+   */
+  async getExpiredFutures(
+    instrumentKey: string,
+    expiryDate: string,
+  ): Promise<ExpiredInstrument[]> {
+    await this.rateLimiter.wait();
+    const client = this.ensureClient();
+
+    try {
+      const response = await client.get<ExpiredDerivativesResponse>(
+        "/expired-derivatives/future",
+        { params: { instrument_key: instrumentKey, expiry_date: expiryDate } }
+      );
+
+      if (response.data.status === "success" && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error: any) {
+      this.logger.error(`Failed to get expired futures for ${instrumentKey}/${expiryDate}`, error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get expired options for an underlying + expiry date
+   * GET /v3/expired-derivatives/option?instrument_key=...&expiry_date=...
+   */
+  async getExpiredOptions(
+    instrumentKey: string,
+    expiryDate: string,
+  ): Promise<ExpiredInstrument[]> {
+    await this.rateLimiter.wait();
+    const client = this.ensureClient();
+
+    try {
+      const response = await client.get<ExpiredDerivativesResponse>(
+        "/expired-derivatives/option",
+        { params: { instrument_key: instrumentKey, expiry_date: expiryDate } }
+      );
+
+      if (response.data.status === "success" && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error: any) {
+      this.logger.error(`Failed to get expired options for ${instrumentKey}/${expiryDate}`, error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get expired candles (historical data for expired instruments)
+   * Uses same endpoint as active candles, but for expired instrument keys
+   */
+  async fetchExpiredCandles(
+    instrumentKey: string,
+    interval: string,
+    fromDate: Date,
+    toDate: Date,
+  ): Promise<UpstoxCandleData[]> {
+    // For expired instruments, use the same chunking logic
+    const unit = this.resolveUnit(interval);
+    const intervalValue = this.resolveInterval(interval);
+
+    const raw = await this.fetchHistoricalCandles({
+      instrument_key: instrumentKey,
+      interval: intervalValue,
+      unit,
+      from_date: fromDate.toISOString().split("T")[0],
+      to_date: toDate.toISOString().split("T")[0],
+    });
+
+    return raw.map((c) => parseCandleArray(c as any));
+  }
+
+  /**
+   * Get legacy expired contracts (by symbol)
    */
   async getExpiredContracts(
     request: ExpiredContractsRequest
@@ -218,8 +406,6 @@ export class UpstoxHistoricalAPIService {
     await this.rateLimiter.wait();
 
     try {
-      // Note: This is a hypothetical endpoint based on the blueprint
-      // Actual Upstox API endpoint may differ
       const client = this.ensureClient();
       const response = await client.get<ExpiredContractsResponse>(
         `/option/expired-contracts/${request.symbol}/${request.expiry_date}`
@@ -239,20 +425,64 @@ export class UpstoxHistoricalAPIService {
     }
   }
 
+  // ═══════════════════════════════════════════════════════
+  // Market Quotes (via V2 API for backwards compatibility)
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Get market quotes for instruments (V2 API)
+   */
+  async getMarketQuotes(instrumentKeys: string[]): Promise<any> {
+    await this.rateLimiter.wait();
+    const client = this.ensureClient();
+
+    // Market quotes use V2 API
+    const v2Client = axios.create({
+      baseURL: UPSTOX_CONSTANTS.API.BASE_URL_V2,
+      headers: client.defaults.headers as any,
+      timeout: 10000,
+    });
+
+    try {
+      const response = await v2Client.get("/market-quote/quotes", {
+        params: { instrument_key: instrumentKeys.join(",") },
+      });
+
+      if (response.data.status === "success") {
+        return response.data.data;
+      }
+      return {};
+    } catch (error: any) {
+      this.logger.error(`Failed to get market quotes`, error.message);
+      return {};
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Helpers
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Resolve interval string to API unit
+   */
+  private resolveUnit(interval: string): "minutes" | "hours" | "days" | "weeks" | "months" {
+    if (interval.includes("minute") || interval === "1minute") return "minutes";
+    if (interval === "day") return "days";
+    if (interval === "week") return "weeks";
+    if (interval === "month") return "months";
+    return "days";
+  }
+
+  /**
+   * Resolve interval string to interval value
+   */
+  private resolveInterval(interval: string): string {
+    const match = interval.match(/^(\d+)/);
+    return match ? match[1] : "1";
+  }
+
   /**
    * Calculate date chunks based on API constraints
-   *
-   * Upstox V3 Limits:
-   * - 1-15 min intervals: 1 month max
-   * - >15 min - 5 hour intervals: 1 quarter (3 months) max
-   * - Daily: 1 decade max
-   * - Weekly/Monthly: No limit
-   *
-   * @param from Start date
-   * @param to End date
-   * @param unit Time unit
-   * @param interval Interval value
-   * @returns Array of date chunks
    */
   private calculateChunks(
     from: Date,
@@ -262,17 +492,15 @@ export class UpstoxHistoricalAPIService {
   ): DateChunk[] {
     const chunks: DateChunk[] = [];
 
-    // Determine max chunk size based on API limits
     let maxChunkDays: number;
 
     if (unit === "minutes" && interval <= 15) {
-      maxChunkDays = 30; // 1 month
+      maxChunkDays = 30;
     } else if (unit === "minutes" || (unit === "hours" && interval <= 5)) {
-      maxChunkDays = 90; // 1 quarter (3 months)
+      maxChunkDays = 90;
     } else if (unit === "days") {
-      maxChunkDays = 3650; // 1 decade (10 years)
+      maxChunkDays = 3650;
     } else {
-      // weeks/months: no limit, use full range
       return [{ from, to }];
     }
 
@@ -282,7 +510,6 @@ export class UpstoxHistoricalAPIService {
       const currentEnd = new Date(currentStart);
       currentEnd.setDate(currentEnd.getDate() + maxChunkDays);
 
-      // Don't exceed the final to date
       if (currentEnd > to) {
         currentEnd.setTime(to.getTime());
       }
@@ -292,9 +519,8 @@ export class UpstoxHistoricalAPIService {
         to: new Date(currentEnd),
       });
 
-      // Move to next chunk
       currentStart = new Date(currentEnd);
-      currentStart.setDate(currentStart.getDate() + 1); // Avoid overlap
+      currentStart.setDate(currentStart.getDate() + 1);
     }
 
     return chunks;
@@ -302,13 +528,6 @@ export class UpstoxHistoricalAPIService {
 
   /**
    * Estimate total API calls required for a date range
-   * Useful for progress tracking and quota management
-   *
-   * @param from Start date
-   * @param to End date
-   * @param unit Time unit
-   * @param interval Interval value
-   * @returns Number of API calls required
    */
   estimateApiCalls(
     from: Date,
@@ -319,3 +538,4 @@ export class UpstoxHistoricalAPIService {
     return this.calculateChunks(from, to, unit, interval).length;
   }
 }
+

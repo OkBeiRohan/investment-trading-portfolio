@@ -54,3 +54,32 @@ export class CapacityError extends MarketSDKError {
     this.name = "CapacityError";
   }
 }
+
+export class RateLimitExceededError extends MarketSDKError {
+  constructor(provider: string, details?: any) {
+    super(`Rate limit exceeded for ${provider}`, "RATE_LIMIT_EXCEEDED", details);
+    this.name = "RateLimitExceededError";
+  }
+}
+
+export class UnauthorizedError extends MarketSDKError {
+  constructor(provider: string, details?: any) {
+    super(`Unauthorized for ${provider}`, "UNAUTHORIZED", details);
+    this.name = "UnauthorizedError";
+  }
+}
+
+export class ServiceUnavailableError extends MarketSDKError {
+  constructor(provider: string, details?: any) {
+    super(`Service unavailable for ${provider}`, "SERVICE_UNAVAILABLE", details);
+    this.name = "ServiceUnavailableError";
+  }
+}
+
+export class ProviderNotFoundError extends MarketSDKError {
+  constructor(providerName: string) {
+    super(`Provider '${providerName}' not found`, "PROVIDER_NOT_FOUND");
+    this.name = "ProviderNotFoundError";
+  }
+}
+

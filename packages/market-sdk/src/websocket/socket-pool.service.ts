@@ -264,7 +264,7 @@ export class SocketPoolService implements OnModuleDestroy {
     }
 
     // Remove from pool
-    pool.delete(socketId);
+    pool!.delete(socketId);
 
     this.eventEmitter.emit("socket.closed", {
       provider,

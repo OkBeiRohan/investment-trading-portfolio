@@ -1,6 +1,13 @@
 import { Injectable, UnauthorizedException, Logger } from "@nestjs/common";
-import { AccountRepository, RedisService } from "@repo/database";
+import { AccountRepository } from "@repo/database";
 import * as crypto from "crypto";
+
+// Minimal Redis interface matching ioredis client
+interface IRedisClient {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, ...args: any[]): Promise<any>;
+  del(key: string): Promise<number>;
+}
 
 /**
  * Upstox Access Token Request Response
@@ -34,7 +41,7 @@ export class AuthManagerService {
 
   constructor(
     private readonly accountRepository: AccountRepository,
-    private readonly redis: RedisService
+    private readonly redis: IRedisClient
   ) {}
 
   /**

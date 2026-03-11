@@ -1,0 +1,133 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { DataQualityService } from './data-quality.service';
+import { CpcvSplitter, CpcvSplit } from './cpcv-splitter.service';
+import { DatasetFoldsRepository } from '@repo/database';
+import { DatasetFolds } from '@repo/schema';
+
+/**
+ * Configuration for the dataset export job
+ */
+export interface DatasetExportConfig {
+  instrumentKey: string;
+  startDate: Date;
+  endDate: Date;
+  cvFolds?: number;
+  testGroupRatio?: number; // e.g. 5 means 1/5th are test groups per fold
+  embargoMinutes?: number;
+}
+
+@Injectable()
+export class DatasetGenerationService {
+  private readonly logger = new Logger(DatasetGenerationService.name);
+
+  constructor(
+    private readonly dataQualityService: DataQualityService,
+    private readonly datasetFoldsRepo: DatasetFoldsRepository,
+  ) {}
+
+  /**
+   * Orchestrates the entire dataset generation pipeline
+   */
+  async exportDataset(config: DatasetExportConfig): Promise<{
+    success: boolean;
+    splits?: CpcvSplit[];
+    outputPaths?: string[];
+    error?: string;
+  }> {
+    const {
+      instrumentKey,
+      startDate,
+      endDate,
+      cvFolds = 5,
+      testGroupRatio = 5, // 1/5th for test
+      embargoMinutes = 30, // Default 30 min purge for max label horizon (30m)
+    } = config;
+
+    this.logger.log(`Starting dataset export for ${instrumentKey}`);
+
+    try {
+      // 1. Data Quality Check
+      const qualityCheck = await this.dataQualityService.validateTimeRange(
+        instrumentKey,
+        startDate,
+        endDate
+      );
+
+      if (!qualityCheck.isValid) {
+        throw new Error(`Data quality validation failed: ${qualityCheck.issues.join('; ')}`);
+      }
+
+      // 2. Generate CPCV Splits
+      const groups = cvFolds * testGroupRatio;
+      const testGroups = testGroupRatio;
+      
+      this.logger.log(`Generating CPCV splits (${groups} groups, select ${testGroups} for testing) with ${embargoMinutes}m embargo...`);
+      const splits = CpcvSplitter.generateSplits({
+        startDate,
+        endDate,
+        groups,
+        testGroups,
+        embargoMinutes,
+      });
+
+      this.logger.log(`Generated ${splits.length} valid CPCV folds.`);
+
+      // 3. Save splits into QuestDB dataset_folds table
+      const datasetName = `${instrumentKey.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${groups}folds`;
+      
+      const foldsToInsert: DatasetFolds[] = [];
+
+      for (const split of splits) {
+        // Collect Train blocks
+        for (const tr of split.trainRanges) {
+          foldsToInsert.push({
+            instrumentKey,
+            datasetName,
+            foldId: split.fold,
+            splitType: 'TRAIN',
+            rangeStart: new Date(tr.start),
+            rangeEnd: new Date(tr.end),
+          });
+        }
+
+        // Collect Test blocks
+        for (const te of split.testRanges) {
+          foldsToInsert.push({
+            instrumentKey,
+            datasetName,
+            foldId: split.fold,
+            splitType: 'TEST',
+            rangeStart: new Date(te.start),
+            rangeEnd: new Date(te.end),
+          });
+        }
+      }
+
+      this.logger.log(`Saving ${foldsToInsert.length} dataset fold blocks to QuestDB [${datasetName}]...`);
+      
+      // Delete previous dataset if exact same name logic
+      await this.datasetFoldsRepo.deleteFolds(instrumentKey, datasetName);
+      
+      // Save new
+      const saved = await this.datasetFoldsRepo.bulkInsert(foldsToInsert);
+
+      if (!saved) {
+         throw new Error('Failed to bulk insert dataset folds into QuestDB');
+      }
+
+      this.logger.log(`Successfully mapped and stored Dataset Folds to QuestDB`);
+
+      return {
+        success: true,
+        splits,
+      };
+
+    } catch (error: any) {
+      this.logger.error(`Failed to export dataset: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+}

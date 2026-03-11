@@ -1,3 +1,9 @@
+/**
+ * Upstox Constants
+ * V3 API URLs, rate limits, WebSocket limits, Plus account enhanced limits,
+ * and global symbol mappings for market data ingestion
+ */
+
 export const UPSTOX_CONSTANTS = {
   API: {
     BASE_URL: "https://api.upstox.com",
@@ -14,7 +20,8 @@ export const UPSTOX_CONSTANTS = {
   RATE_LIMITS: {
     MARKET_DATA: 25, // requests per second
     ORDER_PLACEMENT: 10, // requests per second
-    HISTORICAL_DATA: 5, // requests per second
+    HISTORICAL_DATA: 5, // requests per second (free)
+    HISTORICAL_DATA_PLUS: 50, // Plus account: 50 req/sec
   },
   WEBSOCKET_LIMITS: {
     MAX_CONNECTIONS_FREE: 2,
@@ -55,14 +62,21 @@ export const UPSTOX_API_URLS = {
 };
 
 export const UPSTOX_ENDPOINTS = {
-  // Market Data
+  // Market Data (V2)
   QUOTES: "/market-quote/quotes",
   FULL_MARKET_QUOTE: "/market-quote/ltp",
   OPTION_CHAIN: "/option/chain",
 
-  // Historical Data
+  // Historical Data (V3: /v3/historical-candle/...)
   HISTORICAL_CANDLES: "/historical-candle",
   INTRADAY_CANDLES: "/historical-candle/intraday",
+
+  // Expired Instruments (V3)
+  EXPIRED_CANDLE: "/historical-candle",            // /v3/historical-candle/{instrument_key}/{interval}/{to_date}/{from_date}
+  EXPIRY_DATES: "/option/contract/expiry",         // GET /v3/option/contract/expiry?instrument_key=...
+  ACTIVE_OPTION_CONTRACTS: "/option/contract",     // GET /v3/option/contract?instrument_key=...&expiry_date=...
+  EXPIRED_FUTURES: "/expired-derivatives/future",  // GET /v3/expired-derivatives/future?instrument_key=...&expiry_date=...
+  EXPIRED_OPTIONS: "/expired-derivatives/option",  // GET /v3/expired-derivatives/option?instrument_key=...&expiry_date=...
 
   // Orders
   PLACE_ORDER: "/order/place",
@@ -76,3 +90,61 @@ export const UPSTOX_ENDPOINTS = {
   HOLDINGS: "/portfolio/short-term-holdings",
   FUNDS: "/user/get-funds-and-margin",
 };
+
+/**
+ * Data availability windows for Upstox V3
+ */
+export const UPSTOX_DATA_AVAILABILITY = {
+  /** Daily candle data available from */
+  DAILY_START: new Date("2000-01-01"),
+  /** 1-minute candle data available from */
+  MINUTE_START: new Date("2023-11-01"),
+  /** 5-minute candle data available from */
+  FIVE_MINUTE_START: new Date("2023-11-01"),
+  /** 15-minute and higher available from */
+  HIGHER_MINUTE_START: new Date("2022-01-01"),
+};
+
+/**
+ * Plus account rate limit config
+ */
+export const UPSTOX_PLUS_LIMITS = {
+  capacity: 50,
+  refillRate: 50, // 50 req/sec for Plus
+  refillInterval: 20,
+};
+
+/**
+ * Global symbol mappings for Yahoo Finance
+ * Maps internal instrument keys to Yahoo Finance symbols
+ */
+export const GLOBAL_SYMBOL_MAPPINGS = {
+  // Major Global Indices
+  "GLOBAL|S&P 500": "^GSPC",
+  "GLOBAL|Dow Jones": "^DJI",
+  "GLOBAL|NASDAQ Composite": "^IXIC",
+  "GLOBAL|FTSE 100": "^FTSE",
+  "GLOBAL|DAX": "^GDAXI",
+  "GLOBAL|Nikkei 225": "^N225",
+  "GLOBAL|Hang Seng": "^HSI",
+  "GLOBAL|Shanghai Composite": "000001.SS",
+  "GLOBAL|KOSPI": "^KS11",
+  "GLOBAL|ASX 200": "^AXJO",
+
+  // Commodities
+  "GLOBAL|Crude Oil WTI": "CL=F",
+  "GLOBAL|Crude Oil Brent": "BZ=F",
+  "GLOBAL|Gold": "GC=F",
+  "GLOBAL|Silver": "SI=F",
+  "GLOBAL|Copper": "HG=F",
+  "GLOBAL|Natural Gas": "NG=F",
+
+  // Forex
+  "GLOBAL|USD/INR": "INR=X",
+  "GLOBAL|EUR/USD": "EURUSD=X",
+  "GLOBAL|GBP/USD": "GBPUSD=X",
+  "GLOBAL|USD/JPY": "USDJPY=X",
+
+  // Bond Futures
+  "GLOBAL|US 10Y Yield": "^TNX",
+} as const;

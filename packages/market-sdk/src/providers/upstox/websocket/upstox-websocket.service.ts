@@ -14,6 +14,7 @@ import {
 import { HeartbeatService } from "../../../websocket/heartbeat.service";
 import { UPSTOX_CONSTANTS } from "../constants";
 import * as protobuf from "protobufjs";
+import * as WS from "ws";
 
 export interface UpstoxMarketData {
   mode: "ltpc" | "full";
@@ -119,7 +120,7 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
 
       // Create WebSocket connection
       const wsUrl = `${UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL}?access_token=${token}`;
-      const ws = new WebSocket(wsUrl);
+      const ws = new WS.WebSocket(wsUrl) as any;
 
       // Attach to pooled socket
       const pool = this.socketPool["pools"].get("upstox");
@@ -130,8 +131,8 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
 
       // Setup event handlers
       ws.on("open", () => this.handleOpen(socketId, ws));
-      ws.on("message", (data) => this.handleMessage(socketId, data));
-      ws.on("error", (error) => this.handleError(socketId, error));
+      ws.on("message", (data: any) => this.handleMessage(socketId, data));
+      ws.on("error", (error: any) => this.handleError(socketId, error));
       ws.on("close", () => this.handleClose(socketId));
       ws.on("pong", () => this.heartbeat.recordPong(socketId));
 
@@ -144,7 +145,7 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
   /**
    * Handle socket open
    */
-  private handleOpen(socketId: string, ws: WebSocket): void {
+  private handleOpen(socketId: string, ws: any): void {
     this.logger.log(`Socket ${socketId} opened`);
 
     // Start heartbeat
@@ -156,7 +157,7 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
         maxMissed: 3,
       },
       () => {
-        if (ws.readyState === WebSocket.OPEN) {
+        if (ws.readyState === 1 /* OPEN */) {
           ws.ping();
         }
       }

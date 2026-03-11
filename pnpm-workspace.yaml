@@ -10,6 +10,7 @@ onlyBuiltDependencies:
   - '@sentry-internal/node-cpu-profiler'
   - '@sentry/cli'
   - bufferutil
+  - duckdb
   - esbuild
   - grpc-tools
   - msgpackr-extract
