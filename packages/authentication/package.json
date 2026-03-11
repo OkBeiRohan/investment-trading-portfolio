@@ -28,7 +28,7 @@
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "@thallesp/nestjs-better-auth": "^2.5.0",
-    "better-auth": "^1.5.4"
+    "better-auth": "^1.5.5"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
