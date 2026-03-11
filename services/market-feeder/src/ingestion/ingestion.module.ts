@@ -7,13 +7,15 @@
  */
 
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { DatabaseModule } from '@repo/database';
 import {
   YahooProvider,
   AlphaVantageProvider,
   FinnhubProvider,
+  UpstoxHistoricalAPIService,
+  HistoricalApiRepository,
 } from '@repo/market-sdk';
-import { UpstoxHistoricalAPIService } from '@repo/market-sdk';
 
 // Services
 import { GapDetectorService } from './gap-detector.service';
@@ -27,12 +29,16 @@ import { IngestionController } from './ingestion.controller';
 
 @Module({
   imports: [
+    HttpModule,
     DatabaseModule.forMarketFeeder(),
   ],
   controllers: [IngestionController],
   providers: [
-    // SDK providers made available for DI
+    // SDK provider dependencies
+    HistoricalApiRepository,
     UpstoxHistoricalAPIService,
+
+    // Global data providers
     YahooProvider,
     AlphaVantageProvider,
     FinnhubProvider,

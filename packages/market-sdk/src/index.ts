@@ -64,13 +64,10 @@ export type { HeartbeatConfig } from "./websocket/heartbeat.service";
 // Providers — Upstox
 export { UpstoxProvider } from "./providers/upstox/upstox.provider";
 export { UpstoxModule } from "./providers/upstox/upstox.module";
-export {
-  SimpleUpstoxClient,
-  type UpstoxCandleData,
-  type UpstoxHistoricalResponse,
-} from "./providers/upstox/simple-client";
 export { UpstoxHistoricalService } from "./providers/upstox/historical.service";
 export { UpstoxHistoricalAPIService } from "./providers/upstox/api/historical/historical.service";
+export { HistoricalApiRepository } from "./providers/upstox/api/historical/historical.repository";
+export { HistoricalModule as UpstoxHistoricalModule } from "./providers/upstox/api/historical/historical.module";
 export {
   UPSTOX_CONSTANTS,
   UPSTOX_API_URLS,
