@@ -30,20 +30,49 @@ export default () => ({
       process.env.UPSTOX_REDIRECT_URI || 'http://localhost:3000/auth/callback',
   },
 
+  // Global Data Providers
+  globalData: {
+    yahooFinance: {
+      enabled: process.env.YAHOO_FINANCE_ENABLED !== 'false', // Enabled by default (no API key needed)
+    },
+    alphaVantage: {
+      apiKey: process.env.ALPHA_VANTAGE_API_KEY || '',
+      enabled: !!process.env.ALPHA_VANTAGE_API_KEY,
+    },
+    finnhub: {
+      apiKey: process.env.FINNHUB_API_KEY || '',
+      enabled: !!process.env.FINNHUB_API_KEY,
+    },
+  },
+
   // Scheduler Configuration
   scheduler: {
     // Nightly backfill at 12 AM IST (6:30 PM UTC previous day)
     nightlyBackfill: {
       enabled: process.env.SCHEDULER_NIGHTLY_ENABLED === 'true',
-      cronExpression: process.env.SCHEDULER_NIGHTLY_CRON || '30 18 * * *', // 12 AM IST
+      cronExpression: process.env.SCHEDULER_NIGHTLY_CRON || '30 18 * * *',
       lookbackDays: parseInt(process.env.SCHEDULER_LOOKBACK_DAYS || '7', 10),
     },
 
     // Intraday data fetching (every 5 minutes during market hours)
     intradayFetch: {
       enabled: process.env.SCHEDULER_INTRADAY_ENABLED === 'true',
-      cronExpression: process.env.SCHEDULER_INTRADAY_CRON || '*/5 9-15 * * 1-5', // Every 5 min, 9 AM - 3 PM IST
+      cronExpression: process.env.SCHEDULER_INTRADAY_CRON || '*/5 9-15 * * 1-5',
     },
+  },
+
+  // Ingestion Configuration
+  ingestion: {
+    // Max expired futures to process per run
+    maxExpiredFutures: parseInt(process.env.INGESTION_MAX_EXPIRED_FUTURES || '100', 10),
+    // Max options to process per run
+    maxOptions: parseInt(process.env.INGESTION_MAX_OPTIONS || '200', 10),
+    // Max expiry dates to process for expired instruments
+    maxExpiries: parseInt(process.env.INGESTION_MAX_EXPIRIES || '52', 10),
+    // Concurrency limit for bulk fetching
+    concurrency: parseInt(process.env.FETCH_CONCURRENCY || '5', 10),
+    // Max retries on failure
+    maxRetries: parseInt(process.env.FETCH_MAX_RETRIES || '3', 10),
   },
 
   // WebSocket Configuration
@@ -59,18 +88,11 @@ export default () => ({
     ),
   },
 
-  // Data Fetching Configuration
+  // Data Fetching Configuration (legacy — use ingestion config instead)
   dataFetching: {
-    // Instruments to track (comma-separated list)
     instruments: (process.env.INSTRUMENTS || '').split(',').filter(Boolean),
-
-    // Default intervals to fetch
     intervals: (process.env.INTERVALS || '1m,5m,15m,1h,1d').split(','),
-
-    // Concurrency limit for bulk fetching
     concurrency: parseInt(process.env.FETCH_CONCURRENCY || '5', 10),
-
-    // Max retries on failure
     maxRetries: parseInt(process.env.FETCH_MAX_RETRIES || '3', 10),
   },
 });

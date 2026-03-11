@@ -5,17 +5,14 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { QuestDBModule } from '@repo/database';
-// import { UpstoxModule } from '@repo/market-sdk';
 import { HistoricalDataModule } from './historical-data/historical-data.module';
+import { IngestionModule } from './ingestion/ingestion.module';
 import configuration from './config/configuration';
-// import { ObservabilityModule } from '@repo/observability';
 import { FeatureComputationModule } from './feature-computation/feature-computation.module';
 import { StrikeSelectorModule } from './strike-selector/strike-selector.module';
 
 @Module({
   imports: [
-    // ObservabilityModule,
-
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
@@ -23,7 +20,7 @@ import { StrikeSelectorModule } from './strike-selector/strike-selector.module';
       envFilePath: ['.env.local', '.env'],
     }),
 
-    // Scheduling for nightly backfill
+    // Scheduling for cron jobs
     ConditionalModule.registerWhen(
       ScheduleModule.forRoot(),
       'HISTORY_SAVER_ENABLED',
@@ -39,10 +36,13 @@ import { StrikeSelectorModule } from './strike-selector/strike-selector.module';
     // Database
     ConditionalModule.registerWhen(QuestDBModule, 'HISTORY_SAVER_ENABLED'),
 
-    // Market SDK (Upstox)
-    // UpstoxModule,
+    // NEW: Production ingestion module (providers + gap detection + scheduling)
+    ConditionalModule.registerWhen(
+      IngestionModule,
+      'HISTORY_SAVER_ENABLED',
+    ),
 
-    // Feature modules
+    // LEGACY: Kept for backward compatibility during migration
     ConditionalModule.registerWhen(
       HistoricalDataModule,
       'HISTORY_SAVER_ENABLED',
