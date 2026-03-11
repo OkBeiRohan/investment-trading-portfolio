@@ -1,36 +1,40 @@
 # Machine Learning Documentation
 
-**Last Updated**: January 18, 2026  
-**Architecture**: 3-Tier Multi-Model Ensemble
+**Last Updated**: March 11, 2026  
+**Architecture**: 5-Tier Data-Bound Hierarchical System
 
 ---
 
 ## Overview
 
-This directory contains documentation for the **AI trading system** that powers the algo-worker. The system uses a 3-tier model architecture trained on multi-timeframe data spanning 26 years.
+This directory contains documentation for the **AI trading system** that powers the algo-worker. The system uses a **5-tier data-bound hierarchical architecture** where models are strictly segregated by the intersection of their **target horizon** and the **historical depth** of their required data.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ML ARCHITECTURE OVERVIEW                                 │
+│              5-TIER DATA-BOUND HIERARCHICAL ARCHITECTURE                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  DATA (26 years)                                                            │
-│  ├── Daily OHLCV: 2000-2026 (6,500 trading days)                            │
-│  ├── 1-Min OHLCV: 2022-2026 (~1M candles/instrument)                        │
-│  ├── India VIX: Feb 2014-2026                                               │
-│  ├── Expired F&O: Full chain with strikes, OI                               │
-│  └── Live Tick: Depth-30, Greeks, IV (from today)                           │
-│                                                                              │
-│  MODELS (3-Tier)                                                            │
-│  ├── Tier 1: Regime HMM (26yr daily) → Macro regime                         │
-│  ├── Tier 2: LightGBM + TFT (4yr 1-min) → Direction                         │
-│  └── Tier 3: LiT (live tick) → Microstructure                               │
-│                                                                              │
-│  INFERENCE (<80ms E2E)                                                       │
-│  ├── 54 features via Rust compute-engine (<5ms)                             │
-│  ├── ONNX ensemble inference (<50ms)                                        │
-│  └── Meta-learner signal fusion                                             │
-│                                                                              │
+│                                                                             │
+│  DATA UNIVERSE                                                              │
+│  ├── Daily OHLCV: 2000-2026 (6,500 trading days) ─── Tier 1               │
+│  ├── 1-Min OHLCV: 2022-2026 (~1M candles/instrument) ─── Tier 2           │
+│  ├── India VIX: Feb 2014-2026 ─── Tier 1                                  │
+│  ├── Global Markets: US Futures, Commodities, Forex ─── Tier 0, 1, 2      │
+│  ├── Expired F&O: Full chain with strikes, OI ─── Tier 2                  │
+│  ├── Live Tick: Depth-30, Greeks, IV ─── Tier 3                            │
+│  └── News/Sentiment: FinBERT processed RSS ─── Tier 0, 1                  │
+│                                                                             │
+│  MODEL TIERS                                                                │
+│  ├── Tier 0: Pre-Market Gap Predictor (XGBoost) @ 9:08 AM                 │
+│  ├── Tier 1: Macro Director (HMM + PatchTST, 26yr daily) @ 9:09 AM       │
+│  ├── Tier 2: Intraday Navigator (LightGBM + TFT + Mamba, 4yr 1-min)      │
+│  ├── Tier 3: Microstructure Scalper (LiT, live tick) @ 100ms              │
+│  └── Tier 4: Meta-Learner (Regime-Conditioned Fusion) @ 60s              │
+│                                                                             │
+│  INFERENCE (<80ms E2E)                                                      │
+│  ├── 100+ features via Rust compute-engine (<5ms)                          │
+│  ├── ONNX/native ensemble inference (<50ms)                                │
+│  └── Meta-learner signal fusion with regime conditioning                   │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -42,31 +46,31 @@ This directory contains documentation for the **AI trading system** that powers 
 
 | Document | Description |
 |----------|-------------|
-| [**DATA_ARCHITECTURE.md**](./DATA_ARCHITECTURE.md) | Data sources, QuestDB schemas, Upstox API integration |
-| [**MODEL_ARCHITECTURE.md**](./MODEL_ARCHITECTURE.md) | 3-tier model design: Regime → Direction → Microstructure |
+| [**DATA_ARCHITECTURE.md**](./DATA_ARCHITECTURE.md) | Data sources (Indian + Global), QuestDB schemas, Upstox + Yahoo Finance integration |
+| [**MODEL_ARCHITECTURE.md**](./MODEL_ARCHITECTURE.md) | 5-tier model design: Gap → Regime → Direction → Microstructure → Fusion |
 | [**TRAINING_STRATEGY.md**](./TRAINING_STRATEGY.md) | CPCV validation, walk-forward, ONNX export |
 
 ### Features & Inference
 
 | Document | Description |
 |----------|-------------|
-| [**FEATURE_SPECIFICATION.md**](./FEATURE_SPECIFICATION.md) | 54 feature definitions and formulas |
+| [**FEATURE_SPECIFICATION.md**](./FEATURE_SPECIFICATION.md) | 100+ feature definitions (local + global macro + cyclical time) |
 | [**INFERENCE_PIPELINE.md**](./INFERENCE_PIPELINE.md) | ONNX Runtime inference architecture |
-| [**FEATURE_STORE.md**](./FEATURE_STORE.md) | Feast feature store setup (optional) |
+| [**FEATURE_STORE.md**](./FEATURE_STORE.md) | Redis feature store (direct write, no Feast) |
 
 ### Models & Training
 
 | Document | Description |
 |----------|-------------|
-| [**TIER1_MODELS.md**](./TIER1_MODELS.md) | Regime, TFT, Mamba model specifications |
-| [**META_LEARNER_EXECUTION.md**](./META_LEARNER_EXECUTION.md) | Signal fusion and adaptive weighting |
-| [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md) | Kedro pipeline details |
+| [**TIER1_MODELS.md**](./TIER1_MODELS.md) | Regime HMM, PatchTST, Mamba model specifications |
+| [**META_LEARNER_EXECUTION.md**](./META_LEARNER_EXECUTION.md) | Regime-Conditioned Temporal Loss, adaptive weighting |
+| [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md) | Python training pipeline details |
 
 ### Data Storage
 
 | Document | Description |
 |----------|-------------|
-| [**QUESTDB_TRAINING_DATA.md**](./QUESTDB_TRAINING_DATA.md) | QuestDB schema for training data |
+| [**QUESTDB_TRAINING_DATA.md**](./QUESTDB_TRAINING_DATA.md) | QuestDB 8-table schema for training data |
 | [**AI_TRADING_ARCHITECTURE.md**](./AI_TRADING_ARCHITECTURE.md) | High-level architecture overview |
 
 ---
@@ -75,34 +79,45 @@ This directory contains documentation for the **AI trading system** that powers 
 
 ### Available Data
 
-| Data Type | Coverage | Volume |
-|-----------|----------|--------|
-| Daily OHLCV | 26 years (2000-2026) | ~6,500 days |
-| 1-Min OHLCV | 4 years (2022-2026) | ~1M candles |
-| India VIX | 12 years (2014-2026) | ~3,000 days |
-| Expired F&O | Full chain | All strikes |
-| Live Tick | Today onwards | Continuous |
+| Data Type | Coverage | Volume | Source |
+|-----------|----------|--------|--------|
+| Daily OHLCV (Indian) | 26 years (2000-2026) | ~6,500 days | Upstox |
+| 1-Min OHLCV (Indian) | 4 years (2022-2026) | ~1M candles | Upstox |
+| India VIX | 12 years (2014-2026) | ~3,000 days | Upstox |
+| Expired F&O | Full chain | All strikes | Upstox |
+| Live Tick (Depth-30) | Today onwards | Continuous | Upstox WS |
+| Global Equity Futures | 4+ years | ~500K candles | Yahoo Finance |
+| Commodities (Brent, Gold) | 4+ years | ~500K candles | Yahoo Finance |
+| Currency (USD/INR) | 4+ years | ~500K candles | Yahoo Finance |
+| News Sentiment | Rolling | ~100-500/day | Finnhub + FinBERT |
 
 ### Model Stack
 
-| Layer | Model | Input | Latency |
-|-------|-------|-------|---------|
-| Tier 1 | Regime HMM | Daily data | Batch |
-| Tier 2 | LightGBM | 46 features | ~20ms |
-| Tier 2 | TFT | 46×120 sequence | ~35ms |
-| Tier 3 | LiT | 14 OFI features | ~10ms |
-| Meta | Weighted Fusion | Model outputs | ~2ms |
+| Tier | Model | Data Depth | Horizon | Frequency |
+|------|-------|------------|---------|-----------|
+| 0 | XGBoost (Gap) | Global overnight | 9:15 AM open | Once @ 9:08 AM |
+| 1 | HMM + PatchTST | 26yr daily | 1 Day - 1 Week | Once @ 9:09 AM |
+| 2 | LightGBM + TFT + Mamba | 4yr 1-min | 5m - 30m | Every 60s |
+| 3 | LiT Transformer | Live ticks | 10s - 1m | Every 100ms |
+| 4 | Meta-Learner | All tier outputs | Trade signal | Every 60s |
 
-### 54 Features
+### Feature Categories (100+ Features)
 
 | Category | Count | Examples |
 |----------|-------|----------|
 | Index Breadth | 8 | pct_above_vwap, breadth_thrust |
 | NIFTY Future | 12 | RSI, MACD, ATR, Bollinger |
 | Options | 14 | ATM IV, PCR, GEX, skew |
-| Volatility | 6 | India VIX, IV/RV ratio |
+| Volatility | 10 | India VIX, IV/RV ratio, vol percentiles |
 | Order Flow | 8 | OFI, depth imbalance |
-| Time Context | 6 | minutes_from_open, is_expiry |
+| Price Structure | 8 | daily returns, gap open |
+| Momentum | 8 | RSI, MACD, ADX |
+| Moving Averages | 10 | SMA/EMA, golden cross |
+| Bollinger & Volume | 6 | bandwidth, OBV |
+| Regime | 4 | trend strength, momentum regime |
+| Time Context + Cyclical | 13 | sin/cos encoding, session phase |
+| Global Macro | 12 | GIFT Nifty, S&P 500, Brent crude |
+| Pre-Market | 4 | actual gap %, overnight sentiment |
 
 ---
 
@@ -111,15 +126,28 @@ This directory contains documentation for the **AI trading system** that powers 
 | Metric | Target |
 |--------|--------|
 | Feature Computation | <5ms (Rust) |
-| ML Inference | <50ms (ONNX) |
+| ML Inference | <50ms (ONNX/native) |
 | E2E Latency | <80ms |
 | LightGBM AUC | >0.68 |
 | Ensemble Sharpe | >1.5 |
 
 ---
 
+## Data Provider Stack (Free Tier)
+
+| Provider | Purpose | Rate Limit |
+|----------|---------|------------|
+| Upstox | Indian markets (primary) | Paid subscription |
+| Yahoo Finance | Global markets, commodities | ~2000 calls/hr |
+| Alpha Vantage | Backup global + Treasury yields | 500 calls/day |
+| Finnhub | News/RSS feeds | 60 calls/min |
+| Twelve Data | WebSocket streaming (upgrade) | 800 calls/day (free) |
+
+---
+
 ## Related Documentation
 
 - [algo-worker docs](../../apps/algo-worker/docs/) - Live inference
-- [training-pipeline](../../services/training-pipeline/) - Kedro training
+- [training-pipeline](../../services/training-pipeline/) - Python training
 - [compute-engine](../../packages/compute-engine/) - Rust features
+- [market-sdk](../../packages/market-sdk/) - Data providers

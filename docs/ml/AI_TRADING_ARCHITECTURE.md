@@ -1,21 +1,24 @@
 # AI Trading Architecture - 2026 State-of-the-Art
 
-> **Production-grade hierarchical ML system for NIFTY options trading using multi-horizon predictions.**
+> **Production-grade 5-tier hierarchical ML system for NIFTY options trading using data-bound multi-horizon predictions.**
 
-**Last Updated**: January 18, 2026
+**Last Updated**: March 11, 2026  
+**Architecture**: 5-Tier Data-Bound Hierarchical
 
 ---
 
 ## Overview
 
-This document describes the **4-Tier Hierarchical AI Architecture** for algorithmic trading on NSE NIFTY 50 and Bank NIFTY options. The system leverages 2026 state-of-the-art models including Transformers, State Space Models, and Reinforcement Learning.
+This document describes the **5-Tier Data-Bound Hierarchical AI Architecture** for algorithmic trading on NSE NIFTY 50 and Bank NIFTY options. The system leverages 2026 state-of-the-art models including Transformers, State Space Models, and Reinforcement Learning.
 
-### Key Innovation
+### Key Innovations
 
-**Multi-horizon cascade**: Each model predicts at multiple time horizons, and these predictions become features for higher-tier decision models.
+1. **Data-bound model segregation**: Models are separated by the intersection of their target horizon and historical data depth
+2. **Pre-market gap prediction**: Tier 0 uses global overnight data to predict the 9:15 AM gap
+3. **Regime-Conditioned Temporal Loss**: Meta-Learner prevents whipsawing during strong macro trends
 
 ```
-Tier 1 (Base Models) → Tier 2 (Meta-Learner) → Tier 3 (Strategy) → Tier 4 (Execution)
+Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microstructure) → Tier 4 (Meta-Learner) → Execution Layer
 ```
 
 ---
@@ -24,13 +27,14 @@ Tier 1 (Base Models) → Tier 2 (Meta-Learner) → Tier 3 (Strategy) → Tier 4 
 
 | Data Type | Source | Timeframe | Resolution |
 |-----------|--------|-----------|------------|
-| NIFTY 50 Index | Upstox | 2022-2026 | 1min OHLCV |
-| NIFTY 50 Index | Upstox | 2000-2026 | Daily OHLCV |
-| 50 Constituents | Upstox | 2022-2026 | 1min OHLCV |
-| NIFTY Futures | Upstox | 2022-2026 | 1min OHLCV+OI |
-| NIFTY Options | Upstox | 2022-2026 | 1min OHLCV+OI |
+| NIFTY 50 Index | Upstox | 2000-2026 | Daily, 1min |
+| 50 Constituents | Upstox | 2000-2026 | Daily, 1min |
+| NIFTY Futures | Upstox | 2000-2026 | Daily, 1min |
+| NIFTY Options | Upstox | 2001-2026 | Daily, 1min |
+| India VIX | Upstox | 2014-2026 | Daily, 1min |
 | Live LOB | Upstox WS | Real-time | Depth-30 |
-| India VIX | Upstox | 2022-2026 | 1min |
+| **Global Markets** | Yahoo Finance | Varies | 1min |
+| **News/Sentiment** | Finnhub + FinBERT | Real-time | Continuous |
 
 ---
 

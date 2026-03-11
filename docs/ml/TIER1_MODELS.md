@@ -1,16 +1,38 @@
-# Tier 1 Models - Detailed Specifications
+# Detailed Model Specifications
 
-> **Complete specifications for all base prediction models in the hierarchical AI trading system.**
+> **Complete PyTorch/ONNX implementation specifications for models across the 5-tier hierarchy.**
+
+**Last Updated**: March 11, 2026  
+**Architecture**: 5-Tier Data-Bound Hierarchical
+
+---
+
+## Tier Mapping
+
+The models documented here are used across multiple tiers:
+
+| Model | Tier | Purpose |
+|-------|------|--------|
+| **TFT** | Tier 2 (Intraday Navigator) | Multi-horizon quantile forecasting for 5m-EOD |
+| **Mamba** | Tier 2 (Intraday Navigator) | O(n) sequence modeling for regime-aware direction |
+| **PatchTST** | Tier 1 (Macro Director) | Long-horizon daily pattern detection |
+| **TimeMixer** | Tier 2 (Intraday Navigator) | Multi-scale temporal mixing (experimental) |
+| **IV Surface VAE** | Tier 2 (Options-Specific) | IV surface prediction for options pricing |
+| **Greeks LSTM** | Tier 2 (Options-Specific) | Greeks trajectory forecasting |
+
+> **Note**: LightGBM/XGBoost (Tier 2) and the LiT Transformer (Tier 3) are documented in
+> [MODEL_ARCHITECTURE.md](./MODEL_ARCHITECTURE.md). The Meta-Learner (Tier 4) and PPO Agent
+> are documented in [META_LEARNER_EXECUTION.md](./META_LEARNER_EXECUTION.md).
 
 ---
 
 ## Table of Contents
 
-1. [Temporal Fusion Transformer (TFT)](#1-temporal-fusion-transformer-tft)
-2. [Mamba State Space Model](#2-mamba-state-space-model)
-3. [PatchTST Long-Horizon Forecaster](#3-patchtst-long-horizon-forecaster)
-4. [TimeMixer Multi-Scale Model](#4-timemixer-multi-scale-model)
-5. [Options-Specific Models](#5-options-specific-models)
+1. [Temporal Fusion Transformer (TFT)](#1-temporal-fusion-transformer-tft) — Tier 2
+2. [Mamba State Space Model](#2-mamba-state-space-model) — Tier 2
+3. [PatchTST Long-Horizon Forecaster](#3-patchtst-long-horizon-forecaster) — Tier 1
+4. [TimeMixer Multi-Scale Model](#4-timemixer-multi-scale-model) — Tier 2
+5. [Options-Specific Models](#5-options-specific-models) — Tier 2
 
 ---
 

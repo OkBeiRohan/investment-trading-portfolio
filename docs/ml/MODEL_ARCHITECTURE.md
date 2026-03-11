@@ -1,367 +1,290 @@
-# Model Architecture: 3-Tier Ensemble System
+# Model Architecture: 5-Tier Data-Bound Hierarchical System
 
-**Last Updated**: January 18, 2026  
-**Architecture Version**: 2026 Institutional-Grade
+**Last Updated**: March 11, 2026  
+**Architecture Version**: 2026 Data-Bound Hierarchical
 
 ---
 
 ## Architecture Overview
 
+The fundamental principle: **models are segregated by the intersection of their target horizon and historical data depth.** A model trained on 26 years of daily data must never consume features that only exist for 7 days.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     3-TIER MODEL ARCHITECTURE                               │
+│                  5-TIER DATA-BOUND HIERARCHY                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │ TIER 1: MACRO REGIME MODELS                                             ││
-│  │ Data: 26yr Daily + 12yr VIX | Purpose: Long-term regime classification ││
-│  │ ├── Regime HMM (4 states)                                               ││
-│  │ ├── Trend Classifier (UP/DOWN/RANGE)                                    ││
-│  │ └── Volatility Regime (HIGH/NORMAL/LOW)                                 ││
-│  └─────────────────────────────────────────────────────────────────────────┘│
-│                          ↓ Regime Context                                    │
-│  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │ TIER 2: INTRADAY DIRECTION MODELS                                       ││
-│  │ Data: 4yr 1-Min | Purpose: 5-15 minute directional forecast             ││
-│  │ ├── LightGBM (46 features) → Primary                                    ││
-│  │ ├── XGBoost (46 features) → Secondary                                   ││
-│  │ └── TFT (46×120 sequence) → Multi-horizon                               ││
-│  └─────────────────────────────────────────────────────────────────────────┘│
-│                          ↓ Direction Signal                                  │
-│  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │ TIER 3: MICROSTRUCTURE MODELS (Progressive Development)                 ││
-│  │ Data: Live Tick (from today) | Purpose: 10s-1min order flow signals     ││
-│  │ ├── LiT (14 Order Flow features) → Buy/Sell pressure                    ││
-│  │ └── DRL Execution Agent → Optimal order execution                       ││
-│  └─────────────────────────────────────────────────────────────────────────┘│
-│                          ↓                                                   │
-│  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │ META-LEARNER: ADAPTIVE SIGNAL FUSION                                    ││
-│  │ Combines all tiers with regime-adaptive weighting                       ││
-│  └─────────────────────────────────────────────────────────────────────────┘│
-│                                                                              │
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ TIER 0: PRE-MARKET GAP PREDICTOR                                     │  │
+│  │ Data: Global overnight + GIFT Nifty + Sentiment | Runs: 9:08 AM     │  │
+│  │ Model: XGBoost | Output: expected_gap, opening_volatility, bias     │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                          ↓ Gap Context                                      │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ TIER 1: MACRO DIRECTOR (26-Year Data Depth)                          │  │
+│  │ Data: 26yr Daily + VIX + Tier 0 output | Runs: 9:09 AM              │  │
+│  │ Models: HMM (4-state) + PatchTST | Output: regime_state, trend      │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                          ↓ Regime Context                                   │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ TIER 2: INTRADAY NAVIGATOR (4-Year Data Depth)                       │  │
+│  │ Data: 4yr 1-Min + OI + Global 1-min | Runs: Every 60 seconds        │  │
+│  │ Models: LightGBM + TFT + Mamba                                      │  │
+│  │ Output: P(up), P(down), P(flat) for 5m, 15m, 30m horizons           │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                          ↓ Direction Signal                                 │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ TIER 3: MICROSTRUCTURE SCALPER (Live Data Only)                      │  │
+│  │ Data: Live Depth-30, Greeks, OFI | Runs: Every 100ms                │  │
+│  │ Model: LiT Transformer (phased activation)                          │  │
+│  │ Output: buy_pressure, sell_pressure, slippage_estimate               │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                          ↓                                                  │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ TIER 4: META-LEARNER (Fusion Core)                                   │  │
+│  │ Combines all tiers with Regime-Conditioned Temporal Loss             │  │
+│  │ Model: Contextual Gating Network | Runs: Every 60 seconds           │  │
+│  │ Output: final_direction, confidence, position_action                 │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  EXECUTION LAYER (separate from prediction)                                │
+│  ├── PPO Agent: Strike selection, limit pricing                            │
+│  ├── Risk Manager: Greeks limits, VaR, position sizing                    │
+│  └── Order Router: Upstox API execution                                   │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Tier 1: Macro Regime Models
+## Tier 0: Pre-Market Gap Predictor
 
 ### Purpose
-Long-term market regime classification using 26 years of daily data to provide context for intraday models.
+Predict the 9:15 AM gap direction, magnitude, and expected opening volatility using the 9:08 AM pre-open freeze and overnight global market data.
 
-### Models
+### Why This Exists
+The Indian market is closed while the US operates and global news breaks. The gap between yesterday's 3:30 PM close and today's 9:15 AM open is a massive discontinuity that other tiers can't handle.
 
-| Model | Input Features | Output | Training Data |
-|-------|----------------|--------|---------------|
-| **Regime HMM** | Returns, VIX, Volatility | 4 states | 26yr daily |
-| **Trend Classifier** | MA crossovers, Higher Highs | UP/DOWN/RANGE | 26yr daily |
-| **Vol Regime** | Realized vol, VIX percentile | HIGH/NORMAL/LOW | 12yr VIX |
+| Property | Value |
+|----------|-------|
+| **Model** | XGBoost |
+| **Runs** | Once at 9:08:05 AM |
+| **Data Depth** | Global overnight snapshots |
+| **Target** | Opening gap %, expected volatility |
+
+### Input Features (at 9:08 AM)
+
+| Feature | Source |
+|---------|--------|
+| `gift_nifty_premium` | GIFT Nifty LTP - prev NIFTY close |
+| `sp500_overnight_return` | S&P 500 E-mini overnight % |
+| `nasdaq_overnight_return` | Nasdaq 100 E-mini overnight % |
+| `nikkei_return` | Nikkei 225 morning session |
+| `brent_crude_change` | Brent crude overnight % |
+| `brent_wti_spread` | Brent - WTI price spread |
+| `gold_change` | Gold overnight % |
+| `usd_inr_change` | USD/INR overnight % |
+| `overnight_news_sentiment` | FinBERT rolling sentiment [-1, 1] |
+| `actual_gap_points` | 9:08 AM freeze price - prev close |
+| `prev_day_range` | Previous day's high-low range |
+| `prev_day_close_vs_vwap` | Previous close relative to VWAP |
+
+### Output
+
+```json
+{
+  "expected_gap_pct": 0.45,
+  "expected_volatility": "HIGH",
+  "opening_bias": 0.65,
+  "confidence": 0.78
+}
+```
+
+---
+
+## Tier 1: Macro Director
+
+### Purpose
+Determine the dominant daily market regime using 26 years of robust daily data. This tier is **immune to intraday noise**.
+
+| Property | Value |
+|----------|-------|
+| **Models** | HMM (4-state) + PatchTST |
+| **Runs** | Once at 9:09 AM |
+| **Data Depth** | 26yr daily + 12yr VIX |
+| **Target** | Regime state, daily trend direction |
 
 ### Regime States
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ REGIME CLASSIFICATION                                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  STATE 1: BULL TRENDING           STATE 2: BEAR TRENDING                    │
-│  ├── VIX < 18                     ├── VIX 18-25                             │
-│  ├── 50 DMA > 200 DMA             ├── 50 DMA < 200 DMA                       │
-│  ├── Higher highs                 ├── Lower lows                            │
-│  └── Breadth > 60%                └── Breadth < 40%                         │
-│                                                                              │
-│  STATE 3: VOLATILE                STATE 4: RANGING                          │
-│  ├── VIX > 25                     ├── VIX 15-20                             │
-│  ├── ATR spike > 2x               ├── ATR normal                            │
-│  └── Sector rotation high         └── Breadth 40-60%                        │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+| State | Characteristics | Typical VIX | Strategy Bias |
+|-------|----------------|-------------|---------------|
+| **BULL_TRENDING** | 50 DMA > 200 DMA, higher highs, breadth > 60% | < 18 | Long CE, momentum |
+| **BEAR_TRENDING** | 50 DMA < 200 DMA, lower lows, breadth < 40% | 18-25 | Long PE, hedged |
+| **VOLATILE** | ATR spike > 2x, sector rotation high | > 25 | Reduced size, straddles |
+| **RANGING** | ATR normal, breadth 40-60% | 15-20 | Mean reversion, spreads |
 
-### Features (Daily)
+### Features
 
 ```python
 REGIME_FEATURES = [
-    # Returns
+    # Returns (5)
     'return_1d', 'return_5d', 'return_10d', 'return_20d', 'return_60d',
-    # Moving Averages
-    'sma_20', 'sma_50', 'sma_100', 'sma_200',
-    'ema_20', 'price_vs_sma200',
-    # Volatility
+    # Moving Averages (6)
+    'sma_20', 'sma_50', 'sma_200', 'ema_20', 'price_vs_sma200', 'golden_cross',
+    # Volatility (5)
     'realized_vol_10d', 'realized_vol_20d', 'realized_vol_60d',
     'india_vix', 'vix_percentile_1yr',
-    # Trend
-    'higher_high_count_20d', 'lower_low_count_20d',
-    'adx_14', 'trend_strength',
-    # Breadth
+    # Trend (4)
+    'adx_14', 'trend_strength', 'higher_high_count_20d', 'lower_low_count_20d',
+    # Breadth (2)
     'pct_above_200sma', 'advance_decline_20d',
-    # Seasonality
+    # Tier 0 Output (3)
+    'expected_gap_pct', 'expected_volatility', 'opening_bias',
+    # Global Macro (4)
+    'sp500_overnight_return', 'brent_crude_change', 'usd_inr_change',
+    'overnight_news_sentiment',
+    # Seasonality (3)
     'month', 'day_of_week', 'days_to_expiry'
 ]
 ```
 
 ---
 
-## Tier 2: Intraday Direction Models
+## Tier 2: Intraday Navigator
 
 ### Purpose
-5-15 minute directional forecast using 4 years of 1-minute data with 46 of the 54 features (excludes order flow).
-
-### Models
+Predict 5m, 15m, and 30m directional magnitude using 4 years of 1-minute historical data. **Core operational tier.**
 
 | Model | Architecture | Input | Output | Latency |
-|-------|--------------|-------|--------|---------|
-| **LightGBM** | Gradient Boosting | 46 features | 3-class probs | ~20ms |
-| **XGBoost** | Gradient Boosting | 46 features | 3-class probs | ~25ms |
-| **TFT** | Temporal Fusion | 46×120 sequence | Multi-horizon | ~35ms |
+|-------|-------------|-------|--------|---------|
+| **LightGBM** | Gradient Boosting | 80+ features | 3-class probs | ~20ms |
+| **TFT** | Temporal Fusion | 80×120 sequence | Multi-horizon quantiles | ~35ms |
+| **Mamba** | State Space Model | 80×120 sequence | Direction probabilities | ~25ms |
 
-### LightGBM (Primary Model)
+### Feature Set (80+ Features)
 
-```yaml
-model:
-  type: lightgbm.LGBMClassifier
-  params:
-    objective: multiclass
-    num_class: 3
-    n_estimators: 1000
-    max_depth: 8
-    num_leaves: 64
-    learning_rate: 0.01
-    feature_fraction: 0.8
-    bagging_fraction: 0.8
-    bagging_freq: 5
-    min_child_samples: 20
-    class_weight: balanced
-    early_stopping_rounds: 50
-    
-features:
-  count: 46
-  categories:
-    - index_breadth: 8
-    - nifty_future: 12
-    - options: 14
-    - volatility: 6
-    - time_context: 6
-    
-output:
-  classes: ['VOL_DOWN', 'NEUTRAL', 'VOL_UP']
-  threshold: 0.002  # 0.2% move threshold
-  horizon: 15  # bars (15 minutes)
-```
+| Category | Count | Key Features |
+|----------|-------|-------------|
+| Index Breadth | 8 | pct_above_vwap, breadth_thrust, advance_decline |
+| NIFTY Future | 12 | RSI, MACD, ATR, Bollinger, volume ratio, OI change |
+| Options | 14 | ATM IV, PCR, skew, GEX, charm, vanna |
+| Volatility | 10 | VIX, realized vol, IV/RV ratio, vol percentiles |
+| Order Flow | 8 | OFI, depth imbalance (from available live data) |
+| Price Structure | 8 | returns (1m-20d), gap open, range position |
+| Momentum | 8 | RSI (5/14), MACD, ADX, directional indicators |
+| Moving Averages | 10 | SMA/EMA, golden cross, price vs MA |
+| Bollinger & Volume | 6 | bandwidth, OBV, accumulation/dist |
+| Regime | 4 | trend strength, momentum regime |
+| Time Context (Cyclical) | 13 | sin/cos encoding, session phase, expiry flags |
+| Global Macro (live 1-min) | 12 | ES/NQ returns, Brent, Gold during session |
 
-### TFT (Temporal Fusion Transformer)
-
-```yaml
-model:
-  type: pytorch_forecasting.TemporalFusionTransformer
-  params:
-    hidden_size: 64
-    attention_head_size: 4
-    dropout: 0.1
-    hidden_continuous_size: 32
-    output_size: 3  # horizons: 5min, 15min, 30min
-    learning_rate: 0.001
-    reduce_on_plateau_patience: 4
-    
-input:
-  sequence_length: 120  # 2 hours of 1-min bars
-  features: 46
-  
-output:
-  horizons: [5, 15, 30]  # minutes
-  type: quantile_regression
-  quantiles: [0.1, 0.5, 0.9]
-```
-
-### Feature Set (46 Features)
-
-| Category | Count | Features |
-|----------|-------|----------|
-| **Index Breadth** | 8 | pct_above_vwap, breadth_thrust, etc. |
-| **NIFTY Future** | 12 | RSI, MACD, ATR, Bollinger, etc. |
-| **Options** | 14 | ATM IV, PCR, skew, GEX, etc. |
-| **Volatility** | 6 | India VIX, IV/RV ratio, etc. |
-| **Time Context** | 6 | minutes_from_open, is_expiry_day, etc. |
-
----
-
-## Tier 3: Microstructure Models
-
-### Purpose
-10 second to 1 minute order flow signals using live tick-by-tick data with depth-30.
-
-### Challenge: No Historical Tick Data
-
-**Solution: Progressive Development**
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ PROGRESSIVE MICROSTRUCTURE MODEL DEVELOPMENT                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  PHASE 1 (Day 0): Pre-training                                              │
-│  ├── Synthetic LOB generation using GAN                                     │
-│  ├── Transfer learning from 1-min bid/ask spread                            │
-│  └── Model weights initialized                                              │
-│                                                                              │
-│  PHASE 2 (Day 1-30): Online Calibration                                     │
-│  ├── Collect real tick data                                                 │
-│  ├── Fine-tune pre-trained model                                            │
-│  └── Validate against Tier 2 signals                                        │
-│                                                                              │
-│  PHASE 3 (Day 30+): Full Microstructure                                     │
-│  ├── LiT trained on real data                                               │
-│  ├── DRL execution agent                                                    │
-│  └── Continuous online learning                                             │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### LiT (Limit Order Book Transformer)
-
-```yaml
-model:
-  type: custom.LiTTransformer
-  params:
-    d_model: 64
-    n_heads: 4
-    n_layers: 3
-    dropout: 0.1
-    
-input:
-  features: 14  # Order flow only
-  sequence_length: 60  # 60 seconds
-  
-features:
-  - ofi_1s
-  - ofi_5s
-  - ofi_30s
-  - trade_imbalance
-  - depth_imbalance_5
-  - depth_imbalance_10
-  - volume_at_bid_pct
-  - large_trade_indicator
-  - bid_ask_slope
-  - spread_normalized
-  - mid_price_change
-  - order_arrival_rate
-  - cancellation_rate
-  - sweep_detector
-
-output:
-  classes: ['SELL_PRESSURE', 'NEUTRAL', 'BUY_PRESSURE']
-  horizon: 10  # seconds
-```
-
-### DRL Execution Agent
-
-```yaml
-model:
-  type: stable_baselines3.PPO
-  environment: OrderExecutionEnv
-  
-state:
-  - remaining_quantity
-  - time_remaining
-  - lob_state (depth-30)
-  - spread
-  - volatility
-  - order_imbalance
-
-actions:
-  - limit_price_offset: [-10, -5, 0, +5, +10] ticks
-  - order_size: [0.1, 0.25, 0.5, 1.0] of remaining
-  - wait_time: [0, 1, 5, 10] seconds
-
-reward:
-  - -slippage_cost
-  - -delay_penalty
-  - -adverse_selection_cost
-  
-training:
-  method: offline_rl  # Pre-train on historical order data
-  fine_tune: online   # Fine-tune on live executions
-```
-
----
-
-## Meta-Learner: Adaptive Signal Fusion
-
-### Purpose
-Combine signals from all tiers with regime-adaptive weighting.
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ META-LEARNER: CONTEXTUAL GATING NETWORK                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  INPUTS:                                                                     │
-│  ├── Tier 1 Regime: [regime_state, trend, vol_regime]                       │
-│  ├── Tier 2 Direction: [lgbm_prob, xgb_prob, tft_prob]                      │
-│  └── Tier 3 Microstructure: [lit_prob] (when available)                     │
-│                                                                              │
-│  GATING MECHANISM:                                                           │
-│  ├── Context vector = f(regime, vix, time_of_day)                           │
-│  ├── Weights = softmax(W @ context + b)                                     │
-│  └── Final signal = sum(weights * model_probs)                              │
-│                                                                              │
-│  REGIME-ADAPTIVE WEIGHTS:                                                   │
-│  ├── BULL TRENDING:  LightGBM=0.5, TFT=0.3, LiT=0.2                         │
-│  ├── BEAR TRENDING:  LightGBM=0.5, TFT=0.3, LiT=0.2                         │
-│  ├── VOLATILE:       LightGBM=0.3, TFT=0.3, LiT=0.4                         │
-│  └── RANGING:        LightGBM=0.4, TFT=0.4, LiT=0.2                         │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Implementation
+### Label Generation
 
 ```python
-class MetaLearner:
-    def __init__(self):
-        self.base_weights = {
-            'BULL_TRENDING':  {'lgbm': 0.5, 'tft': 0.3, 'lit': 0.2},
-            'BEAR_TRENDING':  {'lgbm': 0.5, 'tft': 0.3, 'lit': 0.2},
-            'VOLATILE':       {'lgbm': 0.3, 'tft': 0.3, 'lit': 0.4},
-            'RANGING':        {'lgbm': 0.4, 'tft': 0.4, 'lit': 0.2},
-        }
-    
-    def predict(self, regime: str, model_probs: dict) -> TradingSignal:
-        weights = self.base_weights[regime]
-        
-        # Weighted average
-        final_probs = np.zeros(3)
-        for model, prob in model_probs.items():
-            if model in weights:
-                final_probs += weights[model] * np.array(prob)
-        
-        # Generate signal
-        direction = ['VOL_DOWN', 'NEUTRAL', 'VOL_UP'][np.argmax(final_probs)]
-        confidence = np.max(final_probs)
-        
-        return TradingSignal(
-            direction=direction,
-            confidence=confidence,
-            regime=regime,
-            model_weights=weights
+def generate_multi_horizon_labels(
+    df: pd.DataFrame,
+    horizons: list[int] = [5, 15, 30]  # minutes
+) -> pd.DataFrame:
+    result = df.copy()
+    for h in horizons:
+        # Forward returns
+        result[f'return_{h}m'] = df['close'].shift(-h) / df['close'] - 1
+        # Dynamic threshold: larger moves needed for longer horizons
+        threshold = 0.001 * np.sqrt(h)
+        # 3-class: DOWN=0, NEUTRAL=1, UP=2
+        result[f'label_{h}m'] = np.where(
+            result[f'return_{h}m'] < -threshold, 0,
+            np.where(result[f'return_{h}m'] > threshold, 2, 1)
         )
+    return result
 ```
 
 ---
 
-## Model Performance Targets
+## Tier 3: Microstructure Scalper
+
+### Purpose
+Read live Order Flow Imbalance (OFI) and bid/ask pressure for immediate execution edges. **Defers to higher tiers for directional bias.**
+
+| Property | Value |
+|----------|-------|
+| **Model** | LiT Transformer (phased activation) |
+| **Runs** | Every 100ms |
+| **Data Depth** | Live WebSocket only |
+| **Target** | 10s to 1min price pressure |
+
+### Progressive Activation
+
+| Phase | Timeline | Model | Rationale |
+|-------|----------|-------|-----------|
+| Phase 1 | Months 1-3 | Analytical rules (OFI thresholds, Black-Scholes) | Too little data for ML |
+| Phase 2 | Month 4-6 | Shallow MLP | Enough for basic pattern matching |
+| Phase 3 | Month 6+ | Full LiT Transformer | Sufficient Depth-30 history |
+
+### LiT Input (14 Order Flow Features)
+
+```python
+LOB_FEATURES = [
+    'ofi_1s', 'ofi_5s', 'ofi_30s',
+    'trade_imbalance', 'depth_imbalance_5', 'depth_imbalance_10',
+    'volume_at_bid_pct', 'large_trade_indicator',
+    'bid_ask_slope', 'spread_normalized',
+    'mid_price_change', 'order_arrival_rate',
+    'cancellation_rate', 'sweep_detector'
+]
+```
+
+---
+
+## Tier 4: Meta-Learner (Fusion Core)
+
+### Purpose
+Fuse all tier outputs using **Regime-Conditioned Temporal Loss** to prevent the system from whipsawing on intraday noise during strong macro trends.
+
+### Regime-Conditioned Temporal Loss
+
+$$
+L_{meta} = L_{CE}(Y, \hat{Y}) + \gamma \sum_{t} (||\Delta \hat{Y}_t||^2 \cdot C_{T1}(t)) + \alpha R(W_{T3})
+$$
+
+| Component | Purpose |
+|-----------|---------|
+| $L_{CE}$ | Standard cross-entropy on multi-horizon labels |
+| $\gamma$ term | Penalizes rapid prediction flipping, scaled by Tier 1 confidence |
+| $\alpha$ term | Regularizes over-reliance on data-poor Tier 3 (decays over time) |
+
+### Regime-Adaptive Weights
+
+| Regime | LightGBM | TFT | LiT | Behavior |
+|--------|----------|-----|-----|----------|
+| BULL_TRENDING | 0.5 | 0.3 | 0.2 | Trust direction models |
+| BEAR_TRENDING | 0.5 | 0.3 | 0.2 | Trust direction models |
+| VOLATILE | 0.3 | 0.3 | 0.4 | Prioritize microstructure |
+| RANGING | 0.4 | 0.4 | 0.2 | Trust regime boundaries |
+
+### Live Feed: Asynchronous State Management
+
+Tier outputs are cached in Redis. The Meta-Learner always pulls the **latest available** prediction from each tier:
+
+| Tier | Update Frequency | Redis Key Pattern |
+|------|-----------------|-------------------|
+| Tier 0 | Once @ 9:08 AM | `tier0:gap:{date}` |
+| Tier 1 | Once @ 9:09 AM | `tier1:regime:{date}` |
+| Tier 2 | Every 60 seconds | `tier2:direction:{timestamp}` |
+| Tier 3 | Every 100ms | `tier3:microstructure:{timestamp}` |
+
+---
+
+## Performance Targets
 
 | Model | Metric | Target | Validation |
 |-------|--------|--------|------------|
-| **Regime HMM** | State persistence | >5 days avg | Walk-forward |
-| **LightGBM** | AUC-ROC | >0.68 | CPCV |
-| **XGBoost** | AUC-ROC | >0.67 | CPCV |
-| **TFT** | MAE (returns) | <0.3% | CPCV |
-| **LiT** | AUC-ROC | >0.65 | Rolling window |
-| **Meta-Learner** | AUC-ROC | >0.72 | CPCV |
+| **Tier 0 XGBoost** | Gap direction accuracy | >65% | Walk-forward |
+| **Tier 1 HMM** | State persistence | >5 days avg | Walk-forward |
+| **Tier 2 LightGBM** | AUC-ROC | >0.68 | CPCV |
+| **Tier 2 TFT** | MAE (returns) | <0.3% | CPCV |
+| **Tier 3 LiT** | AUC-ROC | >0.65 | Rolling window |
+| **Tier 4 Meta** | AUC-ROC | >0.72 | CPCV |
 | **Ensemble** | Sharpe Ratio | >1.5 | Backtest |
 
 ---
@@ -372,27 +295,29 @@ class MetaLearner:
 
 | Model | Memory | Training Time |
 |-------|--------|---------------|
-| LightGBM | <1GB | ~30 min |
-| XGBoost | <1GB | ~45 min |
-| TFT | ~2GB | ~4 hours |
-| LiT | ~2GB | ~2 hours |
+| XGBoost (Tier 0) | <0.5GB | ~5 min |
+| LightGBM (Tier 2) | <1GB | ~30 min |
+| TFT (Tier 2) | ~2GB | ~4 hours |
+| Mamba (Tier 2) | ~2GB | ~3 hours |
+| LiT (Tier 3) | ~2GB | ~2 hours |
 | Meta-Learner | <0.5GB | ~5 min |
 
 ### Inference (Production)
 
 | Model | Latency | Memory |
 |-------|---------|--------|
+| XGBoost | ~5ms | ~20MB |
 | LightGBM | ~20ms | ~50MB |
-| XGBoost | ~25ms | ~60MB |
 | TFT | ~35ms | ~200MB |
+| Mamba | ~25ms | ~150MB |
 | LiT | ~10ms | ~100MB |
-| **Total (parallel)** | **~50ms** | **~500MB** |
+| **Total (parallel)** | **~50ms** | **~600MB** |
 
 ---
 
 ## Related Documentation
 
-- [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md) - Data sources
+- [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md) - Data sources (Indian + Global)
 - [TRAINING_STRATEGY.md](./TRAINING_STRATEGY.md) - Validation methods
-- [FEATURE_SPECIFICATION.md](./FEATURE_SPECIFICATION.md) - 54 features
+- [FEATURE_SPECIFICATION.md](./FEATURE_SPECIFICATION.md) - 100+ features
 - [INFERENCE_ENGINE.md](../../apps/algo-worker/docs/INFERENCE_ENGINE.md) - Live inference

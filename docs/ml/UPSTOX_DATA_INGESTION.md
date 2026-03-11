@@ -1,7 +1,8 @@
 # Upstox Data Ingestion Guide
 
-**Last Updated**: January 18, 2026  
-**API Version**: Upstox API v2/v3
+**Last Updated**: March 11, 2026  
+**API Version**: Upstox API v2/v3  
+**Account**: Upstox Plus (Depth-30, expired instruments, enhanced limits)
 
 ---
 
@@ -403,10 +404,12 @@ async def write_tick_to_questdb(
 
 | Endpoint | Rate Limit | Notes |
 |----------|------------|-------|
-| Historical Candles | 250/min | Per user |
-| Expired Instruments | 100/min | Per user |
-| WebSocket | 3 connections | Upstox Plus |
-| Subscriptions | 200 instruments | Per connection |
+| Historical Candles | 25/sec, 250/min | Per user |
+| Expired Instruments | 25/sec, 250/min | Plus account only |
+| WebSocket | **5 connections** | Upstox Plus (was 3) |
+| D30 Subscriptions | **50 instruments** | Per connection, Plus |
+| LTPC Subscriptions | **5000 instruments** | Per connection |
+| Option Greeks Sub | **2000 instruments** | Per connection |
 
 ### Data Considerations
 

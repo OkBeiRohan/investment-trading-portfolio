@@ -203,6 +203,32 @@ export const InstrumentFeaturesSchema = z.object({
   isMonthEnd: z.boolean().optional(),
   isQuarterEnd: z.boolean().optional(),
 
+  // Cyclical Time Encoding (4) - sin/cos transforms for neural networks
+  timeSin: z.number().optional(), // sin(2π × minutes_from_open / 375)
+  timeCos: z.number().optional(), // cos(2π × minutes_from_open / 375)
+  dayOfWeekSin: z.number().optional(), // sin(2π × day_of_week / 5)
+  dayOfWeekCos: z.number().optional(), // cos(2π × day_of_week / 5)
+
+  // Global Macro (12) - for Tier 0 (Pre-Market) and Tier 1 (Macro Director)
+  giftNiftyPremium: z.number().optional(), // GIFT Nifty LTP - prev NIFTY close
+  sp500OvernightReturn: z.number().optional(), // S&P 500 futures overnight %
+  nasdaqOvernightReturn: z.number().optional(), // Nasdaq 100 futures overnight %
+  nikkeiReturn: z.number().optional(), // Nikkei 225 session return %
+  ftseReturn: z.number().optional(), // FTSE 100 session return %
+  brentCrudeChange: z.number().optional(), // Brent crude overnight % change
+  wtiCrudeChange: z.number().optional(), // WTI crude overnight % change
+  brentWtiSpread: z.number().optional(), // Brent - WTI price spread
+  goldChange: z.number().optional(), // Gold overnight % change
+  silverChange: z.number().optional(), // Silver overnight % change
+  usdInrChange: z.number().optional(), // USD/INR overnight % change
+  us10yYieldChange: z.number().optional(), // US 10Y Treasury yield change
+
+  // Pre-Market (4) - computed at 9:08 AM from pre-open session
+  actualGapPct: z.number().optional(), // (9:08 price - prev close) / prev close
+  expectedOpeningVolatility: z.number().optional(), // Tier 0 model output
+  preMarketBias: z.number().optional(), // -1 to 1 directional bias
+  overnightNewsSentiment: z.number().optional(), // Aggregated overnight sentiment
+
   // Validity
   isValid: z.boolean().optional(),
   invalidReason: z.string().optional(),

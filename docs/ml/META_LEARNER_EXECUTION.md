@@ -1,24 +1,30 @@
 # Meta-Learner & Execution Optimization
 
-> **Tier 2-4 architecture: Signal fusion, strategy selection, and execution optimization.**
+> **Tier 4 Meta-Learner + Execution Layer: Signal fusion, strategy selection, and execution optimization.**
+
+**Last Updated**: March 11, 2026
 
 ---
 
 ## Overview
 
-This document covers the higher tiers of the hierarchical AI architecture:
+This document covers the **fusion and execution** components of the 5-tier architecture:
 
-- **Tier 2**: Meta-Learner (attention-based fusion of base model predictions)
-- **Tier 3**: Strategy & Decision Layer (strike selection, risk management)
-- **Tier 4**: Execution Optimization (PPO agent for slippage minimization)
+- **Tier 4**: Contextual Meta-Learner (attention-based fusion of Tier 0-3 predictions)
+- **Execution Layer**: Strategy & Decision (strike selection, risk management)
+- **Execution Layer**: PPO Agent (order execution optimization for slippage minimization)
+
+> Note: In the previous 3-tier architecture, these were labeled Tier 2-4. In the finalized
+> 5-tier Data-Bound Hierarchical Architecture, the Meta-Learner is **Tier 4**, and the
+> PPO agent is part of the **Execution Layer** (not a prediction tier).
 
 ---
 
-## Tier 2: Contextual Meta-Learner
+## Tier 4: Contextual Meta-Learner
 
 ### Purpose
 
-The Meta-Learner combines predictions from all Tier 1 models with **regime-aware weighting**. It learns when to trust each model based on current market conditions.
+The Meta-Learner combines predictions from **Tier 0-3 models** with **regime-aware weighting**. It learns when to trust each model based on current market conditions, using the Regime-Conditioned Temporal Loss to prevent whipsawing.
 
 ### Architecture
 
@@ -323,7 +329,7 @@ def train_meta_learner(
 
 ---
 
-## Tier 3: Strategy & Decision Layer
+## Execution Layer: Strategy & Decision
 
 ### Strike Selection Neural Network
 
@@ -493,11 +499,11 @@ class RiskManager:
 
 ---
 
-## Tier 4: PPO Execution Agent
+## Execution Layer: PPO Execution Agent
 
 ### Purpose
 
-Optimize order execution to minimize slippage and market impact.
+Optimize order execution to minimize slippage and market impact. The PPO agent is **not a prediction tier** — it operates in the execution layer and focuses purely on order execution quality.
 
 ```python
 import torch
