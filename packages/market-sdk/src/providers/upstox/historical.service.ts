@@ -18,8 +18,20 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { UpstoxHistoricalAPI } from "./api/historical/historical.service";
-import type { ICandleInsert } from "@repo/schema";
+import { UpstoxHistoricalAPIService } from "./api/historical/historical.service";
+
+/** Normalized candle for QuestDB insertion */
+export interface ICandleInsert {
+  timestamp: Date;
+  instrument_key: string;
+  interval: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  open_interest: number;
+}
 
 export interface HistoricalDataRequest {
   instrument_key: string;
@@ -51,7 +63,7 @@ export class UpstoxHistoricalService {
   private readonly logger = new Logger(UpstoxHistoricalService.name);
 
   constructor(
-    private readonly historicalAPI: UpstoxHistoricalAPI,
+    private readonly historicalAPI: UpstoxHistoricalAPIService,
     private readonly eventEmitter: EventEmitter2
   ) {}
 

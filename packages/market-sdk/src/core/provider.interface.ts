@@ -2,11 +2,14 @@ import {
   Candle,
   MarketQuote,
   OptionGreeks,
-  Order,
-  OrderParams,
-  Position,
-  Holding,
 } from "@repo/schema";
+
+// Types that will be defined when order/portfolio modules are implemented
+export interface OrderParams { [key: string]: any; }
+export interface Order { [key: string]: any; }
+export interface Position { [key: string]: any; }
+export interface Holding { [key: string]: any; }
+
 
 /**
  * Base provider configuration

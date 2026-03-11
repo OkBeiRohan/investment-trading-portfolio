@@ -1,5 +1,5 @@
 import { Logger } from "@nestjs/common";
-import { IProvider, ProviderConfig } from "./provider.interface";
+import { IProvider, ProviderConfig, ProviderFeatures } from "./provider.interface";
 
 /**
  * Base abstract class for all providers
@@ -12,6 +12,7 @@ export abstract class BaseProvider implements IProvider {
 
   abstract readonly name: string;
   abstract readonly version: string;
+  abstract readonly supportedFeatures: ProviderFeatures;
 
   constructor(protected readonly providerName: string) {
     this.logger = new Logger(providerName);
