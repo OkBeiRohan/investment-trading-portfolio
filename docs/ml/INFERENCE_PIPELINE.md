@@ -104,7 +104,7 @@ export class OnnxInferenceService implements OnModuleInit, OnModuleDestroy {
   private inferenceWorker: Worker | null = null;
   
   private readonly modelConfigs: ModelConfig[] = [
-    { name: 'lightgbm', path: 'models/lightgbm_macro.onnx', inputShape: [1, 33], outputShape: [1, 3] },
+    { name: 'lightgbm', path: 'models/lightgbm_macro.onnx', inputShape: [1, 117], outputShape: [1, 3] },
     { name: 'tft', path: 'models/tft_multihorizon.onnx', inputShape: [1, 100, 33], outputShape: [1, 6] },
     { name: 'mamba', path: 'models/mamba_regime.onnx', inputShape: [1, 50, 33], outputShape: [1, 4] },
     { name: 'meta', path: 'models/meta_learner.onnx', inputShape: [1, 13], outputShape: [1, 6] },
@@ -191,7 +191,7 @@ export class OnnxInferenceService implements OnModuleInit, OnModuleDestroy {
     
     // Run tier-1 models in parallel
     const [lgbResult, tftResult, mambaResult] = await Promise.all([
-      this.runInference('lightgbm', features, [1, 33]),
+      this.runInference('lightgbm', features, [1, 117]),
       this.runInference('tft', this.prepareSequence(features, 100), [1, 100, 33]),
       this.runInference('mamba', this.prepareSequence(features, 50), [1, 50, 33]),
     ]);
@@ -522,7 +522,7 @@ async warmupModels() {
   const dummyFeatures = new Float32Array(33).fill(0);
   
   for (const modelName of this.sessions.keys()) {
-    await this.runInference(modelName, dummyFeatures, [1, 33]);
+    await this.runInference(modelName, dummyFeatures, [1, 117]);
   }
   
   this.logger.log('Model warmup complete');

@@ -1,6 +1,0 @@
-lightgbm
-mlflow
-numpy
-pandas
-scikit-learn
-pydantic

@@ -2,7 +2,7 @@
 
 > **Production-grade 5-tier hierarchical ML system for NIFTY options trading using data-bound multi-horizon predictions.**
 
-**Last Updated**: March 11, 2026  
+**Last Updated**: March 13, 2026  
 **Architecture**: 5-Tier Data-Bound Hierarchical
 
 ---
@@ -41,8 +41,8 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 ## Architecture Diagram
 
 ```
+                        EXECUTION LAYER
 ┌─────────────────────────────────────────────────────────────────┐
-│                 TIER 4: EXECUTION OPTIMIZATION                  │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
 │  │ PPO Agent    │  │ Exit Manager │  │ Position Sizing    │    │
 │  │ (Slippage)   │  │              │  │ (Kelly Criterion)  │    │
@@ -50,34 +50,48 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
-│                 TIER 3: STRATEGY & DECISION                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
-│  │ Strike       │  │ Strategy     │  │ Risk Manager       │    │
-│  │ Selector     │  │ Selector     │  │ (Greeks + VaR)     │    │
-│  └──────────────┘  └──────────────┘  └────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-                              ▲
-┌─────────────────────────────────────────────────────────────────┐
-│                 TIER 2: META-LEARNER                            │
+│          TIER 4: META-LEARNER + STRATEGY & DECISION             │
 │  ┌───────────────────────────────────────────────────────────┐ │
 │  │ Contextual Meta-Learner (Attention-Based Gating)          │ │
-│  │ • Regime-aware model weighting                            │ │
-│  │ • Multi-horizon signal fusion                             │ │
+│  │ • Regime-aware model weighting → Strike/Strategy Select   │ │
+│  │ • Multi-horizon signal fusion  → Risk Manager (VaR)       │ │
 │  └───────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
-│                 TIER 1: BASE PREDICTION MODELS                  │
-│                                                                 │
-│  MICRO-ALPHA (10s-1min)     MACRO-DIRECTION (5min-1hr)         │
-│  ├── LiT Transformer        ├── LightGBM                       │
-│  ├── TLOB                   ├── XGBoost                        │
-│  └── OFI-CNN                └── PatchTST                       │
-│                                                                 │
-│  REGIME & VOLATILITY        OPTIONS-SPECIFIC                   │
-│  ├── TFT                    ├── IV Surface Predictor           │
-│  ├── Mamba (SSM)            ├── Greeks Forecaster              │
-│  └── TimeMixer              └── PCR/Max Pain Analyzer          │
+│          TIER 3: MICROSTRUCTURE (LiT + Order Flow)              │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
+│  │ LiT          │  │ OFI-CNN      │  │ TLOB               │    │
+│  │ Transformer  │  │ (Order Flow) │  │ (LOB patterns)     │    │
+│  └──────────────┘  └──────────────┘  └────────────────────┘    │
+│  Input: Depth-30 LOB snapshots (10s-1min horizon)              │
+└─────────────────────────────────────────────────────────────────┘
+                              ▲
+┌─────────────────────────────────────────────────────────────────┐
+│          TIER 2: LEVEL-0 MODELS (Macro Direction, 5min-1hr)    │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
+│  │ LightGBM     │  │ XGBoost      │  │ PatchTST           │    │
+│  │ (117 feats)  │  │ (117 feats)  │  │ (time-series)      │    │
+│  └──────────────┘  └──────────────┘  └────────────────────┘    │
+│  Input: 117 features from instrument_features table            │
+└─────────────────────────────────────────────────────────────────┘
+                              ▲
+┌─────────────────────────────────────────────────────────────────┐
+│          TIER 1: MACRO DIRECTOR (Regime + Volatility)          │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
+│  │ TFT          │  │ Mamba (SSM)  │  │ HMM (Regime)       │    │
+│  │ (multi-hor.) │  │ (long-range) │  │ (state detection)  │    │
+│  └──────────────┘  └──────────────┘  └────────────────────┘    │
+│  Input: Daily + macro features, regime labels                  │
+└─────────────────────────────────────────────────────────────────┘
+                              ▲
+┌─────────────────────────────────────────────────────────────────┐
+│          TIER 0: PRE-MARKET GAP PREDICTOR                      │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │ Uses global overnight data (S&P500, GIFT Nifty, VIX,     │ │
+│  │ crude, news sentiment) to predict 9:15 AM gap            │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│  Input: Global macro features, overnight_news_sentiment        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -262,7 +276,7 @@ for epoch in range(100):
 
 ### 1.2 LightGBM Macro-Direction Model
 
-**Purpose**: Primary direction predictor using 50+ engineered features.
+**Purpose**: Primary direction predictor using 117 engineered features from `instrument_features`.
 
 **Feature Engineering**:
 ```python
@@ -272,7 +286,8 @@ from ta import add_all_ta_features
 
 def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute 50+ trading features for LightGBM.
+    Compute 117 trading features for LightGBM.
+    See FEATURE_SPECIFICATION.md for full list.
     """
     result = df.copy()
     
@@ -435,4 +450,6 @@ See [TIER1_MODELS.md](./TIER1_MODELS.md) for complete documentation of all Tier 
 
 See [TRAINING_PIPELINE.md](./TRAINING_PIPELINE.md) for CPCV validation and training infrastructure.
 
-See [FEATURE_STORE.md](./FEATURE_STORE.md) for Feast + Redis feature serving.
+See [FEATURE_STORE.md](./FEATURE_STORE.md) for Redis + QuestDB feature serving.
+
+See [FEATURE_SPECIFICATION.md](./FEATURE_SPECIFICATION.md) for all 117 feature definitions.

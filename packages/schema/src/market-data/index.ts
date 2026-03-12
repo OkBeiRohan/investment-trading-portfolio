@@ -3,19 +3,13 @@
  * Time-series data for QuestDB storage
  */
 
-// Production v2.0 schemas (Upstox V3 aligned)
+// Production v3.0 schemas (Upstox V3 aligned)
 export * from "./questdb-tables.schema";
 export * from "./macro-sentiment.schema";
 
-// Legacy schemas (kept for backward compatibility)
+// Candle interfaces (used by market-sdk providers)
 export * from "./candle.schema";
-// export * from "./quote.schema";
-// export * from "./greeks.schema";
-// export * from "./depth.schema";
-// export * from "./training.schema";
-// export * from "./features.schema";
 
-// New type-only schemas (NO ZOD - internal use)
-// export * from "./raw-market-data.types";
+// Type-only schemas (internal use)
 export * from "./market-state.types";
 export * from "./model-contracts.schema";
