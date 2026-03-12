@@ -3,8 +3,8 @@
 // Parallel feature computation system
 // Phase 1: Core infrastructure (types, trait, cache) - COMPLETE
 // Phase 2: Shared dependencies (VWAP, EMA, ATR, RSI, Greeks) - COMPLETE
-// Phase 3: 33 feature implementations - COMPLETE
-// Phase 4: Parallel execution with Rayon - IN PROGRESS
+// Phase 3: 54 feature implementations - COMPLETE
+// Phase 4: Parallel execution with Rayon - COMPLETE
 
 // Feature computation system
 mod cache;
@@ -26,7 +26,7 @@ use std::sync::Mutex;
 static PROCESSOR: Lazy<FeatureProcessor> = Lazy::new(|| FeatureProcessor::new());
 static CACHE: Lazy<Mutex<HistoricalCache>> = Lazy::new(|| Mutex::new(HistoricalCache::new(26)));
 
-/// Compute all 33 features in parallel
+/// Compute all 54 features in parallel
 ///
 /// # Performance
 /// - Phase 1 (dependencies): ~2ms sequential

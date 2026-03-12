@@ -572,12 +572,12 @@ mod tests {
         },
       ],
       india_vix: Some(15.5),
-      is_expiry_day: todo!(),
-      days_to_expiry: todo!(),
-      current_expiry: todo!(),
-      market_depth: todo!(),
-      nifty_spot: todo!(),
-      risk_free_rate: todo!(),
+      is_expiry_day: Some(false),
+      days_to_expiry: Some(3),
+      current_expiry: None,
+      market_depth: None,
+      nifty_spot: Some(19480.0),
+      risk_free_rate: Some(0.07),
     }
   }
 
