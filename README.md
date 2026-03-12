@@ -23,10 +23,11 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 
 ### Algo Trading (algo-worker)
 
-- **🧠 4-Tier Hierarchical AI Stack** (2026 State-of-the-Art):
+- **🧠 5-Tier Hierarchical AI Stack** (2026 State-of-the-Art):
+  - **TIER 0**:
   - **TIER 1 - Base Prediction Models**:
     - **Micro-Alpha (10s-1min)**: LiT Transformer, TLOB for Depth-30 LOB microstructure
-    - **Macro Direction (5min-1hr)**: LightGBM, XGBoost, PatchTST with 50+ features
+    - **Macro Direction (5min-1hr)**: LightGBM, XGBoost, PatchTST with 117 features
     - **Regime & Volatility**: TFT (Temporal Fusion Transformer), Mamba (State Space), TimeMixer
     - **Options-Specific**: IV Surface Predictor (VAE+MLP), Greeks Forecaster
   - **TIER 2 - Meta-Learner**: Attention-based signal fusion with regime-aware weighting
@@ -35,7 +36,7 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
   - **Multi-Horizon Predictions**: H1(10s) → H6(EOD) cascade as features
   - **Validation**: CPCV (Combinatorial Purged Cross-Validation)
   - **Drift Detection**: ADWIN for online model adaptation
-  - **Feature Store**: Feast + Redis for training-serving consistency
+  - **Feature Store**: Redis (direct writes) for training-serving consistency
   - **Explainability**: SHAP for SEBI compliance
 - **⚡ Ultra-Low Latency**:
   - Event-driven core with deterministic sequencer (<10μs event processing)
@@ -107,7 +108,7 @@ Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (ONNX)
                               <5ms features          <50ms inference
 ```
 
-- **33 Trading Features**: Index breadth, futures, options, volatility, time context
+- **117 Trading Features**: Index breadth, futures, options, volatility, order flow, momentum, regime, time context
 - **Parallel Execution**: All features computed simultaneously via Rayon
 - **Type Safety**: Rust types auto-generated to TypeScript via ts-rs
 - **Performance**: <5ms total, ~150µs for parallel feature computation
@@ -123,7 +124,7 @@ graph TD
 
     subgraph "Feature Computation (Rust)"
         MF --> CE[compute-engine]
-        CE -->|33 features, <5ms| QDB[(QuestDB)]
+        CE -->|117 features, <5ms| QDB[(QuestDB)]
         CE -->|Redis Pub/Sub| AW
     end
 
@@ -232,11 +233,11 @@ pnpm dev  # Starts on port 3001
 **AI/ML Architecture (2026 State-of-the-Art)**:
 
 - **[docs/ml/README.md](docs/ml/README.md)**: 📁 **Start here** - AI documentation index
-- **[AI_TRADING_ARCHITECTURE.md](docs/ml/AI_TRADING_ARCHITECTURE.md)**: 4-tier hierarchical model architecture
+- **[AI_TRADING_ARCHITECTURE.md](docs/ml/AI_TRADING_ARCHITECTURE.md)**: 5-tier hierarchical model architecture
 - **[TIER1_MODELS.md](docs/ml/TIER1_MODELS.md)**: TFT, Mamba, PatchTST, LiT specifications with code
 - **[META_LEARNER_EXECUTION.md](docs/ml/META_LEARNER_EXECUTION.md)**: Signal fusion, PPO execution agent
 - **[TRAINING_PIPELINE.md](docs/ml/TRAINING_PIPELINE.md)**: CPCV validation, Kedro orchestration
-- **[FEATURE_STORE.md](docs/ml/FEATURE_STORE.md)**: Feast + Redis for consistency
+- **[FEATURE_STORE.md](docs/ml/FEATURE_STORE.md)**: Redis + QuestDB for consistency
 
 **Legacy AI Docs** (Reference Only):
 
@@ -360,4 +361,4 @@ Please read **[Copilot Instructions](.github/copilot-instructions.md)** and cons
 
 **License**: Proprietary  
 **Status**: Production-Ready Architecture (Implementation in Progress)  
-**Last Updated**: January 18, 2026
+**Last Updated**: March 13, 2026

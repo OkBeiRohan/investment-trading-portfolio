@@ -299,7 +299,7 @@ impl FeatureProcessor {
         features.push(Box::new(PctStocksAboveVwap));
         features.push(Box::new(PctStocksAboveEma20));
         features.push(Box::new(WeightedReturnTop10));
-        // ... register all 33 features
+        // ... register all 117 features
 
         Self { features }
     }
@@ -535,7 +535,7 @@ export const FeatureOutputSchema = z.object({
   breadth_momentum_5m: z.number(),
   breadth_volatility: z.number().nonnegative(),
 
-  // ... (all 33 features)
+  // ... (all 117 features)
 
   // Time Context
   minutes_from_open: z.number().int().min(0).max(390),
@@ -889,7 +889,7 @@ fn convert_to_feature_output(
         timestamp: 0, // Set by caller
         pct_stocks_above_vwap: *features.get("pct_stocks_above_vwap").unwrap_or(&0.0),
         pct_stocks_above_ema20: *features.get("pct_stocks_above_ema20").unwrap_or(&0.0),
-        // ... (map all 33 features)
+        // ... (map all 117 features)
     }
 }
 ```
@@ -1053,7 +1053,7 @@ mod integration_tests {
 | **Shared Dependencies**    | <2ms            | <4ms                   |
 | **Single Feature**         | <100µs          | <500µs                 |
 | **Memory Usage**           | <50MB           | <100MB                 |
-| **Parallelism**            | All 33 features | -                      |
+| **Parallelism**            | All 117 features | -                      |
 
 ---
 
@@ -1063,7 +1063,7 @@ mod integration_tests {
 2. ⬜ Create new type definitions (`types.rs`)
 3. ⬜ Implement shared dependencies (`dependencies/`)
 4. ⬜ Implement feature trait and registry (`features/mod.rs`)
-5. ⬜ Implement all 33 features (separate files)
+5. ⬜ Implement all 117 features (separate files)
 6. ⬜ Implement main processor with parallelization
 7. ⬜ Implement historical cache
 8. ⬜ Add performance logging

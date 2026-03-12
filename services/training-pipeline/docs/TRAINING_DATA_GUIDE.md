@@ -1,6 +1,6 @@
 # Training Pipeline Data Guide
 
-> **How to access 26 years of historical data and 54 features for ML training.**
+> **How to access 26 years of historical data and 117 features for ML training.**
 
 **Last Updated**: January 18, 2026
 

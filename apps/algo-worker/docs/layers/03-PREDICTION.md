@@ -6,7 +6,7 @@
 
 ## Overview
 
-The Prediction layer runs parallel inference on ONNX models, classifies market regime, and fuses signals via a meta-learner. It operates on 54 features computed by the Rust compute-engine.
+The Prediction layer runs parallel inference on ONNX models, classifies market regime, and fuses signals via a meta-learner. It operates on 117 features computed by the Rust compute-engine.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐

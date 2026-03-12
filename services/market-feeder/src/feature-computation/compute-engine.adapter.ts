@@ -15,7 +15,7 @@ export class ComputeEngineAdapter {
   private readonly logger = new Logger(ComputeEngineAdapter.name);
 
   /**
-   * Compute all 33 features from market data input
+   * Compute all 117 features from market data input
    *
    * Pattern: JSON serialization (avoids NAPI 32-field object limit)
    * - Input: Zod-validated FeatureInput → JSON string

@@ -11,7 +11,7 @@ The **Compute Engine** is a specialized Rust-based computation system that power
 **Architecture**: Two-phase parallel execution
 
 1. **Phase 1**: Compute shared dependencies (VWAP, EMA, ATR, RSI, etc.) - Sequential
-2. **Phase 2**: Compute 54 features in parallel via Rayon thread pool
+2. **Phase 2**: Compute 117 features in parallel via Rayon thread pool
 
 **Key Responsibilities**:
 
@@ -28,7 +28,7 @@ The **Compute Engine** is a specialized Rust-based computation system that power
 
 ## ✨ Key Features
 
-- ⚡ **Parallel Execution**: All 54 features computed simultaneously via Rayon
+- ⚡ **Parallel Execution**: All 117 features computed simultaneously via Rayon
 - 🔄 **Zero Redundancy**: Shared dependencies computed once and reused
 - 📊 **Per-Feature Timing**: Microsecond-precision logs for performance monitoring
 - 🔒 **End-to-End Type Safety**: Rust (ts-rs) → TypeScript type generation
@@ -157,7 +157,7 @@ packages/compute-engine/
 │  │  └─────────┘ └─────────┘                                    ││
 │  └─────────────────────────────────────────────────────────────┘│
 │                              ↓                                   │
-│  Output: FeatureOutput (54 features) + Timings                  │
+│  Output: FeatureOutput (117 features) + Timings                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -236,7 +236,7 @@ df = questdb.query("SELECT * FROM training_features_54 WHERE is_valid = TRUE")
 
 ## 📚 Documentation
 
-- [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) - Complete 54 feature definitions
+- [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) - Complete 117 feature definitions
 - [PARALLEL_FEATURE_ARCHITECTURE.md](./docs/PARALLEL_FEATURE_ARCHITECTURE.md) - Execution model
 - [QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md) - Patterns and examples
 - [ML Architecture](../../docs/ml/README.md) - AI/ML documentation
@@ -249,7 +249,7 @@ df = questdb.query("SELECT * FROM training_features_54 WHERE is_valid = TRUE")
 ## 🚧 Roadmap
 
 ### Implemented ✅
-- [x] Core 33 features (Phase 1)
+- [x] Core 117 features (Phase 1)
 - [x] Parallel execution with Rayon
 - [x] TypeScript type generation
 - [x] Historical cache

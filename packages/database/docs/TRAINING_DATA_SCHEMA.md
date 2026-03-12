@@ -294,5 +294,5 @@ ORDER BY f.timestamp;
 ## Related Documentation
 
 - [QUESTDB_TRAINING_DATA.md](../../../docs/ml/QUESTDB_TRAINING_DATA.md) - Detailed architecture
-- [FEATURE_SPECIFICATION.md](../../../docs/ml/FEATURE_SPECIFICATION.md) - 54 feature definitions
+- [FEATURE_SPECIFICATION.md](../../../docs/ml/FEATURE_SPECIFICATION.md) - 117 feature definitions
 - [TRAINING_DATA_GUIDE.md](../../../services/training-pipeline/docs/TRAINING_DATA_GUIDE.md) - Python usage

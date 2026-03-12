@@ -20,7 +20,7 @@
 
 **Key Design Constraint**: algo-worker runs locally, subscribes to cloud Redis for config changes from dashboard UI.
 
-**See**: [DEPLOYMENT_ARCHITECTURE.md](../DEPLOYMENT_ARCHITECTURE.md) for full details.
+**See**: [DEPLOYMENT_ARCHITECTURE.md](../docs/DEPLOYMENT_ARCHITECTURE.md) for full details.
 
 ---
 
@@ -35,12 +35,12 @@ Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (ONNX)
 
 ### **Technology Stack**
 
-| Component | Technology | Location |
-|-----------|------------|----------|
-| Feature Computation | **Rust (NAPI-RS)** | `packages/compute-engine` |
-| Model Training | Python (Kedro) | `services/training-pipeline` |
-| Model Export | ONNX | Training → Inference |
-| Live Inference | NestJS + onnxruntime-node | `apps/algo-worker` |
+| Component           | Technology                | Location                     |
+| ------------------- | ------------------------- | ---------------------------- |
+| Feature Computation | **Rust (NAPI-RS)**        | `packages/compute-engine`    |
+| Model Training      | Python (Kedro)            | `services/training-pipeline` |
+| Model Export        | ONNX                      | Training → Inference         |
+| Live Inference      | NestJS + onnxruntime-node | `apps/algo-worker`           |
 
 ### **algo-worker: 7-Layer Event-Driven Architecture**
 
@@ -148,17 +148,17 @@ Fold 2: [--test--][--train--]  # Future data leaks into past!
 ### @repo/compute-engine (Rust)
 
 - **Location**: `packages/compute-engine`
-- **Purpose**: Compute 33 trading features in <5ms
+- **Purpose**: Compute 117 trading features in <5ms
 - Used by both `market-feeder` (live) and `training-pipeline` (historical)
 - Auto-generated TypeScript types via ts-rs
 - Parallel execution via Rayon
 
 ```typescript
-import { computeFeatures } from '@repo/compute-engine';
+import { computeFeatures } from "@repo/compute-engine";
 
 const result = computeFeatures(marketTick);
-console.log(result.features);  // 33 features
-console.log(result.totalDurationMicros);  // ~2000-3000µs
+console.log(result.features); // 117 features
+console.log(result.totalDurationMicros); // ~2000-3000µs
 ```
 
 ### @repo/ai-models (ONNX)
@@ -169,12 +169,12 @@ console.log(result.totalDurationMicros);  // ~2000-3000µs
 - Use Worker Threads for GPU inference (never block event loop)
 
 ```typescript
-import * as ort from 'onnxruntime-node';
+import * as ort from "onnxruntime-node";
 
-const session = await ort.InferenceSession.create('model.onnx', {
-  executionProviders: ['CUDAExecutionProvider', 'CPUExecutionProvider'],
+const session = await ort.InferenceSession.create("model.onnx", {
+  executionProviders: ["CUDAExecutionProvider", "CPUExecutionProvider"],
 });
-const tensor = new ort.Tensor('float32', features, [1, 33]);
+const tensor = new ort.Tensor("float32", features, [1, 117]);
 const results = await session.run({ input: tensor });
 ```
 
@@ -222,7 +222,7 @@ await this.redis.xgroup(
   "stream:market-data",
   "algo-worker",
   "$",
-  "MKSTREAM"
+  "MKSTREAM",
 );
 const messages = await this.redis.xreadgroup(
   "GROUP",
@@ -232,7 +232,7 @@ const messages = await this.redis.xreadgroup(
   5000,
   "STREAMS",
   "stream:market-data",
-  ">"
+  ">",
 );
 
 // ✅ CORRECT: Acknowledge message after processing

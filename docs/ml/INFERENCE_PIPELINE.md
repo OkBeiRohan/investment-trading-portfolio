@@ -47,7 +47,7 @@ This document describes how trained models from the **Python training pipeline**
 │   │ compute-engine  │    │              algo-worker (NestJS)             │  │
 │   │ (Rust/NAPI)     │    │                                               │  │
 │   │                 │    │  ┌─────────────────────────────────────────┐ │  │
-│   │ 33 features     │───→│  │ OnnxInferenceService                    │ │  │
+│   │ 117 features     │───→│  │ OnnxInferenceService                    │ │  │
 │   │ <5ms            │    │  │                                         │ │  │
 │   │                 │    │  │ • Load ONNX models at startup           │ │  │
 │   └─────────────────┘    │  │ • Worker Thread for GPU inference       │ │  │
@@ -599,7 +599,7 @@ export class TradingOrchestratorService {
       features.pctStocksAboveVwap,
       features.pctStocksAboveEma20,
       features.weightedReturnTop10,
-      // ... all 33 features
+      // ... all 117 features
     ]);
   }
 }

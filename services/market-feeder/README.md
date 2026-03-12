@@ -20,7 +20,7 @@ Market Feeder is the **data ingestion layer** that:
 
 - ✅ Subscribe to Upstox WebSocket for live tick data
 - ✅ Generate 1-minute candles from tick data
-- ✅ Compute 33 features using compute-engine (Rust, <5ms)
+- ✅ Compute 117 features using compute-engine (Rust, <5ms)
 - ✅ Publish features to Redis Pub/Sub (`features:live`)
 - ✅ Store features to QuestDB (`instrument_features_1m`)
 - ✅ Handle reconnection with exponential backoff
@@ -47,7 +47,7 @@ Market Feeder is the **data ingestion layer** that:
 │                                                          ↓                   │
 │   ┌─────────────────┐    ┌─────────────────────────────────────────────┐   │
 │   │ QuestDB         │ ←  │ compute-engine (Rust/NAPI)                  │   │
-│   │ (Storage)       │    │ 33 features in <5ms                         │   │
+│   │ (Storage)       │    │ 117 features in <5ms                         │   │
 │   └─────────────────┘    └─────────────────────────────────────────────┘   │
 │                                    ↓                                         │
 │                          ┌─────────────────┐                                │
@@ -89,7 +89,7 @@ Market Feeder is the **data ingestion layer** that:
    ↓
 3. CandleComplete event triggers feature computation
    ↓
-4. compute-engine (Rust) computes 33 features (<5ms)
+4. compute-engine (Rust) computes 117 features (<5ms)
    ↓
 5. Features published to Redis (features:live channel)
    ↓

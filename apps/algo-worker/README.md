@@ -1,6 +1,6 @@
 # Algo Worker - Event-Driven Trading Engine
 
-> **Institutional-grade algorithmic trading engine for NSE index options with 54-feature Rust compute-engine and ONNX ensemble inference (<80ms E2E).**
+> **Institutional-grade algorithmic trading engine for NSE index options with 117-feature Rust compute-engine and ONNX ensemble inference (<80ms E2E).**
 
 Built with **NestJS**, **Rust (NAPI-RS)**, **ONNX Runtime**, **QuestDB**, **MongoDB**, and **Redis Streams**.
 
@@ -16,7 +16,7 @@ Algo Worker is the **live trading execution engine** implementing a 2026 state-o
 │                                                                              │
 │  [Upstox WS] → [market-feeder] → [compute-engine] → [algo-worker] → [Order] │
 │                      ↓                  ↓                ↓                   │
-│                  Redis Pub          54 features      ONNX Ensemble           │
+│                  Redis Pub          117 features      ONNX Ensemble           │
 │                   (<1ms)              (<5ms)           (<50ms)               │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -24,7 +24,7 @@ Algo Worker is the **live trading execution engine** implementing a 2026 state-o
 ### **Design Principles (2026 Institutional-Grade)**
 
 1. **Event-Driven Microservices**: Redis Streams message bus (<1ms latency)
-2. **Rust Feature Engine**: 54 features computed in parallel via Rayon (<5ms)
+2. **Rust Feature Engine**: 117 features computed in parallel via Rayon (<5ms)
 3. **Multi-Model Ensemble**: LightGBM + LiT + TFT + Meta-Learner (<50ms)
 4. **User-Configurable**: Per-user trading permissions, limits, and strategies
 5. **SEBI 2024-2026 Compliant**: Unique Algo ID, pre-trade checks, 5-year audit
@@ -38,7 +38,7 @@ Algo Worker is the **live trading execution engine** implementing a 2026 state-o
 | Layer | Purpose | Components | Target |
 |-------|---------|------------|--------|
 | **1. Data Ingestion** | Market data subscription | MarketDataConsumer, EventNormalizer | <5ms |
-| **2. Feature Engine** | Rust compute-engine (54 features) | compute-engine (NAPI-RS), FeatureCache | <5ms |
+| **2. Feature Engine** | Rust compute-engine (117 features) | compute-engine (NAPI-RS), FeatureCache | <5ms |
 | **3. Prediction** | ONNX ensemble + regime detection | ModelPool, InferenceWorkers, RegimeDetector | <50ms |
 | **4. Strategy & Risk** | Strategy selection + risk validation | StrategySelector, RiskValidator, PositionSizer | <10ms |
 | **5. Execution** | Order routing + position management | OrderManager, PositionTracker, ExitEngine | <20ms |
@@ -58,7 +58,7 @@ Algo Worker is the **live trading execution engine** implementing a 2026 state-o
                                      ↓
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ LAYER 2: FEATURE ENGINE (Rust compute-engine)                               │
-│ 54 features in parallel via Rayon                                           │
+│ 117 features in parallel via Rayon                                           │
 │ • Index Breadth (8)  • Futures (12)  • Options (14)                        │
 │ • Volatility (6)     • Order Flow (8) • Time Context (6)                   │
 │ Latency: <5ms                                                               │
@@ -107,7 +107,7 @@ Algo Worker is the **live trading execution engine** implementing a 2026 state-o
 ## ✨ Key Features
 
 ### Ultra-Low Latency (<80ms E2E)
-- **Rust compute-engine**: 54 features in <5ms via Rayon parallelism
+- **Rust compute-engine**: 117 features in <5ms via Rayon parallelism
 - **ONNX Runtime**: GPU inference with TensorRT/OpenVINO (<50ms)
 - **Redis Streams**: Event bus with microsecond delivery
 - **Worker Threads**: ML inference isolated from event loop
@@ -152,7 +152,7 @@ See [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) for compl
 
 ### Core Architecture
 - [**ARCHITECTURE.md**](./docs/ARCHITECTURE.md) - System design overview
-- [**INFERENCE_ENGINE.md**](./docs/INFERENCE_ENGINE.md) - 54-feature inference pipeline
+- [**INFERENCE_ENGINE.md**](./docs/INFERENCE_ENGINE.md) - 117-feature inference pipeline
 
 ### 6-Layer Documentation
 - [**01-DATA-INGESTION.md**](./docs/layers/01-DATA-INGESTION.md) - Market data subscription
@@ -298,7 +298,7 @@ apps/algo-worker/
 
 ### ✅ Complete
 - [x] 6-Layer architecture designed
-- [x] 54-feature specification
+- [x] 117-feature specification
 - [x] ONNX inference pipeline
 - [x] Rust compute-engine integration
 - [x] Documentation complete

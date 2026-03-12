@@ -23,7 +23,7 @@
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
 │  │ LAYER 2: FEATURE ENGINE (<5ms)                                         │ │
 │  │ Rust compute-engine (NAPI-RS) with Rayon parallelism                  │ │
-│  │ 54 features: Breadth(8) + Futures(12) + Options(14) + Vol(6) +        │ │
+│  │ 117 features: Breadth(8) + Futures(12) + Options(14) + Vol(6) +        │ │
 │  │              OrderFlow(8) + Time(6)                                    │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                                      ↓                                       │
@@ -61,7 +61,7 @@
 | Layer | Purpose | Components | Target |
 |-------|---------|------------|--------|
 | **1. Data Ingestion** | Market data subscription | MarketDataConsumer, NewsConsumer | <5ms |
-| **2. Feature Engine** | 54 features via Rust | compute-engine (NAPI-RS), FeatureCache | <5ms |
+| **2. Feature Engine** | 117 features via Rust | compute-engine (NAPI-RS), FeatureCache | <5ms |
 | **3. Prediction** | ONNX ensemble inference | ModelPool, InferenceWorkers, RegimeDetector | <50ms |
 | **4. Strategy & Risk** | Strategy selection + risk | StrategySelector, RiskValidator | <10ms |
 | **5. Execution** | Order routing + positions | OrderManager, PositionTracker, ExitEngine | <20ms |
@@ -89,7 +89,7 @@ See [01-DATA-INGESTION.md](./layers/01-DATA-INGESTION.md)
 
 ## Layer 2: Feature Engine
 
-**Purpose**: Compute 54 features in parallel using Rust
+**Purpose**: Compute 117 features in parallel using Rust
 
 **Technology**: 
 - Rust + NAPI-RS for Node.js integration
@@ -215,7 +215,7 @@ See [06-OBSERVABILITY.md](./layers/06-OBSERVABILITY.md)
 ## Design Principles
 
 1. **Event-Driven**: Redis Streams for all inter-layer communication
-2. **Rust Performance**: 54 features in <5ms via Rayon
+2. **Rust Performance**: 117 features in <5ms via Rayon
 3. **Multi-Model**: Ensemble with adaptive regime-based weighting
 4. **User-Configurable**: Per-user permissions, limits, strategies
 5. **SEBI Compliant**: Unique Algo ID, 5-year audit trail
@@ -240,7 +240,7 @@ See [06-OBSERVABILITY.md](./layers/06-OBSERVABILITY.md)
 
 - [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) - Detailed inference pipeline
 - [VISUAL_FLOW.md](./VISUAL_FLOW.md) - ASCII flow diagrams
-- [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) - 54 features
+- [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) - 117 features
 
 ---
 

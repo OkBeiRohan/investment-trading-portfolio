@@ -28,7 +28,7 @@ export type MarketDataPoint = z.infer<typeof MarketDataPointSchema>;
 
 /**
  * Feature Vector Schema
- * Computed features for ML models (33 features total)
+ * Computed features for ML models (117 features total)
  */
 export const FeatureVectorSchema = z.object({
   timestamp: z.string().datetime(),

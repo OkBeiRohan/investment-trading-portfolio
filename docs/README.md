@@ -29,7 +29,7 @@ This folder contains **core architecture and system-wide documentation** for Qua
 | [ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) | TFT, Mamba, PatchTST, LiT with code |
 | [ml/META_LEARNER_EXECUTION.md](./ml/META_LEARNER_EXECUTION.md) | Signal fusion, PPO execution |
 | [ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) | CPCV validation, Kedro, ONNX export |
-| [ml/FEATURE_STORE.md](./ml/FEATURE_STORE.md) | Feast + Redis for consistency |
+| [ml/FEATURE_STORE.md](./ml/FEATURE_STORE.md) | Redis + QuestDB for consistency |
 | [ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) | **ONNX Runtime in NestJS** |
 
 **Service Documentation**:
