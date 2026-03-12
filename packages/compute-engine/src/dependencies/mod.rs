@@ -391,6 +391,42 @@ pub fn compute_nifty_future_oi_change(cache: &HistoricalCache, current_oi: f64) 
   }
 }
 
+/// Compute 15-minute return from cache (proper 15-period lookback)
+pub fn compute_nifty_future_return_15m(cache: &HistoricalCache, current_price: f64) -> f64 {
+  if let Some(price_15m_ago) = cache.get_nifty_future_price_n_ago(15) {
+    (current_price - price_15m_ago) / price_15m_ago
+  } else {
+    0.0
+  }
+}
+
+/// Compute MACD signal line = EMA(9) of MACD values
+/// MACD = EMA(12) - EMA(26) computed at each historical point
+pub fn compute_nifty_future_macd_signal(cache: &HistoricalCache) -> f64 {
+  let history = cache.get_nifty_future_pv();
+  let prices: Vec<f64> = history.iter().map(|t| t.price).collect();
+
+  if prices.len() < 26 {
+    return 0.0; // Not enough data for MACD
+  }
+
+  // Compute MACD line at each point where we have enough data
+  let mut macd_values = Vec::new();
+  for end in 26..=prices.len() {
+    let slice = &prices[..end];
+    let ema12 = compute_ema(slice, 12);
+    let ema26 = compute_ema(slice, 26);
+    macd_values.push(ema12 - ema26);
+  }
+
+  if macd_values.is_empty() {
+    return 0.0;
+  }
+
+  // Signal line = EMA(9) of MACD values
+  compute_ema(&macd_values, 9)
+}
+
 // ============================================
 // DEFAULT IMPLEMENTATION FOR OPTION GREEKS
 // ============================================
@@ -439,11 +475,13 @@ pub fn compute_all_dependencies(
     realized_vol_15m: compute_realized_vol_15m(cache),
     nifty_future_return_1m: compute_nifty_future_return_1m(cache, input.nifty_future.ltp),
     nifty_future_return_5m: compute_nifty_future_return_5m(cache, input.nifty_future.ltp),
+    nifty_future_return_15m: compute_nifty_future_return_15m(cache, input.nifty_future.ltp),
     nifty_future_volume_zscore: compute_nifty_future_volume_zscore(
       cache,
       input.nifty_future.volume,
     ),
     nifty_future_oi_change: compute_nifty_future_oi_change(cache, input.nifty_future.open_interest),
+    nifty_future_macd_signal: compute_nifty_future_macd_signal(cache),
   }
 }
 

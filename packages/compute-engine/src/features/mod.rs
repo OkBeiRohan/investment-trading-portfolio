@@ -36,10 +36,12 @@ pub struct ComputedDependencies {
   pub realized_vol_15m: f64,
 
   // Cache-based lookback metrics
-  pub nifty_future_return_1m: f64,     // 1-minute return
-  pub nifty_future_return_5m: f64,     // 5-minute return
-  pub nifty_future_volume_zscore: f64, // Volume z-score
-  pub nifty_future_oi_change: f64,     // OI change from 1 period ago
+  pub nifty_future_return_1m: f64,      // 1-minute return
+  pub nifty_future_return_5m: f64,      // 5-minute return
+  pub nifty_future_return_15m: f64,     // 15-minute return (proper lookback)
+  pub nifty_future_volume_zscore: f64,  // Volume z-score
+  pub nifty_future_oi_change: f64,      // OI change from 1 period ago
+  pub nifty_future_macd_signal: f64,    // EMA(9) of MACD line
 }
 
 #[derive(Debug, Clone)]
@@ -70,8 +72,10 @@ impl Default for ComputedDependencies {
       realized_vol_15m: 0.0,
       nifty_future_return_1m: 0.0,
       nifty_future_return_5m: 0.0,
+      nifty_future_return_15m: 0.0,
       nifty_future_volume_zscore: 0.0,
       nifty_future_oi_change: 0.0,
+      nifty_future_macd_signal: 0.0,
     }
   }
 }
