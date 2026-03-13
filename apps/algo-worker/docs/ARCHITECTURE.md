@@ -1,212 +1,199 @@
-# Algo Worker - 6-Layer Architecture
+# Algo Worker — 6-Layer Architecture with 5-Tier AI Hierarchy
 
-**Version**: 2026 Institutional-Grade  
-**Target Latency**: <80ms End-to-End  
-**Features**: 54 (Rust compute-engine)
+**Version**: 2026 Institutional-Grade
+**Target Latency**: <80ms End-to-End (p95)
+**Features**: 117 (Rust compute-engine, <5ms)
+**Models**: 8 ONNX models across 5 tiers (GPU + CPU)
+**Last Updated**: March 13, 2026
 
 ---
 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     ALGO-WORKER 6-LAYER ARCHITECTURE                        │
-│                           Target: <80ms E2E                                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ LAYER 1: DATA INGESTION (<5ms)                                         │ │
-│  │ market-feeder → Redis Pub/Sub → algo-worker                           │ │
-│  │ Components: MarketDataConsumer, NewsConsumer, EventNormalizer          │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                      ↓                                       │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ LAYER 2: FEATURE ENGINE (<5ms)                                         │ │
-│  │ Rust compute-engine (NAPI-RS) with Rayon parallelism                  │ │
-│  │ 117 features: Breadth(8) + Futures(12) + Options(14) + Vol(6) +        │ │
-│  │              OrderFlow(8) + Time(6)                                    │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                      ↓                                       │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ LAYER 3: PREDICTION (<50ms)                                            │ │
-│  │ ONNX Runtime ensemble inference + regime detection                     │ │
-│  │ Models: LightGBM (46f) + LiT (14f) + TFT (seq) + Meta-Learner         │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                      ↓                                       │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ LAYER 4: STRATEGY & RISK (<10ms)                                       │ │
-│  │ Regime-based strategy selection + pre-trade risk validation           │ │
-│  │ Components: StrategySelector, StrikeSelector, RiskValidator            │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                      ↓                                       │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ LAYER 5: EXECUTION (<20ms)                                             │ │
-│  │ Smart order routing + position management + exit logic                 │ │
-│  │ Components: OrderManager, PositionTracker, ExitEngine                  │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                      ↓                                       │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ LAYER 6: OBSERVABILITY (Async)                                         │ │
-│  │ Metrics, logging, storage, SEBI audit trail                           │ │
-│  │ Storage: Redis (hot) → QuestDB (warm) → MongoDB (cold, 5yr)           │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                     ALGO-WORKER 6-LAYER ARCHITECTURE                            │
+│                         Target: <80ms E2E (p95)                                 │
+│                                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ LAYER 1: DATA INGESTION (<2ms)                                          │  │
+│  │ Redis Streams subscriber: features:live, candles:1m, premarket:*        │  │
+│  │ + Redis cache reader: tier0, tier1, tier3 cached outputs                │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                       ↓                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ LAYER 2: FEATURE ENGINE (<5ms)                                          │  │
+│  │ Rust compute-engine (NAPI-RS) — 117 features via Rayon parallel         │  │
+│  │ Phase 1: Dependencies (VWAP, EMA, ATR, Greeks) ~2ms                     │  │
+│  │ Phase 2: 117 features parallel ~1ms                                     │  │
+│  │ Categories: Breadth(8) Futures(12) Options(14) Vol(10) OFlow(8)         │  │
+│  │             Price(8) Momentum(8) Time(13) Global(12) Regime(4) + more   │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                       ↓                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ LAYER 3: PREDICTION ENGINE (<25ms with GPU)                             │  │
+│  │                                                                          │  │
+│  │ ┌─── TIER 0: XGBoost (CPU, once/day @ 09:08) ───── gap, bias       ─┐ │  │
+│  │ ├─── TIER 1: HMM+PatchTST (CPU, once/day @ 09:09) → regime, trend  ─┤ │  │
+│  │ ├─── TIER 2: LightGBM(CPU) + TFT(GPU) + Mamba(GPU) → direction     ─┤ │  │
+│  │ │    [3 Worker Threads, parallel, every 60s]                          │ │  │
+│  │ ├─── TIER 3: LiT Transformer (GPU, every 100ms, own Worker Thread)  ─┤ │  │
+│  │ └─── TIER 4: Meta-Learner (CPU, every 60s) → final signal           ─┘ │  │
+│  │                                                                          │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                       ↓                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ LAYER 4: STRATEGY & RISK (<10ms)                                        │  │
+│  │ Regime-conditioned strategy selection (7 strategies × 4 regimes)        │  │
+│  │ Neural strike selector + Kelly position sizer + pre-trade validation    │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                       ↓                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ LAYER 5: EXECUTION (<20ms)                                              │  │
+│  │ Smart order routing (MARKET/TWAP/VWAP) + position tracking + exits     │  │
+│  │ Multi-criteria exit engine + trailing stops + 3:20 PM auto-close       │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                       ↓                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ LAYER 6: OBSERVABILITY (Async, non-blocking)                            │  │
+│  │ Prometheus metrics + Pino logging + Grafana dashboards                  │  │
+│  │ Storage: Redis (hot, <5min) → QuestDB (warm, 180d) → MongoDB (cold, 5yr)│  │
+│  │ SEBI 2024-2026 audit trail: 5-year retention with Unique Algo ID       │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 5-Tier AI Hierarchy (Data-Bound)
+
+Each tier operates at a different **data resolution**, on a different **schedule**, with dedicated **compute resources**.
+
+| Tier  | Name                   | Model(s)                  | Data Resolution  | Schedule     | Compute             | Latency |
+| ----- | ---------------------- | ------------------------- | ---------------- | ------------ | ------------------- | ------- |
+| **0** | Pre-Market Gap         | XGBoost                   | Daily (1d)       | Once @ 09:08 | CPU (main)          | ~2ms    |
+| **1** | Macro Director         | HMM + PatchTST            | Daily (1d, 26yr) | Once @ 09:09 | CPU (main)          | ~8ms    |
+| **2** | Intraday Navigator     | LightGBM + TFT + Mamba    | Minute (1m)      | Every 60s    | CPU + GPU (Workers) | ~12ms   |
+| **3** | Microstructure Scalper | LiT Transformer           | Tick/LOB (100ms) | Every 100ms  | GPU (Worker)        | ~8ms    |
+| **4** | Meta-Learner           | Contextual Gating Network | Cached outputs   | Every 60s    | CPU (main)          | ~2ms    |
+
+### Data Resolution Hierarchy
+
+```
+Daily candle (1d)  →  Tier 0, Tier 1  →  computed once, cached all day
+Minute candle (1m) →  Tier 2          →  computed every 60s, cached 2hr rolling
+LOB snapshot (100ms)→ Tier 3          →  computed every 100ms, cached 10s
+Cached outputs     →  Tier 4          →  reads Redis, fuses in ~2ms
+```
+
+See [MODEL_PIPELINE_WORKFLOW.md](../../docs/ml/MODEL_PIPELINE_WORKFLOW.md) for full session timing.
 
 ---
 
 ## Layer Summary
 
-| Layer | Purpose | Components | Target |
-|-------|---------|------------|--------|
-| **1. Data Ingestion** | Market data subscription | MarketDataConsumer, NewsConsumer | <5ms |
-| **2. Feature Engine** | 117 features via Rust | compute-engine (NAPI-RS), FeatureCache | <5ms |
-| **3. Prediction** | ONNX ensemble inference | ModelPool, InferenceWorkers, RegimeDetector | <50ms |
-| **4. Strategy & Risk** | Strategy selection + risk | StrategySelector, RiskValidator | <10ms |
-| **5. Execution** | Order routing + positions | OrderManager, PositionTracker, ExitEngine | <20ms |
-| **6. Observability** | Metrics + persistence | Prometheus, QuestDB, MongoDB | Async |
+| Layer                  | Purpose                                | Key Components                                  | Target |
+| ---------------------- | -------------------------------------- | ----------------------------------------------- | ------ |
+| **1. Data Ingestion**  | Subscribe to market data + tier caches | RedisConsumer, CacheReader                      | <2ms   |
+| **2. Feature Engine**  | 117 features via Rust compute-engine   | compute-engine (NAPI-RS), FeatureCache          | <5ms   |
+| **3. Prediction**      | 5-tier hierarchical inference          | WorkerPool, OnnxSessions, TierServices          | <25ms  |
+| **4. Strategy & Risk** | Regime-conditioned strategy + risk     | StrategySelector, StrikeSelector, RiskValidator | <10ms  |
+| **5. Execution**       | Order routing + position management    | OrderManager, PositionTracker, ExitEngine       | <20ms  |
+| **6. Observability**   | Metrics + persistence + audit          | Prometheus, QuestDB, MongoDB, PinoLogger        | Async  |
 
 **Total E2E**: <80ms (p95)
 
 ---
 
-## Layer 1: Data Ingestion
+## GPU / CPU Resource Allocation
 
-**Purpose**: Subscribe to market data from Redis Streams
+| CPU Core | Assignment             | Details                                |
+| -------- | ---------------------- | -------------------------------------- |
+| Core 0   | Node.js Event Loop     | Main thread: Redis, events, Tier 0/1/4 |
+| Core 1   | Tier 2 LightGBM Worker | CPU inference (~5ms)                   |
+| Core 2   | Tier 2 TFT Worker      | GPU inference via TensorRT (~12ms)     |
+| Core 3   | Tier 2 Mamba Worker    | GPU inference via CUDA (~10ms)         |
+| Core 4   | Tier 3 LiT Worker      | GPU inference, 100ms self-driving loop |
+| Core 5   | compute-engine (Rayon) | Runs in market-feeder process          |
+| Core 6-7 | OS / Redis / QuestDB   | Background services                    |
 
-**Data Sources**:
-- NIFTY/BANKNIFTY futures (OHLCV + LOB 20-level)
-- 50 constituents (OHLCV + basic depth)
-- Option chain (Greeks, OI, prices)
-- India VIX
+| GPU Resource   | Assignment                | VRAM               |
+| -------------- | ------------------------- | ------------------ |
+| CUDA Stream 0  | TFT + Mamba (Tier 2)      | ~200 MB            |
+| CUDA Stream 1  | LiT (Tier 3, independent) | ~60 MB             |
+| TensorRT Cache | TFT FP16 engine           | ~120 MB            |
+| Total          |                           | ~460 MB (fits 4GB) |
 
-**Event Output**: `MarketDataReceivedEvent`
+See [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) for full GPU/CPU config.
+
+---
+
+## Layer Details
+
+### Layer 1: Data Ingestion
+
+Subscribe to `features:live` (from market-feeder) + read cached tier outputs from Redis.
 
 See [01-DATA-INGESTION.md](./layers/01-DATA-INGESTION.md)
 
----
+### Layer 2: Feature Engine
 
-## Layer 2: Feature Engine
+117 features computed by Rust compute-engine in <5ms (Rayon parallel, two-phase).
 
-**Purpose**: Compute 117 features in parallel using Rust
-
-**Technology**: 
-- Rust + NAPI-RS for Node.js integration
-- Rayon for parallel computation
-- Two-phase architecture (dependencies → features)
-
-**Feature Categories** (54 total):
-
-| Category | Count | Examples |
-|----------|-------|----------|
-| Index Breadth | 8 | `pct_stocks_above_vwap`, `breadth_thrust` |
-| NIFTY Future | 12 | `fut_rsi_14`, `fut_macd_signal` |
-| Options | 14 | `atm_iv`, `pcr_oi`, `total_gamma_exposure` |
-| Volatility | 6 | `india_vix`, `iv_rv_ratio` |
-| Order Flow | 8 | `ofi_1s`, `depth_imbalance_5` |
-| Time Context | 6 | `minutes_from_open`, `is_expiry_day` |
-
-**Event Output**: `FeaturesComputedEvent`
+| Category           | Count | Examples                                         |
+| ------------------ | ----- | ------------------------------------------------ |
+| Index Breadth      | 8     | `pct_above_vwap`, `breadth_thrust`               |
+| NIFTY Future       | 12    | `fut_rsi_14`, `fut_macd`, `fut_atr_pct`          |
+| Options            | 14    | `atm_iv`, `pcr_oi`, `total_gex`, `iv_skew`       |
+| Volatility         | 10    | `india_vix`, `realized_vol_5m`, `iv_rv_ratio`    |
+| Order Flow         | 8     | `ofi_1s`, `depth_imbalance_5`, `trade_imbalance` |
+| Price Structure    | 8     | `return_1m`, `return_5m`, `gap_open`             |
+| Momentum           | 8     | `rsi_5`, `rsi_14`, `macd_histogram`, `adx_14`    |
+| Time Context       | 13    | `minutes_from_open`, sin/cos encodings           |
+| Global Macro       | 12    | `es_return`, `nq_return`, `dxy_change`           |
+| Regime Context     | 4     | `regime_state` (one-hot from Tier 1 cache)       |
+| Volume Profile     | 6     | `volume_ratio_5m`, `oi_change_pct_calls`         |
+| Cross-Asset        | 4     | `nifty_banknifty_corr_20`, `futures_spot_basis`  |
+| LOB Microstructure | 6     | `depth_imbalance_10`, `sweep_detection`          |
+| Sentiment          | 4     | `finbert_sentiment`, `fii_flow_signal`           |
 
 See [02-FEATURE-ENGINE.md](./layers/02-FEATURE-ENGINE.md)
 
----
+### Layer 3: Prediction
 
-## Layer 3: Prediction
-
-**Purpose**: Multi-model ONNX inference + regime detection
-
-**Models**:
-
-| Model | Features | Purpose | Latency |
-|-------|----------|---------|---------|
-| LightGBM | 46 | Macro direction (5-15min) | ~20ms |
-| LiT | 14 (Order Flow) | Microstructure (10s-1min) | ~8ms |
-| TFT | 46 × 120 | Regime + volatility | ~35ms |
-| Meta-Learner | 3 | Adaptive fusion | ~2ms |
-
-**Regime Types**:
-- `TRENDING` → Trust LightGBM
-- `VOLATILE` → Trust LiT
-- `RANGING` → Balanced weights
-- `LOW_VOLATILITY` → Trust TFT
-
-**Event Output**: `TradingSignalEvent`
+5-tier hierarchical inference with Worker Threads and GPU acceleration.
 
 See [03-PREDICTION.md](./layers/03-PREDICTION.md)
 
----
+### Layer 4: Strategy & Risk
 
-## Layer 4: Strategy & Risk
+Regime-conditioned strategy selection from 7-strategy menu:
 
-**Purpose**: Strategy selection + pre-trade risk validation
-
-**Strategy Matrix**:
-
-| Regime | VOL_UP | VOL_DOWN | NEUTRAL |
-|--------|--------|----------|---------|
-| TRENDING | LONG_CALL | LONG_PUT | Skip |
-| VOLATILE | BULL_CALL_SPREAD | BEAR_PUT_SPREAD | LONG_STRADDLE |
-| RANGING | Skip | Skip | IRON_CONDOR |
-
-**Risk Checks**:
-- Position limits
-- Greeks limits (delta, gamma, theta, vega)
-- Daily loss limit
-- Leverage limit
-
-**Circuit Breakers**:
-- Data staleness >5s
-- Latency >150ms
-- Daily drawdown >5%
-
-**Event Output**: `ValidatedOrderEvent`
+| Regime            | VOL_UP           | VOL_DOWN        | NEUTRAL                      |
+| ----------------- | ---------------- | --------------- | ---------------------------- |
+| **BULL_TRENDING** | LONG_CALL        | Skip            | BULL_CALL_SPREAD             |
+| **BEAR_TRENDING** | Skip             | LONG_PUT        | BEAR_PUT_SPREAD              |
+| **VOLATILE**      | BULL_CALL_SPREAD | BEAR_PUT_SPREAD | LONG_STRADDLE                |
+| **RANGING**       | Skip             | Skip            | IRON_CONDOR / SHORT_STRANGLE |
 
 See [04-STRATEGY-RISK.md](./layers/04-STRATEGY-RISK.md)
 
----
+### Layer 5: Execution
 
-## Layer 5: Execution
+Smart order routing (MARKET/TWAP/VWAP) + multi-criteria exit engine.
 
-**Purpose**: Order routing + position management + exits
-
-**Order Types**:
-- `MARKET` - Immediate fill
-- `TWAP` - Time-weighted average
-- `VWAP` - Volume-weighted average
-
-**Exit Criteria** (priority order):
-1. Stop loss (HIGH)
-2. Risk breach (HIGH)
-3. Trailing stop (MEDIUM)
-4. Take profit (MEDIUM)
-5. ML signal (LOW)
-6. Time-based (LOW)
-
-**Event Output**: `OrderFilledEvent`, `PositionClosedEvent`
+Exit priority: Stop Loss > Risk Breach > Trailing Stop > Take Profit > ML Signal > Time-Based
 
 See [05-EXECUTION.md](./layers/05-EXECUTION.md)
 
----
+### Layer 6: Observability
 
-## Layer 6: Observability
-
-**Purpose**: Metrics, logging, persistence
-
-**Storage Tiers**:
-
-| Tier | Technology | Data | Retention |
-|------|------------|------|-----------|
-| HOT | Redis | Positions, prices | <5 min |
-| WARM | QuestDB | Features, ticks | 180 days |
-| COLD | MongoDB | Orders, signals, audit | 5 years |
-
-**Metrics** (Prometheus):
-- `algo_e2e_latency_ms` - End-to-end latency
-- `algo_inference_duration_ms` - Per-model inference
-- `algo_signals_total` - Signal counts
-- `algo_daily_pnl` - PnL tracking
+| Tier | Technology | Data                           | Retention      | Access |
+| ---- | ---------- | ------------------------------ | -------------- | ------ |
+| HOT  | Redis      | Positions, prices, tier caches | <5 min         | <1ms   |
+| WARM | QuestDB    | Features, ticks, PnL           | 180 days       | <10ms  |
+| COLD | MongoDB    | Orders, signals, audit trail   | 5 years (SEBI) | <100ms |
 
 See [06-OBSERVABILITY.md](./layers/06-OBSERVABILITY.md)
 
@@ -214,34 +201,35 @@ See [06-OBSERVABILITY.md](./layers/06-OBSERVABILITY.md)
 
 ## Design Principles
 
-1. **Event-Driven**: Redis Streams for all inter-layer communication
-2. **Rust Performance**: 117 features in <5ms via Rayon
-3. **Multi-Model**: Ensemble with adaptive regime-based weighting
-4. **User-Configurable**: Per-user permissions, limits, strategies
-5. **SEBI Compliant**: Unique Algo ID, 5-year audit trail
-6. **Fail-Safe**: Multi-layer circuit breakers
+1. **Data-Bound Hierarchy**: Each tier's historical depth and data resolution determines its model architecture
+2. **Compute Once, Cache, Reuse**: Daily models fire once and are cached. Minute models fire every 60s. Tier 4 only reads caches.
+3. **Worker Thread Isolation**: GPU inference never blocks the Node.js event loop
+4. **Event-Driven**: Redis Streams for inter-layer communication
+5. **Rust Performance**: 117 features in <5ms via Rayon (compute-engine in market-feeder process)
+6. **GPU Required**: TFT, Mamba, LiT require GPU for production latency targets
+7. **SEBI Compliant**: Unique Algo ID, pre-trade risk checks, 5-year audit trail
+8. **Fail-Safe**: Multi-layer circuit breakers, EP fallback chains, worker restart on crash
 
 ---
 
 ## Performance Targets
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Data Ingestion | <5ms | ✅ |
-| Feature Computation | <5ms | ✅ |
-| ML Inference | <50ms | ✅ |
-| Strategy + Risk | <10ms | 🔄 |
-| Execution | <20ms | 🔄 |
-| **Total E2E** | **<80ms** | 🎯 |
+| Metric                  | Target    | With GPU  | CPU-Only               |
+| ----------------------- | --------- | --------- | ---------------------- |
+| Data Ingestion          | <2ms      | 1ms       | 1ms                    |
+| Feature Computation     | <5ms      | 3ms       | 3ms                    |
+| ML Inference (Tier 2+4) | <25ms     | **16ms**  | 39ms                   |
+| Strategy + Risk         | <10ms     | 8ms       | 8ms                    |
+| Execution               | <20ms     | 15ms      | 15ms                   |
+| **Total E2E**           | **<80ms** | **~43ms** | ~66ms                  |
+| Tier 3 loop rate        | 10 Hz     | **10 Hz** | 5.5 Hz (misses target) |
 
 ---
 
 ## Related Documentation
 
-- [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) - Detailed inference pipeline
-- [VISUAL_FLOW.md](./VISUAL_FLOW.md) - ASCII flow diagrams
-- [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) - 117 features
-
----
-
-**Last Updated**: January 18, 2026
+- [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) — GPU/CPU allocation, ONNX EP config, Worker Threads
+- [VISUAL_FLOW.md](./VISUAL_FLOW.md) — ASCII flow diagrams
+- [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) — Directory layout
+- [PERFORMANCE_OPTIMIZATION.md](./PERFORMANCE_OPTIMIZATION.md) — Zero-allocation patterns
+- [MODEL_PIPELINE_WORKFLOW.md](../../docs/ml/MODEL_PIPELINE_WORKFLOW.md) — Session timing
