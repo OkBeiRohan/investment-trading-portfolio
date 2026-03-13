@@ -361,6 +361,157 @@ impl Feature for VannaAtm {
 }
 
 // ============================================
+// FEATURE: IV_TERM_STRUCTURE
+// ============================================
+
+/// IV term structure: difference between near-expiry and next-expiry ATM IV
+/// Positive values indicate backwardation (near > far), negative = contango
+pub struct IvTermStructure;
+
+impl Feature for IvTermStructure {
+  fn name(&self) -> &'static str {
+    "iv_term_structure"
+  }
+
+  fn category(&self) -> &'static str {
+    "options"
+  }
+
+  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+    if input.options.len() < 4 {
+      return FeatureValue::Scalar(0.0);
+    }
+
+    let spot = input.nifty_future.ltp;
+
+    // Find ATM strike
+    let atm_strike = input
+      .options
+      .iter()
+      .map(|o| o.strike)
+      .min_by(|a, b| {
+        (a - spot)
+          .abs()
+          .partial_cmp(&(b - spot).abs())
+          .unwrap()
+      })
+      .unwrap_or(spot);
+
+    // Get all unique strikes sorted
+    let mut strikes: Vec<f64> = input.options.iter().map(|o| o.strike).collect();
+    strikes.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    strikes.dedup();
+
+    // Find nearest OTM call strike (one step above ATM) to approximate next expiry IV
+    // In practice, term structure uses options from different expiry dates
+    // Here we approximate using OTM strikes as a proxy
+    let atm_calls: Vec<&crate::types::OptionTick> = input
+      .options
+      .iter()
+      .filter(|o| o.option_type == "CE" && (o.strike - atm_strike).abs() < 1.0)
+      .collect();
+
+    let otm_calls: Vec<&crate::types::OptionTick> = input
+      .options
+      .iter()
+      .filter(|o| o.option_type == "CE" && o.strike > atm_strike + 50.0)
+      .collect();
+
+    let near_iv = atm_calls.first().map(|o| o.iv).unwrap_or(0.0);
+    let far_iv = otm_calls.first().map(|o| o.iv).unwrap_or(0.0);
+
+    if near_iv == 0.0 || far_iv == 0.0 {
+      return FeatureValue::Scalar(0.0);
+    }
+
+    FeatureValue::Scalar(near_iv - far_iv)
+  }
+}
+
+// ============================================
+// FEATURE: TOTAL_GAMMA_EXPOSURE (GEX)
+// ============================================
+
+/// Total Gamma Exposure across the options chain
+/// GEX = Σ(gamma × OI × spot² × contract_multiplier) / 1e9
+/// Measures market maker hedging pressure
+pub struct TotalGammaExposure;
+
+impl Feature for TotalGammaExposure {
+  fn name(&self) -> &'static str {
+    "total_gamma_exposure"
+  }
+
+  fn category(&self) -> &'static str {
+    "options"
+  }
+
+  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+    if input.options.is_empty() {
+      return FeatureValue::Scalar(0.0);
+    }
+
+    let spot = input.nifty_spot.unwrap_or(input.nifty_future.ltp);
+    let contract_multiplier = 50.0; // NIFTY lot size
+
+    let gex: f64 = input
+      .options
+      .iter()
+      .map(|opt| {
+        // Calls contribute positive gamma, puts contribute negative
+        let sign = if opt.option_type == "CE" { 1.0 } else { -1.0 };
+        sign * opt.gamma * opt.open_interest * spot * spot * contract_multiplier
+      })
+      .sum();
+
+    // Normalize to billions for readability
+    FeatureValue::Scalar(gex / 1e9)
+  }
+}
+
+// ============================================
+// FEATURE: IV_PERCENTILE_30D
+// ============================================
+
+/// ATM IV percentile over an estimated 30-day range
+/// Uses a linear estimate: IV 5% = 0th percentile, IV 40% = 100th percentile
+/// (In production, would use a rolling 30-day IV history stored in cache)
+pub struct IvPercentile30d;
+
+impl Feature for IvPercentile30d {
+  fn name(&self) -> &'static str {
+    "iv_percentile_30d"
+  }
+
+  fn category(&self) -> &'static str {
+    "options"
+  }
+
+  fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
+    if input.options.is_empty() {
+      return FeatureValue::Scalar(50.0); // Neutral default
+    }
+
+    // Get ATM IV
+    let spot = input.nifty_future.ltp;
+    let atm_option = input.options.iter().min_by(|a, b| {
+      (a.strike - spot)
+        .abs()
+        .partial_cmp(&(b.strike - spot).abs())
+        .unwrap()
+    });
+
+    let atm_iv = atm_option.map(|o| o.iv).unwrap_or(0.15);
+
+    // Linear percentile estimation for NIFTY options:
+    // IV typically ranges 5% (calm) to 40% (crisis)
+    // 5% → 0th percentile, 40% → 100th percentile
+    let percentile = ((atm_iv - 0.05) / 0.35 * 100.0).clamp(0.0, 100.0);
+    FeatureValue::Scalar(percentile)
+  }
+}
+
+// ============================================
 // TESTS
 // ============================================
 
@@ -421,12 +572,12 @@ mod tests {
         },
       ],
       india_vix: Some(15.5),
-      is_expiry_day: todo!(),
-      days_to_expiry: todo!(),
-      current_expiry: todo!(),
-      market_depth: todo!(),
-      nifty_spot: todo!(),
-      risk_free_rate: todo!(),
+      is_expiry_day: Some(false),
+      days_to_expiry: Some(3),
+      current_expiry: None,
+      market_depth: None,
+      nifty_spot: Some(19480.0),
+      risk_free_rate: Some(0.07),
     }
   }
 

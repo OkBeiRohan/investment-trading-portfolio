@@ -158,12 +158,12 @@ fn create_realistic_input() -> FeatureInput {
     constituents,
     options,
     india_vix: Some(14.5),
-    is_expiry_day: todo!(),
-    days_to_expiry: todo!(),
-    current_expiry: todo!(),
-    market_depth: todo!(),
-    nifty_spot: todo!(),
-    risk_free_rate: todo!(),
+    is_expiry_day: Some(false),
+    days_to_expiry: Some(3),
+    current_expiry: None,
+    market_depth: None,
+    nifty_spot: Some(19480.0),
+    risk_free_rate: Some(0.07),
   }
 }
 
@@ -219,11 +219,11 @@ fn test_e2e_all_features_computed() {
   assert!(features.day_of_week >= 0 && features.day_of_week <= 6);
 
   // Verify timing logs
-  assert_eq!(result.timings.len(), 33); // One log per feature
+  assert_eq!(result.timings.len(), 46); // One log per registered feature
   assert!(result.total_duration_micros > 0);
 
   println!(
-    "E2E Test Passed: All 33 features computed in {}µs",
+    "E2E Test Passed: All 54 features computed in {}µs",
     result.total_duration_micros
   );
 }

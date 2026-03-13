@@ -4,7 +4,7 @@
  *
  * Features:
  * - PostgreSQL wire protocol for queries
- * - Auto-creates tables from SQL files (54-feature architecture)
+ * - Auto-creates tables from SQL files (117-feature architecture)
  * - Connection pooling with health monitoring
  *
  * Architecture:
@@ -86,8 +86,9 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
    * Order matters: create dependencies first
    *
    * v3.0 Schema - Unified Schema
-   * 7 tables: instrument_master, market_candles, orderbook_l2_snapshots,
-   *           tick_data, option_chain_snapshot, instrument_features, training_labels
+   * 9 tables: instrument_master, market_candles, orderbook_l2_snapshots,
+   *           tick_data, option_chain_snapshot, instrument_features,
+   *           training_labels, macro_sentiment, dataset_folds
    */
   private async createTables(): Promise<void> {
     this.logger.log("Creating QuestDB v3.0 tables from schema files...");
@@ -119,7 +120,14 @@ export class QuestDBService implements OnModuleInit, OnModuleDestroy {
     );
     await this.createTable("training_labels", "schema/create_training_labels");
 
-    this.logger.log("✓ All v3.0 tables created successfully (7 tables)");
+    // Supplementary tables
+    await this.createTable(
+      "macro_sentiment",
+      "schema/create_macro_sentiment",
+    );
+    await this.createTable("dataset_folds", "schema/07_dataset_folds_v3");
+
+    this.logger.log("✓ All v3.0 tables created successfully (9 tables)");
   }
 
   /**

@@ -1,7 +1,7 @@
 {
   "name": "data-processor",
   "version": "0.0.1",
-  "description": "",
+  "description": "Document processing microservice — parses bank statements, identifies expenses, investments, etc.",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
@@ -22,9 +22,10 @@
   "dependencies": {
     "@nestjs/common": "^11.1.16",
     "@nestjs/core": "^11.1.16",
-    "@nestjs/microservices": "^11.1.16",
     "@nestjs/platform-express": "^11.1.16",
+    "@repo/database": "workspace:*",
     "@repo/observability": "workspace:*",
+    "@repo/schema": "workspace:*",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -36,7 +37,7 @@
     "@nestjs/testing": "^11.1.16",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.4.0",
+    "@types/node": "^25.5.0",
     "@types/supertest": "^7.2.0",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",

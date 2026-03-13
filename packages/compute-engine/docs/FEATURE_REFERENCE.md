@@ -1,6 +1,6 @@
 # Feature Reference Guide
 
-> **Complete reference for all 54 features computed by the compute-engine.**
+> **Complete reference for all 117 features computed by the compute-engine.**
 
 **Last Updated**: January 18, 2026
 

@@ -9,15 +9,16 @@
  * 4. Time-series first (timestamp is king)
  * 5. Training must be reproducible from DB alone
  *
- * Tables (7 total):
+ * Tables (9 total):
  * 1. instrument_master - Instrument registry
  * 2. market_candles - OHLCV data
- * 3. orderbook_l2_snapshots - Order book depth
- * 4. tick_data - Live tick data
+ * 3. orderbook_l2_snapshots - Order book depth (normalized)
+ * 4. tick_data - Live tick data with 30-level depth + Greeks
  * 5. option_chain_snapshot - Options with Greeks
- * 6. instrument_features - All ML features (1m + 1d)
+ * 6. instrument_features - All ML features (1m + 1d, 117 columns)
  * 7. training_labels - All ML labels (1m + 1d)
- * 8. dataset_folds - Stores dataset split allocations for training
+ * 8. macro_sentiment - NLP news sentiment (in macro-sentiment.schema.ts)
+ * 9. dataset_folds - CPCV train/test splits
  *
  * NOTE: SQL CREATE TABLE statements are in packages/schema/sql/schema/
  */
@@ -40,6 +41,51 @@ export const OrderbookL2SnapshotSchema = z.object({
 });
 
 export type OrderbookL2Snapshot = z.infer<typeof OrderbookL2SnapshotSchema>;
+
+// ============================================
+// TABLE 4: tick_data
+// Live tick-by-tick data with 30-level depth
+// ============================================
+
+/**
+ * TickDataSchema — Core fields for tick-by-tick data.
+ *
+ * The tick_data SQL table also contains 30-level depth fields
+ * (bid_price_1..30, bid_qty_1..30, ask_price_1..30, ask_qty_1..30)
+ * and Greeks (delta, theta, gamma, vega, rho, iv).
+ * These are handled via passthrough() since z.object() requires
+ * statically-known keys.
+ *
+ * Full schema: packages/schema/sql/schema/create_tick_data.sql
+ */
+export const TickDataSchema = z
+  .object({
+    timestamp: z.date(),
+    instrumentKey: z.string(),
+
+    // Price data
+    ltp: z.number(), // Last traded price
+    ltq: z.number().optional(), // Last traded quantity
+    cp: z.number().optional(), // Close price (previous day)
+
+    // Aggregates
+    atp: z.number().optional(), // Average traded price
+    vtt: z.number().optional(), // Volume traded today
+    oi: z.number().optional(), // Open interest
+    tbq: z.number().optional(), // Total bid quantity
+    tsq: z.number().optional(), // Total ask quantity
+
+    // Greeks (options only, from Upstox)
+    delta: z.number().optional(),
+    theta: z.number().optional(),
+    gamma: z.number().optional(),
+    vega: z.number().optional(),
+    rho: z.number().optional(),
+    iv: z.number().optional(), // Implied volatility
+  })
+  .passthrough(); // Allow 120 depth fields (bid/ask_price/qty_1..30)
+
+export type TickData = z.infer<typeof TickDataSchema>;
 
 // ============================================
 // TABLE 4: option_chain_snapshot

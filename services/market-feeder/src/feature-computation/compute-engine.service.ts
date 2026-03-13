@@ -28,7 +28,7 @@ export class ComputeEngineService {
   }
 
   /**
-   * Compute all 33 features from market data input
+   * Compute all 117 features from market data input
    *
    * NAPI-RS 3.0 Pattern:
    * - Cache is updated automatically inside Rust compute_features()

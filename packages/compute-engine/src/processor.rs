@@ -3,7 +3,8 @@ use rayon::prelude::*;
 use crate::cache::HistoricalCache;
 use crate::dependencies::*;
 use crate::features::*;
-use crate::types::{ComputeResult, FeatureInput, FeatureOutput, FeatureTimingLog};
+use crate::features::order_flow::{compute_order_flow, OrderFlowConfig};
+use crate::types::{ComputeResult, FeatureInput, FeatureMode, FeatureOutput, FeatureTimingLog};
 
 /// Central feature processor that coordinates parallel computation of all 54 features
 pub struct FeatureProcessor {
@@ -48,10 +49,9 @@ impl FeatureProcessor {
       Box::new(MaxPainDistance),
       Box::new(CharmAtm),
       Box::new(VannaAtm),
-      // TODO: Add these options features when implemented
-      // Box::new(IvTermStructure),
-      // Box::new(TotalGammaExposure),
-      // Box::new(IvPercentile30d),
+      Box::new(IvTermStructure),
+      Box::new(TotalGammaExposure),
+      Box::new(IvPercentile30d),
       // Volatility Features (6)
       Box::new(IndiaVix),
       Box::new(RealizedVol5m),
@@ -165,6 +165,25 @@ impl FeatureProcessor {
       days_to_expiry: input.days_to_expiry.unwrap_or(0),
       session_phase: 2,
     };
+
+    // Compute order flow features (live mode only, defaults to 0 in historical)
+    let of_config = OrderFlowConfig {
+      mode: if input.market_depth.is_some() {
+        FeatureMode::Live
+      } else {
+        FeatureMode::Historical
+      },
+      ..Default::default()
+    };
+    let of = compute_order_flow(&input.market_depth, &[], &of_config);
+    output.bid_ask_spread_bps = of.bid_ask_spread_bps;
+    output.depth_imbalance_5 = of.depth_imbalance_5;
+    output.ofi_1s = of.ofi_1s;
+    output.ofi_5s = of.ofi_5s;
+    output.ofi_30s = of.ofi_30s;
+    output.trade_imbalance = of.trade_imbalance;
+    output.bid_slope = of.bid_slope;
+    output.ask_slope = of.ask_slope;
 
     let mut timings = Vec::new();
 
@@ -336,10 +355,9 @@ mod tests {
   #[test]
   fn test_processor_creation() {
     let processor = FeatureProcessor::new();
-    // 8 index_breadth + 12 nifty_future + 11 options + 6 volatility + 6 time_context
-    // Note: 3 options features (IvTermStructure, TotalGammaExposure, IvPercentile30d) are TODO
-    // Note: Order flow features handled separately
-    assert_eq!(processor.features.len(), 43);
+    // 8 index_breadth + 12 nifty_future + 14 options + 6 volatility + 6 time_context
+    // Order flow features computed inline (not via Feature trait)
+    assert_eq!(processor.features.len(), 46);
   }
 
   #[test]
@@ -351,7 +369,7 @@ mod tests {
     let result = processor.compute_all(&input, &cache);
 
     // Verify timings are recorded
-    assert_eq!(result.timings.len(), 43);
+    assert_eq!(result.timings.len(), 46);
     assert!(result.total_duration_micros > 0);
 
     // Verify some features are computed

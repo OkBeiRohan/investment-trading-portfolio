@@ -1,6 +1,6 @@
 # Layer 2: Cortex (Feature Engine + Market State Encoder)
 
-> **Rust-powered 54-feature computation layer with market state encoding.**
+> **Rust-powered 117-feature computation layer with market state encoding.**
 
 **Last Updated**: January 18, 2026
 
@@ -146,7 +146,7 @@ export class FeatureComputationService {
     // Transform market data to compute-engine input
     const input: FeatureInput = this.transformToFeatureInput(marketData);
     
-    // Compute 54 features (Rust, <5ms)
+    // Compute 117 features (Rust, <5ms)
     const result = computeFeatures(input);
     
     // Publish to Redis for inference

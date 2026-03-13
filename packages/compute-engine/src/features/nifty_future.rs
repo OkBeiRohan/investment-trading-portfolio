@@ -216,9 +216,8 @@ impl Feature for FutReturn15m {
   }
 
   fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
-    // Uses 15-minute return from cache (computed from nifty_future_return_5m * 3 approximation)
-    // In production, this would come from a 15-period lookback in cache
-    FeatureValue::Scalar(deps.nifty_future_return_5m * 3.0) // Approximation
+    // Proper 15-period lookback from cache
+    FeatureValue::Scalar(deps.nifty_future_return_15m)
   }
 }
 
@@ -265,10 +264,8 @@ impl Feature for FutMacdSignal {
   }
 
   fn compute(&self, _input: &FeatureInput, deps: &ComputedDependencies) -> FeatureValue {
-    // MACD Signal line = EMA(9) of MACD
-    // Approximation: use MACD * 0.8 (would need proper EMA in cache)
-    let macd = deps.nifty_future_ema12 - deps.nifty_future_ema26;
-    FeatureValue::Scalar(macd * 0.8) // Approximation
+    // MACD Signal = EMA(9) of MACD line, computed from full price history in cache
+    FeatureValue::Scalar(deps.nifty_future_macd_signal)
   }
 }
 

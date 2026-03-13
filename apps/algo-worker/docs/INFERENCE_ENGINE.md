@@ -1,6 +1,6 @@
 # Algo-Worker Inference Engine
 
-> **54-feature real-time inference pipeline with ONNX Runtime and compute-engine integration.**
+> **117-feature real-time inference pipeline with ONNX Runtime and compute-engine integration.**
 
 **Last Updated**: January 18, 2026
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-The algo-worker receives 54 features from `compute-engine` (Rust) and runs multi-model inference using ONNX Runtime. This document describes the complete inference pipeline.
+The algo-worker receives 117 features from `compute-engine` (Rust) and runs multi-model inference using ONNX Runtime. This document describes the complete inference pipeline.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -16,7 +16,7 @@ The algo-worker receives 54 features from `compute-engine` (Rust) and runs multi
 │                                                                              │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐          │
 │  │ compute-engine  │ →  │ Feature Router  │ →  │ Model Pool      │          │
-│  │ (54 features)   │    │                 │    │ (ONNX Workers)  │          │
+│  │ (117 features)   │    │                 │    │ (ONNX Workers)  │          │
 │  │ <5ms            │    │                 │    │                 │          │
 │  └─────────────────┘    └─────────────────┘    └─────────────────┘          │
 │                                                        │                     │
@@ -416,7 +416,7 @@ export class InferencePipelineService {
 
 ## Related Documentation
 
-- [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) - 54 feature definitions
+- [FEATURE_SPECIFICATION.md](../../docs/ml/FEATURE_SPECIFICATION.md) - 117 feature definitions
 - [compute-engine README](../../packages/compute-engine/README.md) - Feature computation
 - [INFERENCE_PIPELINE.md](../../docs/ml/INFERENCE_PIPELINE.md) - ONNX Runtime details
 - [TIER1_MODELS.md](../../docs/ml/TIER1_MODELS.md) - Model architectures

@@ -27,7 +27,7 @@ export class InferenceWorkerService {
   async executeEnsemble(
     instrumentKey: string,
     timestamp: string,
-    features: number[] // Standard 54 feature array
+    features: number[] // Standard 117 feature array
   ): Promise<InferenceResult> {
     const startTime = performance.now();
     const models = this.modelPool.getModels();

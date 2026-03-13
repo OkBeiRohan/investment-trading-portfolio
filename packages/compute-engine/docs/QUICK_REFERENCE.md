@@ -2,7 +2,7 @@
 
 ## 🎯 TL;DR
 
-**Problem**: Need to compute 33 features from live/historical data with:
+**Problem**: Need to compute 117 features from live/historical data with:
 
 - ✅ Parallel execution (minimize latency)
 - ✅ Zero redundant calculations
@@ -37,7 +37,7 @@
 │  │   Phase 1: compute_dependencies() [Sequential]      │  │
 │  │     - VWAP, EMA, ATR, RSI, Greeks                   │  │
 │  │   Phase 2: compute_all() [Parallel via Rayon]       │  │
-│  │     - 33 features execute simultaneously            │  │
+│  │     - 117 features execute simultaneously            │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐  │

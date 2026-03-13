@@ -120,7 +120,7 @@ pub struct FeatureInput {
 // OUTPUT TYPES
 // ============================================
 
-/// Complete feature output (54 features + timestamp = 55 fields) - returned directly to Node.js
+/// Complete feature output (54 features + timestamp) - returned directly to Node.js
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[napi(object)]
 pub struct FeatureOutput {

@@ -90,7 +90,7 @@ export class RedisFeatureListenerService implements OnApplicationBootstrap {
     try {
       const features = JSON.parse(featuresJson) as number[];
       
-      // Pass the 54-feature array to the ONNX Ensembler
+      // Pass the 117-feature array to the ONNX Ensembler
       const inferenceResult = await this.inferenceService.executeEnsemble(
         instrumentKey,
         timestamp,

@@ -839,4 +839,4 @@ def export_lightgbm_to_onnx(
 - [AI_TRADING_ARCHITECTURE.md](./AI_TRADING_ARCHITECTURE.md) - Complete system overview
 - [TIER1_MODELS.md](./TIER1_MODELS.md) - Model specifications
 - [INFERENCE_PIPELINE.md](./INFERENCE_PIPELINE.md) - **ONNX Runtime in NestJS** (algo-worker)
-- [FEATURE_STORE.md](./FEATURE_STORE.md) - Feast + Redis integration
+- [FEATURE_STORE.md](./FEATURE_STORE.md) - Redis + QuestDB feature store

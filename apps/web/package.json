@@ -18,7 +18,7 @@
     "@repo/auth-client": "workspace:*",
     "@repo/schema": "workspace:*",
     "@repo/trpc": "workspace:*",
-    "@vercel/analytics": "^2.0.0",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/otel": "^2.1.1",
     "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2.1.1",

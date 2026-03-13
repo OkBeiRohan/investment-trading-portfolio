@@ -17,11 +17,11 @@ apps/algo-worker/
 │   │   │   ├── news.consumer.ts          # News/sentiment subscriber
 │   │   │   └── event-normalizer.ts       # Normalize incoming events
 │   │   │
-│   │   ├── feature-engine/              # Layer 2: Rust compute-engine (54 features)
+│   │   ├── feature-engine/              # Layer 2: Rust compute-engine (117 features)
 │   │   │   ├── feature-engine.module.ts
 │   │   │   ├── feature-engine.service.ts # Calls compute-engine NAPI
 │   │   │   ├── feature-cache.service.ts  # Sliding window cache
-│   │   │   └── feature-types.ts          # 54 feature definitions
+│   │   │   └── feature-types.ts          # 117 feature definitions
 │   │   │
 │   │   ├── prediction/                  # Layer 3: ONNX Ensemble Inference
 │   │   │   ├── prediction.module.ts
@@ -124,7 +124,7 @@ apps/algo-worker/
 | Layer | Directory | Purpose | Target |
 |-------|-----------|---------|--------|
 | **1** | `data-ingestion/` | Market data subscription | <5ms |
-| **2** | `feature-engine/` | 54 features (Rust) | <5ms |
+| **2** | `feature-engine/` | 117 features (Rust) | <5ms |
 | **3** | `prediction/` | ONNX ensemble inference | <50ms |
 | **4** | `strategy-risk/` | Strategy selection + risk | <10ms |
 | **5** | `execution/` | Order routing + positions | <20ms |
@@ -175,7 +175,7 @@ apps/algo-worker/
 Layer 1: data-ingestion/
      ↓ MarketDataReceivedEvent
 Layer 2: feature-engine/
-     ↓ FeaturesComputedEvent (54 features)
+     ↓ FeaturesComputedEvent (117 features)
 Layer 3: prediction/
      ↓ TradingSignalEvent
 Layer 4: strategy-risk/

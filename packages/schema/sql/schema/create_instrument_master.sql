@@ -1,6 +1,8 @@
 -- Instrument Master Table (Full Upstox Schema)
 -- Single source of truth for ALL instrument metadata
 -- Includes options/futures fields from Upstox expired-instruments API
+-- NOTE: Intentionally no TIMESTAMP() or PARTITION BY — this is a low-volume
+-- lookup table (~100K rows) with infrequent writes (daily instrument sync).
 
 CREATE TABLE IF NOT EXISTS instrument_master (
   -- Primary identifier
