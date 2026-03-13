@@ -135,7 +135,6 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         // Do NOT set domain - let browser use current origin (Vercel)
       },
       database: {
-        useNumberId: false,
         generateId: false,
       },
     },
