@@ -1,500 +1,590 @@
-# Market State Encoder - Visual Flow Diagram
+# Algo Worker -- Visual Flow Diagrams
 
-> **ASCII diagrams showing the complete data flow from 50+ instruments to model predictions**
+> **ASCII diagrams for the 6-layer, 5-tier hierarchical architecture**
+
+**Last Updated**: March 13, 2026
 
 ---
 
-## 1. The Big Picture: Multi-Instrument → Single State
+## 1. The Big Picture: 6-Layer Pipeline with 5-Tier Prediction
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    RAW MARKET REALITY (Layer 1)                     │
-│                      ~50,000 signals/second                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
-│  │ NIFTY FUTURE     │  │ 50 Constituents  │  │ Option Chain     │  │
-│  ├──────────────────┤  ├──────────────────┤  ├──────────────────┤  │
-│  │ • OHLCV (1s)     │  │ • RELIANCE       │  │ • 50 strikes     │  │
-│  │ • LOB depth-20   │  │ • HDFC           │  │ • Greeks         │  │
-│  │ • Trades         │  │ • ICICI          │  │ • OI + Volume    │  │
-│  │ • Volume         │  │ • ... (47 more)  │  │ • LOB (ATM)      │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘  │
-│       80 numbers           ~40,000 numbers          300 numbers     │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│              MARKET STATE ENCODER (Layer 2 - Cortex)                │
-│                   Compression Ratio: 250:1                           │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ Sub-Component Pipeline (Parallel Execution)                  │  │
-│  ├──────────────────────────────────────────────────────────────┤  │
-│  │                                                               │  │
-│  │  [IndexAggregator]  [BreadthComputer]  [AlignmentScorer]    │  │
-│  │         ↓                   ↓                   ↓             │  │
-│  │    Structural           Participation      Correlation       │  │
-│  │    Metrics              Metrics            Metrics            │  │
-│  │                                                               │  │
-│  │  [LOBTensorBuilder]  [RegimeFeatureBuilder]                  │  │
-│  │         ↓                     ↓                               │  │
-│  │   Microstructure          Temporal                           │  │
-│  │   Tensors                 Features                           │  │
-│  │                                                               │  │
-│  │  [ExecutionStateBuilder]                                     │  │
-│  │         ↓                                                     │  │
-│  │   Execution State                                            │  │
-│  │                                                               │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                  MODEL-SPECIFIC ENCODED STATES                      │
-│                      ~200-500 numbers                                │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐    │
-│  │ LightGBM View   │  │ TFT View        │  │ LiT View        │    │
-│  ├─────────────────┤  ├─────────────────┤  ├─────────────────┤    │
-│  │ Float32Array(54)│  │ (120×54) matrix │  │ (60×80) tensor  │    │
-│  │                 │  │                 │  │                 │    │
-│  │ • Breadth (8)   │  │ • Returns       │  │ • Bid prices    │    │
-│  │ • Futures (12)  │  │ • Volatility    │  │ • Ask prices    │    │
-│  │ • Options (14)  │  │ • Breadth       │  │ • Bid sizes     │    │
-│  │ • Vol (6)       │  │ • Momentum      │  │ • Ask sizes     │    │
-│  │ • OFI (8)       │  │ • IV changes    │  │ (normalized)    │    │
-│  │ • Time (6)      │  │ • OFI           │  │                 │    │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘    │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                  PREDICTION MODELS (Layer 4)                        │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐    │
-│  │ LightGBM        │  │ TFT             │  │ LiT             │    │
-│  │ (Macro)         │  │ (Regime)        │  │ (Micro)         │    │
-│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘    │
-│           │                    │                    │               │
-│           └────────────────────┼────────────────────┘               │
-│                                ↓                                     │
-│                     ┌────────────────────┐                          │
-│                     │  Meta-Learner      │                          │
-│                     │  (Contextual Gate) │                          │
-│                     └──────────┬─────────┘                          │
-│                                ↓                                     │
-│                    ┌──────────────────────┐                         │
-│                    │ FINAL PREDICTION     │                         │
-│                    │ VOL_UP (75% conf.)   │                         │
-│                    └──────────────────────┘                         │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                         ALGO-WORKER 6-LAYER PIPELINE                           │
+│                          Target: <80ms E2E (p95)                               │
+│                          117 Features | 8 ONNX Models | 5 Tiers               │
+│                                                                                │
+│  ┌──────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 1: DATA INGESTION (<2ms)                                          │ │
+│  │ Redis Streams: features:live, candles:1m, premarket:*                   │ │
+│  │ + Redis cache: tier0:gap, tier1:regime, tier3:microstructure            │ │
+│  └───────────────────────────────┬──────────────────────────────────────────┘ │
+│                                  ↓                                             │
+│  ┌──────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 2: FEATURE ENGINE (<5ms)                                          │ │
+│  │ Rust compute-engine (NAPI-RS) -- 117 features via Rayon parallel        │ │
+│  │ Phase 1: Shared deps (VWAP, EMA, ATR, RSI, Greeks) ~2ms                │ │
+│  │ Phase 2: 117 features parallel ~1ms                                     │ │
+│  └───────────────────────────────┬──────────────────────────────────────────┘ │
+│                                  ↓                                             │
+│  ┌──────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 3: 5-TIER PREDICTION ENGINE (<25ms GPU)                           │ │
+│  │                                                                          │ │
+│  │  Tier 0: XGBoost ─────────── gap, bias (CPU, once/day)          ─┐     │ │
+│  │  Tier 1: HMM + PatchTST ─── regime, trend (CPU, once/day)       ├──┐  │ │
+│  │  Tier 2: LightGBM+TFT+Mamba  direction (CPU+GPU, every 60s)     ├──┤  │ │
+│  │  Tier 3: LiT Transformer ─── microstructure (GPU, every 100ms)   ├──┤  │ │
+│  │  Tier 4: Meta-Learner ─────── final signal (CPU, every 60s)     ─┘  │  │ │
+│  │                                          reads cached outputs ───────┘  │ │
+│  └───────────────────────────────┬──────────────────────────────────────────┘ │
+│                                  ↓                                             │
+│  ┌──────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 4: STRATEGY & RISK (<10ms)                                        │ │
+│  │ 7 strategies x 4 regimes | Kelly position sizer | 7 risk checks        │ │
+│  └───────────────────────────────┬──────────────────────────────────────────┘ │
+│                                  ↓                                             │
+│  ┌──────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 5: EXECUTION (<20ms)                                              │ │
+│  │ MARKET/TWAP/VWAP routing | Position tracking | Multi-criteria exits    │ │
+│  └───────────────────────────────┬──────────────────────────────────────────┘ │
+│                                  ↓                                             │
+│  ┌──────────────────────────────────────────────────────────────────────────┐ │
+│  │ LAYER 6: OBSERVABILITY (Async, non-blocking)                            │ │
+│  │ Prometheus | QuestDB (180d) | MongoDB (5yr, SEBI) | Pino logging       │ │
+│  └──────────────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Detailed: How Breadth Computer Works
+## 2. Data Resolution Hierarchy
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│               INPUT: 50 NIFTY Constituents (Raw Data)               │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Stock  │ LTP     │ VWAP    │ Change% │ Mom_5min │ Volume │ Weight │
-│  ───────┼─────────┼─────────┼─────────┼──────────┼────────┼────────│
-│  RELI   │ 2450.30 │ 2445.00 │ +0.8%   │ +0.5%    │ 1.2M   │ 10.5%  │
-│  HDFC   │ 1620.50 │ 1625.00 │ -0.3%   │ -0.2%    │ 0.8M   │ 8.2%   │
-│  ICICI  │ 1050.20 │ 1048.00 │ +0.2%   │ +0.3%    │ 1.5M   │ 7.8%   │
-│  ...    │ ...     │ ...     │ ...     │ ...      │ ...    │ ...    │
-│  TCS    │ 3800.00 │ 3795.00 │ +0.1%   │ +0.1%    │ 0.9M   │ 6.5%   │
-│                                                                       │
-│  Total: 50 stocks × 7 features = 350 numbers                        │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-                        ┌───────────────────────┐
-                        │  BreadthComputer      │
-                        │  (Aggregation Logic)  │
-                        └───────────┬───────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│              OUTPUT: 5 Aggregated Breadth Metrics                   │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  1. pct_stocks_above_vwap = 36 / 50 = 0.72                          │
-│     → 72% of stocks trading above VWAP (bullish)                    │
-│                                                                       │
-│  2. pct_stocks_trending_up = 34 / 50 = 0.68                         │
-│     → 68% of stocks with positive 5-min momentum                    │
-│                                                                       │
-│  3. advance_decline_ratio = 36 / 14 = 1.8                           │
-│     → 36 stocks advancing, 14 declining (strong buying)             │
-│                                                                       │
-│  4. weighted_return_top_10 = 0.8%                                   │
-│     → Top 10 weighted stocks average +0.8% (leadership)             │
-│                                                                       │
-│  5. sector_alignment_score = 0.65                                   │
-│     → Moderate intra-sector correlation (cohesive move)             │
-│                                                                       │
-│  Compression: 350 numbers → 5 numbers (70:1 ratio)                  │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Usage Example**:
-
-```
-IF futures_spike > 50_points:
-    IF breadth.pct_stocks_above_vwap > 0.6:
-        SIGNAL = "REAL_MOVE" (high participation)
-    ELSE:
-        SIGNAL = "FALSE_BREAKOUT" (low participation)
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│             DATA RESOLUTION HIERARCHY: Compute Once, Cache, Reuse              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  RESOLUTION           TIERS              SCHEDULE           CACHE              │
+│  ─────────────────────────────────────────────────────────────────────────     │
+│                                                                                 │
+│  ┌──────────────┐                                                              │
+│  │ DAILY (1d)   │──→ Tier 0: XGBoost    Once @ 09:08 ──→ tier0:gap:{date}   │
+│  │ 26yr history │──→ Tier 1: HMM+PatchTST Once @ 09:09 → tier1:regime:{date}│
+│  └──────────────┘    Compute ONCE, cache ALL DAY (TTL: 8hr)                   │
+│         │                                                                       │
+│         ↓                                                                       │
+│  ┌──────────────┐                                                              │
+│  │ MINUTE (1m)  │──→ Tier 2: LightGBM+TFT+Mamba                              │
+│  │ 120-bar seq  │    Every 60s ──→ tier2:predictions:{ts}                     │
+│  └──────────────┘    Reads Tier 0/1 cache as regime context (4 extra features)│
+│         │            Cache TTL: 2hr rolling                                    │
+│         ↓                                                                       │
+│  ┌──────────────┐                                                              │
+│  │ TICK (100ms) │──→ Tier 3: LiT Transformer                                 │
+│  │ LOB depth-20 │    Self-driving loop every 100ms                            │
+│  └──────────────┘    tier3:microstructure:latest (TTL: 10s)                   │
+│         │                                                                       │
+│         ↓                                                                       │
+│  ┌──────────────┐                                                              │
+│  │ CACHED ONLY  │──→ Tier 4: Meta-Learner (Contextual Gating Network)        │
+│  │ No raw data  │    Reads Redis: tier0 + tier1 + tier2 + tier3               │
+│  └──────────────┘    Every 60s ──→ Final signal (~2ms)                        │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Detailed: LightGBM Feature Construction
+## 3. 5-Tier Prediction Engine Detail
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│         INPUT SOURCES (Multi-Instrument Data)                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐  │
-│  │ 50 Constituents │   │ NIFTY FUTURE    │   │ Option Chain    │  │
-│  │ (via Breadth)   │   │ (direct)        │   │ (via Greeks)    │  │
-│  └────────┬────────┘   └────────┬────────┘   └────────┬────────┘  │
-│           │                     │                     │             │
-│           ↓                     ↓                     ↓             │
-│    ┌──────────────┐      ┌──────────────┐     ┌──────────────┐   │
-│    │IndexAggregator│      │FuturesCache  │     │OptionFeatures│   │
-│    │BreadthComputer│      │              │     │              │   │
-│    │AlignmentScorer│      │              │     │              │   │
-│    └──────┬───────┘      └──────┬───────┘     └──────┬───────┘   │
-│           │                     │                     │             │
-│           ↓                     ↓                     ↓             │
-│      10 features            8 features           10 features        │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│             LightGBM Feature Vector (54 total)                      │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  GROUP 1: Index Aggregation (10 features)                           │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ [0] pct_stocks_above_vwap        = 0.72                     │   │
-│  │ [1] pct_stocks_trending_up       = 0.68                     │   │
-│  │ [2] advance_decline_ratio        = 1.8                      │   │
-│  │ [3] weighted_return_top_10       = 0.008 (+0.8%)            │   │
-│  │ [4] sector_alignment_score       = 0.65                     │   │
-│  │ [5] correlation_to_leader        = 0.72                     │   │
-│  │ [6] divergence_score             = 0.15                     │   │
-│  │ [7] participation_index          = 1.3 (30% above avg vol)  │   │
-│  │ [8] intraday_range_position      = 0.75 (high in range)     │   │
-│  │ [9] overnight_gap                = 0.005 (+0.5% gap)        │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-│  GROUP 2: Futures Features (8 features)                             │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ [10] price_vs_vwap               = 0.002 (+0.2% above)      │   │
-│  │ [11] range_position              = 0.80 (near high)         │   │
-│  │ [12] atr_normalized              = 1.2 (20% above avg)      │   │
-│  │ [13] momentum_5min               = 0.004 (+0.4%)            │   │
-│  │ [14] momentum_15min              = 0.006 (+0.6%)            │   │
-│  │ [15] rsi_14                      = 58 (mild bullish)        │   │
-│  │ [16] volume_vs_avg               = 1.3 (30% above)          │   │
-│  │ [17] basis                       = 5.2 (future premium)     │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-│  GROUP 3: Options Features (10 features)                            │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ [18] atm_iv                      = 18.5 (current IV)        │   │
-│  │ [19] iv_change_5min              = 1.2 (IV rising)          │   │
-│  │ [20] iv_rank                     = 0.45 (45th percentile)   │   │
-│  │ [21] pcr_oi                      = 1.2 (more puts)          │   │
-│  │ [22] pcr_volume                  = 0.9 (balanced)           │   │
-│  │ [23] max_pain_distance           = 50 (50 points from MP)   │   │
-│  │ [24] gamma_atm                   = 0.008                    │   │
-│  │ [25] delta_weighted_oi           = 0.15 (net long delta)    │   │
-│  │ [26] skew                        = -2.5 (negative skew)     │   │
-│  │ [27] term_structure              = -0.5 (inverted)          │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-│  GROUP 4: Time Context (5 features)                                 │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ [28] minutes_from_open           = 75 (10:30 AM)            │   │
-│  │ [29] minutes_to_close            = 300 (5 hours left)       │   │
-│  │ [30] is_first_hour               = 0 (no)                   │   │
-│  │ [31] is_last_hour                = 0 (no)                   │   │
-│  │ [32] days_to_expiry              = 2 (near expiry)          │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-                          ┌──────────────────┐
-                          │  LightGBM Model  │
-                          │  (ONNX Runtime)  │
-                          └────────┬─────────┘
-                                   ↓
-                    ┌──────────────────────────┐
-                    │ OUTPUT:                  │
-                    │ probs: [0.1, 0.7, 0.2]   │
-                    │ direction: VOL_UP        │
-                    │ confidence: 0.7          │
-                    └──────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     5-TIER HIERARCHICAL PREDICTION ENGINE                       │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─── TIER 0: Pre-Market Gap Predictor ───────────────────────────────────┐   │
+│  │ Model:  XGBoost (500 trees, depth 6)                                    │   │
+│  │ Input:  [1, 12] — 12 overnight features (ES, NQ, DXY, gold, ...)      │   │
+│  │ Output: gap_pct, expected_volatility, directional_bias, confidence     │   │
+│  │ EP:     CPUExecutionProvider | Thread: Main | Core: 0                  │   │
+│  │ Fire:   Once @ 09:08:05 IST | Latency: ~2ms                           │   │
+│  │ Cache:  tier0:gap:{date} — TTL 8hr                                     │   │
+│  └────────────────────────────────────────────────────┬────────────────────┘   │
+│                                                        ↓                       │
+│  ┌─── TIER 1: Macro Director ─────────────────────────────────────────────┐   │
+│  │ Models: HMM (regime) + PatchTST (daily trend)                          │   │
+│  │ Input:  [1, 32] and [1, 252, 32] — 32 daily features, 26yr lookback  │   │
+│  │ Output: regime_state (4-class), direction, magnitude, confidence      │   │
+│  │ EP:     CPUExecutionProvider | Thread: Main | Core: 0                  │   │
+│  │ Fire:   Once @ 09:09:00 IST | Latency: ~8ms                           │   │
+│  │ Cache:  tier1:regime:{date} — TTL 8hr                                  │   │
+│  └────────────────────────────────────────────────────┬────────────────────┘   │
+│                                                        ↓                       │
+│  ┌─── TIER 2: Intraday Navigator (3 parallel Workers) ────────────────────┐   │
+│  │                                                                         │   │
+│  │  ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐       │   │
+│  │  │ LightGBM         │ │ TFT              │ │ Mamba            │       │   │
+│  │  │ CPU Worker       │ │ GPU Worker       │ │ GPU Worker       │       │   │
+│  │  │ Core 1           │ │ Core 2           │ │ Core 3           │       │   │
+│  │  │ [1, 84] features │ │ [1, 120, 80] seq │ │ [1, 120, 80] seq│       │   │
+│  │  │ EP: CPU          │ │ EP: TensorRT/CUDA│ │ EP: CUDA         │       │   │
+│  │  │ ~5ms             │ │ ~12ms            │ │ ~10ms            │       │   │
+│  │  └────────┬─────────┘ └────────┬─────────┘ └────────┬─────────┘       │   │
+│  │           └────────────────────┼────────────────────┘                   │   │
+│  │                                ↓                                        │   │
+│  │                     Ensemble: P(up, down, flat)                         │   │
+│  │  Fire: Every 60s on CandleComplete | Effective: ~12ms (parallel max)   │   │
+│  │  Cache: tier2:predictions:{ts} — TTL 2hr                               │   │
+│  └────────────────────────────────────────────────────┬────────────────────┘   │
+│                                                        ↓                       │
+│  ┌─── TIER 3: Microstructure Scalper (independent loop) ──────────────────┐   │
+│  │ Model:  LiT Transformer (phased activation)                             │   │
+│  │ Input:  [1, 14] — 14 order flow / LOB features                        │   │
+│  │ Output: buy_pressure, sell_pressure, slippage_est, confidence          │   │
+│  │ EP:     CUDAExecutionProvider | Thread: Dedicated Worker | Core: 4     │   │
+│  │ Fire:   Every 100ms (self-driving, own Redis connection)               │   │
+│  │ Cache:  tier3:microstructure:latest — TTL 10s                          │   │
+│  │ Note:   Main thread NEVER calls Tier 3 — only reads cached output     │   │
+│  └────────────────────────────────────────────────────┬────────────────────┘   │
+│                                                        ↓                       │
+│  ┌─── TIER 4: Meta-Learner ───────────────────────────────────────────────┐   │
+│  │ Model:  Contextual Gating Network                                       │   │
+│  │ Input:  [1, 24] — fused from Tier 0(4) + Tier 1(6) + Tier 2(9) +     │   │
+│  │                    Tier 3(5) = 24 values (all from Redis cache)        │   │
+│  │ Output: final_signal (-1 to +1), confidence, action, tier_weights     │   │
+│  │ EP:     CPUExecutionProvider | Thread: Main | Core: 0                  │   │
+│  │ Fire:   Every 60s (after Tier 2 completes) | Latency: ~2ms            │   │
+│  │                                                                         │   │
+│  │  Regime-Adaptive Weights:                                               │   │
+│  │  ┌────────────────┬────────┬────────┬────────┬────────┐               │   │
+│  │  │ Regime         │ Tier 0 │ Tier 1 │ Tier 2 │ Tier 3 │               │   │
+│  │  ├────────────────┼────────┼────────┼────────┼────────┤               │   │
+│  │  │ BULL_TRENDING  │  0.05  │  0.25  │  0.55  │  0.15  │               │   │
+│  │  │ BEAR_TRENDING  │  0.05  │  0.25  │  0.50  │  0.20  │               │   │
+│  │  │ VOLATILE       │  0.10  │  0.15  │  0.35  │  0.40  │               │   │
+│  │  │ RANGING        │  0.05  │  0.20  │  0.45  │  0.30  │               │   │
+│  │  └────────────────┴────────┴────────┴────────┴────────┘               │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. Detailed: LiT LOB Tensor Construction
+## 4. 60-Second Trading Cycle
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│          INPUT: NIFTY FUTURE LOB (depth-20, 60 seconds)            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Timestamp: 10:30:00 (t=0)                                           │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ BID SIDE (20 levels)      │  ASK SIDE (20 levels)            │  │
-│  ├───────────┬───────────────┼───────────┬──────────────────────┤  │
-│  │ Price     │ Size          │ Price     │ Size                 │  │
-│  ├───────────┼───────────────┼───────────┼──────────────────────┤  │
-│  │ 24449.00  │ 50 lots       │ 24451.00  │ 30 lots              │  │
-│  │ 24448.50  │ 75 lots       │ 24451.50  │ 45 lots              │  │
-│  │ 24448.00  │ 100 lots      │ 24452.00  │ 60 lots              │  │
-│  │ ...       │ ...           │ ...       │ ...                  │  │
-│  │ 24430.00  │ 500 lots      │ 24470.00  │ 400 lots             │  │
-│  └───────────┴───────────────┴───────────┴──────────────────────┘  │
-│                                                                       │
-│  Mid-price = (24449 + 24451) / 2 = 24450                            │
-│                                                                       │
-│  ... (59 more timesteps, 1-second intervals)                        │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-                        ┌───────────────────────┐
-                        │  LOBTensorBuilder     │
-                        │  (Normalization)      │
-                        └───────────┬───────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│            OUTPUT: Normalized LOB Tensor (60×80)                    │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Shape: (60 timesteps, 80 features)                                 │
-│                                                                       │
-│  For each timestep t:                                                │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ Features [0-19]:   Bid prices (normalized)                  │   │
-│  │   = (bid_price - mid) / mid                                 │   │
-│  │   Example: (24449 - 24450) / 24450 = -0.00004               │   │
-│  │                                                              │   │
-│  │ Features [20-39]:  Bid sizes (normalized)                   │   │
-│  │   = bid_size / 1000                                         │   │
-│  │   Example: 50 / 1000 = 0.05                                 │   │
-│  │                                                              │   │
-│  │ Features [40-59]:  Ask prices (normalized)                  │   │
-│  │   = (ask_price - mid) / mid                                 │   │
-│  │   Example: (24451 - 24450) / 24450 = +0.00004               │   │
-│  │                                                              │   │
-│  │ Features [60-79]:  Ask sizes (normalized)                   │   │
-│  │   = ask_size / 1000                                         │   │
-│  │   Example: 30 / 1000 = 0.03                                 │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-│  Total: 60 timesteps × 80 features = 4,800 numbers                  │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-                          ┌──────────────────┐
-                          │  LiT Model       │
-                          │  (Transformer)   │
-                          └────────┬─────────┘
-                                   ↓
-                    ┌──────────────────────────────┐
-                    │ OUTPUT:                      │
-                    │ micro_direction: BUY_PRESSURE│
-                    │ confidence: 0.65             │
-                    │ imminent_move_prob: 0.7      │
-                    │ expected_move_bps: 8         │
-                    └──────────────────────────────┘
-```
-
-**Key Points**:
-
-- ONLY uses NIFTY FUTURE LOB (NOT spot - spot has no order book)
-- Normalized relative to mid-price (price-invariant)
-- 60 seconds of history (captures microstructure dynamics)
-- Data quality gates: staleness <2s, spread <0.5%, depth ≥10 levels
-
----
-
-## 5. Complete Event Flow (Production)
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                  TIME: 10:30:00 (Market Active)                     │
-└─────────────────────────────────────────────────────────────────────┘
-
-                              ↓ [1s tick]
-
-┌─────────────────────────────────────────────────────────────────────┐
-│ LAYER 1: PERCEPTION                                                 │
-├─────────────────────────────────────────────────────────────────────┤
-│  • WebSocket receives: Futures tick, 50 stock ticks, option quotes  │
-│  • Validates, normalizes, timestamps                                │
-│  • Publishes: MarketDataReceivedEvent                               │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓ [<5ms]
-┌─────────────────────────────────────────────────────────────────────┐
-│ LAYER 2: CORTEX (Market State Encoder)                             │
-├─────────────────────────────────────────────────────────────────────┤
-│  • FeatureCache.update() - Update sliding windows                   │
-│  • Parallel execution (Rust compute-engine, <5ms):                   │
-│    ├─ buildLightGBMFeatures() → Float32Array(54)      [2ms]        │
-│    ├─ buildTFTFeatures() → Float32Array(120×54)       [3ms]        │
-│    └─ buildLiTTensor() → Float32Array(60×80) or null  [1ms]        │
-│  • Data quality validation (LOB staleness, spread)                  │
-│  • Publishes:                                                        │
-│    ├─ LightGBMStateReadyEvent                                       │
-│    ├─ TFTStateReadyEvent                                            │
-│    └─ LiTStateReadyEvent                                            │
-│  • Async persist to QuestDB (non-blocking)                          │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓ [<15ms total]
-┌─────────────────────────────────────────────────────────────────────┐
-│ LAYER 4: PREDICTION (Parallel Inference)                           │
-├─────────────────────────────────────────────────────────────────────┤
-│  • LightGBM Worker Thread receives encoded state                    │
-│    └─ Inference: Float32Array(33) → probs [0.1, 0.7, 0.2]  [45ms] │
-│  • TFT Worker Thread receives encoded state                         │
-│    └─ Inference: (120×15) → regime: TREND, vol: 22.5       [75ms] │
-│  • LiT Worker Thread receives encoded state (if not null)           │
-│    └─ Inference: (60×80) → micro: BUY_PRESSURE             [8ms]  │
-│  • Meta-Learner fuses signals                              [20ms]  │
-│  • Publishes: FinalPredictionEvent                                  │
-│    ├─ direction: VOL_UP                                             │
-│    ├─ confidence: 0.75                                              │
-│    ├─ reasoning: "Breadth + momentum + LOB aligned"                 │
-│    └─ model_weights: {lgbm: 0.55, lit: 0.30, tft: 0.15}            │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓ [<145ms total]
-┌─────────────────────────────────────────────────────────────────────┐
-│ LAYER 5: COGNITION (Strategy Selection)                            │
-├─────────────────────────────────────────────────────────────────────┤
-│  • StrategySelector: VOL_UP + TREND → LONG_CALL                     │
-│  • StrikeSelector: Delta 0.35-0.50 → 24500 CE                       │
-│  • PositionSizer: Kelly criterion → 2 lots                          │
-│  • Publishes: StrategySelectedEvent                                 │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓ [<10ms]
-┌─────────────────────────────────────────────────────────────────────┐
-│ LAYER 6: RISK VALIDATION                                            │
-├─────────────────────────────────────────────────────────────────────┤
-│  • Check position limits: ✓ OK                                      │
-│  • Check Greeks limits: ✓ OK                                        │
-│  • Check max loss per trade: ✓ OK (5% of capital)                  │
-│  • Check circuit breakers: ✓ All clear                              │
-│  • Publishes: OrderValidatedEvent                                   │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓ [<5ms]
-┌─────────────────────────────────────────────────────────────────────┐
-│ LAYER 7: EXECUTION (Order Management)                              │
-├─────────────────────────────────────────────────────────────────────┤
-│  • DRL PPO Agent (optional):                                        │
-│    ├─ State: Option LOB, spread, remaining qty                      │
-│    ├─ Action: Limit @ 75 (mid-price), wait 30s                     │
-│    └─ If not filled → Hit ask @ 77                                 │
-│  • OrderManager places order via Upstox API                         │
-│  • Publishes: OrderPlacedEvent                                      │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓ [<10ms]
-
-                         TOTAL LATENCY: ~145ms ✓
-                         TARGET: <150ms ✓✓
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│              60-SECOND TRADING CYCLE (e.g., 10:30:00 → 10:31:00)               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  TIME     EVENT                                                                │
+│  ──────── ──────────────────────────────────────────────────────────────────   │
+│                                                                                 │
+│  10:30:00 ┌─ CandleComplete event fires ─────────────────────────────────┐    │
+│           │                                                               │    │
+│  +0ms     │ [Layer 1] Redis receives features:live + candles:1m          │    │
+│           │           Read cached: tier0, tier1, tier3 from Redis        │    │
+│           │                                                    <2ms      │    │
+│  +2ms     │ [Layer 2] Rust compute-engine: 117 features (Rayon)          │    │
+│           │           Phase 1: Shared deps               ~2ms           │    │
+│           │           Phase 2: 117 features parallel     ~1ms           │    │
+│           │                                                    <5ms      │    │
+│  +7ms     │ [Layer 3] Tier 2 fires (3 Workers in parallel)              │    │
+│           │           ├─ LightGBM (CPU, Core 1)          ~5ms           │    │
+│           │           ├─ TFT (TensorRT, Core 2)          ~12ms          │    │
+│           │           └─ Mamba (CUDA, Core 3)            ~10ms          │    │
+│           │           Effective: max(5, 12, 10) =        ~12ms          │    │
+│           │                                                               │    │
+│  +19ms    │ [Layer 3] Tier 3 cache read (latest output)  <1ms           │    │
+│           │           Tier 0/1 cache read                 <1ms           │    │
+│           │                                                               │    │
+│  +21ms    │ [Layer 3] Tier 4 Meta-Learner fuses all      ~2ms           │    │
+│           │           Final signal: direction + confidence               │    │
+│           │                                                    <25ms     │    │
+│  +25ms    │ [Layer 4] Strategy selection (regime x dir)  ~3ms           │    │
+│           │           Strike selection (IV + delta)       ~2ms           │    │
+│           │           Position sizing (Kelly + VIX)       ~1ms           │    │
+│           │           Risk validation (7 checks)          ~2ms           │    │
+│           │                                                    <10ms     │    │
+│  +35ms    │ [Layer 5] Order routing (MARKET/TWAP/VWAP)   ~10ms          │    │
+│           │           Position tracking update            ~5ms           │    │
+│           │           Exit engine evaluation              ~3ms           │    │
+│           │                                                    <20ms     │    │
+│  +55ms    │ [Layer 6] Async: Prometheus, QuestDB, MongoDB                │    │
+│           └──────────────────────────────────────────── TOTAL: <55ms ────┘    │
+│                                                                                 │
+│  MEANWHILE (independent of 60s cycle):                                         │
+│  ──────────────────────────────────────────────────────────────────────────     │
+│  Every    │ Tier 3 LiT Worker (Core 4, GPU, self-driving)                     │
+│  100ms    │ 14 LOB features → tier3:microstructure:latest                     │
+│           │ Latency: ~8ms per inference | Loop rate: 10 Hz                    │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 6. Storage Architecture (Training Pipeline)
+## 5. GPU/CPU Thread Allocation Map
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    PRODUCTION (algo-worker)                         │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Every 1 second:                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ MarketStateEncoder.encode()                                 │   │
-│  │   ├─ lightgbm_features: Float32Array(33)                    │   │
-│  │   ├─ tft_features: Float32Array(120×15)                     │   │
-│  │   └─ lit_tensor: Float32Array(60×80)                        │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                           ↓                                          │
-│                   [Batch every 60s]                                 │
-│                           ↓                                          │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ QuestDB.insert()                                            │   │
-│  │   ├─ lightgbm_states (33 columns + labels)                  │   │
-│  │   ├─ tft_states (15 columns)                                │   │
-│  │   └─ lit_tensors (BLOB + metadata)                          │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                    QUESTDB (Time-Series Storage)                    │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Table: lightgbm_states                                             │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ timestamp | pct_stocks_above_vwap | ... | label_5min | ...  │   │
-│  │ 10:30:00  | 0.72                  | ... | +1         | ...  │   │
-│  │ 10:30:01  | 0.73                  | ... | +1         | ...  │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│  Retention: 180 days (partitioned by day)                           │
-│                                                                       │
-│  Table: tft_states (similar)                                        │
-│  Table: lit_tensors (compressed BLOBs)                              │
-│                                                                       │
-└───────────────────────────────────┬─────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                TRAINING PIPELINE (Python/Kedro)                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  def fetch_training_data(start, end):                               │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ query = "SELECT * FROM lightgbm_states                      │   │
-│  │          WHERE timestamp BETWEEN $1 AND $2"                 │   │
-│  │ df = questdb.execute(query, start, end)                     │   │
-│  │                                                              │   │
-│  │ X = df[FEATURE_COLUMNS].values  # (N, 33) ✓                │   │
-│  │ y = df['label_15min'].values    # (N,) ✓                   │   │
-│  │                                                              │   │
-│  │ # NO feature engineering needed!                            │   │
-│  │ # Features already computed in production                   │   │
-│  │                                                              │   │
-│  │ return X, y                                                 │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                           ↓                                          │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ lgb.train(params, X_train, y_train)                         │   │
-│  │ # Training features = Production features (guaranteed!)     │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                       GPU/CPU THREAD ALLOCATION MAP                             │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  CPU CORES                                                                     │
+│  ═══════════════════════════════════════════════════════════════════════════    │
+│                                                                                 │
+│  Core 0 ─── Node.js Event Loop (Main Thread)                                  │
+│             ├── Redis Streams subscriber                                       │
+│             ├── Event routing + orchestration                                  │
+│             ├── Tier 0 XGBoost inference (~2ms, once/day)                     │
+│             ├── Tier 1 HMM + PatchTST inference (~8ms, once/day)             │
+│             └── Tier 4 Meta-Learner inference (~2ms, every 60s)              │
+│                                                                                 │
+│  Core 1 ─── Tier 2 LightGBM Worker Thread                                    │
+│             EP: CPUExecutionProvider                                           │
+│             Input: [1, 84] | Trigger: Every 60s | Latency: ~5ms              │
+│                                                                                 │
+│  Core 2 ─── Tier 2 TFT Worker Thread ─────── GPU CUDA Stream 0              │
+│             EP: TensorrtExecutionProvider (FP16) > CUDAExecutionProvider      │
+│             Input: [1, 120, 80] | Trigger: Every 60s | Latency: ~12ms        │
+│             VRAM: ~120 MB (+ ~120 MB TensorRT cache)                          │
+│                                                                                 │
+│  Core 3 ─── Tier 2 Mamba Worker Thread ────── GPU CUDA Stream 0              │
+│             EP: CUDAExecutionProvider                                          │
+│             Input: [1, 120, 80] | Trigger: Every 60s | Latency: ~10ms        │
+│             VRAM: ~80 MB                                                       │
+│                                                                                 │
+│  Core 4 ─── Tier 3 LiT Worker Thread ─────── GPU CUDA Stream 1              │
+│             EP: CUDAExecutionProvider (separate stream, no contention)        │
+│             Input: [1, 14] | Self-driving: Every 100ms | Latency: ~8ms       │
+│             VRAM: ~60 MB                                                       │
+│             Own Redis connection (reads LOB, writes tier3:latest)             │
+│                                                                                 │
+│  Core 5 ─── Rust compute-engine (Rayon thread pool)                           │
+│             Runs in market-feeder process                                      │
+│             117 features in <5ms (2-phase parallel)                            │
+│                                                                                 │
+│  Core 6-7 ─ OS / Redis Server / QuestDB / System services                     │
+│                                                                                 │
+│                                                                                 │
+│  GPU VRAM ALLOCATION                                                           │
+│  ═══════════════════════════════════════════════════════════════════════════    │
+│                                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐                  │
+│  │ CUDA Stream 0 (Tier 2, shared)                           │                  │
+│  │ ┌──────────────────┐ ┌──────────────────┐               │                  │
+│  │ │ TFT FP16         │ │ Mamba            │               │                  │
+│  │ │ ~120 MB model    │ │ ~80 MB model     │               │                  │
+│  │ │ ~120 MB TRT cache│ │                  │               │                  │
+│  │ └──────────────────┘ └──────────────────┘               │                  │
+│  └──────────────────────────────────────────────────────────┘                  │
+│  ┌──────────────────────────────────────────────────────────┐                  │
+│  │ CUDA Stream 1 (Tier 3, independent)                      │                  │
+│  │ ┌──────────────────┐                                     │                  │
+│  │ │ LiT Transformer  │  No head-of-line blocking with     │                  │
+│  │ │ ~60 MB model     │  Tier 2 models. Independent loop.  │                  │
+│  │ └──────────────────┘                                     │                  │
+│  └──────────────────────────────────────────────────────────┘                  │
+│  ┌──────────────────────────────────────────────────────────┐                  │
+│  │ Workspace memory: ~80 MB                                  │                  │
+│  └──────────────────────────────────────────────────────────┘                  │
+│                                                                                 │
+│  Total VRAM: ~460 MB (fits RTX 3050 4GB with headroom)                        │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
-
-**Key Benefit**: Training = Production (exact same features, no drift)
 
 ---
 
-**Last Updated**: January 13, 2026  
-**Purpose**: Visual reference for Market State Encoder architecture  
-**See Also**: [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md)
+## 6. Feature Construction: 117 Features in 2 Phases
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│       RUST COMPUTE-ENGINE: 117 FEATURES IN <5ms (Rayon Parallel)               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  INPUT: Market tick data (NIFTY Future + 50 Constituents + Option Chain)       │
+│                                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ PHASE 1: Shared Dependencies (~2ms, sequential within phase)             │  │
+│  │                                                                          │  │
+│  │  ├─ VWAP (future + 50 constituents)                                     │  │
+│  │  ├─ EMA (12, 20, 26 periods)                                            │  │
+│  │  ├─ ATR (14 periods)                                                     │  │
+│  │  ├─ RSI (5, 14 periods)                                                  │  │
+│  │  ├─ MACD (12/26/9)                                                       │  │
+│  │  ├─ Bollinger Bands (20, 2sigma)                                         │  │
+│  │  ├─ ADX (14 periods)                                                     │  │
+│  │  ├─ Stochastic (14/3)                                                    │  │
+│  │  ├─ Realized Volatility (5m, 15m, 30m windows)                          │  │
+│  │  ├─ Option Greeks (BSM: delta, gamma, vega, theta, charm, vanna)        │  │
+│  │  ├─ Rolling Correlations (20-period)                                     │  │
+│  │  └─ Historical Caches (120-bar lookback)                                 │  │
+│  └──────────────────────────────────┬───────────────────────────────────────┘  │
+│                                     ↓                                          │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ PHASE 2: 117 Features in Parallel (~1ms via Rayon)                       │  │
+│  │                                                                          │  │
+│  │  ┌────────────────────┐  ┌────────────────────┐  ┌──────────────────┐  │  │
+│  │  │ Index Breadth (8)  │  │ NIFTY Future (12)  │  │ Options (14)     │  │  │
+│  │  │ pct_above_vwap     │  │ fut_rsi_14         │  │ atm_iv           │  │  │
+│  │  │ breadth_thrust     │  │ fut_macd           │  │ pcr_oi           │  │  │
+│  │  │ advance_decline    │  │ fut_atr_pct        │  │ total_gex        │  │  │
+│  │  │ ...                │  │ ...                │  │ ...              │  │  │
+│  │  └────────────────────┘  └────────────────────┘  └──────────────────┘  │  │
+│  │                                                                          │  │
+│  │  ┌────────────────────┐  ┌────────────────────┐  ┌──────────────────┐  │  │
+│  │  │ Volatility (10)    │  │ Order Flow (8)     │  │ Price Struct (8) │  │  │
+│  │  │ india_vix          │  │ ofi_1s             │  │ return_1m        │  │  │
+│  │  │ iv_rv_ratio        │  │ depth_imbalance    │  │ gap_open         │  │  │
+│  │  │ vol_of_vol         │  │ trade_imbalance    │  │ intraday_range   │  │  │
+│  │  │ ...                │  │ ...                │  │ ...              │  │  │
+│  │  └────────────────────┘  └────────────────────┘  └──────────────────┘  │  │
+│  │                                                                          │  │
+│  │  ┌────────────────────┐  ┌────────────────────┐  ┌──────────────────┐  │  │
+│  │  │ Momentum (8)       │  │ Time Context (13)  │  │ Global Macro (12)│  │  │
+│  │  │ rsi_5, rsi_14      │  │ minutes_from_open  │  │ es_return        │  │  │
+│  │  │ macd_histogram     │  │ sin/cos encodings  │  │ nq_return        │  │  │
+│  │  │ adx_14, cci_20     │  │ is_expiry_day      │  │ dxy_change       │  │  │
+│  │  │ ...                │  │ ...                │  │ ...              │  │  │
+│  │  └────────────────────┘  └────────────────────┘  └──────────────────┘  │  │
+│  │                                                                          │  │
+│  │  ┌────────────────────┐  ┌────────────────────┐  ┌──────────────────┐  │  │
+│  │  │ Regime Context (4) │  │ Volume Profile (6) │  │ Cross-Asset (4)  │  │  │
+│  │  │ regime_bull (1-hot)│  │ volume_ratio_5m    │  │ nifty_bnf_corr   │  │  │
+│  │  │ regime_bear        │  │ oi_change_pct_*    │  │ futures_basis     │  │  │
+│  │  │ regime_volatile    │  │ cumulative_delta   │  │ ...              │  │  │
+│  │  │ regime_ranging     │  │ ...                │  │                  │  │  │
+│  │  └────────────────────┘  └────────────────────┘  └──────────────────┘  │  │
+│  │                                                                          │  │
+│  │  ┌────────────────────┐  ┌────────────────────┐                        │  │
+│  │  │ LOB Microstr. (6)  │  │ Sentiment (4)      │                        │  │
+│  │  │ depth_imbal_10     │  │ finbert_sentiment  │                        │  │
+│  │  │ sweep_detection    │  │ fii_flow_signal    │                        │  │
+│  │  │ large_order_flow   │  │ dii_flow_signal    │                        │  │
+│  │  │ ...                │  │ news_event_flag    │                        │  │
+│  │  └────────────────────┘  └────────────────────┘                        │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+│  OUTPUT: Float32Array(117) → Redis Stream features:live                        │
+│  Total: Phase 1 (~2ms) + Phase 2 (~1ms) = <5ms (p95)                         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 7. Feature → Tier Mapping
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        FEATURE → TIER CONSUMPTION MAP                           │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  117 Features ──┬── Tier 0 consumes: 12 overnight features (Global Macro)     │
+│  (compute-     │   Input: [1, 12] — ES, NQ, DXY, US10Y, Gold, Brent,        │
+│   engine)      │   Nikkei, GIFT Nifty, VIX, FinBERT, prev_day_range         │
+│                │                                                               │
+│                ├── Tier 1 consumes: 32 daily features (aggregated)            │
+│                │   Input: [1, 32] point + [1, 252, 32] sequence              │
+│                │   Selected from Breadth, Future, Volatility, Momentum       │
+│                │                                                               │
+│                ├── Tier 2 LightGBM consumes: 84 point-in-time features       │
+│                │   Input: [1, 84] — features #1-81 + regime context #94-97   │
+│                │                                                               │
+│                ├── Tier 2 TFT/Mamba consumes: 120-bar sequence               │
+│                │   Input: [1, 120, 80] — 120 minutes x 80 features           │
+│                │                                                               │
+│                ├── Tier 3 LiT consumes: 14 LOB/order flow features           │
+│                │   Input: [1, 14] — Order Flow(8) + LOB Microstructure(6)    │
+│                │                                                               │
+│                └── Tier 4 consumes: 24 cached tier outputs (NO raw features) │
+│                    Input: [1, 24] — Tier0(4) + Tier1(6) + Tier2(9) +        │
+│                                     Tier3(5) = 24 values from Redis          │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 8. Storage Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                   3-TIER STORAGE ARCHITECTURE                                   │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌───────────────────────────────────────────────────────────────────────────┐ │
+│  │ HOT: Redis (In-Memory)                                                    │ │
+│  │ Retention: <5 minutes  |  Access: <1ms  |  Purpose: Real-time state      │ │
+│  ├───────────────────────────────────────────────────────────────────────────┤ │
+│  │ tier0:gap:{date}              │ Tier 0 output (4 values)     │ TTL 8hr  │ │
+│  │ tier1:regime:{date}           │ Tier 1 output (6 values)     │ TTL 8hr  │ │
+│  │ tier2:predictions:{ts}        │ Tier 2 output (ensemble)     │ TTL 2hr  │ │
+│  │ tier3:microstructure:latest   │ Tier 3 output (5 values)     │ TTL 10s  │ │
+│  │ positions:open                │ Open position state           │ TTL 1hr  │ │
+│  │ portfolio:greeks              │ Portfolio-level Greeks        │ TTL 1hr  │ │
+│  │ features:latest               │ Latest 117 features           │ TTL 5min │ │
+│  └───────────────────────────────┴─────────────────────────────┴──────────┘ │
+│                                     ↓ (async batch write)                      │
+│  ┌───────────────────────────────────────────────────────────────────────────┐ │
+│  │ WARM: QuestDB (Time-Series Columnar)                                      │ │
+│  │ Retention: 180 days  |  Access: <10ms  |  Purpose: Training data         │ │
+│  ├───────────────────────────────────────────────────────────────────────────┤ │
+│  │ instrument_features_1m        │ 117 features per minute     │ Partitioned│ │
+│  │ market_ticks                  │ Raw OHLCV ticks             │ by day     │ │
+│  │ model_predictions             │ Per-tier outputs + latency  │            │ │
+│  │ portfolio_snapshots           │ PnL, Greeks, exposure       │            │ │
+│  └───────────────────────────────┴─────────────────────────────┴──────────┘ │
+│                                     ↓ (daily batch sync)                       │
+│  ┌───────────────────────────────────────────────────────────────────────────┐ │
+│  │ COLD: MongoDB (Document Store)                                            │ │
+│  │ Retention: 5 years  |  Access: <100ms  |  Purpose: SEBI audit trail     │ │
+│  ├───────────────────────────────────────────────────────────────────────────┤ │
+│  │ orders                        │ Every order placed           │ SEBI 2024 │ │
+│  │ signals                       │ Every trading signal         │ compliant │ │
+│  │ risk_events                   │ Circuit breakers, risk logs  │ 5-year    │ │
+│  │ model_versions                │ ONNX model metadata          │ retention │ │
+│  │ audit_trail                   │ Unique Algo ID per order     │           │ │
+│  └───────────────────────────────┴─────────────────────────────┴──────────┘ │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 9. Complete Event Flow (Production, 60s Cycle)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                  PRODUCTION EVENT FLOW: ONE 60-SECOND CYCLE                     │
+│                          TIME: 10:30:00 (Market Active)                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                              [CandleComplete event]
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 1: DATA INGESTION                                               <2ms    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ Redis Streams: features:live (117 features) + candles:1m (OHLCV)              │
+│ Redis Cache:   tier0:gap:2026-03-13 (if available)                            │
+│                tier1:regime:2026-03-13 (if available)                          │
+│                tier3:microstructure:latest (from 100ms loop)                   │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       ↓
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 2: FEATURE ENGINE (Rust, Rayon)                                 <5ms    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ Phase 1: Shared deps (VWAP, EMA, ATR, RSI, Greeks)                   ~2ms    │
+│ Phase 2: 117 features parallel across 14 categories                  ~1ms    │
+│ Output: Float32Array(117) + feature timings                                   │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       ↓
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 3: PREDICTION (5-Tier Hierarchical)                             <25ms   │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│ [Tier 2] 3 Workers in parallel:                                                │
+│   Core 1: LightGBM [1,84] → probs [P(up), P(down), P(flat)]         ~5ms    │
+│   Core 2: TFT [1,120,80] → quantiles [3x3]                          ~12ms   │
+│   Core 3: Mamba [1,120,80] → probs [P(up), P(down), P(flat)]        ~10ms   │
+│   Effective: max(5, 12, 10) = ~12ms (parallel)                                │
+│                                                                                 │
+│ [Tier 3] Cache read: tier3:microstructure:latest                     <1ms    │
+│ [Tier 0/1] Cache read: tier0:gap, tier1:regime                       <1ms    │
+│                                                                                 │
+│ [Tier 4] Meta-Learner fuses Tier 0(4)+1(6)+2(9)+3(5) = [1,24]      ~2ms    │
+│   Output: signal=-0.65, confidence=0.78, action=ENTER_SHORT                   │
+│   Tier weights: {t0: 0.05, t1: 0.25, t2: 0.50, t3: 0.20}                   │
+│                                                                                 │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       ↓
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 4: STRATEGY & RISK                                              <10ms   │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ StrategySelector: BEAR_TRENDING + SHORT → LONG_PUT                            │
+│ StrikeSelector:   Delta -0.35 → 24400 PE                                     │
+│ PositionSizer:    Kelly * VIX_scale * regime_scale → 3 lots                   │
+│ RiskValidator:    7 checks passed (positions, capital, Greeks, leverage, time) │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       ↓
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 5: EXECUTION                                                    <20ms   │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ OrderManager: MARKET order for 3 lots of 24400 PE via Upstox API              │
+│ PositionTracker: Update open positions, Greeks, exposure                       │
+│ ExitEngine: Set stop-loss at 1.5x ATR, trailing stop at 40%                  │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       ↓
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 6: OBSERVABILITY                                               Async    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ Prometheus: prediction.tier2_parallel_ms=12, risk.kelly_fraction=0.034        │
+│ QuestDB:    Insert features + predictions for training pipeline               │
+│ MongoDB:    Persist order + signal for SEBI audit trail (Unique Algo ID)      │
+│ Pino:       Structured JSON log with full tier outputs and latency            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                    TOTAL LATENCY: ~55ms (p95 target: <80ms)
+```
+
+---
+
+## 10. Pre-Market Session Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     PRE-MARKET SESSION FLOW (08:30 → 09:16 IST)                │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  08:30  market-feeder: Overnight collector                                     │
+│         ├─ Fetch: ES, NQ, DXY, US10Y, Gold, Brent, Nikkei, GIFT Nifty       │
+│         ├─ Compute: 12 overnight features                                      │
+│         └─ Publish: premarket:overnight → Redis                                │
+│                                          ↓                                     │
+│  09:00  market-feeder: Connect to Upstox WebSocket (pre-open instruments)     │
+│         Monitor pre-open order flow (informational only)                       │
+│                                          ↓                                     │
+│  09:08  NSE Pre-Open Freeze (equilibrium price discovered)                    │
+│  09:08:05  market-feeder: Capture freeze → premarket:freeze → Redis           │
+│            algo-worker:   Tier 0 XGBoost fires (~2ms)                         │
+│                           Output → tier0:gap:{date} (cached all day)          │
+│                                          ↓                                     │
+│  09:09  algo-worker: Tier 1 HMM + PatchTST fires (~8ms)                      │
+│         Input: 252 daily candles × 32 features from QuestDB                   │
+│         Output → tier1:regime:{date} (cached all day)                          │
+│         Regime: BULL_TRENDING | BEAR_TRENDING | VOLATILE | RANGING            │
+│                                          ↓                                     │
+│  09:15  NSE Normal Market Opens                                                │
+│         market-feeder: Full tick streaming mode (~150 instruments)             │
+│         algo-worker: All tiers operational                                      │
+│                                          ↓                                     │
+│  09:16  First 1-minute candle completes                                        │
+│         First complete 60s cycle: Tier 2 + Tier 4 fire                        │
+│         Tier 3 LOB monitoring active (100ms loop)                              │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Latency Summary
+
+| Layer     | Component                     | GPU (ms)  | CPU-Only (ms) |
+| --------- | ----------------------------- | --------- | ------------- |
+| 1         | Data Ingestion                | 1         | 1             |
+| 2         | Feature Engine (117 features) | 3         | 3             |
+| 3         | Tier 2 Inference (parallel)   | **12**    | 35            |
+| 3         | Tier 3 Cache Read             | 0.5       | 0.5           |
+| 3         | Tier 4 Meta-Learner           | 2         | 2             |
+| 4         | Strategy + Risk               | 8         | 8             |
+| 5         | Execution                     | 15        | 15            |
+| **Total** | **E2E**                       | **~43ms** | **~66ms**     |
+| Target    | p95                           | **<80ms** | —             |
+
+---
+
+**Last Updated**: March 13, 2026
+**See Also**: [ARCHITECTURE.md](./ARCHITECTURE.md) | [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) | [03-PREDICTION.md](./layers/03-PREDICTION.md)

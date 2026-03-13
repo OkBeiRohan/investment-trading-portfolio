@@ -24,15 +24,28 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 ### Algo Trading (algo-worker)
 
 - **🧠 5-Tier Hierarchical AI Stack** (2026 State-of-the-Art):
-  - **TIER 0**:
-  - **TIER 1 - Base Prediction Models**:
-    - **Micro-Alpha (10s-1min)**: LiT Transformer, TLOB for Depth-30 LOB microstructure
-    - **Macro Direction (5min-1hr)**: LightGBM, XGBoost, PatchTST with 117 features
-    - **Regime & Volatility**: TFT (Temporal Fusion Transformer), Mamba (State Space), TimeMixer
-    - **Options-Specific**: IV Surface Predictor (VAE+MLP), Greeks Forecaster
-  - **TIER 2 - Meta-Learner**: Attention-based signal fusion with regime-aware weighting
-  - **TIER 3 - Strategy Layer**: Strike Selector (Neural Net), Risk Manager (Greeks + VaR)
-  - **TIER 4 - Execution**: PPO Agent for slippage minimization (-5 to -10 bps)
+  - **TIER 0 - Pre-Market Gap Predictor** (runs once @ 9:08 AM):
+    - XGBoost on 12 global overnight features (GIFT Nifty, S&P 500, Nasdaq, Nikkei, Brent, Gold, USD/INR, FinBERT sentiment)
+    - Predicts 9:15 AM gap direction, magnitude (%), expected opening volatility, and directional bias
+    - Pre-trade session option Greeks estimation from 9:08-9:14:59 using frozen indicative price
+    - Consolidates all global data into a single "overnight candle" snapshot at 9:14:55 for Tier 1 bootstrapping
+  - **TIER 1 - Macro Director** (runs once @ 9:09 AM, 26yr daily data):
+    - HMM (4-state: BULL_TRENDING / BEAR_TRENDING / VOLATILE / RANGING) + PatchTST
+    - 32 features: returns, moving averages, volatility, trend, breadth, Tier 0 output, global macro, seasonality
+    - Output: regime state, daily trend direction, regime confidence — consumed by all downstream tiers
+  - **TIER 2 - Intraday Navigator** (runs every 60s, 4yr 1-min data):
+    - LightGBM (~20ms) + TFT (~35ms) + Mamba (~25ms) ensemble on 80+ features
+    - Multi-horizon: P(up), P(down), P(flat) for 5m, 15m, 30m
+    - Options-specific: IV Surface Predictor (VAE+MLP), Greeks Forecaster (LSTM)
+  - **TIER 3 - Microstructure Scalper** (runs every 100ms, live data only):
+    - LiT Transformer with phased activation (rules → MLP → full Transformer)
+    - 14 order-flow features: OFI, depth imbalance, trade imbalance, sweep detection
+    - Output: buy/sell pressure, slippage estimate for 10s-1min horizon
+  - **TIER 4 - Meta-Learner & Strategy** (runs every 60s):
+    - Contextual Gating Network with Regime-Conditioned Temporal Loss
+    - Fuses all tier outputs with regime-adaptive weights; Strike Selector (Neural Net)
+    - Risk Manager (Greeks + VaR), Kelly Criterion position sizing
+  - **EXECUTION LAYER**: PPO Agent for slippage minimization (-5 to -10 bps)
   - **Multi-Horizon Predictions**: H1(10s) → H6(EOD) cascade as features
   - **Validation**: CPCV (Combinatorial Purged Cross-Validation)
   - **Drift Detection**: ADWIN for online model adaptation
