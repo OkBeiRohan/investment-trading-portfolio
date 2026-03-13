@@ -20,6 +20,118 @@ The system operates across four distinct phases each trading day:
 
 ---
 
+## Data Resolution Hierarchy: Compute Once, Cache, Reuse
+
+Each tier consumes a **different candle resolution**. The key insight: compute features at each resolution boundary, cache the tier output in Redis, and let downstream tiers (especially Tier 4) read cached results — never re-run upstream tiers.
+
+### Three Resolution Layers
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ RESOLUTION LAYER 1: DAILY CANDLE (1d)                                       │
+│                                                                              │
+│ Computed: Once per day, before market opens (09:08-09:09 IST)               │
+│ Cached:  Redis with TTL = end of trading day                                │
+│ Reused:  By every 60-second cycle for the entire day                        │
+│                                                                              │
+│ ┌─────────────┐    26 years of 1d candles    ┌─────────────────────────┐   │
+│ │ QuestDB     │ ──────────────────────────→  │ Tier 0: XGBoost         │   │
+│ │ daily_ohlcv │         +                    │  → gap_pct, vol, bias   │   │
+│ │             │    10yr daily returns         │                         │   │
+│ └─────────────┘                               │ Tier 1: HMM + PatchTST │   │
+│                                                │  → regime, trend, conf  │   │
+│                                                └──────────┬──────────────┘   │
+│                                                           │                   │
+│                                    Redis: tier0:gap:{date} + tier1:regime:{date}
+│                                    (cached once, read all day)                │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                        │
+                                        │ cached output feeds ↓
+                                        │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ RESOLUTION LAYER 2: MINUTE CANDLE (1m)                                      │
+│                                                                              │
+│ Computed: Every 60 seconds during market hours                              │
+│ Cached:  Redis with TTL = 2 hours (rolling window)                          │
+│ Reused:  Latest Tier 2 output cached for Tier 4 in same cycle              │
+│                                                                              │
+│ ┌─────────────┐    117 features per candle   ┌─────────────────────────┐   │
+│ │ market-     │ ──compute-engine (Rust)────→ │ Tier 2 Ensemble:        │   │
+│ │ feeder      │    80+ features selected     │  LightGBM (point feat.) │   │
+│ │ 1m candle   │    + Tier 0/1 from cache     │  TFT (80×120 sequence)  │   │
+│ └─────────────┘                               │  Mamba (80×120 sequence)│   │
+│                                                └──────────┬──────────────┘   │
+│                                                           │                   │
+│                            Redis: tier2:predictions:{timestamp}               │
+│                            (refreshed every 60s, previous cached for Tier 4) │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                        │
+                                        │ cached output feeds ↓
+                                        │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ RESOLUTION LAYER 3: TICK / LOB SNAPSHOT (100ms)                             │
+│                                                                              │
+│ Computed: Every 100ms from live WebSocket                                   │
+│ Cached:  Redis with TTL = 10 seconds (latest wins)                          │
+│ Reused:  Latest Tier 3 output read by Tier 4 at each 60s cycle             │
+│                                                                              │
+│ ┌─────────────┐    14 order flow features    ┌─────────────────────────┐   │
+│ │ Live LOB    │ ──compute-engine (Rust)────→ │ Tier 3: LiT Transformer │   │
+│ │ Depth-30    │    OFI, depth imbalance,     │  → buy/sell pressure    │   │
+│ │ 100ms snap  │    trade imbalance, sweeps   │  → slippage estimate    │   │
+│ └─────────────┘                               └──────────┬──────────────┘   │
+│                                                           │                   │
+│                            Redis: tier3:microstructure:{timestamp}            │
+│                            (refreshed every 100ms, Tier 4 reads latest)      │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                        │
+                                        │ all cached outputs feed ↓
+                                        │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ META-LEARNER (Tier 4) — READS CACHED OUTPUTS ONLY                           │
+│                                                                              │
+│ Runs: Every 60 seconds                                                      │
+│ Inputs: All from Redis cache — never re-runs upstream tiers                 │
+│                                                                              │
+│ ┌──────────────────────────────────────────────────────────────────────┐    │
+│ │ tier0:gap:{date}              → [cached once/day]    → 4 values     │    │
+│ │ tier1:regime:{date}           → [cached once/day]    → 6 values     │    │
+│ │ tier2:predictions:{timestamp} → [cached every 60s]   → 9 values     │    │
+│ │ tier3:microstructure:{latest} → [cached every 100ms] → 5 values     │    │
+│ └──────────────────────────────────────────┬───────────────────────────┘    │
+│                                             │                                │
+│                              Contextual Gating Network (~2ms)               │
+│                                             │                                │
+│                              → final_signal, confidence, position_action    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Resolution Summary
+
+| Resolution | Tiers Fed | Feature Computation | Model Inference | Cache Key | Cache TTL |
+|------------|-----------|--------------------|-----------------|-----------|-----------|
+| **1d** (daily) | Tier 0, Tier 1 | Once @ 09:08-09:09 | Once @ 09:08-09:09 | `tier0:gap:{date}`, `tier1:regime:{date}` | End of day |
+| **1m** (minute) | Tier 2 | Every 60s (compute-engine) | Every 60s (LightGBM+TFT+Mamba) | `tier2:predictions:{ts}` | 2 hours (rolling) |
+| **100ms** (tick/LOB) | Tier 3 | Every 100ms (compute-engine) | Every 100ms (LiT) | `tier3:microstructure:{ts}` | 10 seconds |
+| **N/A** (cached) | Tier 4 | None — reads cached outputs | Every 60s (Gating Network) | `tier4:signal:{ts}` | 5 minutes |
+
+### Why This Matters
+
+1. **No redundant computation**: Tier 0/1 run once. Their daily features don't change intraday, so re-computing them every 60s would be pure waste.
+
+2. **Tier 4 is a pure fusion layer**: It never touches raw market data. It reads 4 Redis keys (one per upstream tier), fuses them in ~2ms, and outputs the final signal. This is what makes it fast.
+
+3. **Resolution alignment**: Each tier's feature computation matches its data resolution:
+   - Tier 0/1 features come from daily candles → computed from QuestDB `daily_ohlcv`
+   - Tier 2 features come from 1-min candles → computed by compute-engine on `CandleComplete` event
+   - Tier 3 features come from live LOB → computed by compute-engine on every 100ms snapshot
+
+4. **Sequence models get rolling windows**: TFT and Mamba in Tier 2 consume `[80 features × 120 steps]` — that's the last 120 minutes of 1-min features from the Redis rolling cache. The cache holds 2 hours of history so the sequence is always full after the first 2 hours.
+
+5. **The daily candle is computed once before market open**: At 09:08-09:09, we query 26 years of daily data from QuestDB, compute Tier 0/1 features, run inference, and cache the results. These cached values are appended to every Tier 2 feature vector (as "regime context" features) for the rest of the day.
+
+---
+
 ## Phase A: Overnight Global Data Collection (00:00 – 09:00 IST)
 
 ### Purpose
@@ -268,19 +380,24 @@ Every 60 seconds, the following pipeline executes:
 │  T+5ms:    Features published to Redis features:live                     │
 │  T+6ms:    algo-worker receives features                                │
 │                                                                          │
-│  T+8ms:    ┌── Tier 2 (parallel, ~40ms) ─────────────────────┐         │
-│            │  LightGBM: 80+ features → P(up/down/flat)   20ms│         │
-│            │  TFT: 80×120 sequence → quantile forecasts  35ms│         │
-│            │  Mamba: 80×120 sequence → direction probs    25ms│         │
-│            └──────────────────────────────────────────────────┘         │
+│  T+8ms:    ┌── Tier 2 ONLY runs here (parallel, ~40ms) ──────┐         │
+│            │  Input: 1-min features (fresh) + Tier 0/1 (daily cache)│   │
+│            │  LightGBM: 80+ point features → P(up/down/flat)   20ms│   │
+│            │  TFT: 80×120 sequence (rolling cache) → quantiles 35ms│   │
+│            │  Mamba: 80×120 sequence (rolling cache) → probs    25ms│   │
+│            │  → Cache result: Redis tier2:predictions:{ts}          │   │
+│            └────────────────────────────────────────────────────────┘   │
 │                                                                          │
-│  T+10ms:   Tier 3 reads latest (updates every 100ms independently)      │
-│            └── LiT: 14 features → buy/sell pressure                     │
+│  T+10ms:   Tier 3 NOT re-run — read latest cached value from Redis      │
+│            └── tier3:microstructure:{latest} (updated every 100ms)       │
 │                                                                          │
-│  T+48ms:   Tier 4 Meta-Learner fires (~2ms)                             │
-│            ├── Input: Tier 0 (cached) + Tier 1 (cached) +               │
-│            │         Tier 2 (fresh) + Tier 3 (latest)                   │
-│            ├── Regime-adaptive weighting                                │
+│  T+48ms:   Tier 4 Meta-Learner fires (~2ms) — READS ONLY, no upstream  │
+│            ├── Redis reads:                                              │
+│            │   tier0:gap:{date}              → cached once today         │
+│            │   tier1:regime:{date}           → cached once today         │
+│            │   tier2:predictions:{ts}        → just computed above       │
+│            │   tier3:microstructure:{latest} → from 100ms loop           │
+│            ├── Contextual Gating Network (regime-adaptive weighting)    │
 │            └── Output: final_signal, confidence, position_action        │
 │                                                                          │
 │  T+50ms:   Strategy & Risk Layer (~8ms)                                  │
