@@ -113,3 +113,12 @@ export {
 
 // Providers — Binance
 export { BinanceProvider } from "./providers/binance/binance.provider";
+
+// Providers — MCX Commodities (Upstox WebSocket, ltpc mode)
+export {
+  MCX_INSTRUMENT_PREFIXES,
+  MCX_FEED_MODE,
+  MCX_SOCKET_PRIORITY,
+  MCX_REDIS_KEY_PREFIX,
+  MCX_SESSION,
+} from "./providers/mcx/mcx-instruments.constants";
