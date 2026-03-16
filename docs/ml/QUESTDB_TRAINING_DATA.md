@@ -13,24 +13,24 @@
 
 QuestDB stores all time-series data across 9 tables:
 
-| # | Table | Purpose | Partition | Dedup Keys |
-|---|-------|---------|-----------|------------|
-| 1 | `instrument_master` | Instrument registry (Upstox metadata) | None | — |
-| 2 | `market_candles` | OHLCV candles (all intervals) | DAY | timestamp, instrument_key, interval_value, interval_unit |
-| 3 | `tick_data` | Tick-by-tick with 30-level depth + Greeks | DAY | timestamp, instrument_key |
-| 4 | `orderbook_l2_snapshots` | Normalized L2 order book rows | DAY | timestamp, instrument_key, side, level |
-| 5 | `option_chain_snapshot` | Option chain with Greeks | DAY | timestamp, underlying_key, instrument_key |
-| 6 | `instrument_features` | 117 ML features (unified 1m + 1d) | MONTH | timestamp, instrument_key, interval_value, interval_unit |
-| 7 | `training_labels` | Multi-horizon targets | MONTH | timestamp, instrument_key, interval_value, interval_unit |
-| 8 | `macro_sentiment` | NLP news sentiment | MONTH | timestamp, entity, event_type |
-| 9 | `dataset_folds` | CPCV train/test splits | MONTH | — |
+| #   | Table                    | Purpose                                   | Partition | Dedup Keys                                               |
+| --- | ------------------------ | ----------------------------------------- | --------- | -------------------------------------------------------- |
+| 1   | `instrument_master`      | Instrument registry (Upstox metadata)     | None      | —                                                        |
+| 2   | `market_candles`         | OHLCV candles (all intervals)             | DAY       | timestamp, instrument_key, interval_value, interval_unit |
+| 3   | `tick_data`              | Tick-by-tick with 30-level depth + Greeks | DAY       | timestamp, instrument_key                                |
+| 4   | `orderbook_l2_snapshots` | Normalized L2 order book rows             | DAY       | timestamp, instrument_key, side, level                   |
+| 5   | `option_chain_snapshot`  | Option chain with Greeks                  | DAY       | timestamp, underlying_key, instrument_key                |
+| 6   | `instrument_features`    | 117 ML features (unified 1m + 1d)         | MONTH     | timestamp, instrument_key, interval_value, interval_unit |
+| 7   | `training_labels`        | Multi-horizon targets                     | MONTH     | timestamp, instrument_key, interval_value, interval_unit |
+| 8   | `macro_sentiment`        | NLP news sentiment                        | MONTH     | timestamp, entity, event_type                            |
+| 9   | `dataset_folds`          | CPCV train/test splits                    | MONTH     | —                                                        |
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                     QUESTDB DATA ARCHITECTURE                        │
 │                                                                      │
 │  ┌────────────────────────────────────────────────────────────────┐  │
-│  │                     RAW MARKET DATA (4 tables)                  │  │
+│  │                     RAW MARKET DATA (4 tables)                 │  │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐    │  │
 │  │  │ market_      │ │ tick_data    │ │ option_chain_        │    │  │
 │  │  │ candles      │ │ (30-level    │ │ snapshot (Greeks)    │    │  │
@@ -41,9 +41,9 @@ QuestDB stores all time-series data across 9 tables:
 │  │  │ l2_snapshots │ │ master       │ │ (NLP news)           │    │  │
 │  │  └──────────────┘ └──────────────┘ └──────────────────────┘    │  │
 │  └────────────────────────────────────────────────────────────────┘  │
-│                                ↓                                      │
+│                                ↓                                     │
 │  ┌────────────────────────────────────────────────────────────────┐  │
-│  │                   COMPUTED DATA (3 tables)                      │  │
+│  │                   COMPUTED DATA (3 tables)                     │  │
 │  │  ┌──────────────────────┐  ┌────────────────────────────────┐  │  │
 │  │  │ instrument_features  │  │ training_labels                │  │  │
 │  │  │ (117 features,       │  │ (multi-horizon, multi-interval │  │  │
@@ -61,14 +61,14 @@ QuestDB stores all time-series data across 9 tables:
 
 ## Data Storage Scope
 
-| Data Type | Start Date | End Date | Source | Size Estimate |
-|-----------|------------|----------|--------|---------------|
-| OHLCV Candles | 2000-01-01 | Present | Upstox/Yahoo | ~50GB |
-| Tick Data (30-level depth) | 2024-01-01 | Present | Upstox WebSocket | ~500GB/year |
-| Option Chain Snapshots | 2020-01-01 | Present | Upstox | ~100GB |
-| Macro Sentiment | 2024-01-01 | Present | Finnhub/RSS | ~1GB |
-| Instrument Features | 2020-01-01 | Present | compute-engine | ~10GB |
-| Training Labels | 2020-01-01 | Present | market-feeder | ~5GB |
+| Data Type                  | Start Date | End Date | Source           | Size Estimate |
+| -------------------------- | ---------- | -------- | ---------------- | ------------- |
+| OHLCV Candles              | 2000-01-01 | Present  | Upstox/Yahoo     | ~50GB         |
+| Tick Data (30-level depth) | 2024-01-01 | Present  | Upstox WebSocket | ~500GB/year   |
+| Option Chain Snapshots     | 2020-01-01 | Present  | Upstox           | ~100GB        |
+| Macro Sentiment            | 2024-01-01 | Present  | Finnhub/RSS      | ~1GB          |
+| Instrument Features        | 2020-01-01 | Present  | compute-engine   | ~10GB         |
+| Training Labels            | 2020-01-01 | Present  | market-feeder    | ~5GB          |
 
 ---
 
@@ -201,25 +201,25 @@ All features for ML training with interval-based storage. Combines 1m and 1d fea
 
 **Feature Categories** (117 total):
 
-| Category | Count | Examples |
-|----------|-------|---------|
-| Index Breadth | 8 | `pct_stocks_above_vwap`, `advance_decline_ratio` |
-| Futures | 12 | `fut_price_vs_vwap`, `fut_return_5m`, `fut_oi_change` |
-| Options | 14 | `atm_iv`, `iv_skew`, `pcr_oi`, `max_pain_distance` |
-| Volatility | 10 | `india_vix`, `realized_vol_5m`, `iv_rv_ratio`, `vix_percentile_1yr` |
-| Order Flow | 8 | `bid_ask_spread_bps`, `ofi_1s`, `trade_imbalance` |
-| Price Structure | 8 | `close`, `return_1d`, `gap_open`, `close_vs_high_20d` |
-| Momentum | 8 | `rsi_14`, `macd`, `adx_14` |
-| Moving Averages | 6 | `sma_20`, `sma_200`, `ema_12` |
-| MA Signals | 4 | `price_vs_sma_20`, `golden_cross` |
-| Bollinger | 2 | `bollinger_width`, `bollinger_position` |
-| Volume | 4 | `volume_sma_20_ratio`, `obv_change` |
-| Regime | 4 | `trend_strength`, `momentum_regime` |
-| Time Context | 9 | `minutes_from_open`, `is_expiry_day`, `session_phase` |
-| Cyclical Encoding | 4 | `time_sin`, `time_cos`, `day_of_week_sin` |
-| Global Macro | 12 | `gift_nifty_premium`, `sp500_overnight_return`, `brent_crude_change` |
-| Pre-Market | 4 | `actual_gap_pct`, `pre_market_bias` |
-| Metadata | 4 | `is_valid`, `feature_mode`, `computation_latency_us` |
+| Category          | Count | Examples                                                             |
+| ----------------- | ----- | -------------------------------------------------------------------- |
+| Index Breadth     | 8     | `pct_stocks_above_vwap`, `advance_decline_ratio`                     |
+| Futures           | 12    | `fut_price_vs_vwap`, `fut_return_5m`, `fut_oi_change`                |
+| Options           | 14    | `atm_iv`, `iv_skew`, `pcr_oi`, `max_pain_distance`                   |
+| Volatility        | 10    | `india_vix`, `realized_vol_5m`, `iv_rv_ratio`, `vix_percentile_1yr`  |
+| Order Flow        | 8     | `bid_ask_spread_bps`, `ofi_1s`, `trade_imbalance`                    |
+| Price Structure   | 8     | `close`, `return_1d`, `gap_open`, `close_vs_high_20d`                |
+| Momentum          | 8     | `rsi_14`, `macd`, `adx_14`                                           |
+| Moving Averages   | 6     | `sma_20`, `sma_200`, `ema_12`                                        |
+| MA Signals        | 4     | `price_vs_sma_20`, `golden_cross`                                    |
+| Bollinger         | 2     | `bollinger_width`, `bollinger_position`                              |
+| Volume            | 4     | `volume_sma_20_ratio`, `obv_change`                                  |
+| Regime            | 4     | `trend_strength`, `momentum_regime`                                  |
+| Time Context      | 9     | `minutes_from_open`, `is_expiry_day`, `session_phase`                |
+| Cyclical Encoding | 4     | `time_sin`, `time_cos`, `day_of_week_sin`                            |
+| Global Macro      | 12    | `gift_nifty_premium`, `sp500_overnight_return`, `brent_crude_change` |
+| Pre-Market        | 4     | `actual_gap_pct`, `pre_market_bias`                                  |
+| Metadata          | 4     | `is_valid`, `feature_mode`, `computation_latency_us`                 |
 
 ```sql
 CREATE TABLE IF NOT EXISTS instrument_features (
@@ -301,18 +301,18 @@ CREATE TABLE IF NOT EXISTS dataset_folds (
 
 ### Invalid Reasons (Standardized)
 
-| Code | Meaning | Action |
-|------|---------|--------|
-| `MARKET_CLOSED` | Holiday, weekend, or outside 9:15-3:30 | Exclude |
-| `PRE_OPEN` | 9:00-9:15 pre-open session | Exclude from most models |
-| `STALE_DATA` | Gap >60s in tick stream | Mark for review |
-| `OUTLIER` | Feature >5σ from rolling mean | Mark for review |
-| `INCOMPLETE_BREADTH` | <40 constituents available | Limited models only |
-| `INCOMPLETE_OPTIONS` | <10 strikes available | Exclude options features |
-| `CIRCUIT_LIMIT` | Stock/index hit circuit | Special handling |
-| `AUCTION` | Opening/closing auction | Exclude |
-| `LOW_LIQUIDITY` | Spread >50bps | Mark for review |
-| `DATA_QUALITY` | Obvious data errors | Exclude |
+| Code                 | Meaning                                | Action                   |
+| -------------------- | -------------------------------------- | ------------------------ |
+| `MARKET_CLOSED`      | Holiday, weekend, or outside 9:15-3:30 | Exclude                  |
+| `PRE_OPEN`           | 9:00-9:15 pre-open session             | Exclude from most models |
+| `STALE_DATA`         | Gap >60s in tick stream                | Mark for review          |
+| `OUTLIER`            | Feature >5σ from rolling mean          | Mark for review          |
+| `INCOMPLETE_BREADTH` | <40 constituents available             | Limited models only      |
+| `INCOMPLETE_OPTIONS` | <10 strikes available                  | Exclude options features |
+| `CIRCUIT_LIMIT`      | Stock/index hit circuit                | Special handling         |
+| `AUCTION`            | Opening/closing auction                | Exclude                  |
+| `LOW_LIQUIDITY`      | Spread >50bps                          | Mark for review          |
+| `DATA_QUALITY`       | Obvious data errors                    | Exclude                  |
 
 ---
 
@@ -382,15 +382,15 @@ def get_training_data(
 
 ## Data Retention Policy
 
-| Table | Retention | Storage | Archive |
-|-------|-----------|---------|---------|
-| `market_candles` | Forever | ~50GB | — |
-| `tick_data` | 2 years | ~1TB | S3 Parquet |
-| `orderbook_l2_snapshots` | 1 year | ~1TB | S3 Parquet |
-| `option_chain_snapshot` | 5 years | ~500GB | — |
-| `instrument_features` | Forever | ~10GB | — |
-| `training_labels` | Forever | ~5GB | — |
-| `macro_sentiment` | Forever | ~1GB | — |
+| Table                    | Retention | Storage | Archive    |
+| ------------------------ | --------- | ------- | ---------- |
+| `market_candles`         | Forever   | ~50GB   | —          |
+| `tick_data`              | 2 years   | ~1TB    | S3 Parquet |
+| `orderbook_l2_snapshots` | 1 year    | ~1TB    | S3 Parquet |
+| `option_chain_snapshot`  | 5 years   | ~500GB  | —          |
+| `instrument_features`    | Forever   | ~10GB   | —          |
+| `training_labels`        | Forever   | ~5GB    | —          |
+| `macro_sentiment`        | Forever   | ~1GB    | —          |
 
 ---
 

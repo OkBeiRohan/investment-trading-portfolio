@@ -30,37 +30,37 @@ Tier 2 is the **workhorse** of the system. While Tier 0 and 1 run once at market
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │ TIER 2: INTRADAY NAVIGATOR (runs every 60 seconds)                   │
-│                                                                       │
+│                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐ │
 │  │ FEATURE INPUT: 80+ features from compute-engine (Rust, <5ms)    │ │
 │  │ + Tier 0 context (cached) + Tier 1 regime (cached)              │ │
 │  └────────────────────┬────────────────────────────────────────────┘ │
-│                       │                                               │
+│                       │                                              │
 │     ┌─────────────────┼─────────────────┐                            │
 │     ▼                 ▼                 ▼                            │
-│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐                   │
-│  │ LightGBM │  │ TFT          │  │ Mamba        │                   │
-│  │          │  │ (Temporal     │  │ (State Space │                   │
-│  │ 80+      │  │  Fusion      │  │  Model)      │                   │
-│  │ features │  │  Transformer) │  │              │                   │
-│  │          │  │              │  │              │                   │
-│  │ Point    │  │ 80×120       │  │ 80×120      │                   │
-│  │ features │  │ sequence     │  │ sequence     │                   │
-│  │          │  │              │  │              │                   │
-│  │ ~20ms    │  │ ~35ms        │  │ ~25ms        │                   │
-│  └────┬─────┘  └──────┬───────┘  └──────┬───────┘                   │
-│       │               │                  │                            │
-│       └───────────────┼──────────────────┘                            │
-│                       ▼                                               │
+│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐                    │
+│  │ LightGBM │  │ TFT          │  │ Mamba        │                    │
+│  │          │  │ (Temporal    │  │ (State Space │                    │
+│  │ 80+      │  │  Fusion      │  │  Model)      │                    │
+│  │ features │  │  Transformer)│  │              │                    │
+│  │          │  │              │  │              │                    │
+│  │ Point    │  │ 80×120       │  │ 80×120       │                    │
+│  │ features │  │ sequence     │  │ sequence     │                    │
+│  │          │  │              │  │              │                    │
+│  │ ~20ms    │  │ ~35ms        │  │ ~25ms        │                    │
+│  └────┬─────┘  └──────┬───────┘  └──────┬───────┘                    │
+│       │               │                 │                            │
+│       └───────────────┼─────────────────┘                            │
+│                       ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │ PARALLEL OUTPUT (all run in Worker Threads simultaneously)       │ │
-│  │                                                                   │ │
+│  │ PARALLEL OUTPUT (all run in Worker Threads simultaneously)      │ │
+│  │                                                                 │ │
 │  │ LightGBM:  P(up)=0.62, P(flat)=0.25, P(down)=0.13  [5m/15m/30m] │ │
-│  │ TFT:       Quantile forecasts [10%, 50%, 90%] per horizon        │ │
+│  │ TFT:       Quantile forecasts [10%, 50%, 90%] per horizon       │ │
 │  │ Mamba:     P(up)=0.58, P(flat)=0.30, P(down)=0.12  [5m/15m/30m] │ │
 │  └─────────────────────────────────────────────────────────────────┘ │
-│                       │                                               │
-│                       ▼                                               │
+│                       │                                              │
+│                       ▼                                              │
 │               Tier 4 Meta-Learner                                    │
 │               (fuses with Tier 0/1/3 for final signal)               │
 └──────────────────────────────────────────────────────────────────────┘

@@ -27,49 +27,49 @@ Without Tier 4, the system would have 4 independent opinions (one per tier) with
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ TIER 4: META-LEARNER & STRATEGY DECISION ENGINE                         │
-│                                                                          │
+│                                                                         │
 │  INPUTS (from Redis cache):                                             │
-│  ┌──────────┐ ┌──────────┐ ┌────────────┐ ┌──────────────┐             │
-│  │ Tier 0   │ │ Tier 1   │ │ Tier 2     │ │ Tier 3       │             │
-│  │ Gap pred │ │ Regime   │ │ Direction  │ │ Microstr.    │             │
-│  │ (cached) │ │ (cached) │ │ (fresh)    │ │ (latest)     │             │
-│  └────┬─────┘ └────┬─────┘ └─────┬──────┘ └──────┬───────┘             │
-│       │            │              │                │                     │
-│       └────────────┼──────────────┼────────────────┘                     │
-│                    ▼              ▼                                       │
+│  ┌──────────┐ ┌──────────┐ ┌────────────┐ ┌──────────────┐              │
+│  │ Tier 0   │ │ Tier 1   │ │ Tier 2     │ │ Tier 3       │              │
+│  │ Gap pred │ │ Regime   │ │ Direction  │ │ Microstr.    │              │
+│  │ (cached) │ │ (cached) │ │ (fresh)    │ │ (latest)     │              │
+│  └────┬─────┘ └────┬─────┘ └─────┬──────┘ └──────┬───────┘              │
+│       │            │             │               │                      │
+│       └────────────┼─────────────┼───────────────┘                      │
+│                    ▼             ▼                                      │
 │  ┌─────────────────────────────────────────────────────────────────────┐│
 │  │ CONTEXTUAL GATING NETWORK                                           ││
-│  │                                                                      ││
-│  │  ┌───────────────────┐   ┌──────────────────────────────────────┐  ││
+│  │                                                                     ││
+│  │  ┌────────────────────┐   ┌──────────────────────────────────────┐  ││
 │  │  │ Regime Feature     │   │ Attention-Based Fusion               │  ││
-│  │  │ Extractor (20 feat)│──▶│ • Query = regime context             │  ││
-│  │  │                    │   │ • Keys/Values = tier outputs          │  ││
-│  │  └───────────────────┘   │ • Regime-adaptive model weights       │  ││
-│  │                           │ • Temperature-calibrated confidence   │  ││
+│  │  │ Extractor (20 feat)│──>│ • Query = regime context             │  ││
+│  │  │                    │   │ • Keys/Values = tier outputs         │  ││
+│  │  └────────────────────┘   │ • Regime-adaptive model weights      │  ││
+│  │                           │ • Temperature-calibrated confidence  │  ││
 │  │                           └─────────────┬────────────────────────┘  ││
-│  │                                         │                            ││
+│  │                                         │                           ││
 │  │                              ┌──────────▼──────────┐                ││
-│  │                              │ Final Signal:        │                ││
-│  │                              │ direction, conf,     │                ││
-│  │                              │ position_action      │                ││
+│  │                              │ Final Signal:       │                ││
+│  │                              │ direction, conf,    │                ││
+│  │                              │ position_action     │                ││
 │  │                              └──────────┬──────────┘                ││
 │  └─────────────────────────────────────────┼───────────────────────────┘│
-│                                            │                             │
-│  ┌─────────────────┐  ┌──────────────┐  ┌─▼─────────────┐              │
-│  │ STRIKE SELECTOR  │  │ RISK MANAGER │  │ POSITION SIZER│              │
-│  │ (Neural Net)    │  │ (Rule-based) │  │ (Kelly)       │              │
-│  │                 │  │              │  │               │              │
-│  │ delta-based     │  │ Greeks: ✓/✗  │  │ f* = (p·b -  │              │
-│  │ strike picking  │  │ MaxLoss: ✓/✗ │  │  q) / b      │              │
-│  │ IV surface scan │  │ Leverage: ✓/✗│  │ scaled by VIX│              │
-│  └────────┬────────┘  └──────┬───────┘  └──────┬────────┘              │
-│           │                  │                  │                        │
-│           └──────────────────┼──────────────────┘                        │
-│                              ▼                                           │
-│                    ┌─────────────────┐                                   │
-│                    │ VALIDATED ORDER  │                                   │
-│                    │ → Execution Layer│                                   │
-│                    └─────────────────┘                                   │
+│                                            │                            │
+│  ┌─────────────────┐  ┌──────────────┐  ┌──▼─────────────┐              │
+│  │ STRIKE SELECTOR │  │ RISK MANAGER │  │ POSITION SIZER │              │
+│  │ (Neural Net)    │  │ (Rule-based) │  │ (Kelly)        │              │
+│  │                 │  │              │  │                │              │
+│  │ delta-based     │  │ Greeks: ✓/✗ │  │ f* = (p·b -    │              │
+│  │ strike picking  │  │ MaxLoss: ✓/✗│  │  q) / b        │              │
+│  │ IV surface scan │  │Leverage: ✓/✗│  │ scaled by VIX  │              │
+│  └────────┬────────┘  └──────┬───────┘  └──────┬─────────┘              │
+│           │                  │                  │                       │
+│           └──────────────────┼──────────────────┘                       │
+│                              ▼                                          │
+│                    ┌──────────────────┐                                 │
+│                    │ VALIDATED ORDER  │                                 │
+│                    │ → Execution Layer│                                 │
+│                    └──────────────────┘                                 │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 

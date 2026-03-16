@@ -2,7 +2,7 @@
 
 > **Production-grade 5-tier hierarchical ML system for NIFTY options trading using data-bound multi-horizon predictions.**
 
-**Last Updated**: March 13, 2026  
+**Last Updated**: March 13, 2026
 **Architecture**: 5-Tier Data-Bound Hierarchical
 
 ---
@@ -25,16 +25,16 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 
 ## Data Assets
 
-| Data Type | Source | Timeframe | Resolution |
-|-----------|--------|-----------|------------|
-| NIFTY 50 Index | Upstox | 2000-2026 | Daily, 1min |
-| 50 Constituents | Upstox | 2000-2026 | Daily, 1min |
-| NIFTY Futures | Upstox | 2000-2026 | Daily, 1min |
-| NIFTY Options | Upstox | 2001-2026 | Daily, 1min |
-| India VIX | Upstox | 2014-2026 | Daily, 1min |
-| Live LOB | Upstox WS | Real-time | Depth-30 |
-| **Global Markets** | Yahoo Finance | Varies | 1min |
-| **News/Sentiment** | Finnhub + FinBERT | Real-time | Continuous |
+| Data Type          | Source            | Timeframe | Resolution  |
+| ------------------ | ----------------- | --------- | ----------- |
+| NIFTY 50 Index     | Upstox            | 2000-2026 | Daily, 1min |
+| 50 Constituents    | Upstox            | 2000-2026 | Daily, 1min |
+| NIFTY Futures      | Upstox            | 2000-2026 | Daily, 1min |
+| NIFTY Options      | Upstox            | 2001-2026 | Daily, 1min |
+| India VIX          | Upstox            | 2014-2026 | Daily, 1min |
+| Live LOB           | Upstox WS         | Real-time | Depth-30    |
+| **Global Markets** | Yahoo Finance     | Varies    | 1min        |
+| **News/Sentiment** | Finnhub + FinBERT | Real-time | Continuous  |
 
 ---
 
@@ -43,55 +43,55 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 ```
                         EXECUTION LAYER
 ┌─────────────────────────────────────────────────────────────────┐
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
-│  │ PPO Agent    │  │ Exit Manager │  │ Position Sizing    │    │
-│  │ (Slippage)   │  │              │  │ (Kelly Criterion)  │    │
-│  └──────────────┘  └──────────────┘  └────────────────────┘    │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
+│  │ PPO Agent    │  │ Exit Manager │  │ Position Sizing    │     │
+│  │ (Slippage)   │  │              │  │ (Kelly Criterion)  │     │
+│  └──────────────┘  └──────────────┘  └────────────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
 │          TIER 4: META-LEARNER + STRATEGY & DECISION             │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ Contextual Meta-Learner (Attention-Based Gating)          │ │
-│  │ • Regime-aware model weighting → Strike/Strategy Select   │ │
-│  │ • Multi-horizon signal fusion  → Risk Manager (VaR)       │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Contextual Meta-Learner (Attention-Based Gating)          │  │
+│  │ • Regime-aware model weighting → Strike/Strategy Select   │  │
+│  │ • Multi-horizon signal fusion  → Risk Manager (VaR)       │  │
+│  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
 │          TIER 3: MICROSTRUCTURE (LiT + Order Flow)              │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
-│  │ LiT          │  │ OFI-CNN      │  │ TLOB               │    │
-│  │ Transformer  │  │ (Order Flow) │  │ (LOB patterns)     │    │
-│  └──────────────┘  └──────────────┘  └────────────────────┘    │
-│  Input: Depth-30 LOB snapshots (10s-1min horizon)              │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
+│  │ LiT          │  │ OFI-CNN      │  │ TLOB               │     │
+│  │ Transformer  │  │ (Order Flow) │  │ (LOB patterns)     │     │
+│  └──────────────┘  └──────────────┘  └────────────────────┘     │
+│  Input: Depth-30 LOB snapshots (10s-1min horizon)               │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
-│          TIER 2: LEVEL-0 MODELS (Macro Direction, 5min-1hr)    │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
-│  │ LightGBM     │  │ XGBoost      │  │ PatchTST           │    │
-│  │ (117 feats)  │  │ (117 feats)  │  │ (time-series)      │    │
-│  └──────────────┘  └──────────────┘  └────────────────────┘    │
-│  Input: 117 features from instrument_features table            │
+│          TIER 2: LEVEL-0 MODELS (Macro Direction, 5min-1hr)     │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
+│  │ LightGBM     │  │ XGBoost      │  │ PatchTST           │     │
+│  │ (117 feats)  │  │ (117 feats)  │  │ (time-series)      │     │
+│  └──────────────┘  └──────────────┘  └────────────────────┘     │
+│  Input: 117 features from instrument_features table             │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
-│          TIER 1: MACRO DIRECTOR (Regime + Volatility)          │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
-│  │ TFT          │  │ Mamba (SSM)  │  │ HMM (Regime)       │    │
-│  │ (multi-hor.) │  │ (long-range) │  │ (state detection)  │    │
-│  └──────────────┘  └──────────────┘  └────────────────────┘    │
-│  Input: Daily + macro features, regime labels                  │
+│          TIER 1: MACRO DIRECTOR (Regime + Volatility)           │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
+│  │ TFT          │  │ Mamba (SSM)  │  │ HMM (Regime)       │     │
+│  │ (multi-hor.) │  │ (long-range) │  │ (state detection)  │     │
+│  └──────────────┘  └──────────────┘  └────────────────────┘     │
+│  Input: Daily + macro features, regime labels                   │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
-│          TIER 0: PRE-MARKET GAP PREDICTOR                      │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ Uses global overnight data (S&P500, GIFT Nifty, VIX,     │ │
-│  │ crude, news sentiment) to predict 9:15 AM gap            │ │
-│  └───────────────────────────────────────────────────────────┘ │
-│  Input: Global macro features, overnight_news_sentiment        │
+│          TIER 0: PRE-MARKET GAP PREDICTOR                       │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Uses global overnight data (S&P500, GIFT Nifty, VIX,      │  │
+│  │ crude, news sentiment) to predict 9:15 AM gap             │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│  Input: Global macro features, overnight_news_sentiment         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -101,14 +101,14 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 
 ### Prediction Horizons
 
-| Horizon | Target | Use Case | Primary Models |
-|---------|--------|----------|----------------|
-| H1: 10s | Price direction | Scalping | LiT, TLOB |
-| H2: 1min | Direction + magnitude | Entry signals | LightGBM, Mamba |
-| H3: 5min | Trend continuation | Position sizing | TFT, PatchTST |
-| H4: 15min | Trend reversal | Exit signals | TFT, TimeMixer |
-| H5: 1hr | Session direction | Strategy selection | PatchTST, HMM |
-| H6: EOD | Daily move | Overnight positions | TFT Ensemble |
+| Horizon   | Target                | Use Case            | Primary Models  |
+| --------- | --------------------- | ------------------- | --------------- |
+| H1: 10s   | Price direction       | Scalping            | LiT, TLOB       |
+| H2: 1min  | Direction + magnitude | Entry signals       | LightGBM, Mamba |
+| H3: 5min  | Trend continuation    | Position sizing     | TFT, PatchTST   |
+| H4: 15min | Trend reversal        | Exit signals        | TFT, TimeMixer  |
+| H5: 1hr   | Session direction     | Strategy selection  | PatchTST, HMM   |
+| H6: EOD   | Daily move            | Overnight positions | TFT Ensemble    |
 
 ### Label Generation
 
@@ -122,34 +122,34 @@ def generate_multi_horizon_labels(
 ) -> pd.DataFrame:
     """
     Generate labels for multiple prediction horizons.
-    
+
     Args:
         df: OHLCV DataFrame with 'close' column (1-min bars)
         horizons: Forward periods in seconds
-    
+
     Returns:
         DataFrame with classification and regression labels
     """
     result = df.copy()
-    
+
     for h, seconds in enumerate(horizons, 1):
         periods = seconds // 60  # Convert to 1-min bars
-        
+
         # Forward returns (regression target)
         result[f'return_H{h}'] = (
             df['close'].shift(-periods) / df['close'] - 1
         )
-        
+
         # Dynamic threshold based on horizon
         # Longer horizons need larger moves to be significant
         threshold = 0.001 * np.sqrt(periods)
-        
+
         # 3-class classification: DOWN=0, NEUTRAL=1, UP=2
         result[f'label_H{h}'] = np.where(
             result[f'return_H{h}'] < -threshold, 0,
             np.where(result[f'return_H{h}'] > threshold, 2, 1)
         )
-    
+
     return result
 
 # Example usage
@@ -167,6 +167,7 @@ print(df_labeled[['close', 'label_H1', 'label_H2', 'label_H3']].tail())
 **Purpose**: Extract microstructure signals from Depth-30 order book data.
 
 **Input Format**:
+
 ```python
 # LOB snapshot shape: [30 levels × 4 features]
 # Features: [bid_price, bid_qty, ask_price, ask_qty]
@@ -178,6 +179,7 @@ lob_snapshot = np.array([
 ```
 
 **Architecture**:
+
 ```python
 import torch
 import torch.nn as nn
@@ -197,19 +199,19 @@ class LiTTransformer(nn.Module):
         n_classes: int = 3
     ):
         super().__init__()
-        
+
         # Patch embedding: group 3 levels into one patch
         self.n_patches = n_levels // patch_size
         self.patch_embed = nn.Linear(patch_size * n_features, d_model)
-        
+
         # Positional encoding
         self.pos_embed = nn.Parameter(
             torch.randn(1, self.n_patches + 1, d_model)
         )
-        
+
         # CLS token for classification
         self.cls_token = nn.Parameter(torch.randn(1, 1, d_model))
-        
+
         # Transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
@@ -219,7 +221,7 @@ class LiTTransformer(nn.Module):
             batch_first=True
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, n_layers)
-        
+
         # Classification head
         self.classifier = nn.Sequential(
             nn.LayerNorm(d_model),
@@ -228,7 +230,7 @@ class LiTTransformer(nn.Module):
             nn.Dropout(0.1),
             nn.Linear(d_model // 2, n_classes)
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
@@ -237,23 +239,23 @@ class LiTTransformer(nn.Module):
             logits: [B, 3] for UP/NEUTRAL/DOWN
         """
         B = x.shape[0]
-        
+
         # Create patches: [B, 30, 4] -> [B, 10, 12]
         x = x.reshape(B, self.n_patches, -1)
-        
+
         # Embed patches
         x = self.patch_embed(x)  # [B, 10, d_model]
-        
+
         # Add CLS token
         cls = self.cls_token.expand(B, -1, -1)
         x = torch.cat([cls, x], dim=1)  # [B, 11, d_model]
-        
+
         # Add positional encoding
         x = x + self.pos_embed
-        
+
         # Transformer
         x = self.transformer(x)
-        
+
         # Classify using CLS token
         return self.classifier(x[:, 0])
 
@@ -266,7 +268,7 @@ for epoch in range(100):
     for lob_batch, labels in dataloader:
         logits = model(lob_batch)
         loss = criterion(logits, labels)
-        
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -279,6 +281,7 @@ for epoch in range(100):
 **Purpose**: Primary direction predictor using 117 engineered features from `instrument_features`.
 
 **Feature Engineering**:
+
 ```python
 import pandas as pd
 import numpy as np
@@ -290,7 +293,7 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     See FEATURE_SPECIFICATION.md for full list.
     """
     result = df.copy()
-    
+
     # === PRICE ACTION (12 features) ===
     result['return_1m'] = df['close'].pct_change(1)
     result['return_5m'] = df['close'].pct_change(5)
@@ -302,51 +305,51 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     result['lower_shadow'] = (df[['open', 'close']].min(axis=1) - df['low']) / df['close']
     result['body_size'] = abs(df['close'] - df['open']) / df['close']
     result['is_green'] = (df['close'] > df['open']).astype(int)
-    
+
     # === TECHNICAL INDICATORS (15 features) ===
     result['rsi_14'] = compute_rsi(df['close'], 14)
     result['rsi_7'] = compute_rsi(df['close'], 7)
     result['macd'] = compute_macd(df['close'])['macd']
     result['macd_signal'] = compute_macd(df['close'])['signal']
     result['macd_hist'] = compute_macd(df['close'])['histogram']
-    
+
     # Bollinger Bands
     bb = compute_bollinger(df['close'], 20)
     result['bb_upper'] = bb['upper']
     result['bb_lower'] = bb['lower']
     result['bb_width'] = (bb['upper'] - bb['lower']) / bb['middle']
     result['bb_pctb'] = (df['close'] - bb['lower']) / (bb['upper'] - bb['lower'])
-    
+
     # ATR
     result['atr_14'] = compute_atr(df, 14)
     result['atr_percent'] = result['atr_14'] / df['close']
-    
+
     # EMAs
     result['ema_12'] = df['close'].ewm(span=12).mean()
     result['ema_26'] = df['close'].ewm(span=26).mean()
     result['ema_ratio'] = result['ema_12'] / result['ema_26']
-    
+
     # === VOLUME & OI (8 features) ===
     result['volume_ratio'] = df['volume'] / df['volume'].rolling(20).mean()
     result['volume_ma_ratio'] = df['volume'].rolling(5).mean() / df['volume'].rolling(20).mean()
     result['vwap'] = compute_vwap(df)
     result['vwap_distance'] = (df['close'] - result['vwap']) / df['close']
-    
+
     if 'oi' in df.columns:
         result['oi_change'] = df['oi'].diff()
         result['oi_change_pct'] = df['oi'].pct_change()
         result['volume_oi_ratio'] = df['volume'] / df['oi']
-    
+
     # === OPTIONS GREEKS (10 features) ===
     # These come from options chain data
     # result['atm_iv'], result['pcr_oi'], etc.
-    
+
     # === TIME CONTEXT (4 features) ===
     result['hour'] = df.index.hour
     result['minute'] = df.index.minute
     result['minutes_from_open'] = (df.index.hour - 9) * 60 + df.index.minute - 15
     result['day_of_week'] = df.index.dayofweek
-    
+
     return result
 
 def compute_rsi(series: pd.Series, period: int) -> pd.Series:
@@ -381,6 +384,7 @@ def compute_vwap(df: pd.DataFrame) -> pd.Series:
 ```
 
 **Training Configuration**:
+
 ```python
 import lightgbm as lgb
 from sklearn.model_selection import TimeSeriesSplit
@@ -409,38 +413,38 @@ lgb_params = {
 def train_lgb_cpcv(X, y, timestamps, n_splits=5):
     """Train LightGBM with Combinatorial Purged CV."""
     from cpcv import CombinatorialPurgedKFold
-    
+
     cv = CombinatorialPurgedKFold(
         n_splits=n_splits,
         n_test_splits=2,
         purge_gap=60,   # 1 hour purge
         embargo_gap=30  # 30 min embargo
     )
-    
+
     models = []
     metrics = []
-    
+
     for fold, (train_idx, test_idx) in enumerate(cv.split(X, y, timestamps)):
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-        
+
         train_data = lgb.Dataset(X_train, y_train)
         valid_data = lgb.Dataset(X_test, y_test, reference=train_data)
-        
+
         model = lgb.train(
             lgb_params,
             train_data,
             valid_sets=[valid_data],
             callbacks=[lgb.early_stopping(50)]
         )
-        
+
         models.append(model)
-        
+
         # Compute metrics
         preds = model.predict(X_test).argmax(axis=1)
         acc = (preds == y_test).mean()
         metrics.append({'fold': fold, 'accuracy': acc})
-    
+
     return models, pd.DataFrame(metrics)
 ```
 

@@ -108,26 +108,23 @@ Each tier consumes a **different candle resolution**. The key insight: compute f
 
 ### Resolution Summary
 
-| Resolution | Tiers Fed | Feature Computation | Model Inference | Cache Key | Cache TTL |
-|------------|-----------|--------------------|-----------------|-----------|-----------|
-| **1d** (daily) | Tier 0, Tier 1 | Once @ 09:08-09:09 | Once @ 09:08-09:09 | `tier0:gap:{date}`, `tier1:regime:{date}` | End of day |
-| **1m** (minute) | Tier 2 | Every 60s (compute-engine) | Every 60s (LightGBM+TFT+Mamba) | `tier2:predictions:{ts}` | 2 hours (rolling) |
-| **100ms** (tick/LOB) | Tier 3 | Every 100ms (compute-engine) | Every 100ms (LiT) | `tier3:microstructure:{ts}` | 10 seconds |
-| **N/A** (cached) | Tier 4 | None — reads cached outputs | Every 60s (Gating Network) | `tier4:signal:{ts}` | 5 minutes |
+| Resolution           | Tiers Fed      | Feature Computation          | Model Inference                | Cache Key                                 | Cache TTL         |
+| -------------------- | -------------- | ---------------------------- | ------------------------------ | ----------------------------------------- | ----------------- |
+| **1d** (daily)       | Tier 0, Tier 1 | Once @ 09:08-09:09           | Once @ 09:08-09:09             | `tier0:gap:{date}`, `tier1:regime:{date}` | End of day        |
+| **1m** (minute)      | Tier 2         | Every 60s (compute-engine)   | Every 60s (LightGBM+TFT+Mamba) | `tier2:predictions:{ts}`                  | 2 hours (rolling) |
+| **100ms** (tick/LOB) | Tier 3         | Every 100ms (compute-engine) | Every 100ms (LiT)              | `tier3:microstructure:{ts}`               | 10 seconds        |
+| **N/A** (cached)     | Tier 4         | None — reads cached outputs  | Every 60s (Gating Network)     | `tier4:signal:{ts}`                       | 5 minutes         |
 
 ### Why This Matters
 
 1. **No redundant computation**: Tier 0/1 run once. Their daily features don't change intraday, so re-computing them every 60s would be pure waste.
-
 2. **Tier 4 is a pure fusion layer**: It never touches raw market data. It reads 4 Redis keys (one per upstream tier), fuses them in ~2ms, and outputs the final signal. This is what makes it fast.
-
 3. **Resolution alignment**: Each tier's feature computation matches its data resolution:
    - Tier 0/1 features come from daily candles → computed from QuestDB `daily_ohlcv`
    - Tier 2 features come from 1-min candles → computed by compute-engine on `CandleComplete` event
    - Tier 3 features come from live LOB → computed by compute-engine on every 100ms snapshot
 
 4. **Sequence models get rolling windows**: TFT and Mamba in Tier 2 consume `[80 features × 120 steps]` — that's the last 120 minutes of 1-min features from the Redis rolling cache. The cache holds 2 hours of history so the sequence is always full after the first 2 hours.
-
 5. **The daily candle is computed once before market open**: At 09:08-09:09, we query 26 years of daily data from QuestDB, compute Tier 0/1 features, run inference, and cache the results. These cached values are appended to every Tier 2 feature vector (as "regime context" features) for the rest of the day.
 
 ---
@@ -389,35 +386,35 @@ Every 60 seconds, the following pipeline executes:
 │            └────────────────────────────────────────────────────────┘   │
 │                                                                         │
 │  T+10ms:   Tier 3 NOT re-run — read latest cached value from Redis      │
-│            └── tier3:microstructure:{latest} (updated every 100ms)       │
-│                                                                          │
-│  T+48ms:   Tier 4 Meta-Learner fires (~2ms) — READS ONLY, no upstream  │
-│            ├── Redis reads:                                              │
-│            │   tier0:gap:{date}              → cached once today         │
-│            │   tier1:regime:{date}           → cached once today         │
-│            │   tier2:predictions:{ts}        → just computed above       │
-│            │   tier3:microstructure:{latest} → from 100ms loop           │
+│            └── tier3:microstructure:{latest} (updated every 100ms)      │
+│                                                                         │
+│  T+48ms:   Tier 4 Meta-Learner fires (~2ms) — READS ONLY, no upstream   │
+│            ├── Redis reads:                                             │
+│            │   tier0:gap:{date}              → cached once today        │
+│            │   tier1:regime:{date}           → cached once today        │
+│            │   tier2:predictions:{ts}        → just computed above      │
+│            │   tier3:microstructure:{latest} → from 100ms loop          │
 │            ├── Contextual Gating Network (regime-adaptive weighting)    │
 │            └── Output: final_signal, confidence, position_action        │
-│                                                                          │
-│  T+50ms:   Strategy & Risk Layer (~8ms)                                  │
+│                                                                         │
+│  T+50ms:   Strategy & Risk Layer (~8ms)                                 │
 │            ├── Map signal to strategy (LONG_CALL, STRADDLE, etc.)       │
-│            ├── Select optimal strike (delta-based)                       │
+│            ├── Select optimal strike (delta-based)                      │
 │            ├── Position sizing (Kelly / fixed / RL-based)               │
-│            └── Risk validation (Greeks, max loss, leverage)              │
-│                                                                          │
-│  T+58ms:   Execution Layer (~15ms)                                       │
+│            └── Risk validation (Greeks, max loss, leverage)             │
+│                                                                         │
+│  T+58ms:   Execution Layer (~15ms)                                      │
 │            ├── If valid signal: place order via Upstox API              │
 │            ├── If PPO agent enabled: optimize limit price               │
 │            └── Log + audit trail (MongoDB + QuestDB)                    │
-│                                                                          │
-│  T+73ms:   CYCLE COMPLETE (within <80ms target)                          │
-│                                                                          │
-│  Meanwhile (continuous, async):                                          │
+│                                                                         │
+│  T+73ms:   CYCLE COMPLETE (within <80ms target)                         │
+│                                                                         │
+│  Meanwhile (continuous, async):                                         │
 │  ├── Position tracker updates PnL every tick                            │
 │  ├── Exit engine monitors stop-loss, trailing stop, take-profit         │
 │  ├── Circuit breaker monitors drawdown, latency, data staleness         │
-│  └── Prometheus exports latency metrics                                  │
+│  └── Prometheus exports latency metrics                                 │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -551,22 +548,22 @@ IST   PHASE     TIERS          DATA EVENTS              TRADING
 08:00  A        —              GIFT Nifty tick stream     │
                                                           │
 09:00  B1       —              Pre-open session starts    │ STANDBY
-09:08  B2       TIER 0 ═══╗   NSE FREEZE → gap predict  │
-09:09  B3       TIER 1 ═══╣   HMM + PatchTST regime     │
-09:08-          Greeks ═══╝   Synthetic Greeks compute   │
+09:08  B2       TIER 0 ═══╗   NSE FREEZE → gap predict    │
+09:09  B3       TIER 1 ═══╣   HMM + PatchTST regime       │
+09:08-          Greeks ═══╝   Synthetic Greeks compute    │
 09:14                          Overnight candle built     │
-09:15  C        TIER 3 ─╮─╮   MARKET OPENS              │ CAUTION MODE
-09:16  C        TIER 2 ─┤ │   First candle → 117 feat   │
-09:16  C        TIER 4 ─┘ │   Meta-learner first run    ├─First signals
-09:20  C        ALL ·······│   Normal mode activated     ├─Full trading
-              100ms loop──┘                              │
+09:15  C        TIER 3 ─╮─╮   MARKET OPENS                │ CAUTION MODE
+09:16  C        TIER 2 ─┤ │   First candle → 117 feat     │
+09:16  C        TIER 4 ─┘ │   Meta-learner first run      ├─First signals
+09:20  C        ALL ······│   Normal mode activated       ├─Full trading
+              100ms loop──┘                               │
               60s  loop────── Continuous 60s cycle        ├─Steady state
               tick loop────── Exit monitoring             │
                                                           │
-11:30  C        ALL            Mid-morning (lower vol)   ├─Reduced sens.
-13:00  C        ALL            Lunch hour (low volume)   ├─Tight stops
-14:30  C        ALL            Final hour begins         ├─Re-enabled
-15:00  C        ALL            Exit-only mode            ├─No new pos.
+11:30  C        ALL            Mid-morning (lower vol)    ├─Reduced sens.
+13:00  C        ALL            Lunch hour (low volume)    ├─Tight stops
+14:30  C        ALL            Final hour begins          ├─Re-enabled
+15:00  C        ALL            Exit-only mode             ├─No new pos.
 15:20  C        —              Hard close deadline        ├─Force exits
 15:30  D        —              MARKET CLOSES              │ RECONCILE
                                                           │
