@@ -52,15 +52,12 @@ export interface IBrokerAccount {
   /** Fund and Margin from /v2/user/get-funds-and-margin */
   fundMargin: IBrokerAccountFundMargin;
 
-  // ─── Upstox Authentication ────────────────────────────────────────────
+  // ─── Upstox Re-Auth Tracking ──────────────────────────────────────────
 
-  /** Current Upstox access token (Phase 2 daily re-auth) */
-  accessToken?: string;
-
-  /** Upstox access token expiry (tokens expire daily at midnight) */
-  accessTokenExpiresAt?: Date;
-
-  /** Timestamp of the last successful Phase 2 daily re-authentication */
+  /**
+   * Timestamp of the last successful Phase 2 daily re-authentication.
+   * The actual access token lives in better-auth's accounts collection.
+   */
   lastReAuthAt?: Date;
 
   // ─── Trading Controls (user + admin settable) ─────────────────────────

@@ -86,6 +86,18 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
         enabled: true,
         trustedProviders: ["google", "github", "upstox"],
       },
+      additionalFields: {
+        /**
+         * Timestamp of the last successful Phase 2 Upstox daily re-auth.
+         * Stored on the OAuth account record (same record better-auth creates
+         * when user links their Upstox account via Phase 1 genericOAuth).
+         */
+        lastReAuthAt: {
+          type: "date",
+          required: false,
+          input: false,
+        },
+      },
     },
 
     session: {
