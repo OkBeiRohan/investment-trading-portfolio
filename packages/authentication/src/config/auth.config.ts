@@ -67,6 +67,17 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
           required: false,
           input: false,
         },
+        /**
+         * Admin-controlled flag: marks this user's broker account as enrolled
+         * in the live market-feeder data collection pool.
+         * Mirrored from broker_accounts.isDataCollectionEnabled for session access.
+         */
+        isDataCollectionEnabled: {
+          type: "boolean",
+          defaultValue: false,
+          required: true,
+          input: false,
+        },
       },
     },
 

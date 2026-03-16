@@ -121,4 +121,49 @@ export class BrokerAccountRepository {
       })
       .exec();
   }
+
+  /**
+   * Get all broker accounts that are enabled for market-feeder data collection.
+   * Used by market-feeder to build the token pool at startup.
+   */
+  async findDataCollectionEnabledAccounts(): Promise<BrokerAccount[]> {
+    return this.brokerAccountModel
+      .find({
+        isDataCollectionEnabled: true,
+        accessToken: { $exists: true, $ne: null },
+      })
+      .select("+accessToken") // accessToken is excluded by default
+      .exec();
+  }
+
+  /**
+   * Update trading settings for a broker account.
+   * Can be called by users (hasTradingEnabled, tradingSegments) or
+   * admin (isDataCollectionEnabled).
+   */
+  async updateTradingSettings(
+    userId: string,
+    data: Partial<Pick<BrokerAccount, "hasTradingEnabled" | "tradingSegments" | "isDataCollectionEnabled">>
+  ): Promise<BrokerAccount | null> {
+    return this.brokerAccountModel
+      .findOneAndUpdate(
+        { userId, providerId: "upstox" },
+        { ...data, updatedAt: new Date() },
+        { new: true }
+      )
+      .exec();
+  }
+
+  /**
+   * Record timestamp of successful Phase 2 Upstox re-authentication.
+   */
+  async updateLastReAuth(userId: string): Promise<BrokerAccount | null> {
+    return this.brokerAccountModel
+      .findOneAndUpdate(
+        { userId, providerId: "upstox" },
+        { lastReAuthAt: new Date(), updatedAt: new Date() },
+        { new: true }
+      )
+      .exec();
+  }
 }

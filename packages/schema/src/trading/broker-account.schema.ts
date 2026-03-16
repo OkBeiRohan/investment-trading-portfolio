@@ -1,5 +1,5 @@
 import { ISegmentFundMargin } from "../api/upstox/profile/get-fund-margin";
-import { BrokerExchange, BrokerProduct, BrokerOrderType } from "./broker-enums";
+import { BrokerExchange, BrokerProduct, BrokerOrderType, BrokerSegment } from "./broker-enums";
 
 /**
  * Trading Database - Broker Account Collection
@@ -51,6 +51,40 @@ export interface IBrokerAccount {
 
   /** Fund and Margin from /v2/user/get-funds-and-margin */
   fundMargin: IBrokerAccountFundMargin;
+
+  // ─── Upstox Authentication ────────────────────────────────────────────
+
+  /** Current Upstox access token (Phase 2 daily re-auth) */
+  accessToken?: string;
+
+  /** Upstox access token expiry (tokens expire daily at midnight) */
+  accessTokenExpiresAt?: Date;
+
+  /** Timestamp of the last successful Phase 2 daily re-authentication */
+  lastReAuthAt?: Date;
+
+  // ─── Trading Controls (user + admin settable) ─────────────────────────
+
+  /**
+   * Whether the user has enabled live trading for this account.
+   * User can toggle this themselves. Defaults to false (read-only data collection mode).
+   */
+  hasTradingEnabled: boolean;
+
+  /**
+   * Which trading segments are enabled for this account.
+   * Subset of segments returned by Upstox profile (user cannot enable segments
+   * they don't have; admin/user can disable specific segments).
+   * e.g. ["EQ", "FO", "COM"]
+   */
+  tradingSegments: BrokerSegment[];
+
+  /**
+   * Admin-controlled flag: whether this account's token is included in the
+   * market-feeder live data collection pool.
+   * Only Admin users can set this to true.
+   */
+  isDataCollectionEnabled: boolean;
 
   /** Record creation timestamp */
   createdAt: Date;
