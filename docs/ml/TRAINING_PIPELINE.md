@@ -7,6 +7,7 @@
 ## Overview
 
 The training pipeline uses a **standard Python pipeline** (no Kedro required) and implements:
+
 - **CPCV (Combinatorial Purged Cross-Validation)** for robust model evaluation
 - **Multi-horizon label generation** for hierarchical predictions
 - **Direct Redis writes** for the online feature store (no Feast)
@@ -21,40 +22,40 @@ The training pipeline uses a **standard Python pipeline** (no Kedro required) an
 ┌─────────────────────────────────────────────────────────────────┐
 │                    TRAINING PIPELINE                            │
 │                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ 1. DATA EXTRACTION                                        │  │
-│  │    QuestDB → Raw OHLCV + OI → Pandas DataFrame           │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ 1. DATA EXTRACTION                                       │   │
+│  │    QuestDB → Raw OHLCV + OI → Pandas DataFrame           │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ 2. FEATURE ENGINEERING                                    │  │
-│  │    Raw Data → 100+ Features → Redis Feature Store        │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ 2. FEATURE ENGINEERING                                   │   │
+│  │    Raw Data → 100+ Features → Redis Feature Store        │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ 3. LABEL GENERATION                                       │  │
-│  │    Multi-horizon labels (H1-H6) + Purging                │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ 3. LABEL GENERATION                                      │   │
+│  │    Multi-horizon labels (H1-H6) + Purging                │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ 4. CPCV SPLITTING                                         │  │
-│  │    Train/Val/Test with purge + embargo                   │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ 4. CPCV SPLITTING                                        │   │
+│  │    Train/Val/Test with purge + embargo                   │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ 5. MODEL TRAINING                                         │  │
-│  │    Tier 0-3 models + Meta-Learner (Tier 4)              │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ 5. MODEL TRAINING                                        │   │
+│  │    Tier 0-3 models + Meta-Learner (Tier 4)               │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ 6. VALIDATION & METRICS                                   │  │
-│  │    AUC, Sharpe, Accuracy per horizon                     │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ 6. VALIDATION & METRICS                                  │   │
+│  │    AUC, Sharpe, Accuracy per horizon                     │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ 7. ONNX EXPORT & REGISTRY                                 │  │
-│  │    Export → Validate → Register → Deploy                 │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ 7. ONNX EXPORT & REGISTRY                                │   │
+│  │    Export → Validate → Register → Deploy                 │   │
+│  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -67,7 +68,6 @@ The training pipeline uses a **standard Python pipeline** (no Kedro required) an
 **Combinatorial Purged Cross-Validation** addresses two critical issues in financial ML:
 
 1. **Information Leakage**: Labels depend on future prices, so we must remove ("purge") training samples whose label periods overlap with test periods.
-
 2. **Serial Correlation**: Adjacent samples are correlated, so we add an "embargo" buffer after test periods.
 
 ### Implementation
@@ -81,10 +81,10 @@ from itertools import combinations
 class CombinatorialPurgedKFold:
     """
     Combinatorial Purged K-Fold Cross-Validation.
-    
+
     Based on Marcos López de Prado's "Advances in Financial ML".
     """
-    
+
     def __init__(
         self,
         n_splits: int = 5,
@@ -96,7 +96,7 @@ class CombinatorialPurgedKFold:
         self.n_test_splits = n_test_splits
         self.purge_gap = purge_gap
         self.embargo_gap = embargo_gap
-    
+
     def split(
         self,
         X: pd.DataFrame,
@@ -105,27 +105,27 @@ class CombinatorialPurgedKFold:
     ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
         """
         Generate train/test indices with purging and embargo.
-        
+
         Yields:
             train_indices, test_indices for each fold
         """
         n_samples = len(X)
         indices = np.arange(n_samples)
-        
+
         # Split into n_splits sequential groups
         group_size = n_samples // self.n_splits
         groups = [
             indices[i * group_size:(i + 1) * group_size]
             for i in range(self.n_splits)
         ]
-        
+
         # Handle remainder
         if n_samples % self.n_splits:
             groups[-1] = np.concatenate([
-                groups[-1], 
+                groups[-1],
                 indices[self.n_splits * group_size:]
             ])
-        
+
         # Generate all combinations of test groups
         for test_group_indices in combinations(
             range(self.n_splits), self.n_test_splits
@@ -133,33 +133,33 @@ class CombinatorialPurgedKFold:
             test_indices = np.concatenate([
                 groups[i] for i in test_group_indices
             ])
-            
+
             train_indices = []
             for i in range(self.n_splits):
                 if i not in test_group_indices:
                     group = groups[i]
-                    
+
                     # Apply purging: remove samples near test boundaries
                     for test_i in test_group_indices:
                         test_start = groups[test_i][0]
                         test_end = groups[test_i][-1]
-                        
+
                         # Purge before test
                         purge_start = max(0, test_start - self.purge_gap)
                         # Embargo after test
                         embargo_end = min(n_samples, test_end + self.embargo_gap)
-                        
+
                         # Remove purged and embargoed samples
                         group = group[
                             (group < purge_start) | (group > embargo_end)
                         ]
-                    
+
                     train_indices.append(group)
-            
+
             train_indices = np.concatenate(train_indices) if train_indices else np.array([])
-            
+
             yield np.sort(train_indices), np.sort(test_indices)
-    
+
     def get_n_splits(self) -> int:
         """Number of splits generated."""
         from math import comb
@@ -177,31 +177,31 @@ def train_with_cpcv(X, y, timestamps, model_class, model_params):
         purge_gap=60,
         embargo_gap=30
     )
-    
+
     results = []
     models = []
-    
+
     for fold, (train_idx, test_idx) in enumerate(cv.split(X, y, timestamps)):
         print(f"Fold {fold + 1}/{cv.get_n_splits()}")
         print(f"  Train: {len(train_idx)} samples")
         print(f"  Test:  {len(test_idx)} samples")
-        
+
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-        
+
         # Train model
         model = model_class(**model_params)
         model.fit(X_train, y_train)
-        
+
         # Evaluate
         y_pred = model.predict(X_test)
         y_prob = model.predict_proba(X_test)
-        
+
         from sklearn.metrics import accuracy_score, roc_auc_score
-        
+
         acc = accuracy_score(y_test, y_pred)
         auc = roc_auc_score(y_test, y_prob, multi_class='ovr')
-        
+
         results.append({
             'fold': fold,
             'accuracy': acc,
@@ -209,9 +209,9 @@ def train_with_cpcv(X, y, timestamps, model_class, model_params):
             'train_size': len(train_idx),
             'test_size': len(test_idx)
         })
-        
+
         models.append(model)
-    
+
     return pd.DataFrame(results), models
 ```
 
@@ -227,10 +227,10 @@ from typing import List, Dict
 class MultiHorizonLabeler:
     """
     Generate labels for multiple prediction horizons.
-    
+
     Each horizon uses dynamic thresholds based on typical move sizes.
     """
-    
+
     HORIZONS = {
         'H1': {'seconds': 10, 'name': '10s'},
         'H2': {'seconds': 60, 'name': '1min'},
@@ -239,7 +239,7 @@ class MultiHorizonLabeler:
         'H5': {'seconds': 3600, 'name': '1hr'},
         'H6': {'seconds': 21600, 'name': 'EOD'}  # 6 hours ≈ trading session
     }
-    
+
     def __init__(
         self,
         horizons: List[str] = None,
@@ -249,37 +249,37 @@ class MultiHorizonLabeler:
         self.horizons = horizons or list(self.HORIZONS.keys())
         self.base_threshold = base_threshold
         self.n_classes = n_classes
-    
+
     def generate_labels(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Generate multi-horizon labels.
-        
+
         Args:
             df: DataFrame with 'close' column and datetime index
-        
+
         Returns:
             DataFrame with added label columns
         """
         result = df.copy()
-        
+
         # Determine data frequency
         freq_seconds = (df.index[1] - df.index[0]).total_seconds()
-        
+
         for horizon in self.horizons:
             config = self.HORIZONS[horizon]
             periods = int(config['seconds'] / freq_seconds)
-            
+
             if periods < 1:
                 periods = 1
-            
+
             # Forward returns
             result[f'return_{horizon}'] = (
                 df['close'].shift(-periods) / df['close'] - 1
             )
-            
+
             # Dynamic threshold (scales with sqrt of time)
             threshold = self.base_threshold * np.sqrt(periods)
-            
+
             # Classification labels
             if self.n_classes == 3:
                 result[f'label_{horizon}'] = np.select(
@@ -294,16 +294,16 @@ class MultiHorizonLabeler:
                 result[f'label_{horizon}'] = (
                     result[f'return_{horizon}'] > 0
                 ).astype(int)
-            
+
             # Also store threshold for reference
             result[f'threshold_{horizon}'] = threshold
-        
+
         return result
-    
+
     def compute_statistics(self, df: pd.DataFrame) -> Dict:
         """Compute label distribution statistics."""
         stats = {}
-        
+
         for horizon in self.horizons:
             label_col = f'label_{horizon}'
             if label_col in df.columns:
@@ -315,7 +315,7 @@ class MultiHorizonLabeler:
                     'return_mean': df[f'return_{horizon}'].mean() * 100,
                     'return_std': df[f'return_{horizon}'].std() * 100
                 }
-        
+
         return stats
 
 
@@ -380,18 +380,18 @@ nifty_features = FeatureView(
         Feature(name="return_5m", dtype=Float32),
         Feature(name="return_15m", dtype=Float32),
         Feature(name="high_low_range", dtype=Float32),
-        
+
         # Technical Indicators
         Feature(name="rsi_14", dtype=Float32),
         Feature(name="macd", dtype=Float32),
         Feature(name="macd_signal", dtype=Float32),
         Feature(name="bb_width", dtype=Float32),
         Feature(name="atr_percent", dtype=Float32),
-        
+
         # Volume
         Feature(name="volume_ratio", dtype=Float32),
         Feature(name="vwap_distance", dtype=Float32),
-        
+
         # Options
         Feature(name="atm_iv", dtype=Float32),
         Feature(name="pcr_oi", dtype=Float32),
@@ -468,7 +468,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             outputs="raw_data",
             name="extract_data"
         ),
-        
+
         # 2. Feature Engineering
         node(
             func=compute_features,
@@ -476,7 +476,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             outputs="feature_data",
             name="compute_features"
         ),
-        
+
         # 3. Label Generation
         node(
             func=generate_labels,
@@ -484,7 +484,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             outputs="labeled_data",
             name="generate_labels"
         ),
-        
+
         # 4. CPCV Split
         node(
             func=split_data_cpcv,
@@ -492,7 +492,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             outputs="data_splits",
             name="split_data_cpcv"
         ),
-        
+
         # 5. Train Models (parallel)
         node(
             func=train_lightgbm,
@@ -512,7 +512,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             outputs="mamba_models",
             name="train_mamba"
         ),
-        
+
         # 6. Train Meta-Learner
         node(
             func=train_meta_learner,
@@ -520,7 +520,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             outputs="meta_learner",
             name="train_meta_learner"
         ),
-        
+
         # 7. Validation
         node(
             func=validate_models,
@@ -528,7 +528,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             outputs="validation_report",
             name="validate_models"
         ),
-        
+
         # 8. Export to ONNX
         node(
             func=export_to_onnx,
@@ -536,7 +536,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             outputs="onnx_models",
             name="export_to_onnx"
         ),
-        
+
         # 9. Register Models
         node(
             func=register_models,
@@ -620,10 +620,10 @@ class ModelRegistry:
     """
     Model registry with versioning, metrics, and deployment tracking.
     """
-    
+
     def __init__(self, tracking_uri: str = "mlruns"):
         mlflow.set_tracking_uri(tracking_uri)
-    
+
     def register_model(
         self,
         model_name: str,
@@ -634,48 +634,48 @@ class ModelRegistry:
     ) -> str:
         """
         Register a model with metrics and metadata.
-        
+
         Returns:
             run_id: MLflow run ID
         """
         with mlflow.start_run() as run:
             # Log parameters
             mlflow.log_params(params)
-            
+
             # Log metrics
             for horizon, horizon_metrics in metrics.items():
                 for metric_name, value in horizon_metrics.items():
                     mlflow.log_metric(f"{horizon}_{metric_name}", value)
-            
+
             # Log model
             mlflow.log_artifact(model_path)
-            
+
             # Register model
             mlflow.register_model(
                 f"runs:/{run.info.run_id}/{model_path}",
                 model_name
             )
-            
+
             # Tags
             if tags:
                 for key, value in tags.items():
                     mlflow.set_tag(key, value)
-            
+
             return run.info.run_id
-    
+
     def get_latest_model(self, model_name: str, stage: str = "Production"):
         """Get the latest production model."""
         client = mlflow.tracking.MlflowClient()
-        
+
         latest = client.get_latest_versions(model_name, stages=[stage])
         if latest:
             return latest[0]
         return None
-    
+
     def promote_model(
-        self, 
-        model_name: str, 
-        version: int, 
+        self,
+        model_name: str,
+        version: int,
         stage: str = "Production"
     ):
         """Promote a model version to a stage."""
@@ -770,12 +770,12 @@ def export_pytorch_to_onnx(
     quantize: bool = True
 ) -> str:
     """Export PyTorch model to ONNX with optional quantization."""
-    
+
     model.eval()
     dummy_input = torch.randn(*input_shape)
-    
+
     onnx_path = f"{output_path}/{model_name}.onnx"
-    
+
     torch.onnx.export(
         model,
         dummy_input,
@@ -789,17 +789,17 @@ def export_pytorch_to_onnx(
         opset_version=17,
         do_constant_folding=True,
     )
-    
+
     # Validate
     onnx_model = onnx.load(onnx_path)
     onnx.checker.check_model(onnx_model)
-    
+
     # Quantize for faster inference
     if quantize:
         quantized_path = f"{output_path}/{model_name}_quantized.onnx"
         quantize_dynamic(onnx_path, quantized_path, weight_type=QuantType.QUInt8)
         return quantized_path
-    
+
     return onnx_path
 ```
 
@@ -816,19 +816,19 @@ def export_lightgbm_to_onnx(
     output_path: str
 ) -> str:
     """Export LightGBM model to ONNX."""
-    
+
     initial_type = [('input', FloatTensorType([None, num_features]))]
-    
+
     onnx_model = convert_sklearn(
         model,
         initial_types=initial_type,
         target_opset=17
     )
-    
+
     onnx_path = f"{output_path}/{model_name}.onnx"
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
-    
+
     return onnx_path
 ```
 

@@ -45,33 +45,33 @@ Without Tier 1, the system would apply the same strategy in a calm range-bound m
 Tier 0 Output (cached)
       │
 ┌─────────────────────────────────────────────────────────────┐
-│ TIER 1 FEATURE COLLECTOR (43 features)                       │
-│                                                               │
+│ TIER 1 FEATURE COLLECTOR (43 features)                      │
+│                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
 │  │ 26yr Daily   │  │ India VIX    │  │ Tier 0 Output    │   │
 │  │ OHLCV from   │  │ (12yr)       │  │ (3 features)     │   │
 │  │ QuestDB      │  │ from QuestDB │  │ from Redis       │   │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────────┘   │
-│         │                  │                  │               │
+│         │                 │                 │               │
 │  ┌──────┴───────────────────────────────────┘               │
-│  │ + MCX Commodities (8 features, Upstox WS snapshot)        │
-│  └──────────────────────────────────────────────────────┐    │
-│                            ▼                            │    │
-│                   43-feature vector                      │    │
-└─────────────────────────────────────────────────────────┘────┘
+│  │ + MCX Commodities (8 features, Upstox WS snapshot)       │
+│  └──────────────────────────────────────────────────────┐   │
+│                            ▼                            │   │
+│                   43-feature vector                     │   │
+└─────────────────────────────────────────────────────────┘───┘
               │                              │
               ▼                              ▼
 ┌──────────────────────┐     ┌──────────────────────────┐
-│ HMM (4-state)        │     │ PatchTST                  │
-│                      │     │                            │
-│ Input: 32 features   │     │ Input: 512 days × 15 feat │
-│ Output:              │     │ Output:                    │
-│  • regime_state      │     │  • daily_direction         │
-│  • state_probability │     │  • daily_magnitude         │
-│  • transition_prob   │     │  • trend_confidence        │
-└──────────┬───────────┘     └──────────┬─────────────────┘
-           │                             │
-           └──────────┬──────────────────┘
+│ HMM (4-state)        │     │ PatchTST                 │
+│                      │     │                          │
+│ Input: 32 features   │     │ Input: 512 days × 15 feat│
+│ Output:              │     │ Output:                  │
+│  • regime_state      │     │  • daily_direction       │
+│  • state_probability │     │  • daily_magnitude       │
+│  • transition_prob   │     │  • trend_confidence      │
+└──────────┬───────────┘     └──────────┬───────────────┘
+           │                            │
+           └──────────┬─────────────────┘
                       ▼
           ┌───────────────────────┐
           │ TIER 1 OUTPUT         │
@@ -150,20 +150,20 @@ Tier 0 Output (cached)
 
 Expanded from 4 to 12 features to include MCX Upstox real-time data alongside Yahoo Finance overnight data.
 
-| Feature                    | Source            | Rationale                     |
-| -------------------------- | ----------------- | ----------------------------- |
-| `sp500_overnight_return`   | Yahoo Finance     | US market sentiment           |
-| `nasdaq_overnight_return`  | Yahoo Finance     | Tech sector sentiment         |
-| `brent_crude_change`       | Yahoo Finance     | Energy/inflation pressure     |
-| `wti_crude_change`         | Yahoo Finance     | US oil benchmark              |
-| `gold_change`              | Yahoo Finance     | Global safe haven             |
-| `usd_inr_change`           | Yahoo Finance     | Currency pressure on equities |
-| `overnight_news_sentiment` | Finnhub + FinBERT | News-driven fear/greed        |
-| `mcx_crudeoil_change`      | Upstox MCX WS     | Crude Oil INR (domestic proxy)|
-| `mcx_naturalgas_change`    | Upstox MCX WS     | Energy cost (INR)             |
-| `mcx_gold_change`          | Upstox MCX WS     | Gold INR (safe haven INR)     |
-| `mcx_silver_change`        | Upstox MCX WS     | Industrial metals             |
-| `mcx_copper_change`        | Upstox MCX WS     | Global growth proxy (INR)     |
+| Feature                    | Source            | Rationale                      |
+| -------------------------- | ----------------- | ------------------------------ |
+| `sp500_overnight_return`   | Yahoo Finance     | US market sentiment            |
+| `nasdaq_overnight_return`  | Yahoo Finance     | Tech sector sentiment          |
+| `brent_crude_change`       | Yahoo Finance     | Energy/inflation pressure      |
+| `wti_crude_change`         | Yahoo Finance     | US oil benchmark               |
+| `gold_change`              | Yahoo Finance     | Global safe haven              |
+| `usd_inr_change`           | Yahoo Finance     | Currency pressure on equities  |
+| `overnight_news_sentiment` | Finnhub + FinBERT | News-driven fear/greed         |
+| `mcx_crudeoil_change`      | Upstox MCX WS     | Crude Oil INR (domestic proxy) |
+| `mcx_naturalgas_change`    | Upstox MCX WS     | Energy cost (INR)              |
+| `mcx_gold_change`          | Upstox MCX WS     | Gold INR (safe haven INR)      |
+| `mcx_silver_change`        | Upstox MCX WS     | Industrial metals              |
+| `mcx_copper_change`        | Upstox MCX WS     | Global growth proxy (INR)      |
 
 ### Seasonality (3 features)
 

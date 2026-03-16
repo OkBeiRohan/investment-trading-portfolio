@@ -1,7 +1,7 @@
 # Upstox Data Ingestion Guide
 
-**Last Updated**: March 11, 2026  
-**API Version**: Upstox API v2/v3  
+**Last Updated**: March 11, 2026
+**API Version**: Upstox API v2/v3
 **Account**: Upstox Plus (Depth-30, expired instruments, enhanced limits)
 
 ---
@@ -18,23 +18,23 @@ This guide details how to ingest data from Upstox for the ML training pipeline. 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      UPSTOX DATA INGESTION ARCHITECTURE                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
+│                                                                             │
 │  DATA SOURCES                                                               │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ HISTORICAL (REST API)                                                  │  │
+│  │ HISTORICAL (REST API)                                                 │  │
 │  │ ├── /v2/historical-candle        → Active instruments (daily, 1min)   │  │
 │  │ ├── /v3/historical-candle        → Pagination support                 │  │
 │  │ ├── /v2/expired-instruments/...  → Expired F&O                        │  │
 │  │ └── /v2/option/chain             → Option chain snapshot              │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ LIVE (WebSocket)                                                       │  │
+│  │ LIVE (WebSocket)                                                      │  │
 │  │ ├── LTPC                         → Last Traded Price/Qty              │  │
 │  │ ├── Option Greeks                → Delta, Gamma, Theta, Vega, Rho     │  │
 │  │ ├── Full                         → OHLC + Depth-5 + Greeks            │  │
 │  │ └── Full D30 (Plus)              → OHLC + Depth-30 + Greeks           │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -42,20 +42,20 @@ This guide details how to ingest data from Upstox for the ML training pipeline. 
 
 ## Available Data Summary
 
-| Data Type | Start | End | Granularity | API |
-|-----------|-------|-----|-------------|-----|
-| **NIFTY 50 Daily** | Jan 2000 | Today | Daily | historical-candle |
-| **NIFTY 50 1-Min** | Jan 2022 | Today | 1 minute | historical-candle |
-| **51 Constituents** | Jan 2000 | Today | Daily, 1-min | historical-candle |
-| **NIFTY Futures** | Jun 2000 | Today | Daily, 1-min | expired-instruments |
-| **NIFTY Options** | Jun 2001 | Today | Daily, 1-min | expired-instruments |
-| **India VIX** | Feb 2014 | Today | Daily, 1-min | historical-candle |
-| **MCX Crude Oil** | ~2006 | Today | Daily, 1-min | historical-candle + live WS |
-| **MCX Natural Gas** | ~2006 | Today | Daily, 1-min | historical-candle + live WS |
-| **MCX Gold** | ~2003 | Today | Daily, 1-min | historical-candle + live WS |
-| **MCX Silver** | ~2006 | Today | Daily, 1-min | historical-candle + live WS |
-| **MCX Copper** | ~2009 | Today | Daily, 1-min | historical-candle + live WS |
-| **Live Tick** | Today | Ongoing | Tick-by-tick | WebSocket |
+| Data Type           | Start    | End     | Granularity  | API                         |
+| ------------------- | -------- | ------- | ------------ | --------------------------- |
+| **NIFTY 50 Daily**  | Jan 2000 | Today   | Daily        | historical-candle           |
+| **NIFTY 50 1-Min**  | Jan 2022 | Today   | 1 minute     | historical-candle           |
+| **51 Constituents** | Jan 2000 | Today   | Daily, 1-min | historical-candle           |
+| **NIFTY Futures**   | Jun 2000 | Today   | Daily, 1-min | expired-instruments         |
+| **NIFTY Options**   | Jun 2001 | Today   | Daily, 1-min | expired-instruments         |
+| **India VIX**       | Feb 2014 | Today   | Daily, 1-min | historical-candle           |
+| **MCX Crude Oil**   | ~2006    | Today   | Daily, 1-min | historical-candle + live WS |
+| **MCX Natural Gas** | ~2006    | Today   | Daily, 1-min | historical-candle + live WS |
+| **MCX Gold**        | ~2003    | Today   | Daily, 1-min | historical-candle + live WS |
+| **MCX Silver**      | ~2006    | Today   | Daily, 1-min | historical-candle + live WS |
+| **MCX Copper**      | ~2009    | Today   | Daily, 1-min | historical-candle + live WS |
+| **Live Tick**       | Today    | Ongoing | Tick-by-tick | WebSocket                   |
 
 ---
 
@@ -74,6 +74,7 @@ GET /v3/historical-candle/{instrument_key}/{interval}/{to_date}/{from_date}
 **Intervals**: `1minute`, `3minute`, `5minute`, `15minute`, `30minute`, `day`
 
 **Example**:
+
 ```bash
 curl -X GET \
   'https://api.upstox.com/v2/historical-candle/NSE_INDEX|Nifty%2050/day/2026-01-18/2000-01-01' \
@@ -82,12 +83,20 @@ curl -X GET \
 ```
 
 **Response**:
+
 ```json
 {
   "status": "success",
   "data": {
     "candles": [
-      ["2026-01-17T00:00:00+05:30", 23456.75, 23489.10, 23398.45, 23445.60, 234567890]
+      [
+        "2026-01-17T00:00:00+05:30",
+        23456.75,
+        23489.1,
+        23398.45,
+        23445.6,
+        234567890
+      ]
       // [timestamp, open, high, low, close, volume]
     ]
   }
@@ -97,12 +106,14 @@ curl -X GET \
 ### Expired Instruments (F&O)
 
 #### Get Expiry Dates
+
 ```bash
 GET /v2/expired-instruments/expiries/{underlying_key}
 # Example: /v2/expired-instruments/expiries/NSE_INDEX|Nifty%2050
 ```
 
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -111,11 +122,13 @@ GET /v2/expired-instruments/expiries/{underlying_key}
 ```
 
 #### Get Option Contracts for Expiry
+
 ```bash
 GET /v2/expired-instruments/option-contracts/{underlying_key}/{expiry_date}
 ```
 
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -144,17 +157,27 @@ GET /v2/expired-instruments/option-contracts/{underlying_key}/{expiry_date}
 ```
 
 #### Get Historical Candles for Expired Contract
+
 ```bash
 GET /v2/expired-instruments/historical-candle/{instrument_key}/{interval}/{to}/{from}
 ```
 
 **Response**:
+
 ```json
 {
   "status": "success",
   "data": {
     "candles": [
-      ["2022-11-30T00:00:00+05:30", 125.35, 126.8, 122.1, 123.45, 1542678, 184632]
+      [
+        "2022-11-30T00:00:00+05:30",
+        125.35,
+        126.8,
+        122.1,
+        123.45,
+        1542678,
+        184632
+      ]
       // [timestamp, open, high, low, close, volume, open_interest]
     ]
   }
@@ -164,12 +187,14 @@ GET /v2/expired-instruments/historical-candle/{instrument_key}/{interval}/{to}/{
 ### Live WebSocket (Depth-30)
 
 #### Connection
+
 ```bash
 wss://api.upstox.com/feed/market-data-feed
 # Header: Authorization: Bearer {token}
 ```
 
 #### Subscription Request
+
 ```json
 {
   "guid": "unique-request-id",
@@ -182,6 +207,7 @@ wss://api.upstox.com/feed/market-data-feed
 ```
 
 #### Live Feed Response (Full D30)
+
 ```json
 {
   "type": "live_feed",
@@ -198,7 +224,7 @@ wss://api.upstox.com/feed/market-data-feed
           "marketLevel": {
             "bidAskQuote": [
               { "bidQ": "75", "bidP": 213.45, "askQ": "525", "askP": 213.9 },
-              { "bidQ": "225", "bidP": 213.3, "askQ": "150", "askP": 213.95 },
+              { "bidQ": "225", "bidP": 213.3, "askQ": "150", "askP": 213.95 }
               // ... 30 levels
             ]
           },
@@ -211,8 +237,22 @@ wss://api.upstox.com/feed/market-data-feed
           },
           "marketOHLC": {
             "ohlc": [
-              { "interval": "1d", "open": 400, "high": 400, "low": 208.7, "close": 213.75, "vol": "779400" },
-              { "interval": "I1", "open": 210, "high": 212.8, "low": 208.7, "close": 212.15, "vol": "8475" }
+              {
+                "interval": "1d",
+                "open": 400,
+                "high": 400,
+                "low": 208.7,
+                "close": 213.75,
+                "vol": "779400"
+              },
+              {
+                "interval": "I1",
+                "open": 210,
+                "high": 212.8,
+                "low": 208.7,
+                "close": 212.15,
+                "vol": "8475"
+              }
             ]
           },
           "atp": 272.9,
@@ -254,17 +294,17 @@ def fetch_daily_candles(
         'Authorization': f'Bearer {token}',
         'Accept': 'application/json'
     }
-    
+
     response = requests.get(url, headers=headers)
     data = response.json()
-    
+
     if data['status'] != 'success':
         raise Exception(f"API error: {data}")
-    
+
     candles = data['data']['candles']
     df = pd.DataFrame(candles, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'])
-    
+
     return df
 
 
@@ -290,20 +330,20 @@ def fetch_all_expired_options(
     # 1. Get all expiry dates
     expiries_url = f"https://api.upstox.com/v2/expired-instruments/expiries/{underlying_key}"
     headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/json'}
-    
+
     expiries = requests.get(expiries_url, headers=headers).json()['data']
     all_data = []
-    
+
     for expiry in expiries:
         # 2. Get option contracts for this expiry
         contracts_url = f"https://api.upstox.com/v2/expired-instruments/option-contracts/{underlying_key}/{expiry}"
         contracts = requests.get(contracts_url, headers=headers).json()['data']
-        
+
         for contract in contracts:
             # 3. Fetch historical data for each contract
             instrument_key = contract['instrument_key']
             candles_url = f"https://api.upstox.com/v2/expired-instruments/historical-candle/{instrument_key}/day/{expiry}/{from_date}"
-            
+
             candle_data = requests.get(candles_url, headers=headers).json()
             if candle_data['status'] == 'success':
                 df = pd.DataFrame(candle_data['data']['candles'])
@@ -312,7 +352,7 @@ def fetch_all_expired_options(
                 df['expiry'] = contract['expiry']
                 df['lot_size'] = contract['lot_size']
                 all_data.append(df)
-    
+
     return all_data
 ```
 
@@ -333,7 +373,7 @@ async def collect_ticks(
     """
     uri = "wss://api.upstox.com/feed/market-data-feed"
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     async with websockets.connect(uri, extra_headers=headers) as ws:
         # Subscribe with Full D30 mode
         subscribe_msg = {
@@ -345,7 +385,7 @@ async def collect_ticks(
             }
         }
         await ws.send(json.dumps(subscribe_msg))
-        
+
         async for message in ws:
             data = json.loads(message)
             if data.get('type') == 'live_feed':
@@ -372,7 +412,7 @@ async def write_tick_to_questdb(
     ltpc = market_ff.get('ltpc', {})
     greeks = market_ff.get('optionGreeks', {})
     depth = market_ff.get('marketLevel', {}).get('bidAskQuote', [])
-    
+
     with Sender.from_conf("http::addr=localhost:9000") as sender:
         sender.row(
             'tick_data',
@@ -407,14 +447,14 @@ async def write_tick_to_questdb(
 
 ### API Rate Limits
 
-| Endpoint | Rate Limit | Notes |
-|----------|------------|-------|
-| Historical Candles | 25/sec, 250/min | Per user |
-| Expired Instruments | 25/sec, 250/min | Plus account only |
-| WebSocket | **5 connections** | Upstox Plus (was 3) |
-| D30 Subscriptions | **50 instruments** | Per connection, Plus |
-| LTPC Subscriptions | **5000 instruments** | Per connection |
-| Option Greeks Sub | **2000 instruments** | Per connection |
+| Endpoint            | Rate Limit           | Notes                |
+| ------------------- | -------------------- | -------------------- |
+| Historical Candles  | 25/sec, 250/min      | Per user             |
+| Expired Instruments | 25/sec, 250/min      | Plus account only    |
+| WebSocket           | **5 connections**    | Upstox Plus (was 3)  |
+| D30 Subscriptions   | **50 instruments**   | Per connection, Plus |
+| LTPC Subscriptions  | **5000 instruments** | Per connection       |
+| Option Greeks Sub   | **2000 instruments** | Per connection       |
 
 ### Data Considerations
 
@@ -428,6 +468,7 @@ async def write_tick_to_questdb(
 ## Instrument Keys
 
 ### Index
+
 ```
 NSE_INDEX|Nifty 50
 NSE_INDEX|Nifty Bank
@@ -436,18 +477,21 @@ NSE_INDEX|Nifty IT
 ```
 
 ### Futures (Current)
+
 ```
 NSE_FO|NIFTY25JANFUT
 NSE_FO|NIFTY25FEBFUT
 ```
 
 ### Options (Example)
+
 ```
 NSE_FO|NIFTY2501923000CE
 NSE_FO|NIFTY2501922500PE
 ```
 
 ### Constituent Stocks
+
 ```
 NSE_EQ|RELIANCE
 NSE_EQ|TCS
@@ -462,23 +506,25 @@ NSE_EQ|HDFCBANK
 MCX instruments are available on Upstox under the `MCX_FO` exchange segment. These are **futures contracts** — the platform always subscribes to the **nearest active contract** (front month), auto-rolled by `InstrumentSyncService` on expiry.
 
 ### Instrument Key Format
+
 ```
 MCX_FO|{SYMBOL}{YYMM}FUT
 ```
 
 ### Active Contracts (Example, March 2026)
 
-| Instrument | Upstox Key | Lot Size | Tick Size | Trading Hours (IST) |
-|------------|-----------|----------|-----------|--------------------|
-| Crude Oil | `MCX_FO|CRUDEOIL2603FUT` | 100 bbl | 0.01 | 09:00 – 23:30 |
-| Natural Gas | `MCX_FO|NATURALGAS2603FUT` | 1250 mmBtu | 0.10 | 09:00 – 23:30 |
-| Gold | `MCX_FO|GOLD2604FUT` | 100 gm | 1.00 | 09:00 – 23:30 |
-| Silver | `MCX_FO|SILVER2603FUT` | 30 kg | 1.00 | 09:00 – 23:30 |
-| Copper | `MCX_FO|COPPER2603FUT` | 2500 kg | 0.05 | 09:00 – 17:00 |
+| Instrument  | Upstox Key | Lot Size           | Tick Size  | Trading Hours (IST) |
+| ----------- | ---------- | ------------------ | ---------- | ------------------- |
+| Crude Oil   | `MCX_FO    | CRUDEOIL2603FUT`   | 100 bbl    | 0.01                |
+| Natural Gas | `MCX_FO    | NATURALGAS2603FUT` | 1250 mmBtu | 0.10                |
+| Gold        | `MCX_FO    | GOLD2604FUT`       | 100 gm     | 1.00                |
+| Silver      | `MCX_FO    | SILVER2603FUT`     | 30 kg      | 1.00                |
+| Copper      | `MCX_FO    | COPPER2603FUT`     | 2500 kg    | 0.05                |
 
 > ⚠️ **Note**: Copper and Agri commodities close at 17:00 IST. Energy and Metals continue until 23:30 IST.
 
 ### Historical Data Fetch (MCX)
+
 ```bash
 # Same API as NSE instruments
 GET /v2/historical-candle/MCX_FO|CRUDEOIL2603FUT/day/2026-03-16/2006-01-01
@@ -490,6 +536,7 @@ GET /v2/historical-candle/MCX_FO|CRUDEOIL2603FUT/1minute/2026-03-16/2026-01-01
 ### Expired MCX Contracts
 
 Expired MCX futures contracts are available via the same expired-instruments API:
+
 ```bash
 # Get all Crude Oil expiry dates
 GET /v2/expired-instruments/expiries/MCX_FO|CRUDEOIL
