@@ -44,9 +44,8 @@ Without Tier 1, the system would apply the same strategy in a calm range-bound m
 ```
 Tier 0 Output (cached)
       │
-      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ TIER 1 FEATURE COLLECTOR (32 features)                       │
+│ TIER 1 FEATURE COLLECTOR (43 features)                       │
 │                                                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
 │  │ 26yr Daily   │  │ India VIX    │  │ Tier 0 Output    │   │
@@ -54,10 +53,12 @@ Tier 0 Output (cached)
 │  │ QuestDB      │  │ from QuestDB │  │ from Redis       │   │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────────┘   │
 │         │                  │                  │               │
-│         └──────────────────┼──────────────────┘               │
-│                            ▼                                  │
-│                   32-feature vector                            │
-└─────────────────────────────────────────────────────────────┘
+│  ┌──────┴───────────────────────────────────┘               │
+│  │ + MCX Commodities (8 features, Upstox WS snapshot)        │
+│  └──────────────────────────────────────────────────────┐    │
+│                            ▼                            │    │
+│                   43-feature vector                      │    │
+└─────────────────────────────────────────────────────────┘────┘
               │                              │
               ▼                              ▼
 ┌──────────────────────┐     ┌──────────────────────────┐
@@ -88,7 +89,7 @@ Tier 0 Output (cached)
 
 ---
 
-## Input Features (32)
+## Input Features (43)
 
 ### Returns (5 features)
 
@@ -145,14 +146,24 @@ Tier 0 Output (cached)
 | `expected_volatility` | Tier 0 classification | Opening volatility expectation |
 | `opening_bias`        | Tier 0 bias score     | Directional lean for the day   |
 
-### Global Macro (4 features)
+### Global Macro (12 features) — **EXPANDED**
+
+Expanded from 4 to 12 features to include MCX Upstox real-time data alongside Yahoo Finance overnight data.
 
 | Feature                    | Source            | Rationale                     |
 | -------------------------- | ----------------- | ----------------------------- |
 | `sp500_overnight_return`   | Yahoo Finance     | US market sentiment           |
+| `nasdaq_overnight_return`  | Yahoo Finance     | Tech sector sentiment         |
 | `brent_crude_change`       | Yahoo Finance     | Energy/inflation pressure     |
+| `wti_crude_change`         | Yahoo Finance     | US oil benchmark              |
+| `gold_change`              | Yahoo Finance     | Global safe haven             |
 | `usd_inr_change`           | Yahoo Finance     | Currency pressure on equities |
 | `overnight_news_sentiment` | Finnhub + FinBERT | News-driven fear/greed        |
+| `mcx_crudeoil_change`      | Upstox MCX WS     | Crude Oil INR (domestic proxy)|
+| `mcx_naturalgas_change`    | Upstox MCX WS     | Energy cost (INR)             |
+| `mcx_gold_change`          | Upstox MCX WS     | Gold INR (safe haven INR)     |
+| `mcx_silver_change`        | Upstox MCX WS     | Industrial metals             |
+| `mcx_copper_change`        | Upstox MCX WS     | Global growth proxy (INR)     |
 
 ### Seasonality (3 features)
 
@@ -212,7 +223,7 @@ class RegimeHMM:
     Trained on 26 years of daily data with emission = 32-feature vectors.
     """
 
-    def __init__(self, n_states: int = 4, n_features: int = 32):
+    def __init__(self, n_states: int = 4, n_features: int = 43):  # 43 features (was 32)
         self.model = hmm.GaussianHMM(
             n_components=n_states,
             covariance_type='full',    # Full covariance for correlated features
@@ -231,7 +242,7 @@ class RegimeHMM:
         Train HMM on daily feature matrix.
 
         Args:
-            features: [N_days, 32] feature matrix (all trading days)
+            features: [N_days, 43] feature matrix (all trading days)  # 43 features
             lengths: Sequence lengths if training on multiple contiguous blocks
         """
         # Standardize features
