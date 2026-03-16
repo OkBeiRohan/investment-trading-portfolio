@@ -36,14 +36,15 @@ All features feed into the **5-tier model hierarchy**:
 │                     100+ features (batch, for training)                      │
 │                                                                              │
 │  Inputs:                                                                     │
-│  ├── NIFTY Future (OHLCV + OI + Depth-30)                                   │
-│  ├── 50 Constituents (LTP + VWAP + Volume)                                  │
-│  ├── Option Chain (ATM ± 10 strikes × 2 types = 40 options)                │
-│  ├── India VIX                                                               │
-│  ├── Global Markets (GIFT Nifty, ES, NQ, Brent, Gold, USD/INR)             │
-│  └── News Sentiment (Finnhub + FinBERT)                                     │
-│                                                                              │
-│  Outputs: Float32Array(100+) stored in instrument_features table            │
+  ├── NIFTY Future (OHLCV + OI + Depth-30)                                   │
+  ├── 50 Constituents (LTP + VWAP + Volume)                                  │
+  ├── Option Chain (ATM ± 10 strikes × 2 types = 40 options)                │
+  ├── India VIX                                                               │
+  ├── Global Markets (GIFT Nifty, ES, NQ, Brent, Gold, USD/INR)             │
+  ├── MCX Commodities (Crude Oil, Natural Gas, Gold MCX, Silver, Copper)     │
+  └── News Sentiment (Finnhub + FinBERT)                                     │
+  │                                                                            │
+  Outputs: Float32Array(100+) stored in instrument_features table            │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -255,8 +256,8 @@ Computed from Yahoo Finance / Alpha Vantage data. Forward-filled during Indian m
 | 107 | `brent_crude_change` | Brent crude overnight % change | [-0.10, 0.10] | Oil impact |
 | 108 | `wti_crude_change` | WTI crude overnight % change | [-0.10, 0.10] | Oil impact |
 | 109 | `brent_wti_spread` | Brent - WTI price spread | [-5, 15] | Supply signal |
-| 110 | `gold_change` | Gold overnight % change | [-0.05, 0.05] | Safe haven |
-| 111 | `silver_change` | Silver overnight % change | [-0.08, 0.08] | Metals |
+| 110 | `gold_change` | Gold (XAU/USD) overnight % change | [-0.05, 0.05] | Safe haven (global) |
+| 111 | `silver_change` | Silver (XAG/USD) overnight % change | [-0.08, 0.08] | Metals (global) |
 | 112 | `usd_inr_change` | USD/INR overnight % change | [-0.02, 0.02] | FX impact |
 | 113 | `us_10y_yield_change` | US 10Y Treasury yield change | [-0.05, 0.05] | Rate regime |
 
@@ -275,14 +276,62 @@ Computed at 9:08 AM from pre-open session data + Tier 0 model output.
 
 ---
 
+## Category 14: MCX Global Commodities (8 Features) — **NEW**
+
+> **Source**: Upstox WebSocket (real-time during MCX hours: 09:00–23:30 IST, Copper/Agri until 17:00 IST). These are LIVE Upstox instrument ticks — not Yahoo Finance estimates. Forward-filled outside MCX hours using previous session close.
+
+MCX instruments available via Upstox (`MCX_FO|*`). The **nearest active contract** is used for each commodity (auto-rolled by `InstrumentSyncService` on expiry).
+
+| # | Feature | Formula | Upstox Instrument Key | Range | Purpose |
+|---|---------|---------|----------------------|-------|---------|
+| 118 | `mcx_crudeoil_change` | Intraday % change from prev close | `MCX_FO|CRUDEOIL{expiry}FUT` | [-0.10, 0.10] | Crude oil (INR-priced, domestic demand signal) |
+| 119 | `mcx_naturalgas_change` | Intraday % change from prev close | `MCX_FO|NATURALGAS{expiry}FUT` | [-0.15, 0.15] | Nat gas (energy cost signal) |
+| 120 | `mcx_gold_change` | Intraday % change from prev close | `MCX_FO|GOLD{expiry}FUT` | [-0.05, 0.05] | Gold MCX (INR-priced, safe haven domestic) |
+| 121 | `mcx_silver_change` | Intraday % change from prev close | `MCX_FO|SILVER{expiry}FUT` | [-0.08, 0.08] | Silver MCX (industrial metals) |
+| 122 | `mcx_copper_change` | Intraday % change from prev close | `MCX_FO|COPPER{expiry}FUT` | [-0.08, 0.08] | Copper MCX (global growth proxy) |
+| 123 | `brent_mcx_crudeoil_spread` | Brent price (USD) - MCX Crude (INR-adj) | derived | [-500, 500] | Import cost vs domestic |
+| 124 | `mcx_commodity_breadth` | Count(MCX instruments up) / 5 | derived | [0, 1] | Commodity market breadth |
+| 125 | `mcx_intraday_regime` | Rolling zscore of all MCX changes | derived | [-3, 3] | Risk-on/off commodity regime |
+
+### Why MCX over NYMEX/ICE for Indian market features?
+
+- **INR-denomination**: MCX prices reflect USD/INR exchange + India import duties + domestic demand — a direct input cost signal for Indian companies
+- **Same session overlap**: MCX Energy (09:00–23:30 IST) overlaps Indian equity session entirely
+- **Already streaming**: As MCX instruments are already subscribed for admin data collection, there is zero additional WebSocket cost
+- **Model relevance**: Crude Oil MCX ↔ airlines, paints, OMCs; Gold MCX ↔ jewellery stocks, jewellery exports; Copper MCX ↔ capital goods, infrastructure
+
+### MCX Feature Ingestion Pipeline
+
+```
+Upstox WebSocket (MCX_FO|* instruments)
+  │
+  ▼
+market-feeder: TickRouter → MCX Handler (new)
+  │  - Calculates intraday % change from prev_close
+  │  - Updates rolling OHLCV in memory
+  │
+  ▼
+GlobalDataService.getMCXSnapshot()
+  │  - Returns latest tick states for 5 MCX instruments
+  │  - Falls back to Yahoo Finance (Brent as proxy for Crude) if MCX session closed
+  │
+  ▼
+Feature Computation: mcx_* features injected into FeatureInput
+  │
+  ▼
+QuestDB: stored in instrument_features table (same as other batch features)
+```
+
+---
+
 ## Model Feature Mapping (Updated)
 
 | Model | Features Used | Count |
 |-------|---------------|-------|
-| **Tier 0 XGBoost** | Global Macro (12) + Pre-Market (4) | 16 |
-| **Tier 1 HMM** | Price Structure + MAs + Volatility + Breadth + Global + Tier 0 output | ~35 |
+| **Tier 0 XGBoost** | Global Macro (12) + MCX Commodities (8) + Pre-Market (4) | 24 |
+| **Tier 1 HMM** | Price Structure + MAs + Volatility + Breadth + Global + MCX + Tier 0 output | ~43 |
 | **Tier 1 PatchTST** | Daily sequence (512 days × 15 features) | 15×512 |
-| **Tier 2 LightGBM** | All except Order Flow | ~100 |
+| **Tier 2 LightGBM** | All except Order Flow | ~116 |
 | **Tier 2 TFT** | Time-series (120 timesteps × 20 features) | 20×120 |
 | **Tier 2 Mamba** | Time-series (120 timesteps × 20 features) | 20×120 |
 | **Tier 3 LiT** | Order Flow (8) + LOB depth-30 raw | 14 |

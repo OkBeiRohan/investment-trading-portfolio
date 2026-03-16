@@ -50,6 +50,11 @@ This guide details how to ingest data from Upstox for the ML training pipeline. 
 | **NIFTY Futures** | Jun 2000 | Today | Daily, 1-min | expired-instruments |
 | **NIFTY Options** | Jun 2001 | Today | Daily, 1-min | expired-instruments |
 | **India VIX** | Feb 2014 | Today | Daily, 1-min | historical-candle |
+| **MCX Crude Oil** | ~2006 | Today | Daily, 1-min | historical-candle + live WS |
+| **MCX Natural Gas** | ~2006 | Today | Daily, 1-min | historical-candle + live WS |
+| **MCX Gold** | ~2003 | Today | Daily, 1-min | historical-candle + live WS |
+| **MCX Silver** | ~2006 | Today | Daily, 1-min | historical-candle + live WS |
+| **MCX Copper** | ~2009 | Today | Daily, 1-min | historical-candle + live WS |
 | **Live Tick** | Today | Ongoing | Tick-by-tick | WebSocket |
 
 ---
@@ -449,6 +454,72 @@ NSE_EQ|TCS
 NSE_EQ|HDFCBANK
 ... (50 symbols)
 ```
+
+---
+
+## MCX Commodity Instruments (Upstox)
+
+MCX instruments are available on Upstox under the `MCX_FO` exchange segment. These are **futures contracts** — the platform always subscribes to the **nearest active contract** (front month), auto-rolled by `InstrumentSyncService` on expiry.
+
+### Instrument Key Format
+```
+MCX_FO|{SYMBOL}{YYMM}FUT
+```
+
+### Active Contracts (Example, March 2026)
+
+| Instrument | Upstox Key | Lot Size | Tick Size | Trading Hours (IST) |
+|------------|-----------|----------|-----------|--------------------|
+| Crude Oil | `MCX_FO|CRUDEOIL2603FUT` | 100 bbl | 0.01 | 09:00 – 23:30 |
+| Natural Gas | `MCX_FO|NATURALGAS2603FUT` | 1250 mmBtu | 0.10 | 09:00 – 23:30 |
+| Gold | `MCX_FO|GOLD2604FUT` | 100 gm | 1.00 | 09:00 – 23:30 |
+| Silver | `MCX_FO|SILVER2603FUT` | 30 kg | 1.00 | 09:00 – 23:30 |
+| Copper | `MCX_FO|COPPER2603FUT` | 2500 kg | 0.05 | 09:00 – 17:00 |
+
+> ⚠️ **Note**: Copper and Agri commodities close at 17:00 IST. Energy and Metals continue until 23:30 IST.
+
+### Historical Data Fetch (MCX)
+```bash
+# Same API as NSE instruments
+GET /v2/historical-candle/MCX_FO|CRUDEOIL2603FUT/day/2026-03-16/2006-01-01
+
+# For 1-minute intraday
+GET /v2/historical-candle/MCX_FO|CRUDEOIL2603FUT/1minute/2026-03-16/2026-01-01
+```
+
+### Expired MCX Contracts
+
+Expired MCX futures contracts are available via the same expired-instruments API:
+```bash
+# Get all Crude Oil expiry dates
+GET /v2/expired-instruments/expiries/MCX_FO|CRUDEOIL
+
+# Get historical data for expired contract
+GET /v2/expired-instruments/historical-candle/MCX_FO|CRUDEOIL{expiry}/day/{to}/{from}
+```
+
+### Live WebSocket Subscription (MCX)
+
+MCX instruments use `ltpc` mode (LTP only, no Greeks) since they are futures without options chain:
+
+```json
+{
+  "guid": "mcx-sub-1",
+  "method": "sub",
+  "data": {
+    "mode": "ltpc",
+    "instrumentKeys": [
+      "MCX_FO|CRUDEOIL2603FUT",
+      "MCX_FO|NATURALGAS2603FUT",
+      "MCX_FO|GOLD2604FUT",
+      "MCX_FO|SILVER2603FUT",
+      "MCX_FO|COPPER2603FUT"
+    ]
+  }
+}
+```
+
+> 📌 MCX instruments use `ltpc` (not `full` or `full_d30`) since depth data is not required for commodity features — only LTP and volume are needed for the intraday change calculation.
 
 ---
 
