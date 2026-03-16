@@ -1,6 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BrokerAccountRepository } from '@repo/database';
+import { AccountRepository, BrokerAccountRepository } from '@repo/database';
 
 /**
  * Upstox Phase 2 Re-Authentication Service
@@ -11,9 +11,11 @@ import { BrokerAccountRepository } from '@repo/database';
  *  2. API generates an Upstox authorization URL (this service)
  *  3. User is redirected to Upstox to approve
  *  4. Upstox redirects back to our callback with `code` + `state`
- *  5. We exchange `code` for `access_token` and store it
+ *  5. We exchange `code` for `access_token` and store it via AccountRepository
+ *     (the same better-auth accounts collection that Phase 1 OAuth created)
  *
- * This is separate from Phase 1 (initial account linking via better-auth genericOAuth).
+ * Token storage: better-auth's accounts collection (not broker_accounts).
+ * Re-auth tracking: broker_accounts.lastReAuthAt is updated after success.
  */
 @Injectable()
 export class UpstoxReAuthService {
@@ -25,9 +27,10 @@ export class UpstoxReAuthService {
     'https://api.upstox.com/v2/login/authorization/token';
 
   constructor(
+    private readonly accountRepository: AccountRepository,
     private readonly brokerAccountRepository: BrokerAccountRepository,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   /**
    * Build the Upstox Phase 2 authorization URL.
@@ -35,9 +38,7 @@ export class UpstoxReAuthService {
    * the account on callback without a session.
    */
   buildReAuthUrl(userId: string): string {
-    const clientId = this.configService.getOrThrow<string>(
-      'upstox.clientId',
-    );
+    const clientId = this.configService.getOrThrow<string>('upstox.clientId');
     const redirectUri = this.configService.getOrThrow<string>(
       'upstox.reAuthRedirectUri',
     );
@@ -46,7 +47,7 @@ export class UpstoxReAuthService {
       response_type: 'code',
       client_id: clientId,
       redirect_uri: redirectUri,
-      state: userId, // Encode userId so callback can look up the account
+      state: userId,
     });
 
     return `${this.UPSTOX_AUTH_URL}?${params.toString()}`;
@@ -54,7 +55,6 @@ export class UpstoxReAuthService {
 
   /**
    * Exchange Phase 2 authorization code for an access token.
-   * Called by the callback controller after Upstox redirects back.
    */
   async exchangeCodeForToken(
     code: string,
@@ -94,10 +94,9 @@ export class UpstoxReAuthService {
 
     const data = (await response.json()) as {
       access_token: string;
-      expires_in: number; // seconds
+      expires_in?: number;
     };
 
-    // Upstox tokens expire at midnight IST — expires_in is approximate
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + (data.expires_in ?? 86400));
 
@@ -105,8 +104,9 @@ export class UpstoxReAuthService {
   }
 
   /**
-   * Complete Phase 2 re-auth: store new token + update lastReAuthAt.
-   * Called after successful code exchange.
+   * Complete Phase 2 re-auth:
+   * 1. Update access token on the better-auth Account record (providerId=upstox)
+   * 2. Record lastReAuthAt on broker_accounts
    */
   async completeReAuth(
     userId: string,
@@ -115,12 +115,25 @@ export class UpstoxReAuthService {
   ): Promise<void> {
     this.logger.log(`Completing Phase 2 re-auth for userId: ${userId}`);
 
-    await this.brokerAccountRepository.updateAccessToken(
+    // 1. Update the token in better-auth's accounts collection
+    const account = await this.accountRepository.findOne({
       userId,
-      accessToken,
-      expiresAt,
+      providerId: 'upstox',
+    });
+
+    if (!account) {
+      throw new UnauthorizedException(
+        `No Upstox account linked for user ${userId}`,
+      );
+    }
+
+    // Update by filter (Mongoose document _id isn't always typed as `id`)
+    await this.accountRepository.updateMany(
+      { userId, providerId: 'upstox' },
+      { accessToken, accessTokenExpiresAt: expiresAt },
     );
 
+    // 2. Record lastReAuthAt on broker_accounts
     await this.brokerAccountRepository.updateLastReAuth(userId);
 
     this.logger.log(
