@@ -9,14 +9,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { UpstoxReAuthService } from './upstox-reauth.service';
+import { UpstoxReAuthService } from '@repo/market-sdk';
 import { ConfigService } from '@nestjs/config';
 
 /**
- * Upstox Phase 2 Re-Authentication Controller
+ * Upstox Phase 2 Re-Authentication Controller (API Gateway layer)
  *
- * Handles the daily re-authentication flow for Upstox tokens.
- * Upstox tokens expire at midnight every day; users must re-authorize.
+ * Thin HTTP controller — delegates all business logic to
+ * UpstoxReAuthService in @repo/market-sdk.
  */
 @Controller('upstox/reauth')
 export class UpstoxReAuthController {
@@ -27,6 +27,18 @@ export class UpstoxReAuthController {
     private readonly configService: ConfigService,
   ) {}
 
+  private get clientId(): string {
+    return this.configService.getOrThrow<string>('upstox.clientId');
+  }
+
+  private get clientSecret(): string {
+    return this.configService.getOrThrow<string>('upstox.clientSecret');
+  }
+
+  private get redirectUri(): string {
+    return this.configService.getOrThrow<string>('upstox.reAuthRedirectUri');
+  }
+
   /**
    * Generate a Phase 2 Upstox authorization URL for a user.
    * Called by the web app when user clicks "Re-Authenticate".
@@ -35,20 +47,21 @@ export class UpstoxReAuthController {
    */
   @Get('url')
   @HttpCode(HttpStatus.OK)
-  getReAuthUrl(
-    @Query('userId') userId: string,
-  ): { url: string } {
+  getReAuthUrl(@Query('userId') userId: string): { url: string } {
     if (!userId) {
       throw new UnauthorizedException('userId is required');
     }
 
-    const url = this.reAuthService.buildReAuthUrl(userId);
+    const url = this.reAuthService.buildReAuthUrl(
+      userId,
+      this.clientId,
+      this.redirectUri,
+    );
     return { url };
   }
 
   /**
    * Phase 2 OAuth callback — Upstox redirects here after user approves.
-   * Exchanges `code` for an access token, stores it, then redirects to web app.
    *
    * @route GET /api/upstox/reauth/callback?code=&state=
    */
@@ -67,9 +80,7 @@ export class UpstoxReAuthController {
     const errorRedirect = `${webAppUrl}/account/upstox?reauth=error`;
 
     if (error) {
-      this.logger.warn(
-        `Phase 2 re-auth rejected by user or Upstox: ${error} (userId: ${userId})`,
-      );
+      this.logger.warn(`Phase 2 re-auth rejected: ${error} (userId: ${userId})`);
       res.redirect(errorRedirect);
       return;
     }
@@ -82,13 +93,16 @@ export class UpstoxReAuthController {
 
     try {
       const { accessToken, expiresAt } =
-        await this.reAuthService.exchangeCodeForToken(code, userId);
+        await this.reAuthService.exchangeCodeForToken(
+          code,
+          userId,
+          this.clientId,
+          this.clientSecret,
+          this.redirectUri,
+        );
 
       await this.reAuthService.completeReAuth(userId, accessToken, expiresAt);
 
-      this.logger.log(
-        `Phase 2 re-auth complete for ${userId}, redirecting to web app`,
-      );
       res.redirect(successRedirect);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
