@@ -262,6 +262,7 @@ AppModule
 |  +-- FUTURES  --> Futures Handler (NIFTY front-month future)          |
 |  +-- OPTIONS  --> Options Handler (~100 CE/PE strikes)                |
 |  +-- EQUITY   --> Constituent Handler (50 NIFTY 50 stocks)            |
+|  +-- MCX      --> MCX Handler (Crude Oil, Nat Gas, Gold, Silver, Cu)  |
 +-----------------------------------------------------------------------+
                           |
           +---------------+---------------+
@@ -346,7 +347,17 @@ AppModule
 | NIFTY CE Options            | ~50      | `NSE_FO\|NIFTY{expiry}{strike}CE` | Full (Greeks, OI) |
 | NIFTY PE Options            | ~50      | `NSE_FO\|NIFTY{expiry}{strike}PE` | Full (Greeks, OI) |
 | India VIX                   | 1        | `NSE_INDEX\|India VIX`            | LTP only          |
-| **Total**                   | **~152** |                                   |                   |
+| MCX Commodities             | 5        | `MCX_FO\|{COMMODITY}{expiry}FUT`  | LTPC (LTP + vol)  |
+| **Total**                   | **~157** |                                   |                   |
+
+**MCX instruments subscribed** (nearest active contract, auto-rolled on expiry):
+- `MCX_FO|CRUDEOIL{expiry}FUT` — Crude Oil
+- `MCX_FO|NATURALGAS{expiry}FUT` — Natural Gas
+- `MCX_FO|GOLD{expiry}FUT` — Gold
+- `MCX_FO|SILVER{expiry}FUT` — Silver
+- `MCX_FO|COPPER{expiry}FUT` — Copper
+
+MCX instruments use `ltpc` mode (not `full_d30`) since only LTP + volume delta is needed for intraday % change features. This costs **0 additional connections** — MCX keys are bundled into the existing `SocketPoolService` pool alongside NSE instruments.
 
 Options strikes are selected by the `StrikeSelectorModule` based on ATM proximity and liquidity. Strikes are re-selected on expiry roll (typically weekly Thursday) and intraday if spot moves significantly.
 

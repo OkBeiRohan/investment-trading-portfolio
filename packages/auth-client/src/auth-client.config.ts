@@ -75,6 +75,16 @@ export const createAuthClientInstance = (config: BetterAuthClientOptions) => {
             required: false,
             input: false,
           },
+          /**
+           * Admin-controlled data-collection enrollment flag.
+           * Mirrors broker_accounts.isDataCollectionEnabled for session access.
+           */
+          isDataCollectionEnabled: {
+            type: "boolean",
+            defaultValue: false,
+            required: true,
+            input: false,
+          },
         },
       }),
     ],

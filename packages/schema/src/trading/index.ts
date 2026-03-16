@@ -31,3 +31,6 @@ export * from "./market-data.schema";
 export * from "./portfolio.schema";
 export * from "./websocket.schema";
 export * from "./api.schema";
+
+// MCX commodity schemas
+export * from "./mcx.schema";

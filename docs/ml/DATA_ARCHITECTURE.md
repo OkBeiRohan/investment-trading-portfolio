@@ -22,8 +22,16 @@
 │  │  1-Min OHLCV (4 Years: 2022-2026)                                   │    │
 │  │  └── All above instruments (~1M candles/instrument)                 │    │
 │  │  Live Tick (Today onwards)                                          │    │
-│  │  ├── Full Depth-30, Greeks, IV, OI                                  │    │
+│  │  ├── Full Depth-30, Greeks, IV, OI (NSE_FO/NSE_EQ/NSE_INDEX)        │    │
 │  │  └── Option chain with all strikes                                  │    │
+│  ├─────────────────────────────────────────────────────────────────────┤    │
+│  │  MCX Commodities (Upstox, 09:00–23:30 IST) — NEW                    │    │
+│  │  ├── Crude Oil (MCX_FO|CRUDEOIL*): ~20yr history, live WS          │    │
+│  │  ├── Natural Gas (MCX_FO|NATURALGAS*): ~20yr history, live WS      │    │
+│  │  ├── Gold (MCX_FO|GOLD*): ~23yr history, live WS                   │    │
+│  │  ├── Silver (MCX_FO|SILVER*): ~20yr history, live WS              │    │
+│  │  └── Copper (MCX_FO|COPPER*): ~17yr history, live WS              │    │
+│  │      Mode: LTPC (LTP + volume only, no L2 depth needed)            │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
@@ -35,7 +43,7 @@
 │  │  ├── S&P 500 E-mini (ES), Nasdaq 100 E-mini (NQ)                   │    │
 │  │  ├── FTSE 100, Nikkei 225                                           │    │
 │  │  └── Hang Seng, DAX                                                 │    │
-│  │  Commodities                                                        │    │
+│  │  Commodities (Reference prices, overnight only)                     │    │
 │  │  ├── Brent Crude, WTI Crude                                         │    │
 │  │  ├── Gold (GC), Silver (SI)                                         │    │
 │  │  └── Brent-WTI Spread (engineered)                                  │    │
@@ -68,7 +76,13 @@
 | NIFTY Options | Jun 2001 | Today | Daily, 1-min | Full chain |
 | India VIX | Feb 2014 | Today | Daily, 1-min | Index |
 | Constituents | Jan 2000 | Today | Daily, 1-min | 50 stocks |
-| Live Tick | Today | Ongoing | Sub-second | All subscribed |
+| MCX Crude Oil | ~2006 | Today | Daily, 1-min | `MCX_FO\|CRUDEOIL*` |
+| MCX Natural Gas | ~2006 | Today | Daily, 1-min | `MCX_FO\|NATURALGAS*` |
+| MCX Gold | ~2003 | Today | Daily, 1-min | `MCX_FO\|GOLD*` |
+| MCX Silver | ~2006 | Today | Daily, 1-min | `MCX_FO\|SILVER*` |
+| MCX Copper | ~2009 | Today | Daily, 1-min | `MCX_FO\|COPPER*` |
+| Live Tick (NSE) | Today | Ongoing | Sub-second | All subscribed (Full D30) |
+| Live Tick (MCX) | Today | Ongoing | Sub-second | 5 commodities (LTPC) |
 
 ### Global Markets (Yahoo Finance / Alpha Vantage)
 
@@ -158,7 +172,7 @@ Live tick-by-tick data with full Depth-30 order book and Greeks. Stores all 30 l
 Option chain with Greeks, IV, strike, expiry. Used for training options-specific models.
 
 ### Table 6: `instrument_features`
-All ML features (100+) with interval-based storage. Covers index breadth, futures, options, volatility, order flow, price structure, momentum, moving averages, regime, time context, **cyclical time encoding**, **global macro**, and **pre-market** features.
+All ML features (125+) with interval-based storage. Covers index breadth, futures, options, volatility, order flow, price structure, momentum, moving averages, regime, time context, **cyclical time encoding**, **global macro**, **pre-market**, and **MCX commodities** features.
 
 ### Table 7: `training_labels`
 All ML labels with interval-based storage. Multi-horizon regression, classification, volatility, and regime labels.
@@ -218,9 +232,12 @@ PHASE 2: FEATURE ENGINEERING (Cron job, daily)
 
 PHASE 3: LIVE COLLECTION (Continuous during market hours)
 ─────────────────────────────────────────────────────────
-[Upstox WebSocket] ──→ [market-feeder] ──→ [tick_data + option_chain_snapshot]
-     (Depth-30)              │
-                             └───→ [Redis] (real-time features for algo-worker)
+[Upstox WebSocket]
+     ├── Tick data (NSE_FO/NSE_EQ/NSE_INDEX) ──→ [tick_data + option_chain_snapshot]
+     │        (Depth-30)              │
+     │                                └──→ [Redis] (real-time features for algo-worker)
+     └── MCX Tick data (MCX_FO|*, ltpc mode) ──→ [market_candles] (intraday % changes)
+          5 commodities bundled into existing WS pool
 
 [Yahoo Finance]
      └── Global 1-min candles ──→ [market_candles] (during Indian session)

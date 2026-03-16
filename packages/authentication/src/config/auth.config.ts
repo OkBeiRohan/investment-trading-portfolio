@@ -67,6 +67,17 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
           required: false,
           input: false,
         },
+        /**
+         * Admin-controlled flag: marks this user's broker account as enrolled
+         * in the live market-feeder data collection pool.
+         * Mirrored from broker_accounts.isDataCollectionEnabled for session access.
+         */
+        isDataCollectionEnabled: {
+          type: "boolean",
+          defaultValue: false,
+          required: true,
+          input: false,
+        },
       },
     },
 
@@ -74,6 +85,18 @@ export const createAuthConfig = (options: AuthConfigOptions) =>
       accountLinking: {
         enabled: true,
         trustedProviders: ["google", "github", "upstox"],
+      },
+      additionalFields: {
+        /**
+         * Timestamp of the last successful Phase 2 Upstox daily re-auth.
+         * Stored on the OAuth account record (same record better-auth creates
+         * when user links their Upstox account via Phase 1 genericOAuth).
+         */
+        lastReAuthAt: {
+          type: "date",
+          required: false,
+          input: false,
+        },
       },
     },
 

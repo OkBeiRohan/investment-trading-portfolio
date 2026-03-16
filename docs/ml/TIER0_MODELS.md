@@ -57,8 +57,8 @@ The **gap** between yesterday's 15:30 close and today's 09:15 open is a massive 
 | Property          | Value                                                                                                |
 | ----------------- | ---------------------------------------------------------------------------------------------------- |
 | **Algorithm**     | XGBoost (gradient boosted trees)                                                                     |
-| **Why XGBoost**   | Fast inference (~5ms), interpretable (SHAP), robust with few features, handles missing data natively |
-| **Input**         | 12 global overnight features                                                                         |
+| **Why XGBoost**   | Fast inference (~5ms), interpretable (SHAP), robust with tabular features, handles missing data natively |
+| **Input**         | **24 features** — global overnight (12) + MCX commodities (8) + pre-market context (4)              |
 | **Output**        | `expected_gap_pct`, `expected_volatility`, `opening_bias`, `confidence`                              |
 | **Training Data** | 4+ years of pre-open snapshots + realized gaps                                                       |
 | **Validation**    | Walk-forward (6-month train, 1-month test, rolling)                                                  |
@@ -66,16 +66,18 @@ The **gap** between yesterday's 15:30 close and today's 09:15 open is a massive 
 
 ### Why Not Deep Learning?
 
-- Only 12 features — trees dominate at this scale
+- Only 24 features — trees dominate at this scale
 - Only ~1000 training samples/year (one per trading day)
 - Need interpretability for SEBI audit compliance (SHAP values)
 - <5ms inference required, XGBoost delivers ~2ms
 
 ---
 
-## Input Features (12)
+## Input Features (24)
 
 All features captured at **09:08:05 IST** after the pre-open freeze.
+
+### Group A: Global Overnight Markets (12)
 
 | #   | Feature                    | Source            | Description                                                           | Example   |
 | --- | -------------------------- | ----------------- | --------------------------------------------------------------------- | --------- |
@@ -85,12 +87,38 @@ All features captured at **09:08:05 IST** after the pre-open freeze.
 | 4   | `nikkei_return`            | Yahoo Finance     | Nikkei 225 morning session return (to 09:08 IST)                      | +0.80%    |
 | 5   | `brent_crude_change`       | Yahoo Finance     | Brent crude overnight % change                                        | +1.2%     |
 | 6   | `brent_wti_spread`         | Yahoo Finance     | Brent − WTI price spread (contango/backwardation signal)              | $3.50     |
-| 7   | `gold_change`              | Yahoo Finance     | Gold overnight % change                                               | -0.15%    |
+| 7   | `gold_change`              | Yahoo Finance     | Gold (XAU/USD) overnight % change                                     | -0.15%    |
 | 8   | `usd_inr_change`           | Yahoo Finance     | USD/INR overnight % change (INR depreciation = negative for equities) | +0.08%    |
 | 9   | `overnight_news_sentiment` | Finnhub + FinBERT | Aggregated sentiment score for India-relevant news [-1, +1]           | 0.25      |
 | 10  | `actual_gap_points`        | Upstox Pre-Open   | 09:08 freeze indicative price − previous day close                    | +52.3 pts |
 | 11  | `prev_day_range`           | QuestDB           | Previous day's (high − low) / close — recent volatility proxy         | 1.2%      |
 | 12  | `prev_day_close_vs_vwap`   | QuestDB           | Previous close relative to VWAP — mean-reversion signal               | +0.15%    |
+
+### Group B: MCX Commodity Snapshot (8) — **NEW**
+
+MCX instruments streamed via Upstox WebSocket (`MCX_FO|*`). Forward-filled from last session close if MCX is closed at 09:08 IST. Values are **overnight % change** from previous MCX session close.
+
+| #   | Feature                    | Upstox Instrument              | Description                                              | Example   |
+| --- | -------------------------- | ------------------------------ | -------------------------------------------------------- | --------- |
+| 13  | `mcx_crudeoil_change`      | `MCX_FO|CRUDEOIL{expiry}FUT`   | Crude Oil MCX overnight % change (INR-priced)            | +2.1%     |
+| 14  | `mcx_naturalgas_change`    | `MCX_FO|NATURALGAS{expiry}FUT` | Natural Gas MCX overnight % change                       | -1.5%     |
+| 15  | `mcx_gold_change`          | `MCX_FO|GOLD{expiry}FUT`       | Gold MCX overnight % change (INR-denominated safe haven) | -0.2%     |
+| 16  | `mcx_silver_change`        | `MCX_FO|SILVER{expiry}FUT`     | Silver MCX overnight % change                            | +0.5%     |
+| 17  | `mcx_copper_change`        | `MCX_FO|COPPER{expiry}FUT`     | Copper MCX overnight % change (global growth proxy)      | +0.8%     |
+| 18  | `brent_mcx_crudeoil_spread`| derived                        | Brent (USD) minus MCX Crude (INR-adj) spread             | +125 INR  |
+| 19  | `mcx_commodity_breadth`    | derived                        | Count(MCX instruments up overnight) / 5                  | 0.6       |
+| 20  | `mcx_intraday_regime`      | derived                        | Rolling z-score of all MCX overnight moves               | 1.2       |
+
+**Why MCX over NYMEX/ICE?** MCX prices are INR-denominated and reflect India's import duties, domestic demand, and USD/INR — a more direct input cost signal than global USD prices for predicting Indian equity gaps.
+
+### Group C: Pre-Market Context (4)
+
+| #   | Feature                         | Source                   | Description                                     | Example  |
+| --- | ------------------------------- | ------------------------ | ----------------------------------------------- | -------- |
+| 21  | `actual_gap_pct`                | derived                  | `(freeze_price - prev_close) / prev_close` as % | +0.45%   |
+| 22  | `expected_opening_volatility`   | Tier 0 preliminary pass  | Pre-computed volatility estimate                 | 0.72     |
+| 23  | `pre_market_bias`               | derived                  | Directional bias from GIFT Nifty + global        | 0.65     |
+| 24  | `overnight_mcx_energy_pressure` | derived from #13+#14     | Composite energy pressure score                  | 0.4      |
 
 ### Feature Collection Pipeline
 
@@ -105,6 +133,11 @@ All features captured at **09:08:05 IST** after the pre-open freeze.
 │  │ API          │   → Brent crude, Gold, USD/INR                       │
 │  └──────┬──────┘   → Store snapshots in QuestDB global_market_data    │
 │         │                                                               │
+│  ┌──────┴──────┐   Continuous from 09:00 IST (MCX session open)       │
+│  │ Upstox WS   │   → MCX_FO|CRUDEOIL, NATURALGAS, GOLD, SILVER, COPPER│
+│  │ (MCX_FO|*)  │   → Overnight % change computed vs prev MCX close    │
+│  └──────┬──────┘   → mcx_* features written to Redis                  │
+│         │                                                               │
 │  ┌──────┴──────┐   Continuous from 08:00 IST                          │
 │  │ GIFT Nifty  │   → 1-second tick data via Upstox/NSE feed           │
 │  │ Feed        │   → premium = LTP - prev_nifty_close                  │
@@ -117,12 +150,12 @@ All features captured at **09:08:05 IST** after the pre-open freeze.
 │         │                                                               │
 │  ┌──────┴──────┐   At 09:08:05 IST                                    │
 │  │ Upstox      │   → Capture pre-open freeze indicative price          │
-│  │ Pre-Open    │   → Compute actual_gap_points                         │
+│  │ Pre-Open    │   → Compute actual_gap_points + pre_market_bias       │
 │  └──────┬──────┘                                                        │
 │         │                                                               │
 │         ▼                                                               │
 │  ┌─────────────────────────────────────────────────────┐               │
-│  │ FEATURE VECTOR (12 features) → XGBoost ONNX → Pred │               │
+│  │ FEATURE VECTOR (24 features) → XGBoost ONNX → Pred │               │
 │  └─────────────────────────────────────────────────────┘               │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -279,6 +312,7 @@ This overnight candle is published to Redis at `tier0:overnight_candle:{date}` a
 def prepare_tier0_training_data(
     nifty_daily: pd.DataFrame,       # Daily OHLCV with prev_close
     global_overnight: pd.DataFrame,  # Overnight global snapshots
+    mcx_overnight: pd.DataFrame,     # MCX overnight snapshots (from Upstox WS)
     pre_open_data: pd.DataFrame,     # 09:08 freeze prices
     sentiment_data: pd.DataFrame     # Overnight sentiment scores
 ) -> tuple[pd.DataFrame, pd.Series]:
@@ -288,7 +322,7 @@ def prepare_tier0_training_data(
     """
     features = pd.DataFrame()
 
-    # Merge all sources by date
+    # Group A: Global Overnight Markets (12 features)
     features['gift_nifty_premium'] = pre_open_data['freeze_price'] - nifty_daily['prev_close']
     features['sp500_overnight_return'] = global_overnight['sp500_pct']
     features['nasdaq_overnight_return'] = global_overnight['nasdaq_pct']
@@ -301,6 +335,22 @@ def prepare_tier0_training_data(
     features['actual_gap_points'] = pre_open_data['freeze_price'] - nifty_daily['prev_close']
     features['prev_day_range'] = (nifty_daily['high'] - nifty_daily['low']) / nifty_daily['close']
     features['prev_day_close_vs_vwap'] = nifty_daily['close_vs_vwap']
+
+    # Group B: MCX Commodity Snapshot (8 features — NEW)
+    features['mcx_crudeoil_change'] = mcx_overnight['crudeoil_pct']
+    features['mcx_naturalgas_change'] = mcx_overnight['naturalgas_pct']
+    features['mcx_gold_change'] = mcx_overnight['gold_pct']
+    features['mcx_silver_change'] = mcx_overnight['silver_pct']
+    features['mcx_copper_change'] = mcx_overnight['copper_pct']
+    features['brent_mcx_crudeoil_spread'] = global_overnight['brent_inr'] - mcx_overnight['crudeoil_price']
+    features['mcx_commodity_breadth'] = (mcx_overnight[['crudeoil_pct','naturalgas_pct','gold_pct','silver_pct','copper_pct']] > 0).mean(axis=1)
+    features['mcx_intraday_regime'] = features[['mcx_crudeoil_change','mcx_naturalgas_change','mcx_gold_change','mcx_silver_change','mcx_copper_change']].mean(axis=1)
+
+    # Group C: Pre-Market Context (4 features)
+    features['actual_gap_pct'] = (pre_open_data['freeze_price'] - nifty_daily['prev_close']) / nifty_daily['prev_close'] * 100
+    features['expected_opening_volatility'] = features['actual_gap_pct'].abs().rolling(20).mean()  # smoothed proxy
+    features['pre_market_bias'] = features['gift_nifty_premium'].apply(lambda x: np.clip(x / 100, -1, 1))
+    features['overnight_mcx_energy_pressure'] = (features['mcx_crudeoil_change'] + features['mcx_naturalgas_change']) / 2
 
     # Target: realized gap at 09:15
     target = (nifty_daily['open'] - nifty_daily['prev_close']) / nifty_daily['prev_close'] * 100
@@ -385,7 +435,7 @@ def export_tier0_to_onnx(model, output_path='models/tier0_gap_predictor.onnx'):
     from skl2onnx import convert_sklearn
     from skl2onnx.common.data_types import FloatTensorType
 
-    initial_type = [('features', FloatTensorType([None, 12]))]
+    initial_type = [('features', FloatTensorType([None, 24]))]  # 24 features (was 12)
     onnx_model = convert_sklearn(model, initial_types=initial_type)
 
     with open(output_path, 'wb') as f:
@@ -394,7 +444,7 @@ def export_tier0_to_onnx(model, output_path='models/tier0_gap_predictor.onnx'):
     # Validate
     import onnxruntime as ort
     session = ort.InferenceSession(output_path)
-    test_input = np.random.randn(1, 12).astype(np.float32)
+    test_input = np.random.randn(1, 24).astype(np.float32)  # 24 features
     onnx_pred = session.run(None, {'features': test_input})[0]
     original_pred = model.predict(test_input)
     assert np.allclose(onnx_pred, original_pred, atol=1e-4), "ONNX export mismatch!"
@@ -434,10 +484,10 @@ export class Tier0Service {
   async predictGap(): Promise<Tier0Output> {
     const features = await this.collectOvernightFeatures();
 
-    const tensor = new ort.Tensor(
+    const    tensor = new ort.Tensor(
       "float32",
       new Float32Array(features),
-      [1, 12],
+      [1, 24],  // 24 features: 12 global + 8 MCX + 4 pre-market
     );
     const result = await this.session.run({ features: tensor });
 

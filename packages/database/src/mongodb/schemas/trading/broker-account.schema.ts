@@ -5,6 +5,7 @@ import {
   BrokerExchange,
   BrokerProduct,
   BrokerOrderType,
+  BrokerSegment,
 } from "@repo/schema";
 import { User } from "../user/user.schema";
 import { Account } from "../authentication/account.schema";
@@ -37,12 +38,6 @@ export class BrokerAccount extends Document implements IBrokerAccount {
 
   @Prop({ required: true, default: "upstox" })
   providerId: string;
-
-  @Prop({ type: String })
-  accessToken?: string;
-
-  @Prop({ type: Date })
-  accessTokenExpiresAt?: Date;
 
   @Prop({
     type: BrokerAccountProfileSchema,
@@ -79,6 +74,29 @@ export class BrokerAccount extends Document implements IBrokerAccount {
 
   @Prop({ type: Date, default: Date.now })
   lastSyncAt: Date;
+
+  // ─── Upstox Re-Auth Tracking ──────────────────────────────────────────
+  // Note: accessToken/accessTokenExpiresAt live in better-auth's accounts
+  // collection (same OAuth account record). broker_accounts tracks metadata only.
+
+  @Prop({ type: Date, required: false })
+  lastReAuthAt?: Date;
+
+  // ─── Trading Controls ─────────────────────────────────────────────────
+
+  @Prop({ type: Boolean, required: true, default: false })
+  hasTradingEnabled: boolean;
+
+  @Prop({
+    type: [String],
+    enum: Object.values(BrokerSegment),
+    required: true,
+    default: [],
+  })
+  tradingSegments: BrokerSegment[];
+
+  @Prop({ type: Boolean, required: true, default: false })
+  isDataCollectionEnabled: boolean;
 
   createdAt: Date;
   updatedAt: Date;

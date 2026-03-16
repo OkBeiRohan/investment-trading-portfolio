@@ -200,9 +200,58 @@ async placeOrder(userId: string) {
 
 ### Token Expiry
 
-- **Upstox tokens**: Valid for 24 hours (86400 seconds)
-- **Refresh tokens**: Currently not supported by Upstox v2 API
-- **Re-authentication**: Users must re-link account when token expires
+- **Upstox tokens**: Valid for 24 hours (expires at end of trading day IST)
+- **Refresh tokens**: NOT supported by Upstox v2 API
+- **Re-authentication**: Users must complete Phase 2 re-auth each morning (~7am)
+- **market-sdk impact**: Token marked as expired in Redis → automatically removed from pool until re-auth
+
+---
+
+## Phase 2: Daily Re-Authentication
+
+Every morning, all users with trading enabled (and all admins with `isDataCollectionEnabled`) must re-authenticate with Upstox.
+
+### Why this is needed
+
+Upstox deliberately does NOT support refresh tokens. This is a deliberate regulatory/security choice. The user must log in to Upstox every day to receive a new access token.
+
+### Endpoint Design
+
+```bash
+# Step 1: Start re-auth
+GET /api/auth/upstox/reauth/start
+  → Generates authorization URL with UPSTOX_REAUTH_REDIRECT_URI
+  → Redirects to Upstox login page
+
+# Step 2: Upstox redirects back
+GET /api/auth/upstox/reauth/callback?code=XYZ&state=<csrf>
+  → Exchanges code for new access_token
+  → Overwrites previous day's token in MongoDB accounts collection
+  → Publishes Redis event: auth:token_refreshed:{userId}
+```
+
+### market-sdk Integration
+
+After Phase 2 completes:
+
+1. `AuthManagerService` picks up the new token (either via Redis event subscription or next DB read)
+2. Calls `GET /v2/user/profile` on Upstox to get/update `user_type`
+3. Updates Redis cache with new token (6h TTL)
+4. Recalculates pool rate limits for this user's token
+5. If `isDataCollectionEnabled = true`: admin token re-added to WebSocket connection pool
+
+### Additional Env Variables for Phase 2
+
+```bash
+# Separate redirect URI for daily re-auth flow
+UPSTOX_REAUTH_REDIRECT_URI=http://localhost:3004/api/auth/upstox/reauth/callback
+# Production:
+# UPSTOX_REAUTH_REDIRECT_URI=https://api.yourdomain.com/api/auth/upstox/reauth/callback
+```
+
+> ⚠️ Both redirect URIs (Phase 1 and Phase 2) must be explicitly allowed in the Upstox Developer Console app settings.
+
+---
 
 ## API Endpoints (Provided by better-auth)
 
@@ -272,86 +321,48 @@ See `packages/market-sdk/README.md` for SEBI compliance details.
 
 ### "No Upstox account linked"
 
-**Cause**: User hasn't connected Upstox account
+**Cause**: User hasn't completed Phase 1 (initial account link)
 
-**Solution**: Direct user to `/account/linked` to connect
+**Solution**: Direct user to Settings → Upstox → Connect Account
 
-### "Upstox session expired"
+### "Upstox session expired" (daily)
 
-**Cause**: Access token expired (>24 hours old)
+**Cause**: Access token expired at end of previous trading day (normal, happens every day)
 
-**Solution**: User must re-link account (Upstox doesn't support refresh tokens)
+**Solution**: User must complete Phase 2 re-auth (the web app will show a re-auth prompt automatically). market-sdk will gracefully skip this user's token from the pool until re-auth completes.
 
 ### "Invalid redirect URI"
 
-**Cause**: Redirect URI mismatch in Upstox app settings
+**Cause**: Phase 1 or Phase 2 redirect URI not registered in Upstox app settings
 
 **Solution**:
-
 1. Go to Upstox Developer Console
-2. Update redirect URI to match `UPSTOX_REDIRECT_URI` in `.env`
-3. Ensure format: `https://yourdomain.com/api/auth/oauth2/callback/upstox`
+2. Add BOTH redirect URIs:
+   - `https://yourdomain.com/api/auth/upstox/callback` (Phase 1)
+   - `https://yourdomain.com/api/auth/upstox/reauth/callback` (Phase 2)
 
 ### OAuth callback error
 
 **Cause**: Missing or invalid environment variables
 
 **Solution**:
-
 1. Verify `UPSTOX_CLIENT_ID` and `UPSTOX_CLIENT_SECRET` are set
-2. Restart API server after changing `.env`
-3. Check logs for better-auth initialization errors
-
-## Testing
-
-### Local Development
-
-1. Start ngrok tunnel:
-
-   ```bash
-   ngrok http 3004
-   ```
-
-2. Update Upstox app redirect URI to:
-
-   ```
-   https://your-ngrok-url.ngrok.io/api/auth/oauth2/callback/upstox
-   ```
-
-3. Update `.env`:
-
-   ```bash
-   UPSTOX_REDIRECT_URI=https://your-ngrok-url.ngrok.io/api/auth/oauth2/callback/upstox
-   APP_URL=https://your-ngrok-url.ngrok.io
-   ```
-
-4. Test OAuth flow
-
-### Production Deployment
-
-1. Update Upstox app redirect URI:
-
-   ```
-   https://api.yourdomain.com/api/auth/oauth2/callback/upstox
-   ```
-
-2. Set environment variables on Render/Vercel:
-   ```bash
-   UPSTOX_CLIENT_ID=production_client_id
-   UPSTOX_CLIENT_SECRET=production_client_secret
-   UPSTOX_REDIRECT_URI=https://api.yourdomain.com/api/auth/oauth2/callback/upstox
-   ```
+2. Verify both `UPSTOX_REDIRECT_URI` and `UPSTOX_REAUTH_REDIRECT_URI` are set
+3. Restart API server after changing `.env`
+4. Check logs for better-auth initialization errors
 
 ## Related Documentation
 
 - [better-auth Generic OAuth Plugin](https://better-auth.com/docs/plugins/generic-oauth)
-- [Upstox API Documentation](https://upstox.com/developer/api-documentation/authentication)
-- [market-sdk README](../market-sdk/README.md)
-- [Authentication Package](../authentication/README.md)
+- [Upstox Authentication Docs](https://upstox.com/developer/api-documentation/authentication)
+- [Upstox Login (Daily Re-Auth)](https://upstox.com/developer/api-documentation/login)
+- [Authentication Package README](../../packages/authentication/README.md)
+- [market-sdk README](../README.md)
+- [Web App Architecture](../../apps/web/ARCHITECTURE.md)
 
 ## Future Enhancements
 
-- [ ] Token refresh automation (when Upstox supports it)
 - [ ] Multiple broker support (Zerodha, Fyers)
-- [ ] Token health monitoring
-- [ ] Automatic re-authentication prompts
+- [ ] Token health monitoring dashboard (admin view)
+- [ ] Automatic push notification at 7am to remind users to re-auth
+- [ ] Biometric re-auth for mobile web (WebAuthn)

@@ -7,6 +7,8 @@ export interface PooledSocket {
   capacity: number;
   used: number;
   priority: number;
+  /** Feed mode for all instruments on this socket */
+  feedMode: 'ltpc' | 'full' | 'full_d30';
   instruments: Set<string>;
   createdAt: Date;
   lastActivity: Date;
@@ -17,6 +19,8 @@ export interface SocketPoolConfig {
   maxInstrumentsPerSocket: number;
   reconnectDelay: number;
   heartbeatInterval: number;
+  /** Default feed mode for sockets in this pool */
+  feedMode?: 'ltpc' | 'full' | 'full_d30';
 }
 
 /**
@@ -56,7 +60,8 @@ export class SocketPoolService implements OnModuleDestroy {
   async getSocket(
     provider: string,
     instruments: string[],
-    priority: number = 1
+    priority: number = 1,
+    feedMode?: 'ltpc' | 'full' | 'full_d30'
   ): Promise<PooledSocket> {
     const pool = this.pools.get(provider);
     const config = this.configs.get(provider);
@@ -65,26 +70,29 @@ export class SocketPoolService implements OnModuleDestroy {
       throw new Error(`Pool not initialized for provider: ${provider}`);
     }
 
-    // Try to find existing socket with capacity
+    const resolvedFeedMode = feedMode ?? config.feedMode ?? 'full_d30';
+
+    // Try to find existing socket with capacity AND matching feed mode
     const existingSocket = this.findBestFitSocket(
       pool,
       instruments.length,
-      priority
+      priority,
+      resolvedFeedMode
     );
 
     if (existingSocket) {
       this.logger.debug(
-        `Reusing socket ${existingSocket.id} (${existingSocket.used}/${existingSocket.capacity})`
+        `Reusing socket ${existingSocket.id} (${existingSocket.used}/${existingSocket.capacity}) [${existingSocket.feedMode}]`
       );
       return existingSocket;
     }
 
     // Create new socket if under limit
     if (pool.size < config.maxConnections) {
-      const newSocket = await this.createSocket(provider, config, priority);
+      const newSocket = await this.createSocket(provider, config, priority, resolvedFeedMode);
       pool.set(newSocket.id, newSocket);
       this.logger.log(
-        `Created new socket ${newSocket.id} (total: ${pool.size}/${config.maxConnections})`
+        `Created new socket ${newSocket.id} [${resolvedFeedMode}] (total: ${pool.size}/${config.maxConnections})`
       );
       return newSocket;
     }
@@ -97,7 +105,7 @@ export class SocketPoolService implements OnModuleDestroy {
       );
       await this.closeSocket(provider, evictableSocket.id);
 
-      const newSocket = await this.createSocket(provider, config, priority);
+      const newSocket = await this.createSocket(provider, config, priority, resolvedFeedMode);
       pool.set(newSocket.id, newSocket);
       return newSocket;
     }
@@ -168,12 +176,14 @@ export class SocketPoolService implements OnModuleDestroy {
   }
 
   /**
-   * Find best-fit socket using First Fit Decreasing bin packing
+   * Find best-fit socket using First Fit Decreasing bin packing.
+   * Matches on both capacity AND feed mode.
    */
   private findBestFitSocket(
     pool: Map<string, PooledSocket>,
     requiredCapacity: number,
-    priority: number
+    priority: number,
+    feedMode: 'ltpc' | 'full' | 'full_d30' = 'full_d30'
   ): PooledSocket | null {
     let bestFit: PooledSocket | null = null;
     let minWaste = Infinity;
@@ -181,7 +191,11 @@ export class SocketPoolService implements OnModuleDestroy {
     for (const socket of pool.values()) {
       const availableSpace = socket.capacity - socket.used;
 
-      if (availableSpace >= requiredCapacity && socket.priority >= priority) {
+      if (
+        availableSpace >= requiredCapacity &&
+        socket.priority >= priority &&
+        socket.feedMode === feedMode  // must match feed mode
+      ) {
         const waste = availableSpace - requiredCapacity;
 
         if (waste < minWaste) {
@@ -220,18 +234,18 @@ export class SocketPoolService implements OnModuleDestroy {
   private async createSocket(
     provider: string,
     config: SocketPoolConfig,
-    priority: number
+    priority: number,
+    feedMode: 'ltpc' | 'full' | 'full_d30' = 'full_d30'
   ): Promise<PooledSocket> {
-    const id = `${provider}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `${provider}-${feedMode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Socket creation delegated to provider-specific service
-    // This is a placeholder - actual WebSocket created by Upstox/Binance service
     const pooledSocket: PooledSocket = {
       id,
-      socket: null as any, // Set by provider service
+      socket: null as any,
       capacity: config.maxInstrumentsPerSocket,
       used: 0,
       priority,
+      feedMode,
       instruments: new Set(),
       createdAt: new Date(),
       lastActivity: new Date(),
@@ -241,6 +255,7 @@ export class SocketPoolService implements OnModuleDestroy {
       provider,
       socketId: id,
       priority,
+      feedMode,
     });
 
     return pooledSocket;

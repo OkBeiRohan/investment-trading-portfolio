@@ -27,6 +27,22 @@ export enum BrokerExchange {
 }
 
 /**
+ * Trading Segments
+ * The four primary market segments in Indian financial markets.
+ * Used to control which segments a user/account is enabled for.
+ */
+export enum BrokerSegment {
+  /** Equity - Cash market (NSE EQ / BSE EQ) */
+  EQ = "EQ",
+  /** Futures & Options - F&O segment (NSE FO) */
+  FO = "FO",
+  /** Commodity - MCX commodity futures (MCX_FO) */
+  COM = "COM",
+  /** Currency Derivatives - NSE CD segment */
+  CD = "CD",
+}
+
+/**
  * Product Types
  * Normalized product/order variety types across all brokers
  */

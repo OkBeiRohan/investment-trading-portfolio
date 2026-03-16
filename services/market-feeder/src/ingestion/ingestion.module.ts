@@ -27,6 +27,7 @@ import { HistoricalBackfillService } from './historical-backfill.service';
 import { GlobalDataService } from './global-data.service';
 import { SchedulerService } from './scheduler.service';
 import { LiveDataService } from './live-data.service';
+import { McxHandlerService } from './mcx-handler.service';
 
 // Controller
 import { IngestionController } from './ingestion.controller';
@@ -57,6 +58,9 @@ import { IngestionController } from './ingestion.controller';
     GlobalDataService,
     SchedulerService,
     LiveDataService,
+
+    // MCX commodity tick handler
+    McxHandlerService,
   ],
   exports: [
     InstrumentSyncService,
@@ -64,6 +68,8 @@ import { IngestionController } from './ingestion.controller';
     GlobalDataService,
     GapDetectorService,
     LiveDataService,
+    McxHandlerService,
   ],
 })
 export class IngestionModule {}
+

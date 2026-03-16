@@ -1,5 +1,5 @@
-import { Injectable, UnauthorizedException, Logger } from "@nestjs/common";
-import { AccountRepository } from "@repo/database";
+import { Injectable, UnauthorizedException, Logger, Inject } from "@nestjs/common";
+import { AccountRepository, REDIS_CLIENT } from "@repo/database";
 import * as crypto from "crypto";
 
 // Minimal Redis interface matching ioredis client
@@ -41,8 +41,9 @@ export class AuthManagerService {
 
   constructor(
     private readonly accountRepository: AccountRepository,
-    private readonly redis: IRedisClient
+    @Inject(REDIS_CLIENT) private readonly redis: IRedisClient
   ) {}
+
 
   /**
    * Get access token with L1 (Redis) + L2 (MongoDB) caching
