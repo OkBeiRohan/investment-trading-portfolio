@@ -2,9 +2,11 @@
 
 Better Auth integration for the investment trading portfolio monorepo.
 
+**Last Updated**: March 16, 2026
+
 ## Overview
 
-**Purpose**: Production-ready authentication system using [better-auth](https://better-auth.com) - a comprehensive, framework-agnostic authentication library for TypeScript.
+**Purpose**: Production-ready authentication system using [better-auth](https://better-auth.com). Handles platform authentication (email/password, social OAuth) AND the Upstox broker account linking lifecycle — including an initial OAuth2 link flow and a **daily re-authentication** pattern required by Upstox's token expiry policy.
 
 **Key Features** (provided by better-auth):
 
@@ -65,6 +67,180 @@ This package wraps **better-auth** with NestJS integration:
 │   └─ passkeys                              │
 └────────────────────────────────────────────┘
 ```
+
+---
+
+## Upstox Authentication: Two-Phase Lifecycle
+
+Upstox uses a **two-phase authentication model** that is fundamentally different from standard OAuth:
+
+### Phase 1: Initial Account Link (One-time, via better-auth OAuth2)
+
+Used when a user first connects their Upstox account. This uses the standard PKCE OAuth2 flow.
+
+```
+User clicks "Connect Upstox"
+  │
+  ▼
+1. better-auth generates OAuth2 authorization URL
+   GET https://api.upstox.com/v2/login/authorization
+       ?client_id={UPSTOX_API_KEY}
+       &redirect_uri={PLATFORM_REDIRECT_URI}
+       &response_type=code
+       &state={csrf_token}
+
+2. User logs in on Upstox and authorises the platform app
+
+3. Upstox redirects to callback:
+   GET /api/auth/upstox/callback?code=ABC123&state={csrf_token}
+
+4. better-auth exchanges code for access_token
+   POST https://api.upstox.com/v2/login/authorization/token
+        { code, client_id, client_secret, redirect_uri, grant_type: 'authorization_code' }
+
+5. Access token stored in MongoDB (accounts collection)
+   → @repo/market-sdk AuthManagerService reads from here
+
+6. Upstox user profile fetched (GET /v2/user/profile)
+   → user_type (Plus/Standard), upstox_user_id stored in DB
+```
+
+> 📎 See: [Upstox Authentication Docs](https://upstox.com/developer/api-documentation/authentication)
+
+### Phase 2: Daily Re-Authentication (~7am each trading day)
+
+Upstox access tokens expire at end of day. Users MUST re-authenticate each morning before trading.
+
+This is NOT an OAuth2 refresh_token flow — Upstox requires a full re-auth each day.
+
+```
+Each morning (~7am IST):
+  │
+  ▼
+1. User opens the web app and sees "Daily Re-Auth Required" prompt
+
+2. User clicks "Re-Authenticate with Upstox"
+   → Redirected to Upstox login page (same OAuth2 flow as Phase 1)
+   → BUT this uses a SEPARATE redirect endpoint: /api/auth/upstox/reauth/callback
+
+3. New access_token received and stored in MongoDB
+   → Overwrites previous day's token in accounts collection
+
+4. @repo/market-sdk is notified (Redis event: auth:token_refreshed)
+   → AuthManagerService updates Redis cache (6h TTL)
+   → Fetches/updates user_type from Upstox profile
+   → Recalculates pool rate limits
+
+5. User gains access to live trading and websocket data
+```
+
+> 📎 See: [Upstox Login Docs](https://upstox.com/developer/api-documentation/login)  
+> 📌 **Admin Exception**: Admins must also re-auth daily even if they are not trading personally, because their tokens are used for system-wide data collection (`isDataCollectionEnabled = true`).
+
+### Phase 2 Endpoint Design
+
+```typescript
+// apps/api/src/auth/upstox-reauth.controller.ts
+
+@Controller('api/auth/upstox/reauth')
+export class UpstoxReAuthController {
+
+  // Step 1: Initiate daily re-auth
+  @Get('start')
+  @UseGuards(AuthGuard)
+  async startReAuth(@Session() session: any, @Res() res: Response) {
+    const authUrl = this.upstoxAuth.generateAuthorizationUrl(
+      process.env.UPSTOX_API_KEY,
+      process.env.UPSTOX_REAUTH_REDIRECT_URI, // separate callback URL
+      session.user.id
+    );
+    return res.redirect(authUrl);
+  }
+
+  // Step 2: Handle callback, store new token
+  @Get('callback')
+  async handleReAuthCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response
+  ) {
+    const userId = await this.upstoxAuth.validateState(state);
+    await this.upstoxAuth.exchangeCodeAndStoreToken(userId, code, 'reauth');
+    // market-sdk auto-picks up the new token from MongoDB
+    return res.redirect('/dashboard?reauth=success');
+  }
+}
+```
+
+---
+
+## User Roles & Permissions
+
+| Role        | Can Trade | Can Enable Trading | Must Re-Auth Daily | Data Collection     |
+|-------------|-----------|-------------------|-------------------|---------------------|
+| `Investor`  | ❌        | ❌                | Optional           | No                  |
+| `Trader`    | ✅        | ✅ (self only)    | ✅ (if trading)   | No                  |
+| `Admin`     | ✅        | ✅ (all users)    | ✅ **Always**     | Yes (if flag set)   |
+
+### Role Field
+
+The `role` field is part of the better-auth user model (extended via `additionalFields`):
+- `Investor` (default) — can view portfolio, no trading
+- `Trader` — can enable trading on their own account
+- `Admin` — full access including: managing instruments, other users, system config
+
+Only `Admin` and `Trader` roles can call the trading enable/disable endpoints.
+
+### Admin `isDataCollectionEnabled` Flag
+
+Admins have a special flag that determines whether the platform can use their Upstox account for **system data collection** (WebSocket feeds, market data, historical backfill):
+
+```typescript
+// User document extension (stored in MongoDB users collection)
+interface TraderUser {
+  // better-auth standard fields
+  id: string;
+  email: string;
+  name: string;
+  role: 'Investor' | 'Trader' | 'Admin';
+
+  // Trading fields
+  hasTradingEnabled: boolean;       // TRADER/ADMIN: has user enabled live trading?
+  tradingSegments: string[];         // e.g., ['EQUITY', 'F_O', 'CURRENCY', 'COMMODITY']
+  upstoxLinked: boolean;             // Has user completed Phase 1 OAuth?
+  upstoxDailyAuthAt: Date | null;   // Timestamp of today's Phase 2 re-auth
+
+  // Admin-only fields
+  isDataCollectionEnabled: boolean;  // ADMIN ONLY: platform can use this account for market data
+}
+```
+
+**Why admins need this flag:**
+- market-sdk prioritises admin tokens for WebSocket connections and market data
+- An admin who hasn't set `isDataCollectionEnabled = true` is treated the same as a trader for data purposes
+- Admins can opt into data collection independently of enabling their own trading
+
+---
+
+## Token Lifecycle
+
+```
+Day 0 (initial setup):
+  Phase 1 OAuth → token stored in MongoDB, never expires unless revoked manually
+
+Every trading day morning (~7am IST):
+  Phase 2 Re-auth → new token overwrites MongoDB, market-sdk cache refreshed
+
+At end of trading day (~23:59 IST):
+  Upstox silently expires the token
+  Next API call returns 401 → market-sdk marks token as expired in Redis
+
+If user doesn't re-auth by 9:15am:
+  Their token is unavailable for that day's market data/trading
+  market-sdk gracefully skips this user's token from the pool
+```
+
+---
 
 **Why better-auth?**
 
@@ -313,39 +489,49 @@ deleteSensitive() {
 
 ## Custom User Fields
 
-We've extended the default User model with additional fields:
+We've extended the default User model with trading-specific fields:
 
 ```typescript
 // Defined in src/config/auth.config.ts
 user: {
   additionalFields: {
-    dateOfBirth: {
-      type: "date",
-      required: false,
-    },
-    isActive: {
-      type: "boolean",
-      defaultValue: true,
+    dateOfBirth: { type: 'date', required: false },
+    isActive:    { type: 'boolean', defaultValue: true,  required: true },
+    isBlocked:   { type: 'boolean', defaultValue: false, required: true },
+
+    // Role-based access (Investor | Trader | Admin)
+    role: {
+      type: ['Investor', 'Trader', 'Admin'],
       required: true,
+      defaultValue: 'Investor',
     },
-    isBlocked: {
-      type: "boolean",
+
+    // Trading control (Trader + Admin only)
+    hasTradingEnabled: {
+      type: 'boolean',
       defaultValue: false,
       required: true,
     },
-    role: {
-      type: ["Investor", "Trader", "Admin"],
+    tradingSegments: {
+      // ['EQUITY', 'F_O', 'CURRENCY', 'COMMODITY', 'SLB']
+      type: 'string[]',
+      defaultValue: [],
+      required: false,
+    },
+
+    // Upstox account linking
+    upstoxLinked:     { type: 'boolean', defaultValue: false, required: true },
+    upstoxDailyAuthAt: { type: 'date', required: false },
+
+    // Admin-only: allow platform to use this Upstox account for data collection
+    isDataCollectionEnabled: {
+      type: 'boolean',
+      defaultValue: false,
       required: true,
-      defaultValue: "Investor",
     },
-    lastLoginAt: {
-      type: "date",
-      required: false,
-    },
-    passwordChangedAt: {
-      type: "date",
-      required: false,
-    },
+
+    lastLoginAt:       { type: 'date', required: false },
+    passwordChangedAt: { type: 'date', required: false },
   },
 }
 ```
