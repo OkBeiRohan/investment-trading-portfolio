@@ -74,6 +74,8 @@ The Indian market is closed while the US operates and global news breaks. The ga
 
 ### Input Features (at 9:08 AM)
 
+**Group A: Global Overnight (12)**
+
 | Feature | Source |
 |---------|--------|
 | `gift_nifty_premium` | GIFT Nifty LTP - prev NIFTY close |
@@ -82,12 +84,34 @@ The Indian market is closed while the US operates and global news breaks. The ga
 | `nikkei_return` | Nikkei 225 morning session |
 | `brent_crude_change` | Brent crude overnight % |
 | `brent_wti_spread` | Brent - WTI price spread |
-| `gold_change` | Gold overnight % |
+| `gold_change` | Gold (XAU/USD) overnight % |
 | `usd_inr_change` | USD/INR overnight % |
 | `overnight_news_sentiment` | FinBERT rolling sentiment [-1, 1] |
 | `actual_gap_points` | 9:08 AM freeze price - prev close |
 | `prev_day_range` | Previous day's high-low range |
 | `prev_day_close_vs_vwap` | Previous close relative to VWAP |
+
+**Group B: MCX Commodities (8) — NEW**
+
+| Feature | Source |
+|---------|--------|
+| `mcx_crudeoil_change` | Upstox MCX WS (`MCX_FO\|CRUDEOIL*`) |
+| `mcx_naturalgas_change` | Upstox MCX WS (`MCX_FO\|NATURALGAS*`) |
+| `mcx_gold_change` | Upstox MCX WS (`MCX_FO\|GOLD*`) |
+| `mcx_silver_change` | Upstox MCX WS (`MCX_FO\|SILVER*`) |
+| `mcx_copper_change` | Upstox MCX WS (`MCX_FO\|COPPER*`) |
+| `brent_mcx_crudeoil_spread` | derived (Brent USD vs MCX INR-adj) |
+| `mcx_commodity_breadth` | derived (count MCX up / 5) |
+| `mcx_intraday_regime` | derived (rolling z-score) |
+
+**Group C: Pre-Market Context (4)**
+
+| Feature | Source |
+|---------|--------|
+| `actual_gap_pct` | derived (freeze_price vs prev_close %) |
+| `expected_opening_volatility` | derived (rolling volatility proxy) |
+| `pre_market_bias` | derived (GIFT Nifty directional bias) |
+| `overnight_mcx_energy_pressure` | derived (crude + natgas composite) |
 
 ### Output
 
@@ -140,12 +164,17 @@ REGIME_FEATURES = [
     'pct_above_200sma', 'advance_decline_20d',
     # Tier 0 Output (3)
     'expected_gap_pct', 'expected_volatility', 'opening_bias',
-    # Global Macro (4)
-    'sp500_overnight_return', 'brent_crude_change', 'usd_inr_change',
-    'overnight_news_sentiment',
+    # Global Macro - Yahoo Finance (7)
+    'sp500_overnight_return', 'nasdaq_overnight_return', 'brent_crude_change',
+    'wti_crude_change', 'gold_change', 'usd_inr_change', 'overnight_news_sentiment',
+    # MCX Commodities - Upstox (8) -- NEW
+    'mcx_crudeoil_change', 'mcx_naturalgas_change', 'mcx_gold_change',
+    'mcx_silver_change', 'mcx_copper_change', 'brent_mcx_crudeoil_spread',
+    'mcx_commodity_breadth', 'mcx_intraday_regime',
     # Seasonality (3)
     'month', 'day_of_week', 'days_to_expiry'
 ]
+# Total: 43 features (was 32)
 ```
 
 ---
@@ -161,7 +190,7 @@ Predict 5m, 15m, and 30m directional magnitude using 4 years of 1-minute histori
 | **TFT** | Temporal Fusion | 80×120 sequence | Multi-horizon quantiles | ~35ms |
 | **Mamba** | State Space Model | 80×120 sequence | Direction probabilities | ~25ms |
 
-### Feature Set (80+ Features)
+### Feature Set (~116 Features)
 
 | Category | Count | Key Features |
 |----------|-------|-------------|
@@ -176,7 +205,9 @@ Predict 5m, 15m, and 30m directional magnitude using 4 years of 1-minute histori
 | Bollinger & Volume | 6 | bandwidth, OBV, accumulation/dist |
 | Regime | 4 | trend strength, momentum regime |
 | Time Context (Cyclical) | 13 | sin/cos encoding, session phase, expiry flags |
-| Global Macro (live 1-min) | 12 | ES/NQ returns, Brent, Gold during session |
+| Global Macro (live 1-min) | 12 | ES/NQ returns, Brent, Gold, USD/INR during session |
+| MCX Commodities | 8 | Crude Oil MCX, Nat Gas, Gold MCX, Silver, Copper (live intraday %) |
+| **Total** | **~125** | |
 
 ### Label Generation
 
