@@ -137,7 +137,7 @@ importers:
         version: 7.2.2
       ts-jest:
         specifier: ^29.4.6
-        version: 29.4.6(@babel/core@7.29.0)(@jest/transform@30.3.0)(@jest/types@30.3.0)(babel-jest@30.3.0(@babel/core@7.29.0))(jest-util@30.3.0)(jest@30.3.0(@types/node@25.5.0)(ts-node@10.9.2(@types/node@25.5.0)(typescript@5.9.3)))(typescript@5.9.3)
+        version: 29.4.6(@babel/core@7.28.5)(@jest/transform@30.3.0)(@jest/types@30.3.0)(babel-jest@30.3.0(@babel/core@7.28.5))(jest-util@30.3.0)(jest@30.3.0(@types/node@25.5.0)(ts-node@10.9.2(@types/node@25.5.0)(typescript@5.9.3)))(typescript@5.9.3)
       ts-loader:
         specifier: ^9.5.4
         version: 9.5.4(typescript@5.9.3)(webpack@5.104.1)
@@ -623,9 +623,6 @@ importers:
       '@nestjs/common':
         specifier: ^11.1.16
         version: 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^4.0.3
-        version: 4.0.3(@nestjs/common@11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
       '@nestjs/core':
         specifier: ^11.1.16
         version: 11.1.16(@nestjs/common@11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.1.16)(@nestjs/platform-express@11.1.16)(@nestjs/websockets@11.1.9)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -669,9 +666,6 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@types/express':
-        specifier: ^5.0.6
-        version: 5.0.6
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
@@ -686,7 +680,7 @@ importers:
         version: 30.3.0(@types/node@25.5.0)(ts-node@10.9.2(@types/node@25.5.0)(typescript@5.9.3))
       ts-jest:
         specifier: ^29.4.6
-        version: 29.4.6(@babel/core@7.28.5)(@jest/transform@30.3.0)(@jest/types@30.3.0)(babel-jest@30.3.0(@babel/core@7.28.5))(jest-util@30.3.0)(jest@30.3.0(@types/node@25.5.0)(ts-node@10.9.2(@types/node@25.5.0)(typescript@5.9.3)))(typescript@5.9.3)
+        version: 29.4.6(@babel/core@7.29.0)(@jest/transform@30.3.0)(@jest/types@30.3.0)(babel-jest@30.3.0(@babel/core@7.29.0))(jest-util@30.3.0)(jest@30.3.0(@types/node@25.5.0)(ts-node@10.9.2(@types/node@25.5.0)(typescript@5.9.3)))(typescript@5.9.3)
       ts-loader:
         specifier: ^9.5.4
         version: 9.5.4(typescript@5.9.3)(webpack@5.104.1)
