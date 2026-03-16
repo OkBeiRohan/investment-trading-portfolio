@@ -1,85 +1,462 @@
 # Dependabot Configuration for Investment Trading Portfolio
-# Consolidates version updates across all supported ecosystems into one PR.
+# Manages dependency updates across Node.js, Python, Docker, and GitHub Actions
+# Security-critical for algo-worker, trading-pipeline, and authentication packages
 
 version: 2
-
-multi-ecosystem-groups:
-  all-dependencies:
+updates:
+  # Root workspace (pnpm monorepo)
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "03:00"
       timezone: "Asia/Kolkata"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
       - "automated"
-      - "consolidated"
-
-updates:
-  - package-ecosystem: "npm"
-    directories:
-      - "/"
-      - "/apps/algo-worker"
-      - "/apps/api"
-      - "/apps/web"
-      - "/packages/auth-client"
-      - "/packages/authentication"
-      - "/packages/database"
-      - "/packages/eslint-config"
-      - "/packages/jest-config"
-      - "/packages/market-sdk"
-      - "/packages/observability"
-      - "/packages/schema"
-      - "/packages/trpc"
-      - "/packages/typescript-config"
-      - "/services/data-processor"
-      - "/services/document-processor"
-      - "/services/market-feeder"
-      - "/services/notification-service"
-      - "/services/wealth-analyzer"
-      - "/services/wealth-management"
-    patterns:
-      - "*"
-    multi-ecosystem-group: "all-dependencies"
-    versioning-strategy: increase-if-necessary
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+    groups:
+      # Group TypeScript ecosystem updates
+      typescript:
+        patterns:
+          - "typescript"
+          - "@types/*"
+          - "ts-node"
+          - "tsx"
+      # Group NestJS framework updates (critical for algo-worker, api)
+      nestjs:
+        patterns:
+          - "@nestjs/*"
+      # Group testing frameworks
+      testing:
+        patterns:
+          - "jest"
+          - "@jest/*"
+          - "vitest"
+          - "@testing-library/*"
+      # Group linting/formatting tools
+      dev-tools:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "prettier"
+          - "@typescript-eslint/*"
 
+  # Apps: algo-worker (CRITICAL - trading engine)
+  - package-ecosystem: "npm"
+    directory: "/apps/algo-worker"
+    schedule:
+      interval: "daily" # Daily checks for security-critical trading engine
+      time: "02:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "algo-worker"
+      - "security-critical"
+    commit-message:
+      prefix: "chore(algo-worker)"
+    # Security-only updates for production trading engine
+    versioning-strategy: increase-if-necessary
+
+  # Apps: API backend
+  - package-ecosystem: "npm"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "03:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "api"
+    commit-message:
+      prefix: "chore(api)"
+
+  # Apps: Web dashboard (Next.js)
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "03:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "web"
+      - "frontend"
+    commit-message:
+      prefix: "chore(web)"
+
+  # Packages: Authentication (security-critical)
+  - package-ecosystem: "npm"
+    directory: "/packages/authentication"
+    schedule:
+      interval: "daily" # Daily checks for security package
+      time: "02:30"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "authentication"
+      - "security-critical"
+    commit-message:
+      prefix: "chore(auth)"
+
+  # Packages: Database
+  - package-ecosystem: "npm"
+    directory: "/packages/database"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "03:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "database"
+    commit-message:
+      prefix: "chore(database)"
+
+  # Packages: Market SDK (broker integrations)
+  - package-ecosystem: "npm"
+    directory: "/packages/market-sdk"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "03:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "market-sdk"
+    commit-message:
+      prefix: "chore(market-sdk)"
+
+  # Packages: Schema (Zod validation)
+  - package-ecosystem: "npm"
+    directory: "/packages/schema"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "schema"
+    commit-message:
+      prefix: "chore(schema)"
+
+  # Packages: tRPC (API client)
+  - package-ecosystem: "npm"
+    directory: "/packages/trpc"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "04:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "trpc"
+    commit-message:
+      prefix: "chore(trpc)"
+
+  # Packages: Auth Client
+  - package-ecosystem: "npm"
+    directory: "/packages/auth-client"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "04:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "auth-client"
+    commit-message:
+      prefix: "chore(auth-client)"
+
+  # Packages: Observability (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/packages/observability"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "04:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "observability"
+    commit-message:
+      prefix: "chore(observability)"
+
+  # Packages: ESLint Config
+  - package-ecosystem: "npm"
+    directory: "/packages/eslint-config"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "04:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "eslint-config"
+      - "dev-tools"
+    commit-message:
+      prefix: "chore(eslint-config)"
+
+  # Packages: Jest Config
+  - package-ecosystem: "npm"
+    directory: "/packages/jest-config"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "04:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "jest-config"
+      - "dev-tools"
+    commit-message:
+      prefix: "chore(jest-config)"
+
+  # Packages: TypeScript Config
+  - package-ecosystem: "npm"
+    directory: "/packages/typescript-config"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "04:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "typescript-config"
+      - "dev-tools"
+    commit-message:
+      prefix: "chore(typescript-config)"
+
+  # Services: Market Feeder
+  - package-ecosystem: "npm"
+    directory: "/services/market-feeder"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "market-feeder"
+      - "services"
+    commit-message:
+      prefix: "chore(market-feeder)"
+
+  # Services: Data Processor
+  - package-ecosystem: "npm"
+    directory: "/services/data-processor"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "05:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "data-processor"
+      - "services"
+    commit-message:
+      prefix: "chore(data-processor)"
+
+  # Services: Document Processor
+  - package-ecosystem: "npm"
+    directory: "/services/document-processor"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "05:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "document-processor"
+      - "services"
+    commit-message:
+      prefix: "chore(document-processor)"
+
+  # Services: Notification Service
+  - package-ecosystem: "npm"
+    directory: "/services/notification-service"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "05:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "notification-service"
+      - "services"
+    commit-message:
+      prefix: "chore(notification-service)"
+
+  # Services: Wealth Analyzer
+  - package-ecosystem: "npm"
+    directory: "/services/wealth-analyzer"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "05:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "wealth-analyzer"
+      - "services"
+    commit-message:
+      prefix: "chore(wealth-analyzer)"
+
+  # Services: Wealth Management
+  - package-ecosystem: "npm"
+    directory: "/services/wealth-management"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "05:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "wealth-management"
+      - "services"
+    commit-message:
+      prefix: "chore(wealth-management)"
+
+  # Python: Training Pipeline (ML models)
   - package-ecosystem: "pip"
-    directories:
-      - "/packages/observability/python"
-      - "/services/training-pipeline"
-    patterns:
-      - "*"
-    multi-ecosystem-group: "all-dependencies"
+    directory: "/services/training-pipeline"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "03:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "training-pipeline"
+      - "machine-learning"
+      - "python"
     commit-message:
-      prefix: "chore(deps-py)"
-      include: "scope"
+      prefix: "chore(training)"
+    groups:
+      # Group ML frameworks
+      ml-frameworks:
+        patterns:
+          - "tensorflow"
+          - "torch"
+          - "scikit-learn"
+          - "xgboost"
+          - "lightgbm"
+      # Group data science tools
+      data-science:
+        patterns:
+          - "pandas"
+          - "numpy"
+          - "scipy"
+      # Group Kedro ecosystem
+      kedro:
+        patterns:
+          - "kedro"
+          - "kedro-*"
 
+  # Python: Observability (OpenTelemetry)
+  - package-ecosystem: "pip"
+    directory: "/packages/observability/python"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "04:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "observability"
+      - "python"
+    commit-message:
+      prefix: "chore(observability-py)"
+
+  # Rust: Observability (OpenTelemetry)
   - package-ecosystem: "cargo"
-    directories:
-      - "/packages/compute-engine"
-      - "/packages/observability/rust"
-    patterns:
-      - "*"
-    multi-ecosystem-group: "all-dependencies"
+    directory: "/packages/observability/rust"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "05:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "observability"
+      - "rust"
     commit-message:
-      prefix: "chore(deps-rust)"
+      prefix: "chore(observability-rust)"
 
+  # Rust: Compute Engine
+  - package-ecosystem: "cargo"
+    directory: "/packages/compute-engine"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "compute-engine"
+      - "rust"
+      - "services"
+    commit-message:
+      prefix: "chore(compute-engine)"
+
+  # Docker: Infrastructure
   - package-ecosystem: "docker"
     directory: "/infrastructure/docker"
-    patterns:
-      - "*"
-    multi-ecosystem-group: "all-dependencies"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "03:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+      - "infrastructure"
     commit-message:
-      prefix: "chore(deps-docker)"
+      prefix: "chore(docker)"
 
+  # GitHub Actions: CI/CD workflows
   - package-ecosystem: "github-actions"
     directory: "/"
-    patterns:
-      - "*"
-    multi-ecosystem-group: "all-dependencies"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "ci-cd"
     commit-message:
-      prefix: "chore(deps-ci)"
+      prefix: "chore(ci)"
