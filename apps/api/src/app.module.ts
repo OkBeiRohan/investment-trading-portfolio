@@ -3,7 +3,6 @@ import { ConditionalModule, ConfigModule } from '@nestjs/config';
 import { DevtoolsModule } from '@nestjs/devtools-integration';
 import { TRPCModule } from 'nestjs-trpc-v2';
 import { AuthModule } from '@repo/authentication';
-import { UpstoxModule } from '@repo/market-sdk';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
@@ -37,7 +36,6 @@ import { ObservabilityModule } from '@repo/observability';
     AuthModule,
     HealthModule,
     UserModule,
-    UpstoxModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppContext, TrpcAuthMiddleware, AppRouter],
