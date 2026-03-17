@@ -1,9 +1,1 @@
-"""
-This is a Kedro pipeline 'nlp_sentiment'
-"""
-
-from .pipeline import create_pipeline
-
-__all__ = ["create_pipeline"]
-
-__version__ = "0.1"
+"""NLP sentiment extraction (FinBERT)."""
