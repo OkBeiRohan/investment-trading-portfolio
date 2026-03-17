@@ -70,6 +70,7 @@ export {
   UPSTOX_CONSTANTS,
   UPSTOX_API_URLS,
   UPSTOX_ENDPOINTS,
+  UPSTOX_V3_ENDPOINTS,
   UPSTOX_DATA_AVAILABILITY,
   UPSTOX_PLUS_LIMITS,
   GLOBAL_SYMBOL_MAPPINGS,
@@ -84,6 +85,65 @@ export type {
   UpstoxCandleData as UpstoxCandleDataTyped,
 } from "./providers/upstox/api/historical/dto/historical.request.dto";
 export { parseCandleArray } from "./providers/upstox/api/historical/dto/historical.request.dto";
+
+// Upstox API types (complete)
+export type {
+  UpstoxApiResponse,
+  UpstoxErrorResponse,
+  TokenResponse as UpstoxTokenResponse,
+  TokenRequestResponse,
+  TokenWebhookPayload,
+  UserProfile,
+  FundsAndMargin,
+  FundMarginData,
+  BrokerageRequest,
+  BrokerageDetails,
+  MarginRequest,
+  MarginDetails,
+  PlaceOrderRequest,
+  PlaceOrderResponse,
+  PlaceMultiOrderRequest,
+  PlaceMultiOrderResponse,
+  ModifyOrderRequest,
+  Order as UpstoxOrder,
+  Trade as UpstoxTrade,
+  OrderStatus,
+  TransactionType,
+  OrderType as UpstoxOrderType,
+  ProductType,
+  Validity,
+  Variety,
+  PlaceGttOrderRequest,
+  GttOrder,
+  GttRule,
+  GttType,
+  Position as UpstoxPosition,
+  Holding as UpstoxHolding,
+  ConvertPositionRequest,
+  PnlReportMetadata,
+  PnlReportEntry,
+  TradeCharges,
+  MarketQuoteFull,
+  OhlcQuote,
+  LtpQuote,
+  OptionGreek,
+  MarketHolidayEntry,
+  MarketTiming,
+  ExchangeStatus,
+  WebSocketAuthResponse,
+  PortfolioStreamUpdate,
+  OrderWebhookPayload,
+  GttWebhookPayload,
+} from "./providers/upstox/api/types";
+
+// Upstox API Modules
+export { UpstoxApiModule } from "./providers/upstox/api/api.module";
+export { GttModule } from "./providers/upstox/api/gtt/gtt.module";
+export { GttService } from "./providers/upstox/api/gtt/gtt.service";
+export { TradePnlModule } from "./providers/upstox/api/trade-pnl/trade-pnl.module";
+export { TradePnlService } from "./providers/upstox/api/trade-pnl/trade-pnl.service";
+export { ChargesModule } from "./providers/upstox/api/charges/charges.module";
+export { ChargesService } from "./providers/upstox/api/charges/charges.service";
 
 // Providers — Yahoo Finance
 export {

@@ -6,17 +6,22 @@ import { MarketDataModule } from "./market-data/market-data.module";
 import { HistoricalModule } from "./historical/historical.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
+import { GttModule } from "./gtt/gtt.module";
+import { TradePnlModule } from "./trade-pnl/trade-pnl.module";
+import { ChargesModule } from "./charges/charges.module";
 
 /**
  * Upstox API Module - Root module for all API endpoints
  *
- * Cascading structure:
  * UpstoxApiModule
- * ├── AuthenticationModule (OAuth2)
- * ├── MarketDataModule (quotes, option chain)
- * ├── HistoricalModule (candles, historical data)
- * ├── OrdersModule (place, modify, cancel)
- * └── PortfolioModule (positions, holdings, funds)
+ * +-- AuthenticationModule (OAuth2)
+ * +-- MarketDataModule (quotes, option chain, market info, WS auth)
+ * +-- HistoricalModule (candles, historical data)
+ * +-- OrdersModule (place, modify, cancel)
+ * +-- PortfolioModule (positions, holdings, funds)
+ * +-- GttModule (GTT orders)
+ * +-- TradePnlModule (P&L reports)
+ * +-- ChargesModule (brokerage, margins)
  */
 @Module({
   imports: [
@@ -28,6 +33,9 @@ import { PortfolioModule } from "./portfolio/portfolio.module";
     HistoricalModule,
     OrdersModule,
     PortfolioModule,
+    GttModule,
+    TradePnlModule,
+    ChargesModule,
   ],
   providers: [],
   exports: [
@@ -36,6 +44,9 @@ import { PortfolioModule } from "./portfolio/portfolio.module";
     HistoricalModule,
     OrdersModule,
     PortfolioModule,
+    GttModule,
+    TradePnlModule,
+    ChargesModule,
   ],
 })
 export class UpstoxApiModule {}

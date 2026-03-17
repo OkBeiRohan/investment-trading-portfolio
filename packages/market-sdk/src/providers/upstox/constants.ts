@@ -1,7 +1,9 @@
 /**
  * Upstox Constants
- * V3 API URLs, rate limits, WebSocket limits, Plus account enhanced limits,
+ * V2/V3 API URLs, rate limits, WebSocket limits, Plus account enhanced limits,
  * and global symbol mappings for market data ingestion
+ *
+ * All endpoints audited against https://upstox.com/developer/api-documentation/open-api/
  */
 
 export const UPSTOX_CONSTANTS = {
@@ -11,17 +13,19 @@ export const UPSTOX_CONSTANTS = {
     BASE_URL_V3: "https://api.upstox.com/v3",
     AUTH_URL: "https://api.upstox.com/v2/login/authorization/dialog",
     TOKEN_URL: "https://api.upstox.com/v2/login/authorization/token",
+    TOKEN_REQUEST_URL: "https://api.upstox.com/v3/login/auth/token/request",
   },
   WEBSOCKET: {
     MARKET_DATA_URL: "wss://api.upstox.com/v2/feed/market-data-feed",
+    MARKET_DATA_URL_V3: "wss://api.upstox.com/v3/feed/market-data-feed",
     PORTFOLIO_URL: "wss://api.upstox.com/v2/feed/portfolio-stream-feed",
     ORDER_URL: "wss://api.upstox.com/v2/feed/order-stream-feed",
   },
   RATE_LIMITS: {
-    MARKET_DATA: 25, // requests per second
-    ORDER_PLACEMENT: 10, // requests per second
-    HISTORICAL_DATA: 5, // requests per second (free)
-    HISTORICAL_DATA_PLUS: 50, // Plus account: 50 req/sec
+    MARKET_DATA: 25,
+    ORDER_PLACEMENT: 10,
+    HISTORICAL_DATA: 5,
+    HISTORICAL_DATA_PLUS: 50,
   },
   WEBSOCKET_LIMITS: {
     MAX_CONNECTIONS_FREE: 2,
@@ -43,7 +47,11 @@ export const UPSTOX_CONSTANTS = {
     NSE_INDEX: "NSE_INDEX",
     BSE_EQ: "BSE_EQ",
     BSE_FO: "BSE_FO",
+    BSE_INDEX: "BSE_INDEX",
     MCX_FO: "MCX_FO",
+    NCD_FO: "NCD_FO",
+    BCD_FO: "BCD_FO",
+    NSE_COM: "NSE_COM",
   },
   TIMEOUT: {
     API_CALL: 5000,
@@ -55,71 +63,140 @@ export const UPSTOX_CONSTANTS = {
 export type UpstoxInterval = keyof typeof UPSTOX_CONSTANTS.INTERVALS;
 export type UpstoxSegment = keyof typeof UPSTOX_CONSTANTS.SEGMENTS;
 
-// Re-export for cleaner imports
 export const UPSTOX_API_URLS = {
   LIVE: UPSTOX_CONSTANTS.API.BASE_URL_V2,
-  SANDBOX: "https://api-hft.upstox.com/v2", // Sandbox URL
+  SANDBOX: "https://api-hft.upstox.com/v2",
 };
 
+// ─── V2 Endpoints ────────────────────────────────────────────────────────────
+
 export const UPSTOX_ENDPOINTS = {
-  // Market Data (V2)
-  QUOTES: "/market-quote/quotes",
-  FULL_MARKET_QUOTE: "/market-quote/ltp",
-  OPTION_CHAIN: "/option/chain",
+  // ── Login ──
+  AUTHORIZE: "/login/authorization/dialog",
+  GET_TOKEN: "/login/authorization/token",
+  LOGOUT: "/logout",
 
-  // Historical Data (V3: /v3/historical-candle/...)
-  HISTORICAL_CANDLES: "/historical-candle",
-  INTRADAY_CANDLES: "/historical-candle/intraday",
+  // ── User ──
+  GET_PROFILE: "/user/get-profile",
+  GET_FUNDS_AND_MARGIN: "/user/get-funds-and-margin",
 
-  // Expired Instruments (V3)
-  EXPIRED_CANDLE: "/historical-candle",            // /v3/historical-candle/{instrument_key}/{interval}/{to_date}/{from_date}
-  EXPIRY_DATES: "/option/contract/expiry",         // GET /v3/option/contract/expiry?instrument_key=...
-  ACTIVE_OPTION_CONTRACTS: "/option/contract",     // GET /v3/option/contract?instrument_key=...&expiry_date=...
-  EXPIRED_FUTURES: "/expired-derivatives/future",  // GET /v3/expired-derivatives/future?instrument_key=...&expiry_date=...
-  EXPIRED_OPTIONS: "/expired-derivatives/option",  // GET /v3/expired-derivatives/option?instrument_key=...&expiry_date=...
+  // ── Charges ──
+  BROKERAGE: "/charges/brokerage",
 
-  // Orders
+  // ── Margins ──
+  MARGIN: "/charges/margin",
+
+  // ── Orders (V2) ──
   PLACE_ORDER: "/order/place",
   MODIFY_ORDER: "/order/modify",
   CANCEL_ORDER: "/order/cancel",
+  PLACE_MULTI_ORDER: "/order/multi/place",
+  CANCEL_MULTI_ORDER: "/order/multi/cancel",
+  EXIT_ALL_POSITIONS: "/order/positions/exit",
   ORDER_BOOK: "/order/retrieve-all",
-  ORDER_DETAILS: "/order/history",
+  ORDER_DETAILS: "/order/details",
+  ORDER_HISTORY: "/order/history",
+  GET_TRADES: "/order/trades/get-trades-for-day",
+  GET_ORDER_TRADES: "/order/trades",
 
-  // Portfolio
-  POSITIONS: "/portfolio/long-term-holdings",
-  HOLDINGS: "/portfolio/short-term-holdings",
+  // ── GTT Orders ──
+  PLACE_GTT_ORDER: "/gtt/place",
+  MODIFY_GTT_ORDER: "/gtt/modify",
+  CANCEL_GTT_ORDER: "/gtt/cancel",
+  GET_GTT_ORDER_DETAILS: "/gtt/details",
+
+  // ── Portfolio ──
+  POSITIONS: "/portfolio/short-term-positions",
+  MTF_POSITIONS: "/portfolio/mtf-positions",
+  CONVERT_POSITION: "/portfolio/convert-position",
+  HOLDINGS: "/portfolio/long-term-holdings",
   FUNDS: "/user/get-funds-and-margin",
+
+  // ── Trade Profit & Loss ──
+  PNL_REPORT_METADATA: "/trade/profit-and-loss/metadata",
+  PNL_REPORT: "/trade/profit-and-loss/report",
+  PNL_TRADE_CHARGES: "/trade/profit-and-loss/charges",
+
+  // ── Market Quote (V2) ──
+  FULL_MARKET_QUOTE: "/market-quote/quotes",
+  OHLC_QUOTE: "/market-quote/ohlc",
+  LTP_QUOTE: "/market-quote/ltp",
+  OPTION_GREEKS: "/option/chain/greeks",
+
+  // ── Market Information ──
+  MARKET_HOLIDAYS: "/market/holidays",
+  MARKET_TIMINGS: "/market/timings",
+  EXCHANGE_STATUS: "/market/status",
+
+  // ── Option Chain (V2) ──
+  OPTION_CHAIN: "/option/chain",
+
+  // ── Historical Data (V2) ──
+  HISTORICAL_CANDLES_V2: "/historical-candle",
+  INTRADAY_CANDLES_V2: "/historical-candle/intraday",
+
+  // ── Expired Instruments (V2) ──
+  EXPIRED_HISTORICAL_CANDLE: "/expired-instruments/historical-candle",
+
+  // ── WebSocket Auth URLs ──
+  MARKET_DATA_FEED_AUTHORIZE: "/feed/market-data-feed/authorize",
+  PORTFOLIO_STREAM_AUTHORIZE: "/feed/portfolio-stream-feed/authorize",
+  QUOTES: "/market-quote/quotes",
+
+  // ── Historical Data (V3 uses different base) ──
+  HISTORICAL_CANDLES: "/historical-candle",
+  INTRADAY_CANDLES: "/historical-candle/intraday",
 };
 
-/**
- * Data availability windows for Upstox V3
- */
+// ─── V3 Endpoints (use BASE_URL_V3) ─────────────────────────────────────────
+
+export const UPSTOX_V3_ENDPOINTS = {
+  // ── Orders V3 ──
+  PLACE_ORDER: "/order/place",
+  MODIFY_ORDER: "/order/modify",
+  CANCEL_ORDER: "/order/cancel",
+
+  // ── Login V3 ──
+  TOKEN_REQUEST: "/login/auth/token/request",
+
+  // ── Historical Data V3 ──
+  HISTORICAL_CANDLES: "/historical-candle",
+  INTRADAY_CANDLES: "/historical-candle/intraday",
+
+  // ── Market Quote V3 ──
+  OHLC_QUOTE: "/market-quote/ohlc",
+  LTP_QUOTE: "/market-quote/ltp",
+
+  // ── Option Chain V3 ──
+  OPTION_CONTRACT: "/option/contract",
+  OPTION_CONTRACT_EXPIRY: "/option/contract/expiry",
+  OPTION_CHAIN: "/option/chain",
+
+  // ── Expired Derivatives V3 ──
+  EXPIRED_FUTURES: "/expired-derivatives/future",
+  EXPIRED_OPTIONS: "/expired-derivatives/option",
+
+  // ── WebSocket Auth V3 ──
+  MARKET_DATA_FEED_AUTHORIZE: "/feed/market-data-feed/authorize",
+
+  // ── Trade History V3 ──
+  HISTORICAL_TRADES: "/charges/historical-trades",
+};
+
 export const UPSTOX_DATA_AVAILABILITY = {
-  /** Daily candle data available from */
   DAILY_START: new Date("2000-01-01"),
-  /** 1-minute candle data available from */
   MINUTE_START: new Date("2023-11-01"),
-  /** 5-minute candle data available from */
   FIVE_MINUTE_START: new Date("2023-11-01"),
-  /** 15-minute and higher available from */
   HIGHER_MINUTE_START: new Date("2022-01-01"),
 };
 
-/**
- * Plus account rate limit config
- */
 export const UPSTOX_PLUS_LIMITS = {
   capacity: 50,
-  refillRate: 50, // 50 req/sec for Plus
+  refillRate: 50,
   refillInterval: 20,
 };
 
-/**
- * Global symbol mappings for Yahoo Finance
- * Maps internal instrument keys to Yahoo Finance symbols
- */
 export const GLOBAL_SYMBOL_MAPPINGS = {
-  // Major Global Indices
   "GLOBAL|S&P 500": "^GSPC",
   "GLOBAL|Dow Jones": "^DJI",
   "GLOBAL|NASDAQ Composite": "^IXIC",
@@ -130,21 +207,15 @@ export const GLOBAL_SYMBOL_MAPPINGS = {
   "GLOBAL|Shanghai Composite": "000001.SS",
   "GLOBAL|KOSPI": "^KS11",
   "GLOBAL|ASX 200": "^AXJO",
-
-  // Commodities
   "GLOBAL|Crude Oil WTI": "CL=F",
   "GLOBAL|Crude Oil Brent": "BZ=F",
   "GLOBAL|Gold": "GC=F",
   "GLOBAL|Silver": "SI=F",
   "GLOBAL|Copper": "HG=F",
   "GLOBAL|Natural Gas": "NG=F",
-
-  // Forex
   "GLOBAL|USD/INR": "INR=X",
   "GLOBAL|EUR/USD": "EURUSD=X",
   "GLOBAL|GBP/USD": "GBPUSD=X",
   "GLOBAL|USD/JPY": "USDJPY=X",
-
-  // Bond Futures
   "GLOBAL|US 10Y Yield": "^TNX",
 } as const;
