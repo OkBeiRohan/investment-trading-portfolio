@@ -62,4 +62,8 @@ export class UserRepository {
   async count(filter: QueryFilter<User>): Promise<number> {
     return this.userModel.countDocuments(filter).exec();
   }
+
+  async findByRole(role: string): Promise<User[]> {
+    return this.userModel.find({ role, isActive: true }).exec();
+  }
 }

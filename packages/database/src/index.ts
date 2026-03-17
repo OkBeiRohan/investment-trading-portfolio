@@ -21,6 +21,16 @@ export * from "./mongodb/repositories";
 export * from "./mongodb/schemas";
 export { AuthRepositoryFactory } from "./mongodb/adapter/adapter.factory";
 export type { AuthRepositories } from "./mongodb/adapter/auth-repositories.interface";
+export { DbConfigService } from "./mongodb/services/db-config.service";
+export type {
+  SchedulerConfig,
+  IngestionConfig,
+  WebSocketConfig,
+  GlobalDataConfig,
+  NotificationConfig,
+  TradingDefaultsConfig,
+  MarketConfig,
+} from "./mongodb/services/db-config.service";
 
 // Redis
 export * from "./redis";

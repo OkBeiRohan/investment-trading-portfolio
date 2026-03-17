@@ -5,8 +5,7 @@
  */
 
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { CandlesRepository, ProcessingLogRepository } from '@repo/database';
+import { CandlesRepository, ProcessingLogRepository, DbConfigService } from '@repo/database';
 import {
   YahooProvider,
   AlphaVantageProvider,
@@ -33,7 +32,7 @@ export class GlobalDataService {
     @Optional() private readonly alphaVantage: AlphaVantageProvider,
     @Optional() private readonly finnhub: FinnhubProvider,
     private readonly gapDetector: GapDetectorService,
-    private readonly configService: ConfigService,
+    private readonly dbConfig: DbConfigService,
     private readonly candlesRepo: CandlesRepository,
     private readonly processingLogRepo: ProcessingLogRepository,
   ) {}
@@ -73,9 +72,11 @@ export class GlobalDataService {
       this.logger.error(msg);
     }
 
-    // 2. Alpha Vantage — US Treasury yield (if API key configured)
-    const avApiKey = this.configService.get<string>('globalData.alphaVantage.apiKey');
-    if (avApiKey && this.alphaVantage) {
+    const globalConfig = await this.dbConfig.getGlobalDataConfig();
+
+    // 2. Alpha Vantage — US Treasury yield (if enabled + API key present)
+    const avApiKey = process.env.ALPHA_VANTAGE_API_KEY || '';
+    if (avApiKey && globalConfig.alphaVantageEnabled && this.alphaVantage) {
       try {
         this.logger.log('\n--- Alpha Vantage: Treasury Yield ---');
         const yields = await this.alphaVantage.getTreasuryYield(avApiKey, '10year', 'daily');
@@ -109,9 +110,9 @@ export class GlobalDataService {
       this.logger.log('Alpha Vantage: Skipped (no API key)');
     }
 
-    // 3. Finnhub — Market news (if API key configured)
-    const finnhubApiKey = this.configService.get<string>('globalData.finnhub.apiKey');
-    if (finnhubApiKey && this.finnhub) {
+    // 3. Finnhub — Market news (if enabled + API key present)
+    const finnhubApiKey = process.env.FINNHUB_API_KEY || '';
+    if (finnhubApiKey && globalConfig.finnhubEnabled && this.finnhub) {
       try {
         this.logger.log('\n--- Finnhub: Market News ---');
         const news = await this.finnhub.getMarketNews(finnhubApiKey, 'general');

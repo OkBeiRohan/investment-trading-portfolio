@@ -109,6 +109,13 @@ export {
 // Providers — Binance
 export { BinanceProvider } from "./providers/binance/binance.provider";
 
+// Providers — Market Calendar (Upstox holidays API)
+export {
+  MarketCalendarService,
+  MarketCalendarModule,
+  type MarketHoliday,
+} from "./providers/upstox/market-calendar";
+
 // Providers — MCX Commodities (Upstox WebSocket, ltpc mode)
 export {
   MCX_INSTRUMENT_PREFIXES,

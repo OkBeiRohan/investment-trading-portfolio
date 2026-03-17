@@ -47,6 +47,7 @@ import {
 } from "./schemas/trading";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 import { MongoDBService } from "./mongodb.service";
+import { DbConfigService } from "./services/db-config.service";
 import {
   ConstituentChangeRepository,
   InstrumentRepository,
@@ -257,6 +258,7 @@ import {
     TrainingRunRepository,
     AuthRepositoryFactory,
     MongoDBService,
+    DbConfigService,
   ],
   exports: [
     UserRepository,
@@ -280,6 +282,7 @@ import {
     TrainingRunRepository,
     AuthRepositoryFactory,
     MongoDBService,
+    DbConfigService,
   ],
 })
 export class MongoDBModule {}

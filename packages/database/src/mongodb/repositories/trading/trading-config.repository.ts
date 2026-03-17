@@ -73,6 +73,10 @@ export class TradingConfigRepository {
       .exec();
   }
 
+  async findEnabledConfigs(): Promise<TradingConfig[]> {
+    return this.model.find({ enabled: true }).exec();
+  }
+
   async delete(id: string): Promise<boolean> {
     const result = await this.model.findByIdAndDelete(id).exec();
     return !!result;

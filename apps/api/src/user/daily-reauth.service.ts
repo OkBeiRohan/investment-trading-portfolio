@@ -1,48 +1,126 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
 import {
   TradingConfigRepository,
   BrokerAccountRepository,
   AuditLogRepository,
-} from '@repo/database';
+  UserRepository,
+  DbConfigService,
+} from "@repo/database";
+import { MarketCalendarService } from "@repo/market-sdk";
+import Redis from "ioredis";
 
 @Injectable()
 export class DailyReAuthService {
   private readonly logger = new Logger(DailyReAuthService.name);
+  private redis: Redis | null = null;
 
   constructor(
     private readonly tradingConfigRepo: TradingConfigRepository,
     private readonly brokerAccountRepo: BrokerAccountRepository,
     private readonly auditLogRepo: AuditLogRepository,
+    private readonly userRepo: UserRepository,
+    private readonly dbConfig: DbConfigService,
+    private readonly marketCalendar: MarketCalendarService,
   ) {}
 
   /**
-   * Mon-Fri at 03:30 UTC (09:00 IST) — check all trading-enabled users.
-   *
-   * 1. Query TradingConfigs where enabled + dailyReAuthRequired
-   * 2. For each user, verify broker_accounts token validity (lastReAuthAt vs today)
-   * 3. If expired / stale, disable trading until re-auth
-   * 4. Log results to AuditLog
-   * 5. Emit event for notification-service (future)
+   * Mon-Fri at 03:00 UTC (08:30 IST) -- configurable via system_configs.
+   * Checks if today is a trading day and notifies users who need re-auth.
    */
-  @Cron('30 3 * * 1-5')
-  async checkDailyReAuth() {
-    this.logger.log('Starting daily re-auth check...');
+  @Cron("0 3 * * 1-5")
+  async checkDailyReAuth(): Promise<void> {
+    this.logger.log("Starting daily re-auth check...");
 
-    // TODO: Implement full flow once TradingConfig has dailyReAuthRequired field
-    // 1. const configs = await this.tradingConfigRepo.findEnabledWithReAuth();
-    // 2. For each config, check broker account token freshness
-    // 3. Disable trading for stale tokens
-    // 4. Log audit entries
+    const isTrading = await this.marketCalendar.isMarketOpenToday("NSE");
+    if (!isTrading) {
+      this.logger.log("Not a trading day; skipping re-auth check");
+      return;
+    }
 
-    // TODO: Add actual Upstox token validation via API call
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const configs = await this.tradingConfigRepo.findEnabledConfigs();
+    const adminUsers = await this.userRepo.findByRole("Admin");
+
+    const userIdsToCheck = new Set<string>();
+    for (const config of configs) {
+      userIdsToCheck.add(config.userId);
+    }
+    for (const admin of adminUsers) {
+      userIdsToCheck.add(admin._id.toString());
+    }
+
+    this.logger.log(
+      `Checking ${userIdsToCheck.size} users (${configs.length} trading-enabled, ${adminUsers.length} admins)`,
+    );
+
+    let notified = 0;
+    let skipped = 0;
+    let disabled = 0;
+
+    for (const userId of userIdsToCheck) {
+      try {
+        const brokerAccount =
+          await this.brokerAccountRepo.findWithAccessToken(userId, "upstox");
+
+        if (!brokerAccount) {
+          this.logger.debug(`User ${userId}: no broker account`);
+          continue;
+        }
+
+        const tokenExpiry = brokerAccount.accessTokenExpiresAt;
+        const isTokenValid =
+          tokenExpiry && new Date(tokenExpiry) > new Date();
+
+        const lastReAuth = brokerAccount.lastReAuthAt;
+        const reAuthedToday =
+          lastReAuth && new Date(lastReAuth) >= todayStart;
+
+        if (isTokenValid && reAuthedToday) {
+          skipped++;
+          continue;
+        }
+
+        const user = await this.userRepo.findById(userId);
+        if (!user) continue;
+
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+        const reAuthUrl = `${frontendUrl}/auth/reauth?userId=${userId}`;
+
+        await this.publishNotification({
+          type: "daily-reauth",
+          userId,
+          recipientEmail: user.email,
+          recipientName: user.name,
+          data: { reAuthUrl, name: user.name },
+        });
+
+        notified++;
+
+        await this.auditLogRepo.create({
+          action: "trading.reauth.reminder-sent",
+          category: "auth",
+          userId,
+          details: {
+            email: user.email,
+            tokenExpired: !isTokenValid,
+            reAuthedToday,
+          },
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Error checking user ${userId}: ${msg}`);
+      }
+    }
+
+    this.logger.log(
+      `Daily re-auth check complete: ${notified} notified, ${skipped} skipped (already authenticated), ${disabled} disabled`,
+    );
   }
 
-  /**
-   * Called after successful re-auth to re-enable trading.
-   * Sets lastReAuthAt to now and reAuthExpiresAt to end-of-day IST.
-   */
-  async onReAuthComplete(userId: string) {
+  async onReAuthComplete(userId: string): Promise<void> {
     const now = new Date();
     const expiresAt = new Date(now);
     expiresAt.setHours(23, 59, 59, 999);
@@ -53,12 +131,29 @@ export class DailyReAuthService {
     });
 
     await this.auditLogRepo.create({
-      action: 'trading.reauth.complete',
-      category: 'auth',
+      action: "trading.reauth.complete",
+      category: "auth",
       userId,
       details: { reAuthAt: now, expiresAt },
     });
 
     this.logger.log(`Re-auth complete for user ${userId}`);
+  }
+
+  private async publishNotification(payload: Record<string, unknown>): Promise<void> {
+    try {
+      const redis = await this.getRedis();
+      await redis.publish("notification.send", JSON.stringify(payload));
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to publish notification: ${msg}`);
+    }
+  }
+
+  private async getRedis(): Promise<Redis> {
+    if (this.redis) return this.redis;
+    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+    this.redis = new Redis(redisUrl);
+    return this.redis;
   }
 }

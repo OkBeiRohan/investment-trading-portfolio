@@ -106,6 +106,122 @@ export class InstrumentRepository {
     await this.model.updateOne({ instrumentKey }, { $set: update }).exec();
   }
 
+  async findTradingEnabled(): Promise<InstrumentDocument[]> {
+    return this.model
+      .find({ tradingEnabled: true, isActive: true })
+      .exec();
+  }
+
+  async findDataCollectionEnabled(): Promise<InstrumentDocument[]> {
+    return this.model
+      .find({ dataCollectionEnabled: true, isActive: true })
+      .exec();
+  }
+
+  async updateTradingStatus(
+    instrumentKey: string,
+    enabled: boolean,
+  ): Promise<void> {
+    await this.model
+      .updateOne({ instrumentKey }, { $set: { tradingEnabled: enabled } })
+      .exec();
+  }
+
+  async updateDataCollectionStatus(
+    instrumentKey: string,
+    enabled: boolean,
+  ): Promise<void> {
+    await this.model
+      .updateOne(
+        { instrumentKey },
+        { $set: { dataCollectionEnabled: enabled } },
+      )
+      .exec();
+  }
+
+  async bulkUpdateTradingStatus(
+    instrumentKeys: string[],
+    enabled: boolean,
+  ): Promise<number> {
+    const result = await this.model
+      .updateMany(
+        { instrumentKey: { $in: instrumentKeys } },
+        { $set: { tradingEnabled: enabled } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
+  async bulkUpdateDataCollectionStatus(
+    instrumentKeys: string[],
+    enabled: boolean,
+  ): Promise<number> {
+    const result = await this.model
+      .updateMany(
+        { instrumentKey: { $in: instrumentKeys } },
+        { $set: { dataCollectionEnabled: enabled } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
+  async findFiltered(options: {
+    exchange?: string;
+    segment?: string;
+    instrumentType?: string;
+    tradingEnabled?: boolean;
+    dataCollectionEnabled?: boolean;
+    isActive?: boolean;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: InstrumentDocument[]; total: number }> {
+    const filter: Record<string, unknown> = {};
+
+    if (options.exchange) filter.exchange = options.exchange;
+    if (options.segment) filter.segment = options.segment;
+    if (options.instrumentType) filter.instrumentType = options.instrumentType;
+    if (options.tradingEnabled !== undefined)
+      filter.tradingEnabled = options.tradingEnabled;
+    if (options.dataCollectionEnabled !== undefined)
+      filter.dataCollectionEnabled = options.dataCollectionEnabled;
+    if (options.isActive !== undefined) filter.isActive = options.isActive;
+    if (options.search) {
+      filter.$or = [
+        { tradingSymbol: { $regex: options.search, $options: "i" } },
+        { name: { $regex: options.search, $options: "i" } },
+        { instrumentKey: { $regex: options.search, $options: "i" } },
+      ];
+    }
+
+    const page = options.page ?? 1;
+    const limit = options.limit ?? 50;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      this.model.find(filter).skip(skip).limit(limit).lean().exec(),
+      this.model.countDocuments(filter).exec(),
+    ]);
+
+    return { items: items as InstrumentDocument[], total };
+  }
+
+  async markStaleInactive(activeSyncDate: Date): Promise<number> {
+    const result = await this.model
+      .updateMany(
+        {
+          isActive: true,
+          $or: [
+            { lastBodSyncAt: { $lt: activeSyncDate } },
+            { lastBodSyncAt: { $exists: false } },
+          ],
+        },
+        { $set: { isActive: false } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
   async getSummary(): Promise<{
     total: number;
     byType: Record<string, number>;

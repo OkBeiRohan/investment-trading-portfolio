@@ -6,7 +6,6 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   CandlesRepository,
   InstrumentMasterRepository,
@@ -14,22 +13,15 @@ import {
   DataInventoryRepository,
   InstrumentRepository,
   ProcessingLogRepository,
+  DbConfigService,
 } from '@repo/database';
-import { IMarketCandleBase } from '@repo/schema';
 import {
   UpstoxHistoricalAPIService,
   UPSTOX_DATA_AVAILABILITY,
   type UpstoxCandleDataTyped,
 } from '@repo/market-sdk';
 import { AuthManagerService } from '@repo/authentication';
-import { GapDetectorService, DateGap } from './gap-detector.service';
-import {
-  NIFTY50_INDEX,
-  INDIA_VIX,
-  NIFTY50_CONSTITUENTS,
-  NIFTY50_FUTURES,
-  REMOVED_NIFTY50_CONSTITUENTS,
-} from '../historical-data/nifty50-instruments';
+import { GapDetectorService } from './gap-detector.service';
 
 export interface BackfillResult {
   phase: string;
@@ -50,11 +42,9 @@ export class HistoricalBackfillService {
     private readonly upstoxApi: UpstoxHistoricalAPIService,
     private readonly authManager: AuthManagerService,
     private readonly gapDetector: GapDetectorService,
-    private readonly configService: ConfigService,
-    // QuestDB
+    private readonly dbConfig: DbConfigService,
     private readonly candlesRepo: CandlesRepository,
     private readonly instrumentMasterRepo: InstrumentMasterRepository,
-    // MongoDB
     private readonly ingestionLogRepo: IngestionLogRepository,
     private readonly dataInventoryRepo: DataInventoryRepository,
     private readonly instrumentRepo: InstrumentRepository,
@@ -69,7 +59,7 @@ export class HistoricalBackfillService {
     const now = new Date();
 
     const logEntry = await this.ingestionLogRepo.create({
-      instrumentKey: NIFTY50_INDEX,
+      instrumentKey: 'ALL',
       operation: 'BACKFILL_ALL',
       requestedRange: { start: this.DAILY_START, end: now },
     });
@@ -132,7 +122,7 @@ export class HistoricalBackfillService {
 
     await this.ensureApiToken();
 
-    const activeKeys = this.getAllActiveKeys();
+    const activeKeys = await this.getAllActiveKeys();
     const now = new Date();
 
     this.logger.log(`Incremental backfill: ${activeKeys.length} instruments, ${lookbackDays} day lookback`);
@@ -231,7 +221,8 @@ export class HistoricalBackfillService {
     let processed = 0;
     let totalCandles = 0;
     const errors: string[] = [];
-    const maxInstruments = this.configService.get<number>('ingestion.maxExpiredFutures', 100);
+    const ingestionConfig = await this.dbConfig.getIngestionConfig();
+    const maxInstruments = ingestionConfig.maxExpiredFutures;
 
     try {
       const allInstruments = await this.instrumentMasterRepo.getAllInstruments();
@@ -300,7 +291,7 @@ export class HistoricalBackfillService {
     let totalCandles = 0;
     const errors: string[] = [];
 
-    const activeKeys = this.getAllActiveKeys();
+    const activeKeys = await this.getAllActiveKeys();
     this.logger.log(`Backfilling ${interval} candles for ${activeKeys.length} instruments`);
 
     for (let i = 0; i < activeKeys.length; i++) {
@@ -345,7 +336,8 @@ export class HistoricalBackfillService {
     let processed = 0;
     let totalCandles = 0;
     const errors: string[] = [];
-    const maxOptions = this.configService.get<number>('ingestion.maxOptions', 200);
+    const ingestionConfig = await this.dbConfig.getIngestionConfig();
+    const maxOptions = ingestionConfig.maxOptions;
 
     try {
       const allInstruments = await this.instrumentMasterRepo.getAllInstruments();
@@ -405,14 +397,25 @@ export class HistoricalBackfillService {
     this.upstoxApi.setAccessToken(token);
   }
 
-  private getAllActiveKeys(): string[] {
-    return [...new Set([
-      NIFTY50_INDEX,
-      INDIA_VIX,
-      ...NIFTY50_CONSTITUENTS,
-      ...REMOVED_NIFTY50_CONSTITUENTS.map((r) => r.instrumentKey),
-      ...NIFTY50_FUTURES,
-    ])];
+  private async getAllActiveKeys(): Promise<string[]> {
+    const keys = new Set<string>();
+
+    const dataEnabled = await this.instrumentRepo.findDataCollectionEnabled();
+    for (const inst of dataEnabled) {
+      keys.add(inst.instrumentKey);
+    }
+
+    const nifty50 = await this.instrumentRepo.findNifty50();
+    for (const inst of nifty50) {
+      keys.add(inst.instrumentKey);
+    }
+
+    const indices = await this.instrumentRepo.findByType('INDEX');
+    for (const inst of indices) {
+      keys.add(inst.instrumentKey);
+    }
+
+    return Array.from(keys);
   }
 
   private async storeCandles(
