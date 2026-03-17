@@ -18,6 +18,7 @@ This folder contains **core architecture and system-wide documentation** for Qua
 - [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) - Development workflow, setup, and best practices
 - [PROJECT_STATUS.md](./PROJECT_STATUS.md) - Implementation roadmap and gap analysis
 - [SECURITY.md](./SECURITY.md) - Security policies and best practices
+- [migration/README.md](./migration/README.md) - Migration guides for all components
 
 **AI/ML Architecture** (2026 State-of-the-Art):
 

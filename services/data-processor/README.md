@@ -1,4 +1,4 @@
-> **DEPRECATED**: This service has been superseded by `@repo/compute-engine` (Rust NAPI-RS) integrated into `services/market-feeder`. Feature engineering is now performed at ingestion time.
+> **DEPRECATED**: This service has been superseded by `@repo/compute-engine` (Rust NAPI-RS) integrated into `services/market-feeder`. Feature engineering is now performed at ingestion time. This service is retained for historical reference only.
 
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>

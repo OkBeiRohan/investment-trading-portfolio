@@ -206,14 +206,15 @@ See `.env.example` for required configuration:
 
 ## Documentation
 
-- [Copilot Instructions](../../.github/copilot-instructions.md) - Development guidelines
-- [Architecture](docs/ARCHITECTURE.md) - Detailed system architecture
+- [Design System](docs/DESIGN_SYSTEM.md) - Nixtio-inspired UI/UX design system (colors, components, patterns)
+- [Feature Roadmap](docs/FEATURE_ROADMAP.md) - 50+ planned features across 6 modules
+- [Architecture (Current)](ARCHITECTURE.md) - Current implementation and user flows
+- [Architecture (UFOS Vision)](docs/ARCHITECTURE.md) - Full UFOS vision and design specification
 - [Authentication](docs/AUTHENTICATION.md) - Auth state management and patterns
-- [Data Access Layer](docs/DATA_ACCESS_LAYER.md) - Secure data fetching and mutations (Planned)
+- [Quick Start](docs/QUICKSTART.md) - Implementation checklist
+- [File Structure](docs/STRUCTURE.md) - File structure and conventions
 - [Progress Tracking](../../docs/PROJECT_STATUS.md) - Implementation status
-- [Component Library](docs/COMPONENTS.md) - Reusable UI components (planned)
-- [Dashboard Patterns](docs/DASHBOARD_PATTERNS.md) - Multi-dashboard design patterns (planned)
-- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment (planned)
+- [Migration Guide](../../docs/migration/apps/web.md) - Upgrade guide
 
 ## Development
 
