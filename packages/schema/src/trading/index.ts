@@ -34,3 +34,10 @@ export * from "./api.schema";
 
 // MCX commodity schemas
 export * from "./mcx.schema";
+
+// MongoDB document interfaces
+export * from "./trading-config.schema";
+export * from "./system-config.schema";
+export * from "./experiment.schema";
+export * from "./training-run.schema";
+export * from "./audit-log.schema";

@@ -1,30 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { SectionCard } from "../../_components/page-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeVariant } from "@/components/ui/badge";
+import {
+  useAdminExperiments,
+  useCreateExperiment,
+} from "@/features/admin/hooks/use-admin-queries";
 import styles from "../admin.module.css";
-
-interface Experiment {
-  _id: string;
-  name: string;
-  description?: string;
-  tier?: number;
-  modelType?: string;
-  status?: string;
-  metrics?: Record<string, number>;
-  createdAt?: string;
-}
-
-interface ExperimentsResponse {
-  page: number;
-  limit: number;
-  items: Experiment[];
-  total: number;
-}
 
 function statusVariant(status?: string): BadgeVariant {
   switch (status) {
@@ -44,52 +30,24 @@ function statusVariant(status?: string): BadgeVariant {
 }
 
 export function ExperimentsList() {
-  const [data, setData] = useState<ExperimentsResponse | null>(null);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
 
-  const fetchExperiments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/admin/training/experiments?page=${page}&limit=20`,
-      );
-      if (res.ok) setData(await res.json());
-    } catch (err) {
-      console.error("Failed to fetch experiments", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
+  const filters = useMemo(
+    () => ({ page: String(page), limit: "20" }),
+    [page],
+  );
 
-  useEffect(() => {
-    fetchExperiments();
-  }, [fetchExperiments]);
+  const { data } = useAdminExperiments(filters);
+  const createMutation = useCreateExperiment();
 
-  async function handleCreate() {
+  const experiments = data.items;
+  const totalPages = Math.ceil(data.total / data.limit);
+
+  function handleCreate() {
     const name = prompt("Experiment name:");
     if (!name) return;
-
-    setCreating(true);
-    try {
-      const res = await fetch("/api/admin/training/experiments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, status: "draft" }),
-      });
-      if (res.ok) await fetchExperiments();
-    } finally {
-      setCreating(false);
-    }
+    createMutation.mutate({ name, status: "draft" });
   }
-
-  if (loading && !data) {
-    return <div className={styles.loading}>Loading experiments...</div>;
-  }
-
-  const experiments = data?.items ?? [];
-  const totalPages = Math.ceil((data?.total ?? 0) / (data?.limit ?? 20));
 
   return (
     <>
@@ -100,7 +58,7 @@ export function ExperimentsList() {
             variant="primary"
             size="sm"
             onClick={handleCreate}
-            isLoading={creating}
+            isLoading={createMutation.isPending}
           >
             New Experiment
           </Button>
@@ -178,7 +136,7 @@ export function ExperimentsList() {
         {totalPages > 1 && (
           <div className={styles.pagination}>
             <span className={styles.paginationInfo}>
-              Page {data?.page ?? 1} of {totalPages}
+              Page {data.page} of {totalPages}
             </span>
             <div className={styles.paginationButtons}>
               <Button

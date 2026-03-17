@@ -1,9 +1,10 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types, Schema as MongooseSchema } from "mongoose";
 import { Experiment } from "./experiment.schema";
+import type { ITrainingStage, ITrainingArtifact, IHardwareInfo, ITrainingRun, TrainingRunStatus, TrainingStageStatus, ArtifactType } from "@repo/schema";
 
 @Schema({ _id: false })
-export class TrainingStage {
+export class TrainingStage implements ITrainingStage {
   @Prop()
   name: string;
 
@@ -11,7 +12,7 @@ export class TrainingStage {
     enum: ["pending", "running", "completed", "failed", "skipped"],
     default: "pending",
   })
-  status: string;
+  status: TrainingStageStatus;
 
   @Prop({ type: Date })
   startedAt?: Date;
@@ -36,7 +37,7 @@ export const TrainingStageSchema =
   SchemaFactory.createForClass(TrainingStage);
 
 @Schema({ _id: false })
-export class TrainingArtifact {
+export class TrainingArtifact implements ITrainingArtifact {
   @Prop()
   name: string;
 
@@ -47,7 +48,7 @@ export class TrainingArtifact {
     required: true,
     enum: ["model", "onnx", "metrics", "plot", "data", "log"],
   })
-  type: string;
+  type: ArtifactType;
 
   @Prop()
   sizeBytes?: number;
@@ -60,7 +61,7 @@ export const TrainingArtifactSchema =
   SchemaFactory.createForClass(TrainingArtifact);
 
 @Schema({ _id: false })
-export class HardwareInfo {
+export class HardwareInfo implements IHardwareInfo {
   @Prop({ default: false })
   gpuEnabled: boolean;
 
@@ -84,14 +85,14 @@ export const HardwareInfoSchema =
   SchemaFactory.createForClass(HardwareInfo);
 
 @Schema({ timestamps: true, collection: "training_runs" })
-export class TrainingRun extends Document {
+export class TrainingRun extends Document implements ITrainingRun {
   @Prop({
     type: Types.ObjectId,
     ref: Experiment.name,
     required: true,
     index: true,
   })
-  experimentId: Types.ObjectId;
+  experimentId: string;
 
   @Prop({ required: true })
   pipeline: string;
@@ -101,7 +102,7 @@ export class TrainingRun extends Document {
     default: "queued",
     index: true,
   })
-  status: string;
+  status: TrainingRunStatus;
 
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   parameters: Record<string, any>;

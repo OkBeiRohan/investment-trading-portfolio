@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Schema as MongooseSchema } from "mongoose";
+import type { IRiskLimits, ISegmentConfig, ITradingConfig } from "@repo/schema";
 
 @Schema({ _id: false })
-export class RiskLimits {
+export class RiskLimits implements IRiskLimits {
   @Prop({ default: 50000 })
   maxDailyLoss: number;
 
@@ -22,7 +23,7 @@ export class RiskLimits {
 export const RiskLimitsSchema = SchemaFactory.createForClass(RiskLimits);
 
 @Schema({ _id: false })
-export class SegmentConfig {
+export class SegmentConfig implements ISegmentConfig {
   @Prop({ default: false })
   equity: boolean;
 
@@ -39,7 +40,7 @@ export class SegmentConfig {
 export const SegmentConfigSchema = SchemaFactory.createForClass(SegmentConfig);
 
 @Schema({ timestamps: true, collection: "trading_configs" })
-export class TradingConfig extends Document {
+export class TradingConfig extends Document implements ITradingConfig {
   @Prop({ required: true, index: true })
   userId: string;
 

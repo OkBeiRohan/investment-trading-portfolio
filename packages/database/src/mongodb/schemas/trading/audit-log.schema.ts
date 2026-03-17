@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Schema as MongooseSchema } from "mongoose";
+import type { IAuditLog, AuditLogCategory } from "@repo/schema";
 
 @Schema({ collection: "audit_logs" })
-export class AuditLog extends Document {
+export class AuditLog extends Document implements IAuditLog {
   @Prop({ required: true, index: true })
   action: string;
 
@@ -11,7 +12,7 @@ export class AuditLog extends Document {
     index: true,
     enum: ["auth", "trading", "admin", "data", "training", "system"],
   })
-  category: string;
+  category: AuditLogCategory;
 
   @Prop({ required: true, index: true })
   userId: string;

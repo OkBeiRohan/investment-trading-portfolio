@@ -1,112 +1,57 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { SectionCard } from "../../_components/page-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  useAdminInstruments,
+  useToggleInstrumentTrading,
+  useToggleInstrumentDataCollection,
+} from "@/features/admin/hooks/use-admin-queries";
 import styles from "../admin.module.css";
 
-interface Instrument {
-  instrumentKey: string;
-  symbol: string;
-  exchange: string;
-  segment?: string;
-  instrumentType?: string;
-  lotSize?: number;
-  tradingEnabled?: boolean;
-  dataCollectionEnabled?: boolean;
-}
-
-interface InstrumentsResponse {
-  page: number;
-  limit: number;
-  items: Instrument[];
-  total: number;
-}
-
 export function InstrumentsTable() {
-  const [data, setData] = useState<InstrumentsResponse | null>(null);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [exchange, setExchange] = useState("");
   const [segment, setSegment] = useState("");
-  const [togglingKey, setTogglingKey] = useState<string | null>(null);
+  const [submittedSearch, setSubmittedSearch] = useState("");
 
-  const fetchInstruments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: "50",
-      });
-      if (search) params.set("search", search);
-      if (exchange) params.set("exchange", exchange);
-      if (segment) params.set("segment", segment);
+  const filters = useMemo(() => {
+    const f: Record<string, string> = { page: String(page), limit: "50" };
+    if (submittedSearch) f.search = submittedSearch;
+    if (exchange) f.exchange = exchange;
+    if (segment) f.segment = segment;
+    return f;
+  }, [page, submittedSearch, exchange, segment]);
 
-      const res = await fetch(`/api/admin/instruments?${params}`);
-      if (res.ok) setData(await res.json());
-    } catch (err) {
-      console.error("Failed to fetch instruments", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, exchange, segment]);
+  const { data } = useAdminInstruments(filters);
 
-  useEffect(() => {
-    fetchInstruments();
-  }, [fetchInstruments]);
+  const toggleTradingMutation = useToggleInstrumentTrading();
+  const toggleDataMutation = useToggleInstrumentDataCollection();
 
-  async function toggleTrading(instrumentKey: string, enabled: boolean) {
-    setTogglingKey(instrumentKey);
-    try {
-      await fetch(`/api/admin/instruments/${instrumentKey}/trading`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      });
-      await fetchInstruments();
-    } finally {
-      setTogglingKey(null);
-    }
-  }
+  const instruments = data.items;
+  const totalPages = Math.ceil(data.total / data.limit);
 
-  async function toggleDataCollection(
-    instrumentKey: string,
-    enabled: boolean,
-  ) {
-    setTogglingKey(instrumentKey);
-    try {
-      await fetch(
-        `/api/admin/instruments/${instrumentKey}/data-collection`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabled }),
-        },
-      );
-      await fetchInstruments();
-    } finally {
-      setTogglingKey(null);
-    }
-  }
+  const togglingKey =
+    toggleTradingMutation.isPending
+      ? (toggleTradingMutation.variables as { instrumentKey: string }).instrumentKey
+      : toggleDataMutation.isPending
+        ? (toggleDataMutation.variables as { instrumentKey: string }).instrumentKey
+        : null;
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
-    fetchInstruments();
+    setSubmittedSearch(search);
   }
-
-  const instruments = data?.items ?? [];
-  const totalPages = Math.ceil((data?.total ?? 0) / (data?.limit ?? 50));
 
   return (
     <SectionCard
       title="Instruments"
       action={
-        <span className={styles.textMuted}>
-          {data?.total ?? 0} instruments
-        </span>
+        <span className={styles.textMuted}>{data.total} instruments</span>
       }
     >
       <form className={styles.filterBar} onSubmit={handleSearchSubmit}>
@@ -119,6 +64,7 @@ export function InstrumentsTable() {
         <select
           className={styles.filterSelect}
           value={exchange}
+          aria-label="Filter by exchange"
           onChange={(e) => {
             setExchange(e.target.value);
             setPage(1);
@@ -132,6 +78,7 @@ export function InstrumentsTable() {
         <select
           className={styles.filterSelect}
           value={segment}
+          aria-label="Filter by segment"
           onChange={(e) => {
             setSegment(e.target.value);
             setPage(1);
@@ -148,9 +95,7 @@ export function InstrumentsTable() {
         </Button>
       </form>
 
-      {loading && !data ? (
-        <div className={styles.loading}>Loading instruments...</div>
-      ) : instruments.length === 0 ? (
+      {instruments.length === 0 ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No instruments found</p>
           <p className={styles.emptyDesc}>
@@ -184,9 +129,7 @@ export function InstrumentsTable() {
                   <td className={styles.textMuted}>
                     {inst.instrumentType ?? "—"}
                   </td>
-                  <td className={styles.textRight}>
-                    {inst.lotSize ?? "—"}
-                  </td>
+                  <td className={styles.textRight}>{inst.lotSize ?? "—"}</td>
                   <td>
                     <Badge
                       variant={inst.tradingEnabled ? "success" : "neutral"}
@@ -211,10 +154,10 @@ export function InstrumentsTable() {
                         variant={inst.tradingEnabled ? "ghost" : "outline"}
                         size="sm"
                         onClick={() =>
-                          toggleTrading(
-                            inst.instrumentKey,
-                            !inst.tradingEnabled,
-                          )
+                          toggleTradingMutation.mutate({
+                            instrumentKey: inst.instrumentKey,
+                            enabled: !inst.tradingEnabled,
+                          })
                         }
                         isLoading={togglingKey === inst.instrumentKey}
                       >
@@ -226,10 +169,10 @@ export function InstrumentsTable() {
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          toggleDataCollection(
-                            inst.instrumentKey,
-                            !inst.dataCollectionEnabled,
-                          )
+                          toggleDataMutation.mutate({
+                            instrumentKey: inst.instrumentKey,
+                            enabled: !inst.dataCollectionEnabled,
+                          })
                         }
                         disabled={togglingKey === inst.instrumentKey}
                       >
@@ -247,7 +190,7 @@ export function InstrumentsTable() {
           {totalPages > 1 && (
             <div className={styles.pagination}>
               <span className={styles.paginationInfo}>
-                Page {data?.page ?? 1} of {totalPages}
+                Page {data.page} of {totalPages}
               </span>
               <div className={styles.paginationButtons}>
                 <Button

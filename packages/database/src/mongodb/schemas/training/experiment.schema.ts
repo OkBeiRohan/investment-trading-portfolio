@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Schema as MongooseSchema } from "mongoose";
+import type { IDataConfig, IExperimentMetrics, IExperiment, ExperimentStatus, ModelType, ValidationType } from "@repo/schema";
 
 @Schema({ _id: false })
-export class DataConfig {
+export class DataConfig implements IDataConfig {
   @Prop({ type: Date })
   startDate: Date;
 
@@ -19,7 +20,7 @@ export class DataConfig {
     enum: ["cpcv", "walk_forward", "time_split"],
     default: "cpcv",
   })
-  validationType: string;
+  validationType: ValidationType;
 
   @Prop({ default: 5 })
   nFolds: number;
@@ -31,7 +32,7 @@ export class DataConfig {
 export const DataConfigSchema = SchemaFactory.createForClass(DataConfig);
 
 @Schema({ _id: false })
-export class ExperimentMetrics {
+export class ExperimentMetrics implements IExperimentMetrics {
   @Prop()
   accuracy?: number;
 
@@ -64,7 +65,7 @@ export const ExperimentMetricsSchema =
   SchemaFactory.createForClass(ExperimentMetrics);
 
 @Schema({ timestamps: true, collection: "experiments" })
-export class Experiment extends Document {
+export class Experiment extends Document implements IExperiment {
   @Prop({ required: true, index: true })
   name: string;
 
@@ -83,7 +84,7 @@ export class Experiment extends Document {
     default: "draft",
     index: true,
   })
-  status: string;
+  status: ExperimentStatus;
 
   @Prop({ required: true, enum: [0, 1, 2, 3, 4], index: true })
   tier: number;
@@ -101,7 +102,7 @@ export class Experiment extends Document {
       "meta_learner",
     ],
   })
-  modelType: string;
+  modelType: ModelType;
 
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   hyperparameters: Record<string, any>;

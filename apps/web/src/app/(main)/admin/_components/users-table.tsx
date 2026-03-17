@@ -1,77 +1,46 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { SectionCard } from "../../_components/page-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  useAdminUsers,
+  useEnableUserTrading,
+  useDisableUserTrading,
+} from "@/features/admin/hooks/use-admin-queries";
 import styles from "../admin.module.css";
 
-interface TradingUser {
-  userId: string;
-  name?: string;
-  email?: string;
-  tradingEnabled: boolean;
-  sandboxMode: boolean;
-  lastReAuth?: string;
-}
-
-interface UsersResponse {
-  page: number;
-  limit: number;
-  items: TradingUser[];
-  total: number;
-}
-
 export function UsersTable() {
-  const [data, setData] = useState<UsersResponse | null>(null);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [togglingUser, setTogglingUser] = useState<string | null>(null);
+  const { data } = useAdminUsers(page);
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/admin/trading/users?page=${page}&limit=20`,
-      );
-      if (res.ok) setData(await res.json());
-    } catch (err) {
-      console.error("Failed to fetch users", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
+  const enableMutation = useEnableUserTrading();
+  const disableMutation = useDisableUserTrading();
 
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  const users = data.items;
+  const totalPages = Math.ceil(data.total / data.limit);
 
-  async function toggleTrading(userId: string, enable: boolean) {
-    setTogglingUser(userId);
-    try {
-      const action = enable ? "enable" : "disable";
-      await fetch(`/api/admin/trading/users/${userId}/${action}`, {
-        method: "POST",
-      });
-      await fetchUsers();
-    } finally {
-      setTogglingUser(null);
+  function toggleTrading(userId: string, enable: boolean) {
+    if (enable) {
+      enableMutation.mutate(userId);
+    } else {
+      disableMutation.mutate(userId);
     }
   }
 
-  if (loading && !data) {
-    return <div className={styles.loading}>Loading users...</div>;
-  }
-
-  const users = data?.items ?? [];
+  const togglingUser =
+    enableMutation.isPending
+      ? (enableMutation.variables as string)
+      : disableMutation.isPending
+        ? (disableMutation.variables as string)
+        : null;
 
   return (
     <SectionCard
       title="Trading Users"
       action={
-        <span className={styles.textMuted}>
-          {data?.total ?? 0} total users
-        </span>
+        <span className={styles.textMuted}>{data.total} total users</span>
       }
     >
       {users.length === 0 ? (
@@ -144,11 +113,10 @@ export function UsersTable() {
             </tbody>
           </table>
 
-          {(data?.total ?? 0) > 20 && (
+          {totalPages > 1 && (
             <div className={styles.pagination}>
               <span className={styles.paginationInfo}>
-                Page {data?.page ?? 1} of{" "}
-                {Math.ceil((data?.total ?? 0) / (data?.limit ?? 20))}
+                Page {data.page} of {totalPages}
               </span>
               <div className={styles.paginationButtons}>
                 <Button
@@ -162,9 +130,7 @@ export function UsersTable() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={
-                    page >= Math.ceil((data?.total ?? 0) / (data?.limit ?? 20))
-                  }
+                  disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                 >
                   Next

@@ -1,38 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { SectionCard } from "../../_components/page-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeVariant } from "@/components/ui/badge";
+import {
+  useAdminExperimentDetail,
+  useAdminExperimentRuns,
+  useTriggerTrainingRun,
+  useCancelTrainingRun,
+  useDeployModel,
+} from "@/features/admin/hooks/use-admin-queries";
 import styles from "../admin.module.css";
-
-interface Experiment {
-  _id: string;
-  name: string;
-  description?: string;
-  tier?: number;
-  modelType?: string;
-  status?: string;
-  deployed?: boolean;
-  config?: Record<string, unknown>;
-  hyperparameters?: Record<string, unknown>;
-  metrics?: Record<string, number>;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-interface TrainingRun {
-  _id: string;
-  experimentId: string;
-  status: string;
-  stage?: string;
-  startedAt?: string;
-  completedAt?: string;
-  metrics?: Record<string, number>;
-  error?: string;
-}
 
 function runStatusVariant(status: string): BadgeVariant {
   switch (status) {
@@ -57,93 +37,27 @@ export function ExperimentDetail({
 }: {
   experimentId: string;
 }) {
-  const [experiment, setExperiment] = useState<Experiment | null>(null);
-  const [runs, setRuns] = useState<TrainingRun[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [triggeringRun, setTriggeringRun] = useState(false);
-  const [cancellingRun, setCancellingRun] = useState<string | null>(null);
-  const [deploying, setDeploying] = useState(false);
+  const { data: experiment } = useAdminExperimentDetail(experimentId);
+  const { data: runs } = useAdminExperimentRuns(experimentId);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [expRes, runsRes] = await Promise.all([
-        fetch(`/api/admin/training/experiments/${experimentId}`),
-        fetch(`/api/admin/training/experiments/${experimentId}/runs`),
-      ]);
+  const triggerRunMutation = useTriggerTrainingRun();
+  const cancelRunMutation = useCancelTrainingRun();
+  const deployMutation = useDeployModel();
 
-      if (expRes.ok) setExperiment(await expRes.json());
-      if (runsRes.ok) {
-        const runsData = await runsRes.json();
-        setRuns(Array.isArray(runsData) ? runsData : []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch experiment", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [experimentId]);
+  const runsList = Array.isArray(runs) ? runs : [];
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  async function handleTriggerRun() {
-    setTriggeringRun(true);
-    try {
-      const res = await fetch(
-        `/api/admin/training/experiments/${experimentId}/run`,
-        { method: "POST" },
-      );
-      if (res.ok) await fetchData();
-    } finally {
-      setTriggeringRun(false);
-    }
+  function handleTriggerRun() {
+    triggerRunMutation.mutate(experimentId);
   }
 
-  async function handleCancelRun(runId: string) {
+  function handleCancelRun(runId: string) {
     if (!confirm("Cancel this training run?")) return;
-
-    setCancellingRun(runId);
-    try {
-      const res = await fetch(
-        `/api/admin/training/runs/${runId}/cancel`,
-        { method: "POST" },
-      );
-      if (res.ok) await fetchData();
-    } finally {
-      setCancellingRun(null);
-    }
+    cancelRunMutation.mutate({ runId, experimentId });
   }
 
-  async function handleDeploy() {
+  function handleDeploy() {
     if (!confirm("Deploy this model to production?")) return;
-
-    setDeploying(true);
-    try {
-      const res = await fetch(
-        `/api/admin/training/models/${experimentId}/deploy`,
-        { method: "POST" },
-      );
-      if (res.ok) await fetchData();
-    } finally {
-      setDeploying(false);
-    }
-  }
-
-  if (loading) {
-    return <div className={styles.loading}>Loading experiment...</div>;
-  }
-
-  if (!experiment) {
-    return (
-      <div className={styles.emptyState}>
-        <p className={styles.emptyTitle}>Experiment not found</p>
-        <Link href="/admin/experiments" className={styles.backLink}>
-          Back to experiments
-        </Link>
-      </div>
-    );
+    deployMutation.mutate(experimentId);
   }
 
   return (
@@ -160,7 +74,7 @@ export function ExperimentDetail({
               variant="primary"
               size="sm"
               onClick={handleTriggerRun}
-              isLoading={triggeringRun}
+              isLoading={triggerRunMutation.isPending}
             >
               Start Run
             </Button>
@@ -169,7 +83,7 @@ export function ExperimentDetail({
                 variant="secondary"
                 size="sm"
                 onClick={handleDeploy}
-                isLoading={deploying}
+                isLoading={deployMutation.isPending}
               >
                 Deploy Model
               </Button>
@@ -264,11 +178,11 @@ export function ExperimentDetail({
         title="Training Runs"
         action={
           <span className={styles.textMuted}>
-            {runs.length} run{runs.length !== 1 ? "s" : ""}
+            {runsList.length} run{runsList.length !== 1 ? "s" : ""}
           </span>
         }
       >
-        {runs.length === 0 ? (
+        {runsList.length === 0 ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyTitle}>No training runs</p>
             <p className={styles.emptyDesc}>
@@ -283,7 +197,7 @@ export function ExperimentDetail({
               gap: "var(--spacing-sm)",
             }}
           >
-            {runs.map((run) => (
+            {runsList.map((run) => (
               <div key={run._id} className={styles.runItem}>
                 <div className={styles.runInfo}>
                   <span className={styles.runId}>
@@ -310,7 +224,10 @@ export function ExperimentDetail({
                       variant="danger"
                       size="sm"
                       onClick={() => handleCancelRun(run._id)}
-                      isLoading={cancellingRun === run._id}
+                      isLoading={
+                        cancelRunMutation.isPending &&
+                        (cancelRunMutation.variables as { runId: string })?.runId === run._id
+                      }
                     >
                       Cancel
                     </Button>

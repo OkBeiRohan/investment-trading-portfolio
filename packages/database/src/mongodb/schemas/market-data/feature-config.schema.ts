@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Schema as MongooseSchema } from "mongoose";
+import type { IFeatureConfig, FeatureCategory, ComputeFrequency } from "@repo/schema";
 
 @Schema({ timestamps: true, collection: "feature_configs" })
-export class FeatureConfig extends Document {
+export class FeatureConfig extends Document implements IFeatureConfig {
   @Prop({ required: true, unique: true, index: true })
   featureName: string;
 
@@ -26,7 +27,7 @@ export class FeatureConfig extends Document {
       "mcx",
     ],
   })
-  category: string;
+  category: FeatureCategory;
 
   @Prop({ default: true })
   enabled: boolean;
@@ -41,7 +42,7 @@ export class FeatureConfig extends Document {
     enum: ["tick", "1s", "1m", "5m", "eod"],
     default: "1m",
   })
-  computeFrequency: string;
+  computeFrequency: ComputeFrequency;
 
   @Prop()
   description?: string;

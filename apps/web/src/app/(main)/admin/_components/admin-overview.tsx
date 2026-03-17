@@ -1,65 +1,38 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { StatCard, SectionCard } from "../../_components/page-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  useAdminTradingStatus,
+  useAdminInstrumentsCount,
+  useAdminModels,
+  useSyncInstruments,
+  useKillSwitch,
+} from "@/features/admin/hooks/use-admin-queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { adminKeys } from "@/features/admin/hooks/use-admin-queries";
 import styles from "../admin.module.css";
 
-interface SystemStatus {
-  activeTraders: number;
-  totalConfigs: number;
-  disabled: number;
-  sandbox: number;
-}
-
 export function AdminOverview() {
-  const [tradingStatus, setTradingStatus] = useState<SystemStatus | null>(null);
-  const [instrumentsCount, setInstrumentsCount] = useState(0);
-  const [modelsCount, setModelsCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const { data: tradingStatus } = useAdminTradingStatus();
+  const { data: instrumentsData } = useAdminInstrumentsCount();
+  const { data: modelsData } = useAdminModels();
+
+  const queryClient = useQueryClient();
+  const syncMutation = useSyncInstruments();
+  const killSwitchMutation = useKillSwitch();
   const [killSwitchActive, setKillSwitchActive] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [statusRes, instrumentsRes, modelsRes] = await Promise.all([
-        fetch("/api/admin/trading/status"),
-        fetch("/api/admin/instruments?limit=1"),
-        fetch("/api/admin/training/models"),
-      ]);
+  const instrumentsCount = instrumentsData?.total ?? 0;
+  const modelsCount = Array.isArray(modelsData) ? modelsData.length : 0;
 
-      if (statusRes.ok) setTradingStatus(await statusRes.json());
-      if (instrumentsRes.ok) {
-        const data = await instrumentsRes.json();
-        setInstrumentsCount(data.total ?? 0);
-      }
-      if (modelsRes.ok) {
-        const data = await modelsRes.json();
-        setModelsCount(Array.isArray(data) ? data.length : 0);
-      }
-    } catch (err) {
-      console.error("Failed to fetch admin status", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  async function handleSync() {
-    setSyncing(true);
-    try {
-      await fetch("/api/admin/instruments/sync", { method: "POST" });
-    } finally {
-      setSyncing(false);
-    }
+  function handleSync() {
+    syncMutation.mutate();
   }
 
-  async function handleKillSwitch() {
+  function handleKillSwitch() {
     if (!confirm("Are you sure? This will disable ALL trading immediately."))
       return;
 
@@ -67,19 +40,13 @@ export function AdminOverview() {
     if (!reason) return;
 
     setKillSwitchActive(true);
-    try {
-      await fetch("/api/admin/trading/kill-switch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-    } catch {
-      setKillSwitchActive(false);
-    }
+    killSwitchMutation.mutate(reason, {
+      onError: () => setKillSwitchActive(false),
+    });
   }
 
-  if (loading) {
-    return <div className={styles.loading}>Loading system status...</div>;
+  function handleRefresh() {
+    queryClient.invalidateQueries({ queryKey: adminKeys.all });
   }
 
   return (
@@ -92,12 +59,12 @@ export function AdminOverview() {
         }}
       >
         <StatCard
-          value={String(tradingStatus?.activeTraders ?? 0)}
+          value={String(tradingStatus.activeTraders)}
           label="Active Traders"
         />
         <StatCard value={String(instrumentsCount)} label="Total Instruments" />
         <StatCard
-          value={`${tradingStatus?.totalConfigs ?? 0} / ${tradingStatus?.disabled ?? 0}`}
+          value={`${tradingStatus.totalConfigs} / ${tradingStatus.disabled}`}
           label="Enabled / Disabled"
         />
         <StatCard value={String(modelsCount)} label="Deployed Models" />
@@ -115,22 +82,20 @@ export function AdminOverview() {
             <div className={styles.statusItem}>
               <span className={styles.statusLabel}>Total Configs</span>
               <span className={styles.statusValue}>
-                {tradingStatus?.totalConfigs ?? 0}
+                {tradingStatus.totalConfigs}
               </span>
             </div>
             <div className={styles.statusItem}>
               <span className={styles.statusLabel}>Active</span>
-              <Badge variant="success">
-                {tradingStatus?.activeTraders ?? 0}
-              </Badge>
+              <Badge variant="success">{tradingStatus.activeTraders}</Badge>
             </div>
             <div className={styles.statusItem}>
               <span className={styles.statusLabel}>Disabled</span>
-              <Badge variant="error">{tradingStatus?.disabled ?? 0}</Badge>
+              <Badge variant="error">{tradingStatus.disabled}</Badge>
             </div>
             <div className={styles.statusItem}>
               <span className={styles.statusLabel}>Sandbox</span>
-              <Badge variant="warning">{tradingStatus?.sandbox ?? 0}</Badge>
+              <Badge variant="warning">{tradingStatus.sandbox}</Badge>
             </div>
           </div>
         </SectionCard>
@@ -148,7 +113,7 @@ export function AdminOverview() {
                 variant="secondary"
                 size="sm"
                 onClick={handleSync}
-                isLoading={syncing}
+                isLoading={syncMutation.isPending}
               >
                 Sync Now
               </Button>
@@ -164,7 +129,7 @@ export function AdminOverview() {
                 variant="danger"
                 size="sm"
                 onClick={handleKillSwitch}
-                disabled={killSwitchActive}
+                disabled={killSwitchActive || killSwitchMutation.isPending}
               >
                 {killSwitchActive ? "Activated" : "Activate"}
               </Button>
@@ -174,7 +139,7 @@ export function AdminOverview() {
                 <p className={styles.actionTitle}>Refresh Data</p>
                 <p className={styles.actionDesc}>Reload all status data</p>
               </div>
-              <Button variant="ghost" size="sm" onClick={fetchData}>
+              <Button variant="ghost" size="sm" onClick={handleRefresh}>
                 Refresh
               </Button>
             </div>

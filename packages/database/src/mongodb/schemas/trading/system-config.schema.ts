@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Schema as MongooseSchema } from "mongoose";
+import type { ISystemConfig, SystemConfigCategory, SystemConfigValueType } from "@repo/schema";
 
 @Schema({ timestamps: true, collection: "system_configs" })
-export class SystemConfig extends Document {
+export class SystemConfig extends Document implements ISystemConfig {
   @Prop({ required: true, unique: true, index: true })
   key: string;
 
@@ -21,7 +22,7 @@ export class SystemConfig extends Document {
       "notification",
     ],
   })
-  category: string;
+  category: SystemConfigCategory;
 
   @Prop({ required: true })
   description: string;
@@ -30,7 +31,7 @@ export class SystemConfig extends Document {
     enum: ["string", "number", "boolean", "json", "array"],
     default: "string",
   })
-  valueType: string;
+  valueType: SystemConfigValueType;
 
   @Prop({ default: false })
   isSecret: boolean;
