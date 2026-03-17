@@ -7,9 +7,9 @@ import type { MarketTickerItem } from "@/app/(main)/_types";
 import styles from "./header.module.css";
 
 const navItems = [
-  { label: "Dashboard", href: "/" },
-  { label: "Analytic", href: "/analytics" },
-  { label: "Trading", href: "/trade/execution" },
+  { label: "Dashboard", href: "/" as const },
+  { label: "Analytic", href: "/analytics" as const },
+  { label: "Trading", href: "/trade/execution" as const },
 ];
 
 interface HeaderProps {
