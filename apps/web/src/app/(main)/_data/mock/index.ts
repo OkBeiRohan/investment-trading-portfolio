@@ -8,3 +8,9 @@ export {
   mockRisk,
   mockStats,
 } from "./portfolio.mock";
+export {
+  mockMarketTicker,
+  mockAIMessages,
+  mockTradingMetrics,
+  mockMarketMood,
+} from "./dashboard.mock";

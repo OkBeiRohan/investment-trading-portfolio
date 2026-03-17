@@ -1,145 +1,132 @@
 [data-theme="light"] {
-  /* ================================
-     PRIMARY ACCENT
-     ================================ */
-  --color-primary: var(--color-emerald-dark);
-  --color-primary-hover: #047857;
-  --color-primary-light: rgba(5, 150, 105, 0.1);
+  --color-primary: #0d9668;
+  --color-primary-hover: #0a7d56;
+  --color-primary-light: rgba(13, 150, 104, 0.08);
 
-  /* ================================
-     BACKGROUNDS
-     ================================ */
-  --color-bg-primary: #f4f6f9;
-  --color-bg-secondary: #edf0f4;
-  --color-bg-tertiary: #e5e8ed;
+  /* Warm, inviting backgrounds - soft cream undertones */
+  --color-bg-primary: #f6f7f9;
+  --color-bg-secondary: #f0f2f5;
+  --color-bg-tertiary: #e8ebf0;
   --color-bg-elevated: #ffffff;
   --color-bg-card: #ffffff;
   --color-bg-sidebar: #ffffff;
-  --color-bg-accent: rgba(5, 150, 105, 0.06);
-  --color-bg-hover: rgba(0, 0, 0, 0.03);
-  --color-bg-active: rgba(0, 0, 0, 0.05);
+  --color-bg-accent: rgba(13, 150, 104, 0.05);
+  --color-bg-hover: rgba(13, 150, 104, 0.04);
+  --color-bg-active: rgba(13, 150, 104, 0.07);
+  --color-bg-warm: #fefbf6;
+  --color-bg-ticker: #ffffff;
 
-  --color-bg-gradient: linear-gradient(145deg, #f4f6f9 0%, #edf0f4 50%, #e5e8ed 100%);
-  --color-bg-gradient-card: linear-gradient(145deg, #ffffff 0%, #fafbfc 100%);
-  --color-bg-gradient-warm: linear-gradient(145deg, #fef8f3 0%, #fdf3ed 100%);
+  --color-bg-gradient: linear-gradient(160deg, #f6f7f9 0%, #f0f2f5 100%);
+  --color-bg-gradient-card: linear-gradient(160deg, #ffffff 0%, #fcfcfd 100%);
+  --color-bg-gradient-warm: linear-gradient(160deg, #fefcf8 0%, #f6f7f9 100%);
+  --color-bg-gradient-hero: linear-gradient(160deg, #f0fdf4 0%, #ecfdf5 50%, #f0f9ff 100%);
 
   --color-auth-gradient-start: #f0fdf4;
-  --color-auth-gradient-end: #f4f6f9;
-  --color-panel-gradient-start: #059669;
-  --color-panel-gradient-end: #047857;
+  --color-auth-gradient-end: #f6f7f9;
+  --color-panel-gradient-start: #0d9668;
+  --color-panel-gradient-end: #0a7d56;
 
-  /* ================================
-     TEXT
-     ================================ */
-  --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
-  --color-text-tertiary: #9ca3af;
+  /* Text - warm, readable */
+  --color-text-primary: #1a1f36;
+  --color-text-secondary: #5e6687;
+  --color-text-tertiary: #8e94a8;
   --color-text-inverse: #ffffff;
-  --color-text-muted: #d1d5db;
-  --color-text-accent: var(--color-emerald-dark);
+  --color-text-muted: #c1c7d0;
+  --color-text-accent: #0d9668;
 
-  /* ================================
-     BORDERS
-     ================================ */
-  --color-border: #e5e7eb;
-  --color-border-light: #f0f0f0;
-  --color-border-focus: var(--color-emerald-dark);
-  --color-border-subtle: #f3f4f6;
+  /* Borders - subtle and warm */
+  --color-border: #e6e9ef;
+  --color-border-light: #f0f1f5;
+  --color-border-focus: #0d9668;
+  --color-border-subtle: #f5f5f8;
 
-  /* ================================
-     INPUT
-     ================================ */
-  --color-input-bg: #f9fafb;
-  --color-input-border: #e5e7eb;
-  --color-input-border-focus: var(--color-emerald-dark);
-  --color-input-text: #111827;
-  --color-input-placeholder: #9ca3af;
+  /* Input */
+  --color-input-bg: #f8f9fb;
+  --color-input-border: #e6e9ef;
+  --color-input-border-focus: #0d9668;
+  --color-input-text: #1a1f36;
+  --color-input-placeholder: #8e94a8;
 
-  /* ================================
-     BUTTONS
-     ================================ */
-  --color-button-primary-bg: var(--color-emerald-dark);
-  --color-button-primary-hover: #047857;
+  /* Buttons */
+  --color-button-primary-bg: #0d9668;
+  --color-button-primary-hover: #0a7d56;
   --color-button-primary-text: #ffffff;
 
   --color-button-secondary-bg: #ffffff;
-  --color-button-secondary-hover: #f9fafb;
-  --color-button-secondary-border: #e5e7eb;
-  --color-button-secondary-text: #374151;
+  --color-button-secondary-hover: #f8f9fb;
+  --color-button-secondary-border: #e6e9ef;
+  --color-button-secondary-text: #3c4257;
 
-  --color-button-ghost-hover: rgba(0, 0, 0, 0.04);
+  --color-button-ghost-hover: rgba(13, 150, 104, 0.05);
 
-  /* ================================
-     STATUS
-     ================================ */
-  --color-success: #059669;
+  /* Status - optimistic, growth-oriented */
+  --color-success: #0d9668;
   --color-success-bg: #ecfdf5;
   --color-success-text: #065f46;
   --color-success-border: #a7f3d0;
 
-  --color-error: #ef4444;
-  --color-error-bg: #fef2f2;
+  --color-error: #e8553a;
+  --color-error-bg: #fef2ef;
   --color-error-text: #b91c1c;
-  --color-error-border: #fecaca;
+  --color-error-border: #fecdd3;
 
-  --color-warning: #f59e0b;
-  --color-warning-bg: #fffbeb;
-  --color-warning-text: #92400e;
-  --color-warning-border: #fde68a;
+  --color-warning: #e5940b;
+  --color-warning-bg: #fefce8;
+  --color-warning-text: #854d0e;
+  --color-warning-border: #fef08a;
 
-  --color-info: #0ea5e9;
-  --color-info-bg: #f0f9ff;
-  --color-info-text: #0c4a6e;
-  --color-info-border: #bae6fd;
+  --color-info: #3b82f6;
+  --color-info-bg: #eff6ff;
+  --color-info-text: #1e40af;
+  --color-info-border: #bfdbfe;
 
-  /* ================================
-     LINK
-     ================================ */
-  --color-link: var(--color-emerald-dark);
-  --color-link-hover: #047857;
+  /* Link */
+  --color-link: #0d9668;
+  --color-link-hover: #0a7d56;
 
-  /* ================================
-     TRADING SPECIFIC
-     ================================ */
-  --color-profit: #059669;
+  /* Trading - clear positive/negative signals */
+  --color-profit: #0d9668;
   --color-profit-bg: #ecfdf5;
-  --color-loss: #ef4444;
-  --color-loss-bg: #fef2f2;
-  --color-neutral: #6b7280;
+  --color-loss: #e8553a;
+  --color-loss-bg: #fef2ef;
+  --color-neutral: #5e6687;
 
-  /* ================================
-     SHADOWS
-     ================================ */
-  --shadow-color: rgba(0, 0, 0, 0.06);
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --sidebar-shadow: 1px 0 0 #e5e7eb;
+  /* Shadows - soft, lifted feel */
+  --shadow-color: rgba(0, 0, 0, 0.04);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --card-shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
+  --sidebar-shadow: 1px 0 0 #e6e9ef;
+  --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.04);
+  --shadow-glow-profit: 0 0 16px rgba(13, 150, 104, 0.12);
 
-  /* ================================
-     GLASSMORPHISM
-     ================================ */
-  --glass-bg: rgba(255, 255, 255, 0.85);
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.88);
   --glass-border: rgba(255, 255, 255, 0.5);
 
-  /* ================================
-     SKELETON LOADER
-     ================================ */
-  --skeleton-base: #e5e7eb;
-  --skeleton-highlight: #f3f4f6;
+  /* Skeleton */
+  --skeleton-base: #e6e9ef;
+  --skeleton-highlight: #f0f2f5;
 
-  /* ================================
-     SCROLLBAR
-     ================================ */
+  /* Scrollbar */
   --scrollbar-bg: transparent;
-  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
-  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.1);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.18);
 
-  /* ================================
-     FEATURE CARD ACCENTS
-     ================================ */
-  --card-emerald-bg: rgba(5, 150, 105, 0.06);
-  --card-amber-bg: rgba(245, 158, 11, 0.06);
-  --card-coral-bg: rgba(239, 68, 68, 0.06);
-  --card-sky-bg: rgba(14, 165, 233, 0.06);
-  --card-violet-bg: rgba(139, 92, 246, 0.06);
+  /* Feature card accents */
+  --card-emerald-bg: rgba(13, 150, 104, 0.05);
+  --card-amber-bg: rgba(229, 148, 11, 0.06);
+  --card-coral-bg: rgba(232, 85, 58, 0.05);
+  --card-sky-bg: rgba(59, 130, 246, 0.05);
+  --card-violet-bg: rgba(139, 92, 246, 0.05);
+
+  /* Gauge specific */
+  --gauge-track: #e6e9ef;
+  --gauge-fill-start: #0d9668;
+  --gauge-fill-end: #34d399;
+  --gauge-glow: rgba(13, 150, 104, 0.2);
+
+  /* AI Assistant */
+  --ai-bg: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+  --ai-user-bg: #0d9668;
+  --ai-bot-bg: #f0f2f5;
 }

@@ -5,15 +5,30 @@
   animation: fadeIn var(--transition-slow) ease;
 }
 
-.greeting {
+/* Hero Section - Portfolio gauge + greeting */
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: var(--spacing-6);
+  align-items: start;
+}
+
+.heroLeft {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-4);
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.heroRight {
+  min-width: 0;
+}
+
+.greeting {
+  padding: var(--spacing-2) 0;
 }
 
 .greetingTitle {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   letter-spacing: var(--letter-spacing-tight);
@@ -23,33 +38,154 @@
 .greetingSubtitle {
   font-size: var(--font-size-sm);
   color: var(--color-text-tertiary);
-  margin-top: var(--spacing-1);
+  margin-top: var(--spacing-1-5);
 }
 
+/* Portfolio Tabs */
+.portfolioTabs {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tab:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text-primary);
+}
+
+.tabActive {
+  border-color: var(--color-primary);
+  color: var(--color-text-primary);
+  background: var(--color-bg-accent);
+}
+
+.tabDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.tabDot[data-color="emerald"] {
+  background: var(--color-emerald);
+}
+
+.tabDot[data-color="amber"] {
+  background: var(--color-amber);
+}
+
+.tabValue {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  margin-left: var(--spacing-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Three column row: chart + metrics + AI */
 .row {
+  display: grid;
+  grid-template-columns: 1fr 200px 360px;
+  gap: var(--spacing-5);
+  align-items: stretch;
+}
+
+.chartArea {
+  min-width: 0;
+}
+
+.chartCard {
+  height: 100%;
+}
+
+.metricsArea {
+  min-width: 0;
+}
+
+.metricsCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-5);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.aiArea {
+  min-width: 0;
+}
+
+/* Two column rows */
+.rowTwo {
   display: grid;
   grid-template-columns: 1fr 380px;
   gap: var(--spacing-5);
   align-items: start;
 }
 
-.colMain {
+.colWide {
   min-width: 0;
 }
 
-.colSide {
+.colNarrow {
   min-width: 0;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .row {
+    grid-template-columns: 1fr 360px;
+  }
+
+  .metricsArea {
+    display: none;
+  }
 }
 
 @media (max-width: 1280px) {
-  .row {
+  .hero {
+    grid-template-columns: 1fr 340px;
+  }
+
+  .rowTwo {
     grid-template-columns: 1fr 340px;
   }
 }
 
 @media (max-width: 1024px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .heroRight {
+    max-width: 400px;
+  }
+
   .row {
     grid-template-columns: 1fr;
+  }
+
+  .rowTwo {
+    grid-template-columns: 1fr;
+  }
+
+  .metricsArea {
+    display: block;
   }
 }
 
@@ -59,6 +195,10 @@
   }
 
   .greetingTitle {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
+  }
+
+  .portfolioTabs {
+    flex-direction: column;
   }
 }

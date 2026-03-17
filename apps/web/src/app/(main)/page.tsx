@@ -1,8 +1,10 @@
 import styles from "./page.module.css";
-import { PortfolioCard } from "./_components/portfolio-card";
+import { PortfolioGauge } from "./_components/portfolio-gauge";
 import { StatsGrid } from "./_components/stats-grid";
 import { AllocationChart } from "./_components/allocation-chart";
 import { PerformanceChart } from "./_components/performance-chart";
+import { TradingMetrics } from "./_components/trading-metrics";
+import { AIAssistant } from "./_components/ai-assistant";
 import { TransactionsList } from "./_components/transactions";
 import { Watchlist } from "./_components/watchlist";
 import { RiskScore } from "./_components/risk-score";
@@ -14,54 +16,87 @@ import {
   mockRisk,
   mockStats,
   mockTransactions,
+  mockAIMessages,
+  mockTradingMetrics,
 } from "./_data/mock";
 
 export default function DashboardPage() {
   return (
     <div className={styles.dashboard}>
-      <div className={styles.greeting}>
-        <div>
-          <h1 className={styles.greetingTitle}>Welcome back, Leandro</h1>
-          <p className={styles.greetingSubtitle}>
-            Here&apos;s your portfolio overview for today
-          </p>
+      <section className={styles.hero}>
+        <div className={styles.heroLeft}>
+          <div className={styles.greeting}>
+            <h1 className={styles.greetingTitle}>My Portfolio</h1>
+            <p className={styles.greetingSubtitle}>
+              Markets are looking positive today. Keep up the momentum!
+            </p>
+          </div>
+
+          <div className={styles.portfolioTabs}>
+            <button className={`${styles.tab} ${styles.tabActive}`} type="button">
+              <span className={styles.tabDot} data-color="emerald" />
+              Stock Portfolio
+              <span className={styles.tabValue}>$84,156.32</span>
+            </button>
+            <button className={styles.tab} type="button">
+              <span className={styles.tabDot} data-color="amber" />
+              Crypto Portfolio
+              <span className={styles.tabValue}>$44,272.68</span>
+            </button>
+          </div>
         </div>
-      </div>
+
+        <div className={styles.heroRight}>
+          <PortfolioGauge
+            totalValue={mockPortfolio.totalValue}
+            todayChange={mockPortfolio.todayChange}
+            todayChangePercent={mockPortfolio.todayChangePercent}
+            investedValue={mockPortfolio.investedValue}
+          />
+        </div>
+      </section>
 
       <StatsGrid stats={mockStats} />
 
-      <div className={styles.row}>
-        <div className={styles.colMain}>
-          <PerformanceChart data={mockPerformance} />
+      <section className={styles.row}>
+        <div className={styles.chartArea}>
+          <div className={styles.chartCard}>
+            <PerformanceChart data={mockPerformance} title="Graph" />
+          </div>
         </div>
-        <div className={styles.colSide}>
-          <PortfolioCard
-            portfolio={mockPortfolio}
-            performance={mockPerformance}
-          />
+        <div className={styles.metricsArea}>
+          <div className={styles.metricsCard}>
+            <TradingMetrics metrics={mockTradingMetrics} />
+          </div>
         </div>
-      </div>
+        <div className={styles.aiArea}>
+          <AIAssistant messages={mockAIMessages} />
+        </div>
+      </section>
 
-      <div className={styles.row}>
-        <div className={styles.colMain}>
+      <section className={styles.rowTwo}>
+        <div className={styles.colWide}>
           <AllocationChart
             allocations={mockAllocation}
             totalValue={mockPortfolio.totalValue}
           />
         </div>
-        <div className={styles.colSide}>
+        <div className={styles.colNarrow}>
           <RiskScore risk={mockRisk} />
         </div>
-      </div>
+      </section>
 
-      <div className={styles.row}>
-        <div className={styles.colMain}>
-          <TransactionsList transactions={mockTransactions} />
+      <section className={styles.rowTwo}>
+        <div className={styles.colWide}>
+          <TransactionsList
+            transactions={mockTransactions}
+            title="Transfers"
+          />
         </div>
-        <div className={styles.colSide}>
+        <div className={styles.colNarrow}>
           <Watchlist items={mockWatchlist} />
         </div>
-      </div>
+      </section>
     </div>
   );
 }
