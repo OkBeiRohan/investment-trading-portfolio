@@ -17,9 +17,9 @@ export const mockPortfolio: PortfolioSummary = {
 };
 
 export const mockAllocation: AssetAllocation[] = [
-  { label: "Equities", value: 56685, percentage: 44, color: "var(--color-emerald)" },
-  { label: "Crypto", value: 19839, percentage: 15, color: "var(--color-amber)" },
-  { label: "Fixed Income", value: 25686, percentage: 20, color: "var(--color-sky)" },
+  { label: "Equities", value: 56685, percentage: 44, color: "var(--color-primary)" },
+  { label: "Crypto", value: 19839, percentage: 15, color: "#22c55e" },
+  { label: "Fixed Income", value: 25686, percentage: 20, color: "var(--color-amber)" },
   { label: "Commodities", value: 17950, percentage: 14, color: "var(--color-violet)" },
   { label: "Cash", value: 8269, percentage: 7, color: "var(--color-text-tertiary)" },
 ];

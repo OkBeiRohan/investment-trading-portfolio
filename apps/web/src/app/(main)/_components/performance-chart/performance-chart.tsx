@@ -105,12 +105,12 @@ export function PerformanceChart({ data, title = "Performance" }: PerformanceCha
             >
               <stop
                 offset="0%"
-                stopColor="var(--color-emerald)"
-                stopOpacity={0.3}
+                stopColor="var(--color-primary)"
+                stopOpacity={0.2}
               />
               <stop
                 offset="100%"
-                stopColor="var(--color-emerald)"
+                stopColor="var(--color-primary)"
                 stopOpacity={0}
               />
             </linearGradient>
@@ -144,7 +144,7 @@ export function PerformanceChart({ data, title = "Performance" }: PerformanceCha
           <polyline
             points={linePoints}
             fill="none"
-            stroke="var(--color-emerald)"
+            stroke="var(--color-primary)"
             strokeWidth={2}
             vectorEffect="non-scaling-stroke"
           />

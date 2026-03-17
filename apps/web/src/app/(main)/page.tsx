@@ -1,20 +1,15 @@
+import { ArrowLeft } from "lucide-react";
 import styles from "./page.module.css";
 import { PortfolioGauge } from "./_components/portfolio-gauge";
-import { StatsGrid } from "./_components/stats-grid";
-import { AllocationChart } from "./_components/allocation-chart";
 import { PerformanceChart } from "./_components/performance-chart";
 import { TradingMetrics } from "./_components/trading-metrics";
 import { AIAssistant } from "./_components/ai-assistant";
 import { TransactionsList } from "./_components/transactions";
-import { Watchlist } from "./_components/watchlist";
-import { RiskScore } from "./_components/risk-score";
+import { AllocationChart } from "./_components/allocation-chart";
 import {
   mockPortfolio,
   mockAllocation,
   mockPerformance,
-  mockWatchlist,
-  mockRisk,
-  mockStats,
   mockTransactions,
   mockAIMessages,
   mockTradingMetrics,
@@ -23,26 +18,42 @@ import {
 export default function DashboardPage() {
   return (
     <div className={styles.dashboard}>
+      <div className={styles.breadcrumb}>
+        <button className={styles.backBtn} type="button" aria-label="Go back">
+          <ArrowLeft size={16} />
+        </button>
+        <span className={styles.breadcrumbPath}>
+          <span className={styles.breadcrumbMuted}>Dashboard</span>
+          <span className={styles.breadcrumbSep}>/</span>
+          <span className={styles.breadcrumbActive}>My Portfolio</span>
+        </span>
+      </div>
+
       <section className={styles.hero}>
         <div className={styles.heroLeft}>
-          <div className={styles.greeting}>
-            <h1 className={styles.greetingTitle}>My Portfolio</h1>
-            <p className={styles.greetingSubtitle}>
-              Markets are looking positive today. Keep up the momentum!
-            </p>
-          </div>
+          <h1 className={styles.title}>My Portfolio</h1>
 
           <div className={styles.portfolioTabs}>
-            <button className={`${styles.tab} ${styles.tabActive}`} type="button">
-              <span className={styles.tabDot} data-color="emerald" />
-              Stock Portfolio
-              <span className={styles.tabValue}>$84,156.32</span>
-            </button>
-            <button className={styles.tab} type="button">
-              <span className={styles.tabDot} data-color="amber" />
-              Crypto Portfolio
-              <span className={styles.tabValue}>$44,272.68</span>
-            </button>
+            <div className={`${styles.portfolioTab} ${styles.tabStock}`}>
+              <div className={styles.tabBlobs}>
+                <div className={`${styles.blob} ${styles.blobPink}`} />
+                <div className={`${styles.blob} ${styles.blobBlue}`} />
+              </div>
+              <div className={styles.tabContent}>
+                <span className={styles.tabLabel}>Stock Portfolio</span>
+                <span className={styles.tabValue}>/$4,156.32</span>
+              </div>
+            </div>
+            <div className={`${styles.portfolioTab} ${styles.tabCrypto}`}>
+              <div className={styles.tabBlobs}>
+                <div className={`${styles.blob} ${styles.blobAmber}`} />
+                <div className={`${styles.blob} ${styles.blobGreen}`} />
+              </div>
+              <div className={styles.tabContent}>
+                <span className={styles.tabLabel}>Crypto Portfolio</span>
+                <span className={styles.tabValue}>/$3,156.32</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -56,45 +67,34 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <StatsGrid stats={mockStats} />
-
-      <section className={styles.row}>
-        <div className={styles.chartArea}>
-          <div className={styles.chartCard}>
-            <PerformanceChart data={mockPerformance} title="Graph" />
+      <section className={styles.middleRow}>
+        <div className={styles.graphSection}>
+          <div className={styles.graphCard}>
+            <div className={styles.graphMain}>
+              <PerformanceChart data={mockPerformance} title="Graph" />
+            </div>
+            <div className={styles.graphMetrics}>
+              <TradingMetrics metrics={mockTradingMetrics} />
+            </div>
           </div>
         </div>
-        <div className={styles.metricsArea}>
-          <div className={styles.metricsCard}>
-            <TradingMetrics metrics={mockTradingMetrics} />
-          </div>
-        </div>
-        <div className={styles.aiArea}>
+        <div className={styles.aiSection}>
           <AIAssistant messages={mockAIMessages} />
         </div>
       </section>
 
-      <section className={styles.rowTwo}>
-        <div className={styles.colWide}>
-          <AllocationChart
-            allocations={mockAllocation}
-            totalValue={mockPortfolio.totalValue}
-          />
-        </div>
-        <div className={styles.colNarrow}>
-          <RiskScore risk={mockRisk} />
-        </div>
-      </section>
-
-      <section className={styles.rowTwo}>
-        <div className={styles.colWide}>
+      <section className={styles.bottomRow}>
+        <div className={styles.transfersSection}>
           <TransactionsList
             transactions={mockTransactions}
             title="Transfers"
           />
         </div>
-        <div className={styles.colNarrow}>
-          <Watchlist items={mockWatchlist} />
+        <div className={styles.spendingSection}>
+          <AllocationChart
+            allocations={mockAllocation}
+            totalValue={mockPortfolio.totalValue}
+          />
         </div>
       </section>
     </div>

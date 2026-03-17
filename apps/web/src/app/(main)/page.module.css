@@ -1,169 +1,229 @@
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-5);
+  gap: var(--spacing-6);
   animation: fadeIn var(--transition-slow) ease;
 }
 
-/* Hero Section - Portfolio gauge + greeting */
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.backBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.breadcrumbPath {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  font-size: var(--font-size-sm);
+}
+
+.breadcrumbMuted {
+  color: var(--color-text-tertiary);
+}
+
+.breadcrumbSep {
+  color: var(--color-text-muted);
+}
+
+.breadcrumbActive {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Hero */
 .hero {
   display: grid;
   grid-template-columns: 1fr 380px;
-  gap: var(--spacing-6);
+  gap: var(--spacing-8);
   align-items: start;
 }
 
 .heroLeft {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-5);
+  gap: var(--spacing-6);
 }
 
 .heroRight {
   min-width: 0;
 }
 
-.greeting {
-  padding: var(--spacing-2) 0;
-}
-
-.greetingTitle {
-  font-size: var(--font-size-3xl);
+.title {
+  font-size: 2.5rem;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
-  letter-spacing: var(--letter-spacing-tight);
-  line-height: var(--line-height-tight);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
 }
 
-.greetingSubtitle {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-tertiary);
-  margin-top: var(--spacing-1-5);
-}
-
-/* Portfolio Tabs */
+/* Portfolio tabs with blobs */
 .portfolioTabs {
   display: flex;
-  gap: var(--spacing-3);
+  gap: var(--spacing-4);
 }
 
-.tab {
+.portfolioTab {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2);
+  gap: var(--spacing-3);
   padding: var(--spacing-3) var(--spacing-4);
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  border-radius: var(--radius-2xl);
   cursor: pointer;
   transition: all var(--transition-fast);
+  min-width: 200px;
 }
 
-.tab:hover {
-  border-color: var(--color-primary);
-  color: var(--color-text-primary);
+.portfolioTab:hover {
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-1px);
 }
 
-.tabActive {
-  border-color: var(--color-primary);
-  color: var(--color-text-primary);
-  background: var(--color-bg-accent);
-}
-
-.tabDot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
+.tabBlobs {
+  display: flex;
+  gap: -4px;
   flex-shrink: 0;
 }
 
-.tabDot[data-color="emerald"] {
-  background: var(--color-emerald);
+.blob {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  opacity: 0.8;
 }
 
-.tabDot[data-color="amber"] {
-  background: var(--color-amber);
+.blob:nth-child(2) {
+  margin-left: -10px;
+}
+
+.blobPink {
+  background: linear-gradient(135deg, #f9a8c9, #ec6b9a);
+}
+
+.blobBlue {
+  background: linear-gradient(135deg, #93b4fc, #4a7cf7);
+}
+
+.blobAmber {
+  background: linear-gradient(135deg, #fcd34d, #f59e0b);
+}
+
+.blobGreen {
+  background: linear-gradient(135deg, #86efac, #22c55e);
+}
+
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tabLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-medium);
 }
 
 .tabValue {
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
   color: var(--color-primary);
-  margin-left: var(--spacing-1);
   font-variant-numeric: tabular-nums;
 }
 
-/* Three column row: chart + metrics + AI */
-.row {
+/* Middle Row: Graph + Metrics | AI */
+.middleRow {
   display: grid;
-  grid-template-columns: 1fr 200px 360px;
+  grid-template-columns: 1fr 380px;
   gap: var(--spacing-5);
   align-items: stretch;
 }
 
-.chartArea {
+.graphSection {
   min-width: 0;
 }
 
-.chartCard {
-  height: 100%;
-}
-
-.metricsArea {
-  min-width: 0;
-}
-
-.metricsCard {
+.graphCard {
+  display: grid;
+  grid-template-columns: 1fr 200px;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
-  padding: var(--spacing-5);
+  overflow: hidden;
   height: 100%;
+}
+
+.graphMain {
+  min-width: 0;
+}
+
+.graphMain > * {
+  border: none;
+  border-radius: 0;
+}
+
+.graphMetrics {
+  border-left: 1px solid var(--color-border);
+  padding: var(--spacing-5);
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-.aiArea {
+.aiSection {
   min-width: 0;
 }
 
-/* Two column rows */
-.rowTwo {
+/* Bottom row */
+.bottomRow {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-5);
   align-items: start;
 }
 
-.colWide {
+.transfersSection {
   min-width: 0;
 }
 
-.colNarrow {
+.spendingSection {
   min-width: 0;
 }
 
 /* Responsive */
-@media (max-width: 1400px) {
-  .row {
-    grid-template-columns: 1fr 360px;
-  }
-
-  .metricsArea {
-    display: none;
-  }
-}
-
 @media (max-width: 1280px) {
   .hero {
     grid-template-columns: 1fr 340px;
   }
 
-  .rowTwo {
+  .middleRow {
     grid-template-columns: 1fr 340px;
+  }
+
+  .graphCard {
+    grid-template-columns: 1fr 180px;
   }
 }
 
@@ -176,16 +236,24 @@
     max-width: 400px;
   }
 
-  .row {
+  .middleRow {
     grid-template-columns: 1fr;
   }
 
-  .rowTwo {
+  .graphCard {
     grid-template-columns: 1fr;
   }
 
-  .metricsArea {
-    display: block;
+  .graphMetrics {
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    flex-direction: row;
+    gap: var(--spacing-6);
+    flex-wrap: wrap;
+  }
+
+  .bottomRow {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -194,11 +262,15 @@
     gap: var(--spacing-4);
   }
 
-  .greetingTitle {
+  .title {
     font-size: var(--font-size-2xl);
   }
 
   .portfolioTabs {
     flex-direction: column;
+  }
+
+  .portfolioTab {
+    min-width: auto;
   }
 }
