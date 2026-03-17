@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, Logger, Inject } from "@nestjs/common";
+import { Injectable, UnauthorizedException, Logger, Inject, Optional } from "@nestjs/common";
 import { AccountRepository, BrokerAccountRepository, REDIS_CLIENT } from "@repo/database";
 import * as crypto from "crypto";
 
@@ -42,7 +42,7 @@ export class AuthManagerService {
   constructor(
     private readonly accountRepository: AccountRepository,
     private readonly brokerAccountRepository: BrokerAccountRepository,
-    @Inject(REDIS_CLIENT) private readonly redis: IRedisClient
+    @Optional() @Inject(REDIS_CLIENT) private readonly redis?: IRedisClient
   ) {}
 
 
@@ -58,20 +58,21 @@ export class AuthManagerService {
     provider: string = "upstox",
     environment: "SANDBOX" | "LIVE" = "LIVE"
   ): Promise<string> {
-    // L1: Check Redis cache
+    // L1: Check Redis cache (skipped when Redis is unavailable)
     const cacheKey = this.getCacheKey(userId, provider, environment);
-    const cached = await this.redis.get(cacheKey);
 
-    if (cached) {
+    if (this.redis) {
+      const cached = await this.redis.get(cacheKey);
+      if (cached) {
+        this.logger.debug(
+          `Token cache HIT for ${userId} (${provider}/${environment})`
+        );
+        return cached;
+      }
       this.logger.debug(
-        `Token cache HIT for ${userId} (${provider}/${environment})`
+        `Token cache MISS for ${userId} (${provider}/${environment})`
       );
-      return cached;
     }
-
-    this.logger.debug(
-      `Token cache MISS for ${userId} (${provider}/${environment})`
-    );
 
     // L2: Check broker_accounts (PRIMARY — written by Upstox webhook / re-auth)
     const brokerAccount =
@@ -130,12 +131,12 @@ export class AuthManagerService {
     token: string,
     ttl: number
   ): Promise<void> {
+    if (!this.redis) return;
     try {
       await this.redis.set(key, token, "EX", ttl);
       this.logger.debug(`Cached token: ${key} (TTL: ${ttl}s)`);
     } catch (error) {
       this.logger.error(`Failed to cache token: ${error}`);
-      // Non-fatal: continue without cache
     }
   }
 
@@ -147,6 +148,7 @@ export class AuthManagerService {
     provider: string,
     environment: "SANDBOX" | "LIVE"
   ): Promise<void> {
+    if (!this.redis) return;
     const cacheKey = this.getCacheKey(userId, provider, environment);
     await this.redis.del(cacheKey);
     this.logger.log(`Invalidated token cache: ${cacheKey}`);
