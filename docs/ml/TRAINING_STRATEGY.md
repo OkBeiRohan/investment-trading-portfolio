@@ -988,7 +988,7 @@ def detect_feature_drift(
 ## Related Documentation
 
 - [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md) - Data sources and schemas
-- [MODEL_ARCHITECTURE.md](./MODEL_ARCHITECTURE.md) - 3-tier model design
+- [MODEL_ARCHITECTURE.md](./MODEL_ARCHITECTURE.md) - 5-tier data-bound hierarchy
 - [UPSTOX_DATA_INGESTION.md](./UPSTOX_DATA_INGESTION.md) - Data collection
 - [training-pipeline README](../../services/training-pipeline/README.md) - Kedro setup
 - [TRAINING_DATA_GUIDE.md](../../services/training-pipeline/docs/TRAINING_DATA_GUIDE.md) - Data queries

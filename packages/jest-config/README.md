@@ -138,3 +138,7 @@ Default thresholds (can be overridden per app):
 ## Contributing
 
 Maintain consistent testing patterns across the monorepo.
+
+---
+
+**Last Updated**: March 17, 2026

@@ -1,5 +1,7 @@
 # TIER 4: Meta-Learner & Strategy — Signal Fusion Core
 
+> For implementation details and code, see [META_LEARNER_EXECUTION.md](META_LEARNER_EXECUTION.md)
+
 > **Contextual Gating Network that fuses all tier outputs using Regime-Conditioned Temporal Loss. Produces the final trading signal, selects the optimal strategy and strike, validates risk, and sizes the position.**
 
 **Last Updated**: March 13, 2026

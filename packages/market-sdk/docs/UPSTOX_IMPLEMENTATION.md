@@ -1,6 +1,8 @@
 # Upstox Provider - Cascading Module Implementation
 
-## ✅ Implementation Complete
+> **Last Updated**: March 17, 2026
+
+## Implementation Complete
 
 The Upstox provider now has a complete cascading module architecture:
 

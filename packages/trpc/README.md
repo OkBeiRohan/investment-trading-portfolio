@@ -4,7 +4,7 @@ Shared tRPC router for type-safe API communication between frontend and backend.
 
 ## Overview
 
-**Purpose**: Centralized tRPC router providing end-to-end type safety across the monorepo
+**Purpose**: Centralized tRPC v11 router providing end-to-end type safety across the monorepo
 
 ## Features
 
@@ -301,10 +301,14 @@ Frontend gets full type inference
 
 ## Stack
 
-- tRPC
+- tRPC v11
 - Zod (via @repo/schema)
 - TypeScript
 
 ## Contributing
 
 Follow the coding standards in `.github/copilot-instructions.md`.
+
+---
+
+**Last Updated**: March 17, 2026

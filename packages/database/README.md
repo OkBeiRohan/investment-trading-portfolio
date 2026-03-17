@@ -587,3 +587,7 @@ Make sure you've imported `DatabaseModelsModule` in your feature module:
 - [NestJS Mongoose Documentation](https://docs.nestjs.com/techniques/mongodb)
 - [Mongoose Documentation](https://mongoosejs.com/)
 - [@repo/schema README](../schema/README.md)
+
+---
+
+**Last Updated**: March 17, 2026

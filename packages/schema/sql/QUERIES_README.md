@@ -105,5 +105,5 @@ All queries use PostgreSQL positional parameters (`$1`, `$2`, etc.):
 
 ---
 
-**Last Updated**: January 13, 2026  
+**Last Updated**: March 17, 2026  
 **Version**: 2.0 (Production Schema)

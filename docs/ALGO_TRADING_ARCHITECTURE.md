@@ -495,7 +495,7 @@ export class MarketDataService {
 
 **Latency Target**: <15ms (including aggregation)
 
-**See**: [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md) for complete implementation details
+**See**: [docs/ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) for model specifications including Market State Encoder details
 
 ---
 

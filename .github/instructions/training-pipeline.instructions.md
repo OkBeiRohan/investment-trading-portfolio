@@ -93,7 +93,7 @@ features = loader.load_lightgbm_features(
 - **Volatility (4)**: Historical + implied volatility metrics
 - **Time (3)**: Market timing context
 
-See [MARKET_STATE_ENCODER.md](../../../docs/MARKET_STATE_ENCODER.md) for full feature documentation.
+See [docs/ml/TIER1_MODELS.md](../../../docs/ml/TIER1_MODELS.md) for full feature and model documentation.
 
 ### **Validation Against User Configs**
 

@@ -1,5 +1,7 @@
 # Strike Selector - Institutional-Grade Option Strike Selection
 
+> **Last Updated**: March 17, 2026
+
 An institutional-grade option strike selection tool for Nifty 50 options using a **Risk-Adjusted Return on Capital (RAROC)** based utility function.
 
 ## Overview

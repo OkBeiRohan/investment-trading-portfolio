@@ -2,8 +2,8 @@
 
 > **Auth-agnostic data ingestion service. Fetches admin-enabled trading instruments from DB, streams live ticks via Upstox WebSocket (market hours), syncs historical candles to QuestDB (post-market), and distributes market data to algo-worker, api-gateway, and QuestDB. Covers Indian equities, F&O, indices AND global commodities (Crude Oil, Natural Gas, Gold via MCX).**
 
-**Last Updated**: March 16, 2026  
-**Port**: 3002  
+**Last Updated**: March 17, 2026  
+**Port**: 3002 (HTTP), 50052 (gRPC)  
 **Framework**: NestJS + TypeScript  
 **Feature Engine**: @repo/compute-engine (Rust/NAPI-RS)  
 **Broker SDK**: @repo/market-sdk (multi-token WebSocket + REST)
@@ -405,7 +405,7 @@ pnpm build && pnpm start:prod   # Production
 
 ---
 
-**Last Updated**: March 16, 2026  
+**Last Updated**: March 17, 2026  
 **Architecture**: NestJS + Rust compute-engine + Redis Streams + QuestDB  
 **Auth**: Fully delegated to `@repo/market-sdk`  
 **Data Coverage**: NSE (Equities, F&O, Indices) + MCX (Crude Oil, Natural Gas, Gold) + Global Macro

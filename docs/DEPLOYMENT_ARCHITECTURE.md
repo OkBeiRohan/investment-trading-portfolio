@@ -84,7 +84,7 @@
 
 - **Location**: AWS EC2 (Mumbai) / DigitalOcean
 - **Purpose**:
-  - User authentication (2FA, JWT)
+  - User authentication (Better Auth: 2FA, Passkeys, OAuth)
   - CRUD operations for user configs
   - Historical data queries (backtests, reports)
   - Proxy for non-latency-sensitive operations
@@ -164,7 +164,7 @@
 - **Location**: Local (scheduled nightly, GPU-accelerated)
 - **Purpose**:
   - Fetch data from QuestDB
-  - Train 8 ML models (XGBoost, CNN-LSTM, GINN, SVM, Transformer, TimesNet, WFTNet, LightGBM)
+  - Train ML models using 5-tier hierarchy (Tier 0: LightGBM/XGBoost; Tier 1: TFT, Mamba, PatchTST, LiT; Tier 2: Conditional specialists; Meta-Learner: PPO signal fusion)
   - Export to ONNX (FP16 quantization)
   - Copy to algo-worker/models/ directory
 - **Why Local**:
@@ -540,6 +540,10 @@ ssh -R 9000:localhost:9000 user@cloud-api-server
 **Performance**: <150ms end-to-end latency (tick → order)  
 **Cost**: ₹1,500/month (vs ₹57,000 for cloud algo)  
 **Scalability**: Handles 2-5 users comfortably  
-**Compliance**: SEBI-compliant (Algo ID, rate limiting)
+**Compliance**: SEBI 2025-2026 compliant (Algo ID, rate limiting, deadline April 1, 2026)
 
 **Next Steps**: Implement Worker Threads, OFI features, CPCV validation (see todo list).
+
+---
+
+**Last Updated**: March 17, 2026

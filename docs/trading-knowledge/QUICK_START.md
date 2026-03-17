@@ -1,5 +1,7 @@
 # Quick Start Guide: Fetching Varsity Content
 
+> **Last Updated:** March 17, 2026
+
 > **How to use the gradual fetching system to complete the trading knowledge base**
 
 ---
@@ -382,5 +384,5 @@ Before marking a chapter as "Complete":
 
 ---
 
-**Last Updated:** February 4, 2026  
+**Last Updated:** March 17, 2026  
 **Next Review:** After completing Module 04 (Futures)

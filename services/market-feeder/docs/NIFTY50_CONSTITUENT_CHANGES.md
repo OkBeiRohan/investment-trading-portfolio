@@ -1,5 +1,7 @@
 # Nifty 50 Constituent Changes - Historical Data
 
+> **Last Updated**: March 17, 2026
+
 ## Overview
 
 This file tracks all Nifty 50 constituent changes to ensure historical accuracy when computing features.
@@ -88,4 +90,4 @@ parseEffectiveDate('30-09-2024'); // → Date(2024, 8, 30)
 ---
 
 **Data Source**: NSE India website, Nifty 50 constituent changes announcements
-**Last Updated**: January 2026
+**Last Updated**: March 17, 2026

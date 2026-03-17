@@ -2,9 +2,9 @@
 
 > **Rust-based parallel computation engine that transforms raw market data into 117 trading features in under 5ms. Uses a two-phase dependency-aware architecture with Rayon thread-pool parallelism, NAPI-RS bindings for Node.js, and end-to-end type safety via ts-rs code generation.**
 
-Built with **Rust**, **Rayon** (parallelism), **NAPI-RS** (Node.js FFI), **Serde** (JSON), **ts-rs** (TypeScript codegen).
+Built with **Rust**, **Rayon** (parallelism), **NAPI-RS v3** (Node.js FFI + WebAssembly target), **Serde** (JSON), **ts-rs** (TypeScript codegen).
 
-**Last Updated**: March 13, 2026
+**Last Updated**: March 17, 2026
 
 ---
 
@@ -38,7 +38,7 @@ The Compute Engine is a **shared Rust library** consumed by two different servic
 | Property            | Value                                                |
 | ------------------- | ---------------------------------------------------- |
 | **Language**        | Rust (2021 edition)                                  |
-| **Node.js Binding** | NAPI-RS (`#[napi]` macro)                            |
+| **Node.js Binding** | NAPI-RS v3 (`#[napi]` macro, WebAssembly target support) |
 | **Serialization**   | JSON via Serde (NOT NAPI objects — 32-field limit)   |
 | **Parallelism**     | Rayon thread pool (`par_iter`)                       |
 | **Type Safety**     | Rust → TypeScript via ts-rs auto-generation          |

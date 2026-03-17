@@ -1,5 +1,7 @@
 # Upstox OAuth Integration
 
+> **Last Updated**: March 17, 2026
+
 Complete integration of Upstox broker account linking using better-auth's generic OAuth plugin.
 
 ## Overview

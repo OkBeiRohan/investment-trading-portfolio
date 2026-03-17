@@ -18,12 +18,14 @@ infrastructure/
 
 ## Docker Compose Setup (Local Development)
 
+> **Note**: Individual Dockerfiles for microservices (algo-worker, api, web, etc.) still need to be created. The current Docker Compose setup covers database infrastructure only.
+
 ### Services
 
 | Service     | Image               | Port                         | Purpose                                         |
 | ----------- | ------------------- | ---------------------------- | ----------------------------------------------- |
 | **QuestDB** | questdb/questdb:8.0 | 9000 (UI), 8812 (PostgreSQL) | Time-series database for ticks/candles/features |
-| **MongoDB** | mongo:7.0           | 27017                        | Document store for signals/orders/positions     |
+| **MongoDB** | mongo:8.0           | 27017                        | Document store for signals/orders/positions     |
 | **Redis**   | redis:7.2-alpine    | 6379                         | Event bus (Streams) + hot state cache           |
 
 ### Quick Start
@@ -85,7 +87,7 @@ All services use Docker volumes for data persistence:
 
 ## Production Deployment (Kubernetes)
 
-> **Status**: Planned for Phase 5 (Weeks 13-14)
+> **Status**: Planned future phase (not yet started)
 
 ### Architecture
 
@@ -121,7 +123,7 @@ All services use Docker volumes for data persistence:
 
 ## Monitoring Stack (Prometheus + Grafana)
 
-> **Status**: Planned for Phase 4 (Weeks 11-12)
+> **Status**: Planned future phase (not yet started)
 
 ### Components
 
@@ -165,7 +167,7 @@ All services use Docker volumes for data persistence:
 
 ---
 
-## Infrastructure as Code (TODO)
+## Infrastructure as Code (Planned Future Phase)
 
 ### Terraform (Planned)
 
@@ -348,5 +350,5 @@ maxmemory-policy allkeys-lru
 
 ---
 
-**Last Updated**: November 29, 2025
-**Status**: Docker Compose ready, K8s/Monitoring planned
+**Last Updated**: March 17, 2026
+**Status**: Docker Compose ready (databases only), Dockerfiles for microservices TODO, K8s/Monitoring/Terraform planned future phases

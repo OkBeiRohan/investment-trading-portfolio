@@ -12,7 +12,7 @@ The **Wealth Management Service** is the core financial ledger system for the in
 - **Expenses**: Living costs, investments, EMIs, insurance premiums
 - **Net Worth Tracking**: Real-time calculation with historical snapshots
 
-**Port**: 3005  
+**Port**: 3005 (HTTP), 50056 (gRPC)  
 **Architecture**: Event-driven with Redis Streams  
 **Database**: MongoDB (PRIMARY - documents, transactions), QuestDB (time-series net worth), Redis (hot state)  
 **Transport**: tRPC (API), Redis Streams (events)
@@ -158,3 +158,7 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+---
+
+**Last Updated**: March 17, 2026

@@ -1,5 +1,7 @@
 # MongoDB Replica Set Configuration
 
+> **Last Updated**: March 17, 2026
+
 ## Overview
 
 MongoDB transactions (used by better-auth's `experimental: { joins: true }`) require a **replica set** configuration. This document explains how to set up MongoDB for transaction support.

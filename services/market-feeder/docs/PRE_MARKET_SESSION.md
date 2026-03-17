@@ -4,7 +4,7 @@
 > collection, pre-open capture, freeze processing, synthetic Greeks generation, daily candle
 > preparation, and handoff to continuous trading at 09:15 IST.
 
-**Last Updated**: March 13, 2026
+**Last Updated**: March 17, 2026
 **Service**: market-feeder
 **Runtime**: NestJS + TypeScript
 **Port**: 3002
@@ -578,4 +578,4 @@ Configuration values can be overridden per environment via the NestJS `ConfigSer
 **Pre-Market Window**: 08:30 - 09:15 IST
 **Critical Event**: NSE freeze at 09:08:00 IST (Tier 0 trigger at 09:08:05)
 **Final Deadline**: 09:14:55 IST (overnight candle must be in Redis before market open)
-**Last Updated**: March 13, 2026
+**Last Updated**: March 17, 2026

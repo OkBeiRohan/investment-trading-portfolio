@@ -1,8 +1,9 @@
 # Zerodha Varsity Content Status
 
-> **Tracking content fetching progress and providing strategy for completion**
+> **Single source of truth for all content fetching progress.**
+> Previous tracking files (`FETCH_PROGRESS.md`, `FETCH_STATUS.md`, `SESSION_REPORT.md`) have been consolidated into this document.
 
-**Last Updated:** February 4, 2026  
+**Last Updated:** March 17, 2026
 **Status:** Phase 1 Complete (Infrastructure + Sample Content)
 
 ---
@@ -13,7 +14,7 @@
 | ------------------------ | ----------- | ------------------------------------ |
 | **Infrastructure**       | ✅ 100%     | All folders, READMEs, guides created |
 | **Module READMEs**       | ✅ 17/17    | All module overviews complete        |
-| **Chapter Content**      | ⏳ 11/212   | 5% - Module 1 started                |
+| **Chapter Content**      | ⏳ 14/212   | 7% - Modules 1, 4, 5 started         |
 | **Implementation Guide** | ✅ Complete | Full platform mapping documented     |
 
 ---
@@ -70,12 +71,16 @@
 
 ### Module 04: Futures Trading
 
-**Chapters:** 13 | **Status:** 0% (README Complete)
+**Chapters:** 13 | **Status:** 15% (README + 2 Chapters)
 
-| Status     | Count | Details                    |
-| ---------- | ----- | -------------------------- |
-| ✅ README  | 1     | Module overview complete   |
-| ⏳ Pending | 13    | All chapters pending fetch |
+| #   | Chapter                        | File                                 | Status      |
+| --- | ------------------------------ | ------------------------------------ | ----------- |
+| 02  | Introducing Futures Contract   | 02-introducing-futures-contract.md   | ✅ Complete |
+| 04  | Margin & M2M                   | 04-margin-and-m2m.md                 | ✅ Complete |
+| -   | Remaining (11 chapters)        | -                                    | ⏳ Pending  |
+| -   | Module README                  | README.md                            | ✅ Complete |
+
+**2/13 Complete (15%) + README**
 
 ---
 
@@ -93,9 +98,20 @@
 
 ---
 
-### Modules 06-17
+### Module 06: Option Strategies
 
-**Total Chapters:** ~155 | **Status:** 0% (All READMEs Complete)
+**Chapters:** 14 | **Status:** 0% (README Complete)
+
+| Status     | Count | Details                    |
+| ---------- | ----- | -------------------------- |
+| ✅ README  | 1     | Module overview complete   |
+| ⏳ Pending | 14    | All chapters pending fetch |
+
+---
+
+### Modules 07-17
+
+**Total Chapters:** ~141 | **Status:** 0% (All READMEs Complete)
 
 All remaining modules have:
 
@@ -368,8 +384,8 @@ Even with partial content, you can:
 | ---------------------- | ------ | ------- | ---- |
 | Module READMEs         | 17     | 17      | 100% |
 | Infrastructure Docs    | 4      | 4       | 100% |
-| Chapters Fetched       | 212    | 11      | 5%   |
-| Priority Modules       | 90     | 1       | 1%   |
+| Chapters Fetched       | 212    | 14      | 7%   |
+| Priority Modules       | 90     | 4       | 4%   |
 | Implementation Mapping | 17     | 17      | 100% |
 
 ---
@@ -413,5 +429,5 @@ Even with partial content, you can:
 
 ---
 
-**Last Updated:** February 4, 2026  
+**Last Updated:** March 17, 2026
 **Next Review:** After completing Priority Modules (Modules 4, 5, 6)

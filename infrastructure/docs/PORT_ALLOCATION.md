@@ -1,5 +1,7 @@
 # Port Allocation Documentation
 
+> **Last Updated**: March 17, 2026
+
 ## Overview
 
 This document defines the port allocation strategy for all services in the investment trading portfolio monorepo to prevent conflicts and enable cross-machine communication.

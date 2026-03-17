@@ -2,7 +2,7 @@
 
 > **Client-side Better Auth hooks and utilities for React/Next.js applications.**
 
-**Last Updated**: January 18, 2026
+**Last Updated**: March 17, 2026
 
 ---
 

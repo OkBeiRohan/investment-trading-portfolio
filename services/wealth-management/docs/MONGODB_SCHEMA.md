@@ -1,5 +1,7 @@
 # MongoDB Schema - Wealth Management
 
+> **Last Updated**: March 17, 2026
+
 > **MongoDB-based double-entry bookkeeping system aligned with existing architecture**
 
 ## Design Philosophy

@@ -2,11 +2,11 @@
 
 > **Navigation guide for the complete Zerodha Varsity knowledge base**
 
-**Last Updated:** February 4, 2026
+**Last Updated:** March 17, 2026
 
 ---
 
-## 📁 Folder Organization
+## Folder Organization
 
 The trading knowledge base follows a **hierarchical structure** designed for easy navigation and progressive learning:
 
@@ -362,5 +362,5 @@ Next: [Selling Call Options](./04-selling-call-option.md)
 
 ---
 
-**Last Updated:** February 4, 2026  
+**Last Updated:** March 17, 2026  
 **Maintained by:** Quantum Investments Team

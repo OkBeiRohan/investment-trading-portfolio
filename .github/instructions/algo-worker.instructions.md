@@ -4,7 +4,7 @@ applyTo: "apps/algo-worker/**"
 
 # Algo Worker - Coding Instructions
 
-> Core trading engine implementing the Event-Driven 7-Layer Cognitive Architecture.
+> Core trading engine implementing the 6-layer event-driven processing pipeline with 5-tier data-bound model hierarchy.
 
 ---
 
@@ -146,7 +146,21 @@ for (const tick of ticks) {
 
 ---
 
-## 4-Engine Architecture (Current)
+## 5-Tier Data-Bound Model Hierarchy
+
+The algo-worker executes the **5-tier data-bound hierarchy** for ML inference:
+
+| Tier | Name | Models | Features |
+|------|------|--------|----------|
+| Tier 0 | Pre-Market Gap Predictor | XGBoost | 24 features |
+| Tier 1 | Macro Director | HMM + PatchTST | 43 features |
+| Tier 2 | Intraday Navigator | LightGBM + TFT + Mamba | 80+ features |
+| Tier 3 | Microstructure Scalper | Phased LiT | 14 features |
+| Tier 4 | Meta-Learner | Contextual Gating Network + StrikeSelector + RiskManager | Tier 0–3 outputs |
+
+### Engine Mapping
+
+These tiers are orchestrated through the algo-worker's processing engines:
 
 ### DataEngine
 
@@ -157,17 +171,17 @@ for (const tick of ticks) {
 
 ### SignalEngine
 
-- **Responsibility**: ML inference using ONNX models
+- **Responsibility**: ML inference using ONNX models across Tier 0–3
 - **Input**: Features from Redis Stream (pre-filtered by union config)
 - **Output**: Trading signals (VOL_UP/VOL_DOWN) + confidence
 - **Services**: `ModelLoaderService`, `SignalEngineService`
-- **Models**: 8-10 total (Core 6: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer; Optional 4: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN)
+- **Models**: Tier 0 (XGBoost), Tier 1 (HMM, PatchTST), Tier 2 (LightGBM, TFT, Mamba), Tier 3 (LiT)
 - **Config-Aware**: Only run models enabled in user configs
 
 ### PolicyEngine
 
-- **Responsibility**: Strategy selection + risk management
-- **Input**: Signals from Redis Stream
+- **Responsibility**: Tier 4 Meta-Learner fusion + strategy selection + risk management
+- **Input**: Signals from Redis Stream (all tier outputs)
 - **Output**: Validated orders (or rejection)
 - **Services**: `PolicyEngineService`, `RiskManagementService`, `PositionSizingService`
 

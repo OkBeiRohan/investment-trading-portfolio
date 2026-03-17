@@ -333,110 +333,12 @@ for horizon, s in stats.items():
 
 ## 3. Feature Store Integration
 
-### Feast Configuration
+The project uses **direct Redis writes** for the online feature store and **QuestDB** for offline/historical features. There is no Feast dependency.
 
-```python
-# feature_repo/feature_store.yaml
-project: quantum_trading
-registry: registry.db
-provider: local
-online_store:
-  type: redis
-  connection_string: redis://localhost:6379
-offline_store:
-  type: file
-entity_key_serialization_version: 2
-```
+- **Online store**: Redis hash keys written directly by the compute-engine at ingestion time
+- **Offline store**: QuestDB `instrument_features` table for point-in-time correct training queries
 
-### Feature Definitions
-
-```python
-# feature_repo/features.py
-from datetime import timedelta
-from feast import Entity, Feature, FeatureView, FileSource, ValueType
-from feast.types import Float32, Int64
-
-# Entity
-nifty = Entity(
-    name="nifty_timestamp",
-    join_keys=["timestamp"],
-    value_type=ValueType.INT64
-)
-
-# Source
-nifty_source = FileSource(
-    path="data/nifty_features.parquet",
-    timestamp_field="timestamp"
-)
-
-# Feature View
-nifty_features = FeatureView(
-    name="nifty_trading_features",
-    entities=[nifty],
-    ttl=timedelta(hours=24),
-    schema=[
-        # Price Action
-        Feature(name="return_1m", dtype=Float32),
-        Feature(name="return_5m", dtype=Float32),
-        Feature(name="return_15m", dtype=Float32),
-        Feature(name="high_low_range", dtype=Float32),
-
-        # Technical Indicators
-        Feature(name="rsi_14", dtype=Float32),
-        Feature(name="macd", dtype=Float32),
-        Feature(name="macd_signal", dtype=Float32),
-        Feature(name="bb_width", dtype=Float32),
-        Feature(name="atr_percent", dtype=Float32),
-
-        # Volume
-        Feature(name="volume_ratio", dtype=Float32),
-        Feature(name="vwap_distance", dtype=Float32),
-
-        # Options
-        Feature(name="atm_iv", dtype=Float32),
-        Feature(name="pcr_oi", dtype=Float32),
-        Feature(name="iv_skew", dtype=Float32),
-    ],
-    online=True,
-    source=nifty_source
-)
-```
-
-### Feature Retrieval
-
-```python
-from feast import FeatureStore
-from datetime import datetime
-import pandas as pd
-
-# Initialize store
-store = FeatureStore(repo_path="feature_repo/")
-
-# Training: Get historical features (point-in-time correct)
-entity_df = pd.DataFrame({
-    "timestamp": training_timestamps,
-})
-
-training_df = store.get_historical_features(
-    entity_df=entity_df,
-    features=[
-        "nifty_trading_features:rsi_14",
-        "nifty_trading_features:macd",
-        "nifty_trading_features:atm_iv",
-        # ... all features
-    ]
-).to_df()
-
-# Inference: Get online features (latest values)
-online_features = store.get_online_features(
-    entity_rows=[{"timestamp": int(datetime.now().timestamp())}],
-    features=[
-        "nifty_trading_features:rsi_14",
-        "nifty_trading_features:macd",
-        "nifty_trading_features:atm_iv",
-    ]
-).to_dict()
-```
+For the complete feature store architecture, schemas, and read/write patterns, see [FEATURE_STORE.md](./FEATURE_STORE.md).
 
 ---
 
@@ -712,7 +614,7 @@ registry.promote_model("lightgbm_macro", version=5, stage="Production")
 
 ```bash
 # Install dependencies
-pip install kedro mlflow feast lightgbm torch onnx
+pip install kedro mlflow lightgbm torch onnx
 
 # Run full pipeline
 kedro run

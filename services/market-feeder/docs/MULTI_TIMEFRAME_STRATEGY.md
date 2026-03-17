@@ -1,5 +1,7 @@
 # Multi-Timeframe Historical Data Strategy
 
+> **Last Updated**: March 17, 2026
+
 ## Overview
 
 The market-feeder service implements an intelligent multi-timeframe data fetching strategy that maximizes data granularity while respecting Upstox API limitations.
@@ -345,5 +347,5 @@ HAVING candle_count < expected_count;
 
 ---
 
-**Last Updated**: January 13, 2026  
+**Last Updated**: March 17, 2026  
 **Status**: ✅ Production-Ready

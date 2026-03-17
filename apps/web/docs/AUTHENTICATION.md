@@ -1,5 +1,7 @@
 # Authentication Architecture
 
+> **Last Updated**: March 17, 2026
+
 ## Overview
 
 The authentication system uses a **centralized state management** pattern to ensure:

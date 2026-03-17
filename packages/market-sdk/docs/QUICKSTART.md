@@ -1,6 +1,8 @@
 # Market SDK - Quick Start Guide
 
-## 📦 Installation
+> **Last Updated**: March 17, 2026
+
+## Installation
 
 ```bash
 # Already in turborepo at packages/market-sdk

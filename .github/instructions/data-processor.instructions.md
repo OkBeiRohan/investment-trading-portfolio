@@ -2,6 +2,10 @@
 applyTo: "services/data-processor/**"
 ---
 
+> **DEPRECATED**: The data-processor service has been superseded by `@repo/compute-engine` (Rust NAPI-RS)
+> integrated into `services/market-feeder`. Feature engineering is now performed at ingestion time by the
+> compute-engine package. This document is retained for historical reference only.
+
 # GitHub Copilot Instructions - Data Processor
 
 ## Role & Context

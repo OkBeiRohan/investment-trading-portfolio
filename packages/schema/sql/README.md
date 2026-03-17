@@ -260,5 +260,5 @@ def test_load_candles_query():
 
 ---
 
-**Last Updated**: December 2024  
+**Last Updated**: March 17, 2026  
 **Maintained by**: Platform Team

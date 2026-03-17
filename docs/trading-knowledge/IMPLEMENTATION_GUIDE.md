@@ -1,5 +1,7 @@
 # Implementation Guide - Zerodha Varsity Concepts in Quantum Platform
 
+> **Last Updated:** March 17, 2026
+
 > **How to integrate Varsity educational concepts into our Algo Trading + Wealth Management Platform**
 
 ---
@@ -835,5 +837,5 @@ New AI insights:
 
 ---
 
-**Last Updated:** February 4, 2026  
+**Last Updated:** March 17, 2026  
 **Maintained by:** Quantum Investments Team

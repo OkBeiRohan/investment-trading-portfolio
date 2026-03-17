@@ -154,7 +154,7 @@
 
 ---
 
-## QuestDB Storage Schema (8 Tables)
+## QuestDB Storage Schema (9 Tables)
 
 ### Table 1: `instrument_master`
 
@@ -199,6 +199,22 @@ CREATE TABLE IF NOT EXISTS macro_sentiment (
   source SYMBOL CAPACITY 32
 ) TIMESTAMP(timestamp) PARTITION BY MONTH WAL
 DEDUP UPSERT KEYS(timestamp, entity, event_type);
+```
+
+### Table 9: `dataset_folds`
+
+CPCV train/test split definitions. Stores fold boundaries for reproducible cross-validation.
+
+```sql
+CREATE TABLE IF NOT EXISTS dataset_folds (
+  instrument_key SYMBOL,
+  dataset_name SYMBOL,                   -- 'nifty50_cpcv_lightgbm'
+  fold_id INT,
+  split_type SYMBOL,                     -- 'TRAIN' or 'TEST'
+  range_start TIMESTAMP,
+  range_end TIMESTAMP,
+  created_at TIMESTAMP
+) timestamp(created_at) PARTITION BY MONTH WAL;
 ```
 
 ---

@@ -1,382 +1,212 @@
-# Project Quantum: Production-Grade Architecture for Indian Index Options
+# Quantum Investments & Trades — System Architecture
 
-> **Institutional-grade algorithmic trading system optimized for NSE Nifty 50 & Bank Nifty Options.**
-> Built on latest 2024-2026 research and SEBI compliance standards.
+> **Institutional-grade algorithmic trading platform for NSE Nifty 50 & Bank Nifty index options, with integrated wealth management.**
 
-## Overview
-
-Project Quantum is an **Event-Driven, Neuro-Symbolic Trading Architecture** specifically engineered for ultra-low latency Indian index options trading. It combines deterministic event processing with advanced AI/ML models while maintaining strict SEBI 2024-2026 compliance.
-
-**📚 Comprehensive Architecture**: For the complete algo-trading architecture with detailed system design, see [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md). This document provides implementation-specific details for Project Quantum.
+**Last Updated**: March 17, 2026
+**Status**: Production Architecture
 
 ---
 
-## Architecture Overview
+## Mission
 
-**Key Design**: Event-driven microservices with adaptive ML and regime detection.
-
-### The 9-Layer Architecture
-
-1. **Data Ingestion Layer** → Upstox API feeds, real-time Greeks
-2. **Feature & Technical Engine** → Moving averages, ATR, order flow imbalance
-3. **Market Structure & Regime Detector** → HMMs/Kalman filters (trending/ranging/volatile)
-4. **Signal/Prediction Engine** → Transformers, CNNs, LSTMs, KANs
-5. **Strategy Manager** → Regime-based strategy selection (momentum/mean-reversion/event-detection)
-6. **Risk & Portfolio Manager** → Kelly criterion, VIX-scaled stop-loss, Greeks limits
-7. **Order Management & Execution** → Smart routing (NSE/BSE), IOC orders
-8. **Logging/Monitoring** → Prometheus, Grafana, real-time dashboards
-9. **Offline Training & Deployment** → Walk-forward validation, drift detection
-
-See [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md) for detailed design patterns, ML model selection strategies, and performance benchmarks.
+Build a low-latency, AI-driven trading system that combines deterministic event processing with a 5-tier hierarchical ML stack, while maintaining strict SEBI 2025-2026 compliance and delivering a modern investor dashboard.
 
 ---
 
-## Architecture Philosophy
-
-### 1. Event-Driven Core (Not Microservices-First)
-
-Based on industry research, we use an **Event-Driven Architecture with Microservices**, not microservices alone:
-
-- **Deterministic Event Sequencer**: Single-threaded event processing eliminates context switching and lock contention for sub-millisecond latency[1][2]
-- **Redis Streams**: Low-latency event bus (microsecond delivery) for market data distribution
-- **Asynchronous Processing**: Prevents blocking on the critical path (Tick → Signal → Order)
-
-**Why**: Microservices alone introduce inter-service latency. Event-driven architectures achieve the <100ms latency required for options trading[3].
-
-### 2. Database Strategy (Research-Validated)
+## Monorepo Structure
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  QuestDB (Time-Series - PRIMARY)                    │
-│  ─────────────────────────────                      │
-│  • Tick Data (nanosecond timestamps)                │
-│  • OHLCV Candles (1m, 5m, 15m, 1h, 1d)              │
-│  • Features (Technical Indicators)                  │
-│  • Option Greeks Snapshots                          │
-│                                                     │
-│  Performance: 22x faster than ClickHouse,           │
-│  41x faster than TimescaleDB for OHLCV computation  │
-└─────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────┐
-│  MongoDB (Document Store - SECONDARY)               │
-│  ──────────────────────────────────                 │
-│  • Trading Signals (ML predictions)                 │
-│  • Orders & Positions                               │
-│  • User Profiles & Auth Data                        │
-│  • Performance Metrics                              │
-│  • RL Agent States                                  │
-└─────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────┐
-│  Redis (In-Memory State - HOT PATH)                 │
-│  ────────────────────────────────                   │
-│  • Active Positions (Real-time)                     │
-│  • Order Book Snapshots                             │
-│  • Pub/Sub Event Bus                                │
-│  • Rate Limiting & Circuit Breakers                 │
-└─────────────────────────────────────────────────────┘
+investment-trading-portfolio/
+├── apps/
+│   ├── algo-worker/        # Live trading engine (NestJS, ONNX inference)
+│   ├── api/                # API gateway (NestJS, tRPC v11)
+│   └── web/                # Investor dashboard (Next.js 16)
+├── services/
+│   ├── market-feeder/      # Upstox WebSocket data ingestion
+│   ├── training-pipeline/  # Python ML training (CPCV, ONNX export)
+│   ├── notification-service/
+│   ├── wealth-management/  # Double-entry ledger
+│   ├── wealth-analyzer/    # Python AI insights (Phi-3)
+│   └── document-processor/ # OCR pipeline (LayoutLMv3)
+├── packages/
+│   ├── compute-engine/     # Rust NAPI-RS feature computation (<5ms)
+│   ├── database/           # MongoDB, QuestDB, Redis clients
+│   ├── schema/             # Zod schemas + TypeScript types
+│   ├── market-sdk/         # Upstox / Yahoo / Binance adapters
+│   ├── authentication/     # Better Auth integration
+│   ├── trpc/               # tRPC router definitions
+│   └── observability/      # OpenTelemetry instrumentation
+└── infrastructure/         # Docker, Kubernetes, deployment configs
 ```
-
-```mermaid
-graph LR
-  subgraph Storage
-    QDB[(QuestDB)]
-    MDB[(MongoDB)]
-    REDIS[(Redis)]
-  end
-
-  MarketData-->QDB
-  FeatureEngine-->QDB
-  QDB-->MLEnsemble[8-10 Model Ensemble]
-  MLEnsemble-->SignalEngine
-  SignalEngine-->MDB
-  ExecutionEngine-->MDB
-  ExecutionEngine-->REDIS
-  Orch(Orchestrator)-->REDIS
-
-  QDB---|Time-series|FeatureStore
-  MDB---|Documents|RepoLayer
-  REDIS---|Hot state & Pub/Sub|EventBus
-
-  classDef db fill:#f3f4f6,stroke:#111827,stroke-width:1px;
-  class QDB,MDB,REDIS db;
-```
-
-**Decision Rationale**: QuestDB's 2025 benchmark showed superior performance for financial tick data processing. Its ASOF joins and nanosecond timestamps are purpose-built for options trading[4].
-
-### **Academic Benchmarks (2024-2025 Research)**
-
-| System/Study                | Focus                   | Models                      | Data Frequency | Sharpe Ratio | Notes                          |
-| --------------------------- | ----------------------- | --------------------------- | -------------- | ------------ | ------------------------------ |
-| **Proposed (Ours)**         | NIFTY/BANKNIFTY options | Ensemble (8-10 models) + RL | Tick/real-time | Target: >1.5 | Ultra-low latency, CPCV, GPU   |
-| **Sherasiya et al. (2025)** | NIFTY options           | XGBoost, LSTM (Greeks+IV)   | Daily EOD      | **1.78**     | ₹1.96L profit from ₹1L capital |
-| **Mishra et al. (2025)**    | NIFTY futures           | Dueling DDQN (RL)           | 15-min bars    | **1.228**    | Volatility-adjusted returns    |
-| **Informer (2025)**         | Option pricing          | Informer Transformer        | Intraday tick  | N/A          | Lowest MAE vs BS/Heston/LSTM   |
-| **Zerodha Streak (2018)**   | Retail NSE algos        | Rule-based (no ML)          | Tick/daily     | N/A          | 40% of NSE orders via algos    |
-
-**Validation**: Our ensemble approach aligns with academic findings showing XGBoost/LSTM achieve Sharpe >1.7 with Greeks+IV features. Our target of >1.5 Sharpe is conservative and achievable.
-
-### 3. ML Inference Stack (Latency-Optimized)
-
-**Ensemble Architecture**:
-
-- **Level-0 Core (6 models)**: XGBoost, LightGBM, CNN-LSTM, GINN, SVM, Transformer
-- **Level-0 Optional (4 models)**: TimesNet-MLP, WFTNet-MLP, PatchTST, KAN
-- **Level-1 Meta-Learner**: Logistic Regression stacker
-- **Target**: AUC >0.75 (Level-0), >0.77 (Level-1)
-
-```
-ONNX Runtime (Cross-Platform Base)
-    ├── TensorRT Execution Provider (NVIDIA GPU)
-    ├── OpenVINO Execution Provider (Intel CPU)
-    └── CPU Execution Provider (Fallback)
-```
-
-**Why ONNX Runtime**: Provides abstraction over hardware while achieving near-native performance through Execution Providers. More flexible than standalone TensorRT[5].
-
-**Quantization**: FP16 for all models (2x speedup with minimal accuracy loss).
 
 ---
 
-## The 7-Layer Architecture
+## Tech Stack
 
-### Layer 1: Perception (Data Ingestion)
-
-**Components**:
-
-- `MarketFeeder`: Upstox WebSocket V3 in `option_greeks` mode (receives pre-calculated Delta/Gamma)
-- `NewsImpactScorer`: RAG-based impact analyzer using local LLM (Phi-3 + ONNX)
-
-**Latency Optimizations**:
-
-- **Pre-calculated Greeks**: Subscribe to `option_greeks` to eliminate Spot-Option sync latency
-- **Kernel Bypass (DPDK/Solarflare ef_vi)**: Direct NIC → Application data flow, bypassing kernel network stack (-30% latency)[6]
-- **Co-location**: NSE proximity hosting for tick data (<500μs network latency)
-- **Protobuf Decoding**: Zero-copy deserialization from Upstox WebSocket
-
-**SEBI 2025-2026 Compliance**:
-
-- Every API order tagged with unique `algoId`
-- Real-time monitoring for anomaly detection
-- Mandatory pre-trade risk checks
-- **Deadline: January 1, 2026** for retail algo safeguards (broker approval workflows, limits, tagging)
-- Audit trail: 5-year retention for all trades
-- Explainability: SHAP analysis for model transparency
-
-### Layer 2: Cortex (Feature Engineering)
-
-**Components**:
-
-- `RustComputeEngine`: NAPI-RS native module for heavy technical indicators (RSI, ATR, Bollinger)
-- `FeatureEngine`: Drift-adaptive normalization using Online Welford’s Algorithm
-- `QuestDB Writer`: Batch inserts (10K features/sec)
-
-**Features**:
-
-- Technical: RSI, MACD, Realized Vol (5d/10d/20d), Bollinger Bands
-- Sentiment: LLM-scored News Impact (High/Low/Noise)
-- Greeks: Delta, Gamma, Vega, Theta (streamed from Upstox)
-- Market Microstructure: Order Flow Imbalance, Bid-Ask Spread
-
-### Layer 3: Prediction (Alpha Generation)
-
-**Model Stack**:
-
-1. **Level-0 Ensemble (8-10 models)**:
-   - Core (6): XGBoost, LightGBM, Mamba (SSM), GINN, SVM, PatchTST
-   - Optional (4): TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer
-2. **Level-1 Meta-Learner**: Logistic Regression stacker
-3. **Target**: Ensemble AUC >0.77 (Level-1)
-
-**Inference Latency Target**: <15ms (TensorRT), <50ms (CPU)
-
-### Layer 4: Cognition (Strategy & Risk Management)
-
-**Components**:
-
-- `StrategySelector`: Choose appropriate option strategy based on market regime
-- `RiskManager`: Symbolic rules with STT Trap protection and Dynamic VIX scaling
-- `RL Agent` (Optional): Reinforcement Learning for optimal execution timing (PPO)
-
-**Risk Rules**:
-
-- **STT Trap Guard**: Force close ITM Buy options on Expiry @ 3:15 PM
-- **Dynamic VIX Scaling**: Adjust Stop Loss = BaseSL \* (CurrentVIX / 15)
-
-**Strategies** (Based on 2024 Indian Market Research):
-
-- LONG_STRADDLE - High volatility expected
-- IRON_CONDOR - Range-bound markets
-- BULL_PUT_SPREAD - Bullish bias with defined risk
-- BEAR_CALL_SPREAD - Bearish bias with defined risk
-
-### Layer 5: Execution (Action)
-
-**Components**:
-
-- `AtomicExecutionService`: Upstox Multi-Order API for atomic spread execution
-- `SniperExecutor`: IOC (Immediate or Cancel) logic for entries
-- `ExecutionMonitor`: Fill tracking via Upstox Portfolio WebSocket
-
-**Optimizations**:
-
-- **Atomic Multi-Leg**: Send all 4 legs of Iron Condor in single API call (No legging-in risk)
-- **Sniper Logic**: Use IOC orders to avoid chasing price
-- **Slippage Tracking**: Real-time vs. expected price monitoring
-
-### Layer 6: Memory (Storage)
-
-**Components**:
-
-- `RedisCache`: Hot state (positions, orders)
-- `QuestDBWriter`: Time-series persistence
-- `MongoDBSync`: Async document writes
-
-### Layer 7: Control (Ops & Monitoring)
-
-**Components**:
-
-- `eBPFTracer`: Network vs App latency breakdown (micro-burst detection)
-- `PrometheusExporter`: Metrics (latency, order fill rate, P&L)
-- `MLflowTracker`: Model performance tracking
-- `GrafanaDashboard`: Real-time UI
-
-**Key Metrics**:
-
-- Tick-to-Trade Latency (p50, p95, p99)
-- Signal Confidence Distribution
-- Strategy Win Rate
-- Daily Sharpe Ratio
+| Layer | Technology | Notes |
+|-------|-----------|-------|
+| **Frontend** | Next.js 16 (App Router) | React Server Components, Tailwind |
+| **API** | NestJS 11 + tRPC v11 | End-to-end type-safe RPC |
+| **Trading Engine** | NestJS 11, ONNX Runtime | Event-driven, sub-100ms tick-to-order |
+| **Feature Engine** | Rust (NAPI-RS) | SIMD-accelerated indicators, <5ms |
+| **ML Training** | Python, PyTorch 2.5 | CPCV validation, ONNX export |
+| **ML Inference** | ONNX Runtime (TensorRT / OpenVINO / CPU) | FP16 quantized, <50ms GPU |
+| **Time-Series DB** | QuestDB | Tick data, OHLCV, features |
+| **Document DB** | MongoDB 8 | Orders, positions, audit trail |
+| **Cache / Event Bus** | Redis 7 (Streams + Pub/Sub) | Hot state, feature store, circuit breakers |
+| **Auth** | Better Auth | Session-based, OAuth providers |
+| **Types** | Zod → TypeScript | Single source of truth in `@repo/schema` |
+| **Monorepo** | Turborepo + pnpm | Parallel builds, shared packages |
 
 ---
 
-## Production-Grade Enhancements
+## Data Flow
 
-### 1. Latency Optimization Techniques
+```
+LIVE INFERENCE
+──────────────
+Upstox WebSocket ──► market-feeder ──► Redis Streams
+                                            │
+                         ┌──────────────────┘
+                         ▼
+                  compute-engine (Rust, <5ms)
+                    feature vectors
+                         │
+                         ▼
+                  algo-worker (ONNX Runtime)
+                    5-tier prediction
+                         │
+                         ▼
+                  Strategy + Risk Manager
+                         │
+                         ▼
+                  Execution ──► Upstox Order API
+                         │
+                    ┌─────┴─────┐
+                    ▼           ▼
+                 QuestDB     MongoDB
+               (time-series) (audit)
 
-| Technique                 | Impact                 | Implementation                                            |
-| ------------------------- | ---------------------- | --------------------------------------------------------- |
-| Kernel Bypass (DPDK)      | -30% network latency   | Use Solarflare ef_vi for Upstox WebSocket                 |
-| CPU Pinning               | -15% jitter            | Pin critical threads to isolated cores (PREEMPT-RT Linux) |
-| Lock-Free Data Structures | -20% contention        | Use Disruptor pattern for event queue                     |
-| FPGA Acceleration         | -50% inference latency | Future: Market data decoding + feature calc on FPGA       |
-
-### 2. SEBI 2024-2025 Compliance
-
-**Regulatory Deadline**: **January 1, 2026** (SEBI guidelines for retail algorithmic trading safeguards)
-
-**Requirements**:
-
-1. **Unique Algo ID**: Every order tagged with `algoId` (format: `PROJ_QUANTUM_v1.2.3_USER_{userId}`)
-2. **Exchange Approval**: Register strategy with NSE (if order frequency >10 orders/sec)
-3. **Broker Monitoring**: Real-time anomaly detection (Upstox API)
-4. **Audit Trail**: All orders logged to MongoDB with full context (5-year retention)
-5. **Model Explainability**: SHAP values for ML predictions (transparency requirement)
-
-**Implementation**:
-
-```typescript
-interface SEBICompliantOrder {
-  algoId: string; // PROJ_QUANTUM_v1.2.3_USER_123
-  userId: string;
-  timestamp: Date;
-  strategyType: string; // IRON_CONDOR, LONG_STRADDLE
-  preTradeChecksPassed: boolean;
-  riskLimitsValidated: boolean;
-  modelExplanation?: {
-    // NEW: SEBI 2026 requirement
-    topFeatures: Array<{ feature: string; importance: number }>;
-    shapValues: Record<string, number>;
-  };
-}
+OFFLINE TRAINING
+────────────────
+QuestDB ──► training-pipeline (Python)
+               │
+               ├── CPCV split + label generation
+               ├── Train Tier 0-3 models
+               ├── Train Tier 4 meta-learner
+               ├── ONNX export (FP16)
+               └── MLflow registry ──► algo-worker hot-swap
 ```
 
-**SHAP Explainability** (Control Layer):
+---
 
-- Weekly SHAP value computation for all predictions
-- Feature importance drift detection (alert if >30% change)
-- Stored in MongoDB audit trail for regulatory inspection
-- See [07-CONTROL.md](apps/algo-worker/docs/layers/07-CONTROL.md#explainability--sebi-compliance-monitoring) for implementation
+## 5-Tier AI Model Hierarchy
 
-### 3. Disaster Recovery & Circuit Breakers
+The prediction layer implements a **data-bound hierarchical architecture** where each tier operates on a distinct time-scale and information source.
 
-**Automatic Shutdown Conditions**:
+| Tier | Name | Horizon | Key Models | Input |
+|------|------|---------|------------|-------|
+| **0** | Gap Predictor | Overnight | LightGBM | Global cues, ADRs, futures |
+| **1** | Macro Director | 5-15 min | LightGBM, XGBoost | 50+ features (Greeks, momentum, structure) |
+| **2** | Intraday Navigator | 5 min – EOD | TFT, PatchTST, Mamba | Time-series tensors, regime signals |
+| **3** | Microstructure Scalper | 10s – 1 min | LiT (LOB Transformer) | Depth-20 order book tensors |
+| **4** | Meta-Learner | Adaptive | Gating network | All tier outputs + market context |
 
-- Daily loss > ₹50,000
-- Drawdown > 20%
-- Latency > 500ms (system degraded)
+Tier 4 dynamically weights lower-tier predictions based on regime, volatility, and spread conditions. Models are independently disable-able; Tier 1 (LightGBM) failure halts trading.
+
+> **Detailed documentation**: [docs/ml/MODEL_ARCHITECTURE.md](./ml/MODEL_ARCHITECTURE.md) · [docs/ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) · [docs/ml/META_LEARNER_EXECUTION.md](./ml/META_LEARNER_EXECUTION.md)
+
+---
+
+## Database Strategy
+
+```
+┌─────────────────────────────────────────────┐
+│  Redis 7  (HOT — sub-millisecond)           │
+│  • Active positions, order book snapshots   │
+│  • Feature store (online serving)           │
+│  • Pub/Sub event bus (Streams)              │
+│  • Circuit breaker state, rate limiting     │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│  QuestDB  (WARM — time-series)              │
+│  • Tick data (nanosecond timestamps)        │
+│  • OHLCV candles (1m → 1d)                  │
+│  • Computed features & Greeks snapshots     │
+│  • 22× faster than ClickHouse for OHLCV    │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│  MongoDB 8  (COLD — documents)              │
+│  • Orders, positions, trading signals       │
+│  • User profiles & auth sessions            │
+│  • Audit trail (5-year SEBI retention)      │
+│  • RL agent states, performance metrics     │
+└─────────────────────────────────────────────┘
+```
+
+> **Feature store design**: [docs/ml/FEATURE_STORE.md](./ml/FEATURE_STORE.md)
+
+---
+
+## Observability Stack
+
+**OpenTelemetry → Grafana LGTM**
+
+| Pillar | Tool | Purpose |
+|--------|------|---------|
+| **Logs** | Loki | Structured JSON logs from all services |
+| **Metrics** | Mimir (Prometheus-compatible) | Latency histograms, P&L, fill rates |
+| **Traces** | Tempo | Distributed traces across tick-to-order path |
+| **Dashboards** | Grafana | Real-time trading dashboards |
+
+Key metrics monitored: tick-to-trade latency (p50/p95/p99), model confidence distribution, strategy win rate, daily Sharpe, order fill rate, slippage.
+
+> **Instrumentation package**: [packages/observability/](../packages/observability/)
+
+---
+
+## SEBI 2025-2026 Compliance
+
+**Deadline**: April 1, 2026 — full retail algorithmic trading compliance.
+
+| Requirement | Implementation |
+|-------------|---------------|
+| **Unique Algo ID** | Every order tagged: `QUANTUM_{date}_{version}_{strategy}` |
+| **Pre-trade risk checks** | Position limits, margin, Greeks exposure validated before API call |
+| **Broker monitoring** | Real-time anomaly detection via Upstox API |
+| **Audit trail** | Full context (signals, features, model outputs) in MongoDB, 5-year retention |
+| **Model explainability** | Weekly SHAP computation, feature importance drift alerts (>30% change) |
+| **Exchange registration** | Required if order frequency >10 orders/sec |
+
+---
+
+## Disaster Recovery
+
+Automatic shutdown triggers:
+
+- Daily loss > ₹50,000 or drawdown > 20%
+- Tick-to-trade latency > 500ms
 - Data feed stale > 5 seconds
+- Risk limit breach (Greeks, margin)
 
-**Recovery**:
-
-- Automatic position liquidation (Market Orders)
-- Slack/Email alerts
-- Manual override required to resume trading
+Recovery: automatic position liquidation → Slack/email alerts → manual override required to resume.
 
 ---
 
-## Tech Stack (2024-2025 Recommended)
+## Cross-References
 
-| Layer          | Technology                                                 | Rationale                               |
-| -------------- | ---------------------------------------------------------- | --------------------------------------- |
-| **Languages**  | TypeScript (Core), Python (ML), Rust (NAPI-RS Calculation) | Rust for ultra-low latency components   |
-| **Frameworks** | NestJS, Next.js 16, PyTorch 2.5                            | Production battle-tested                |
-| **Databases**  | QuestDB, MongoDB, Redis                                    | Research-validated for trading          |
-| **AI/ML**      | ONNX (TensorRT), Mamba (SSM), PatchTST                     | Hardware-agnostic with GPU acceleration |
-| **Event Bus**  | Redis Streams, Apache Kafka (future scaling)               | Proven for HFT                          |
-| **Monitoring** | Prometheus, Grafana, eBPF                                  | Industry standard                       |
-| **Deployment** | Docker + Kubernetes (optional), PM2                        | Flexibility for ArchLinux server        |
-
----
-
-## Future Enhancements & R&D Opportunities
-
-### High-ROI Enhancements (Recommended for Implementation)
-
-See [PROJECT_STATUS.md - Gap Analysis](./PROJECT_STATUS.md#gap-analysis-current-vs-next-gen-aft-architecture) for detailed implementation roadmap:
-
-1. **Tick-by-Tick Feeds** (100-500ms edge improvement) - HIGH PRIORITY
-   - See [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md#next-gen-data-ingestion-enhancements-high-roi) for vendor options
-2. **Feature Store** (eliminate training/serving skew) - HIGH PRIORITY
-   - See [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md) for architecture
-3. **Model CI/CD Pipeline** (zero deployment failures) - HIGH PRIORITY
-   - See [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md#model-deployment-cicd-pipeline-high-roi-enhancement) for automation
-4. **Meta-Learning (MAML)** (10x faster regime adaptation) - MEDIUM-HIGH PRIORITY
-   - See [MODEL_INVENTORY.md](./MODEL_INVENTORY.md#meta-learning--automated-model-refresh-high-roi-enhancement) for frameworks
-
-### Optional R&D (Non-Production Exploration)
-
-5. **Agentic AI Multi-Agent Systems** (R&D ONLY - NOT FOR PRODUCTION)
-   - **Use Case**: Post-trade analysis, strategy research (qualitative insights)
-   - **Why NOT Production**: 600-1600ms latency (too slow for <100ms trading requirement), non-deterministic
-   - **Status**: Research prototype only
-   - See [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md) for design and limitations
-
-6. **Advanced NLP for News Sentiment** (R&D)
-   - Real-time news analysis for event-driven strategies
-   - FinBERT, Bloomberg GPT integration
-
-7. **Graph Neural Networks** (R&D)
-   - Sectoral relationship modeling
-   - Cross-instrument correlation prediction
-
-**Note**: All R&D items marked as OPTIONAL due to latency/determinism constraints. Focus should remain on HIGH-ROI enhancements (1-4) that directly improve production trading performance.
-
----
-
-## References
-
-1. _Event-Driven Architecture for HFT_ - Medium, 2024
-2. _Deterministic Event Sequencer_ - Trading Systems Architecture
-3. _Latency Optimization for Options Trading_ - Quantitative Finance Journal
-4. _QuestDB vs TimescaleDB Benchmark 2025_ - Database Performance Study
-5. _ONNX Runtime Execution Providers_ - Microsoft AI, 2024
-6. _Kernel Bypass Techniques_ - High-Performance Networking
-7. _Multi-Agent Debate Systems for Trading_ - [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md) (R&D only)
-8. _Next-Gen AFT Architecture Comparative Analysis_ - [PROJECT_STATUS.md](./PROJECT_STATUS.md#gap-analysis-current-vs-next-gen-aft-architecture)
-
----
-
-**Last Updated**: January 13, 2026
-**Status**: Production-Ready Architecture
+| Document | Scope |
+|----------|-------|
+| [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md) | Deep-dive: 9-layer system design, DRL execution, latency techniques |
+| [docs/ml/README.md](./ml/README.md) | ML documentation hub |
+| [docs/ml/MODEL_ARCHITECTURE.md](./ml/MODEL_ARCHITECTURE.md) | 5-tier model hierarchy with code |
+| [docs/ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) | CPCV validation, ONNX export pipeline |
+| [docs/ml/FEATURE_STORE.md](./ml/FEATURE_STORE.md) | Redis + QuestDB feature store |
+| [docs/ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) | ONNX Runtime in NestJS |
+| [WEB_API_SERVICES.md](./WEB_API_SERVICES.md) | Dashboard, API gateway, monitoring |
+| [DEPLOYMENT_ARCHITECTURE.md](./DEPLOYMENT_ARCHITECTURE.md) | Hybrid local-cloud deployment |
+| [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) | Setup, workflow, debugging |
+| [PROJECT_STATUS.md](./PROJECT_STATUS.md) | Roadmap and gap analysis |
+| [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md) | Multi-agent systems (R&D only, not production) |

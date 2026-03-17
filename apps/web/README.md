@@ -1,5 +1,7 @@
 # Quantum Investments and Trades - Web Dashboard (UFOS)
 
+**Last Updated**: March 17, 2026
+
 Next.js frontend implementing a comprehensive trading and wealth management platform.
 
 ## Overview
@@ -131,7 +133,7 @@ Forensic AI observability and system governance for administrators.
 - **Framework**: Next.js 16 (App Router, React Server Components)
 - **Styling**: TailwindCSS + Shadcn/ui components
 - **Authentication**: Better Auth (with organization plugin, 2FA, passkey)
-- **API Layer**: tRPC client (generated from API router) + Better Auth client
+- **API Layer**: tRPC v11 client (generated from API router) + Better Auth client
 - **Data Access Layer**: Secure, centralized data fetching with automatic session verification
 - **State Management**: React Query (via tRPC), Zustand (local UI state)
 - **Charts & Visualization**:
@@ -169,8 +171,6 @@ Forensic AI observability and system governance for administrators.
 
 - `training-pipeline`: ML Model Training (Kedro)
 
-- `data-processor`: Feature Engineering
-
 - `document-processor`: OCR & Parsing
 
 
@@ -206,14 +206,14 @@ See `.env.example` for required configuration:
 
 ## Documentation
 
-- [Copilot Instructions](.github/copilot-instructions.md) - Development guidelines
+- [Copilot Instructions](../../.github/copilot-instructions.md) - Development guidelines
 - [Architecture](docs/ARCHITECTURE.md) - Detailed system architecture
 - [Authentication](docs/AUTHENTICATION.md) - Auth state management and patterns
-- [Data Access Layer](docs/DATA_ACCESS_LAYER.md) - Secure data fetching and mutations
-- [Progress Tracking](docs/PROGRESS.md) - Implementation status
-- [Component Library](docs/COMPONENTS.md) - Reusable UI components (TODO)
-- [Dashboard Patterns](docs/DASHBOARD_PATTERNS.md) - Multi-dashboard design patterns (TODO)
-- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment (TODO)
+- [Data Access Layer](docs/DATA_ACCESS_LAYER.md) - Secure data fetching and mutations (Planned)
+- [Progress Tracking](../../docs/PROJECT_STATUS.md) - Implementation status
+- [Component Library](docs/COMPONENTS.md) - Reusable UI components (planned)
+- [Dashboard Patterns](docs/DASHBOARD_PATTERNS.md) - Multi-dashboard design patterns (planned)
+- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment (planned)
 
 ## Development
 
