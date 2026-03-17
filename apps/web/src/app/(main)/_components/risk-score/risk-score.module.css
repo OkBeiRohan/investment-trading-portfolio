@@ -1,8 +1,13 @@
 .card {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   padding: var(--spacing-5);
+  transition: all var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 
 .header {
@@ -10,24 +15,24 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-3);
-  margin-bottom: var(--spacing-5);
+  margin-bottom: var(--spacing-4);
 }
 
 .title {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin: 0;
 }
 
 .updated {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
 }
 
 .barWrapper {
   position: relative;
-  height: 12px;
+  height: 10px;
   border-radius: var(--radius-full);
   margin-bottom: var(--spacing-5);
   overflow: visible;
@@ -49,37 +54,39 @@
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   background: var(--color-text-primary);
   border: 2px solid var(--color-bg-card);
   border-radius: var(--radius-full);
   box-shadow: var(--shadow-sm);
+  transition: left var(--transition-slow);
 }
 
 .scoreSection {
   display: flex;
   align-items: baseline;
   gap: var(--spacing-2);
-  margin-bottom: var(--spacing-5);
+  margin-bottom: var(--spacing-4);
 }
 
 .scoreValue {
-  font-size: var(--font-size-4xl);
+  font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   line-height: var(--line-height-none);
+  font-variant-numeric: tabular-nums;
 }
 
 .scoreDescription {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
 
 .rows {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-4);
+  gap: var(--spacing-3);
 }
 
 .row {
@@ -87,11 +94,18 @@
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-2);
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast);
+}
+
+.row:hover {
+  background: var(--color-bg-hover);
 }
 
 .rowDot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: var(--radius-full);
   flex-shrink: 0;
 }
@@ -102,9 +116,10 @@
 }
 
 .rowPct {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .rowProgress {

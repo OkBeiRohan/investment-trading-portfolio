@@ -1,8 +1,7 @@
 .pageSkeletonContainer {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-lg);
+  gap: var(--spacing-5);
   width: 100%;
 }
 
@@ -10,115 +9,108 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-4);
 }
 
 .skeletonRow {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--spacing-4);
   width: 100%;
 }
 
 .skeletonGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--spacing-md);
+  gap: var(--spacing-4);
   width: 100%;
 }
 
 .skeletonCard {
   background: var(--color-bg-card);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  animation: pulse 1.5s ease-in-out infinite;
+  gap: var(--spacing-4);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
 .skeletonBox {
-  background: var(--color-bg-tertiary);
+  background: var(--skeleton-base);
   border-radius: var(--radius-md);
-  animation: pulse 1.5s ease-in-out infinite;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
 .skeletonCircle {
   border-radius: 50%;
-  background: var(--color-bg-tertiary);
-  animation: pulse 1.5s ease-in-out infinite;
+  background: var(--skeleton-base);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
 .skeletonText {
-  height: 16px;
+  height: 14px;
   border-radius: var(--radius-sm);
-  background: var(--color-bg-tertiary);
-  animation: pulse 1.5s ease-in-out infinite;
+  background: var(--skeleton-base);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
 .skeletonTextSm {
   composes: skeletonText;
-  height: 12px;
+  height: 10px;
 }
 
 .skeletonTextLg {
   composes: skeletonText;
-  height: 24px;
+  height: 22px;
 }
 
 .skeletonTextXl {
   composes: skeletonText;
-  height: 32px;
+  height: 30px;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-/* Dashboard Skeleton */
 .dashboardSkeleton {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-5);
   width: 100%;
 }
 
 .dashboardSkeletonWelcome {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-2);
 }
 
 .dashboardSkeletonMain {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: var(--spacing-lg);
+  grid-template-columns: 1fr 340px;
+  gap: var(--spacing-5);
 }
 
 .dashboardSkeletonBalance {
-  grid-column: span 8;
+  min-height: 280px;
 }
 
 .dashboardSkeletonTransactions {
-  grid-column: span 4;
+  min-height: 280px;
 }
 
 .dashboardSkeletonCharts {
-  grid-column: span 12;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-md);
+  gap: var(--spacing-4);
 }
 
-@media (max-width: 768px) {
-  .dashboardSkeletonBalance,
-  .dashboardSkeletonTransactions {
-    grid-column: span 12;
+@media (max-width: 1024px) {
+  .dashboardSkeletonMain {
+    grid-template-columns: 1fr;
   }
 
   .dashboardSkeletonCharts {

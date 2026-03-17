@@ -1,33 +1,42 @@
 .card {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  padding: var(--spacing-6);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
+  transition: all var(--transition-base);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-6);
+  margin-bottom: var(--spacing-4);
 }
 
 .title {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin: 0;
 }
 
 .viewLink {
-  font-size: var(--font-size-sm);
-  color: var(--color-link);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
   text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast);
 }
 
 .viewLink:hover {
-  color: var(--color-link-hover);
-  text-decoration: underline;
+  color: var(--color-primary-hover);
 }
 
 .gaugeWrapper {
@@ -35,12 +44,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: var(--spacing-6);
+  flex: 1;
+  justify-content: center;
 }
 
 .gaugeSvg {
   width: 100%;
-  max-width: 280px;
+  max-width: 240px;
   height: auto;
 }
 
@@ -50,6 +60,7 @@
 
 .fill {
   stroke: url(#gaugeFill);
+  transition: stroke-dasharray 1s ease;
 }
 
 .dot {
@@ -61,35 +72,41 @@
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-1);
-  margin-top: calc(var(--spacing-4) * -1);
+  margin-top: calc(var(--spacing-3) * -1);
 }
 
 .totalValue {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   letter-spacing: var(--letter-spacing-tight);
+  font-variant-numeric: tabular-nums;
 }
 
 .changePositive,
 .changeNegative {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
 }
 
 .changePositive {
   color: var(--color-profit);
+  background: var(--color-profit-bg);
 }
 
 .changeNegative {
   color: var(--color-loss);
+  background: var(--color-loss-bg);
 }
 
 .stats {
   display: flex;
-  gap: var(--spacing-8);
+  gap: var(--spacing-6);
   padding-top: var(--spacing-4);
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-light);
+  margin-top: var(--spacing-4);
 }
 
 .statItem {
@@ -99,24 +116,29 @@
 }
 
 .statLabel {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
 }
 
 .statValue {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .statPositive {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-profit);
+  font-variant-numeric: tabular-nums;
 }
 
 .statNegative {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-loss);
+  font-variant-numeric: tabular-nums;
 }

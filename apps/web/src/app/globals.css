@@ -17,13 +17,13 @@ body {
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
   transition:
-    background-color var(--transition-base),
-    color var(--transition-base);
+    background-color var(--transition-slow),
+    color var(--transition-slow);
 }
 
 * {
   font-family: mainFont, mainFont Fallback, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, sans-serif;
+    "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   box-sizing: border-box;
   padding: 0;
   margin: 0;
@@ -35,8 +35,8 @@ a {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -58,12 +58,22 @@ a {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideInLeft {
   from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(12px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
@@ -78,6 +88,16 @@ a {
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(99, 102, 241, 0.15); }
+  50% { box-shadow: 0 0 16px rgba(99, 102, 241, 0.3); }
+}
+
+@keyframes floatUp {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }

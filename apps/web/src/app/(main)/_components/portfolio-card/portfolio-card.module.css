@@ -1,29 +1,37 @@
 .card {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   padding: var(--spacing-5);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
+  transition: all var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 
 .label {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
 }
 
 .totalValue {
-  font-size: var(--font-size-4xl);
+  font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   letter-spacing: var(--letter-spacing-tight);
   line-height: var(--line-height-tight);
+  font-variant-numeric: tabular-nums;
 }
 
 .todayChange {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
 }
 
@@ -42,8 +50,8 @@
 .pnlRow {
   display: flex;
   gap: var(--spacing-6);
-  padding-top: var(--spacing-2);
-  border-top: 1px solid var(--color-border);
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--color-border-light);
 }
 
 .pnlItem {
@@ -53,18 +61,22 @@
 }
 
 .pnlLabel {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-caps);
 }
 
 .pnlPositive {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-profit);
+  font-variant-numeric: tabular-nums;
 }
 
 .pnlNegative {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-loss);
+  font-variant-numeric: tabular-nums;
 }

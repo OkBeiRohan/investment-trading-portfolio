@@ -1,276 +1,113 @@
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-6);
+  gap: var(--spacing-5);
   animation: fadeIn var(--transition-slow) ease;
 }
 
-/* Breadcrumb */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
+/* Stats row */
+.statsRow {
+  animation: fadeIn var(--transition-slow) ease;
 }
 
-.backBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-card);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.backBtn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.breadcrumbPath {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-1-5);
-  font-size: var(--font-size-sm);
-}
-
-.breadcrumbMuted {
-  color: var(--color-text-tertiary);
-}
-
-.breadcrumbSep {
-  color: var(--color-text-muted);
-}
-
-.breadcrumbActive {
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-medium);
-}
-
-/* Hero */
-.hero {
+/* Main grid: chart + gauge */
+.mainGrid {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: var(--spacing-8);
-  align-items: start;
-}
-
-.heroLeft {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-6);
-}
-
-.heroRight {
-  min-width: 0;
-}
-
-.title {
-  font-size: 2.5rem;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-
-/* Portfolio tabs with blobs */
-.portfolioTabs {
-  display: flex;
-  gap: var(--spacing-4);
-}
-
-.portfolioTab {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  padding: var(--spacing-3) var(--spacing-4);
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  min-width: 200px;
-}
-
-.portfolioTab:hover {
-  box-shadow: var(--card-shadow-hover);
-  transform: translateY(-1px);
-}
-
-.tabBlobs {
-  display: flex;
-  gap: -4px;
-  flex-shrink: 0;
-}
-
-.blob {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  opacity: 0.8;
-}
-
-.blob:nth-child(2) {
-  margin-left: -10px;
-}
-
-.blobPink {
-  background: linear-gradient(135deg, #f9a8c9, #ec6b9a);
-}
-
-.blobBlue {
-  background: linear-gradient(135deg, #93b4fc, #4a7cf7);
-}
-
-.blobAmber {
-  background: linear-gradient(135deg, #fcd34d, #f59e0b);
-}
-
-.blobGreen {
-  background: linear-gradient(135deg, #86efac, #22c55e);
-}
-
-.tabContent {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.tabLabel {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  font-weight: var(--font-weight-medium);
-}
-
-.tabValue {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Middle Row: Graph + Metrics | AI */
-.middleRow {
-  display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 340px;
   gap: var(--spacing-5);
   align-items: stretch;
+  animation: fadeIn var(--transition-slow) ease 50ms both;
 }
 
-.graphSection {
+.chartArea {
   min-width: 0;
 }
 
-.graphCard {
-  display: grid;
-  grid-template-columns: 1fr 200px;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  overflow: hidden;
+.chartCard {
   height: 100%;
 }
 
-.graphMain {
+.chartCard > * {
+  height: 100%;
+}
+
+.gaugeArea {
   min-width: 0;
 }
 
-.graphMain > * {
-  border: none;
-  border-radius: 0;
-}
-
-.graphMetrics {
-  border-left: 1px solid var(--color-border);
-  padding: var(--spacing-5);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.aiSection {
-  min-width: 0;
-}
-
-/* Bottom row */
-.bottomRow {
+/* Middle grid: metrics + watchlist */
+.middleGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-5);
-  align-items: start;
+  align-items: stretch;
+  animation: fadeIn var(--transition-slow) ease 100ms both;
 }
 
-.transfersSection {
+.metricsArea {
   min-width: 0;
 }
 
-.spendingSection {
+.watchlistArea {
+  min-width: 0;
+}
+
+/* Bottom grid: transactions + allocation + AI */
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--spacing-5);
+  align-items: start;
+  animation: fadeIn var(--transition-slow) ease 150ms both;
+}
+
+.transfersArea {
+  min-width: 0;
+}
+
+.allocationArea {
+  min-width: 0;
+}
+
+.aiArea {
   min-width: 0;
 }
 
 /* Responsive */
 @media (max-width: 1280px) {
-  .hero {
-    grid-template-columns: 1fr 340px;
+  .mainGrid {
+    grid-template-columns: 1fr 300px;
   }
 
-  .middleRow {
-    grid-template-columns: 1fr 340px;
+  .bottomGrid {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .graphCard {
-    grid-template-columns: 1fr 180px;
+  .aiArea {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 1024px) {
-  .hero {
+  .mainGrid {
     grid-template-columns: 1fr;
   }
 
-  .heroRight {
-    max-width: 400px;
-  }
-
-  .middleRow {
+  .middleGrid {
     grid-template-columns: 1fr;
   }
 
-  .graphCard {
+  .bottomGrid {
     grid-template-columns: 1fr;
   }
 
-  .graphMetrics {
-    border-left: none;
-    border-top: 1px solid var(--color-border);
-    flex-direction: row;
-    gap: var(--spacing-6);
-    flex-wrap: wrap;
-  }
-
-  .bottomRow {
-    grid-template-columns: 1fr;
+  .aiArea {
+    grid-column: auto;
   }
 }
 
 @media (max-width: 640px) {
   .dashboard {
     gap: var(--spacing-4);
-  }
-
-  .title {
-    font-size: var(--font-size-2xl);
-  }
-
-  .portfolioTabs {
-    flex-direction: column;
-  }
-
-  .portfolioTab {
-    min-width: auto;
   }
 }

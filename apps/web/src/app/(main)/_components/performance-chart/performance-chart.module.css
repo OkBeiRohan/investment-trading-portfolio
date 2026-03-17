@@ -1,35 +1,43 @@
 .card {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   padding: var(--spacing-5);
+  transition: all var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--spacing-5);
+  margin-bottom: var(--spacing-4);
 }
 
 .title {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
 .periodToggles {
   display: flex;
-  gap: var(--spacing-1);
+  gap: 2px;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  padding: 3px;
 }
 
 .periodBtn {
-  padding: var(--spacing-1-5) var(--spacing-2-5);
-  font-size: var(--font-size-xs);
+  padding: var(--spacing-1) var(--spacing-2-5);
+  font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  color: var(--color-text-tertiary);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -37,12 +45,16 @@
 
 .periodBtn:hover {
   color: var(--color-text-primary);
-  background: var(--color-bg-hover);
+}
+
+.periodBtn:first-child {
+  background: var(--color-primary);
+  color: #fff;
 }
 
 .chartWrapper {
   width: 100%;
-  min-height: 200px;
+  min-height: 180px;
 }
 
 .chartSvg {
@@ -52,11 +64,11 @@
 }
 
 .xAxis {
-  font-size: var(--font-size-xs);
+  font-size: 9px;
   fill: var(--color-text-muted);
 }
 
 .yAxis {
-  font-size: var(--font-size-xs);
+  font-size: 9px;
   fill: var(--color-text-muted);
 }

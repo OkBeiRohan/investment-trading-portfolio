@@ -1,15 +1,27 @@
 .balanceCard {
-  background-color: var(--card-yellow-bg);
-  border-radius: var(--card-radius);
-  padding: var(--card-padding);
-  color: var(--color-text-inverse);
+  background: var(--gradient-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
+  color: #fff;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-6);
+  gap: var(--spacing-5);
   min-width: 320px;
+  position: relative;
+  overflow: hidden;
 }
 
-/* Balance Display */
+.balanceCard::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
 .balanceDisplay {
   display: flex;
   flex-direction: column;
@@ -22,18 +34,20 @@
   justify-content: space-between;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  opacity: 0.9;
 }
 
 .exchangeInfo {
   font-size: var(--font-size-xs);
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .amount {
-  font-size: var(--font-size-5xl);
+  font-size: var(--font-size-4xl);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-tight);
+  font-variant-numeric: tabular-nums;
 }
 
 .change {
@@ -42,19 +56,18 @@
 }
 
 .positive {
-  color: #065f46;
+  color: rgba(134, 239, 172, 1);
 }
 
 .negative {
-  color: #b91c1c;
+  color: rgba(252, 165, 165, 1);
 }
 
-/* Action Buttons */
 .actionButtons {
   display: flex;
-  gap: var(--spacing-4);
+  gap: var(--spacing-3);
   padding-top: var(--spacing-4);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .actionButton {
@@ -73,7 +86,7 @@
 }
 
 .actionButton:hover {
-  background-color: rgba(0, 0, 0, 0.08);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .actionButton span {
@@ -81,7 +94,6 @@
   font-weight: var(--font-weight-medium);
 }
 
-/* Currency Badges */
 .currencyBadges {
   display: flex;
   gap: var(--spacing-3);
@@ -92,8 +104,9 @@
   align-items: center;
   gap: var(--spacing-2);
   padding: var(--spacing-2) var(--spacing-3);
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-lg);
+  backdrop-filter: blur(8px);
 }
 
 .currencySymbol {
@@ -108,15 +121,15 @@
 
 .currencyName {
   font-size: var(--font-size-xs);
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .currencyRate {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Hide Icon */
 .hideIcon {
   position: absolute;
   top: var(--spacing-4);
@@ -133,14 +146,13 @@
   opacity: 1;
 }
 
-/* Responsive */
 @media (max-width: 640px) {
   .balanceCard {
     min-width: 100%;
   }
 
   .amount {
-    font-size: var(--font-size-4xl);
+    font-size: var(--font-size-3xl);
   }
 
   .currencyBadges {

@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import styles from "./sidebar.module.css";
@@ -46,28 +47,21 @@ export function Sidebar() {
       className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`}
     >
       <div className={styles.logoSection}>
-        <div className={styles.logoMark}>
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <rect width="28" height="28" rx="8" fill="var(--color-emerald)" />
-            <path
-              d="M8 18L12 10L16 15L20 8"
-              stroke="var(--color-bg-primary)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        {!collapsed && (
-          <span className={styles.logoText}>Quantum</span>
-        )}
+        <Link href="/" className={styles.logoLink}>
+          <div className={styles.logoMark}>
+            <Sparkles size={20} strokeWidth={2} />
+          </div>
+          {!collapsed && (
+            <span className={styles.logoText}>Quantum</span>
+          )}
+        </Link>
         <button
           className={styles.collapseBtn}
           onClick={() => setCollapsed(!collapsed)}
           type="button"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </div>
 
@@ -84,13 +78,13 @@ export function Sidebar() {
                 className={`${styles.navItem} ${active ? styles.active : ""}`}
                 title={collapsed ? item.label : undefined}
               >
+                {active && <span className={styles.activeIndicator} />}
                 <span className={styles.navIcon}>
-                  <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
+                  <Icon size={18} strokeWidth={active ? 2.2 : 1.7} />
                 </span>
                 {!collapsed && (
                   <span className={styles.navText}>{item.label}</span>
                 )}
-                {active && <span className={styles.activeIndicator} />}
               </Link>
             );
           })}
@@ -108,13 +102,13 @@ export function Sidebar() {
                 className={`${styles.navItem} ${active ? styles.active : ""}`}
                 title={collapsed ? item.label : undefined}
               >
+                {active && <span className={styles.activeIndicator} />}
                 <span className={styles.navIcon}>
-                  <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
+                  <Icon size={18} strokeWidth={active ? 2.2 : 1.7} />
                 </span>
                 {!collapsed && (
                   <span className={styles.navText}>{item.label}</span>
                 )}
-                {active && <span className={styles.activeIndicator} />}
               </Link>
             );
           })}
@@ -122,9 +116,9 @@ export function Sidebar() {
       </nav>
 
       <div className={styles.footer}>
-        <button className={styles.navItem} type="button">
+        <button className={styles.logoutBtn} type="button">
           <span className={styles.navIcon}>
-            <LogOut size={20} strokeWidth={1.8} />
+            <LogOut size={18} strokeWidth={1.7} />
           </span>
           {!collapsed && <span className={styles.navText}>Log out</span>}
         </button>

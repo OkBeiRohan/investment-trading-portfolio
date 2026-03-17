@@ -4,70 +4,69 @@
   align-items: center;
   justify-content: center;
   min-height: 400px;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-xl);
+  gap: var(--spacing-5);
+  padding: var(--spacing-8);
   text-align: center;
 }
 
 .errorIcon {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-2xl);
   background: var(--color-error-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-error);
-  font-size: 40px;
+  font-size: 32px;
 }
 
 .errorTitle {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
   margin: 0;
 }
 
 .errorMessage {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   max-width: 480px;
-  line-height: 1.6;
+  line-height: var(--line-height-relaxed);
   margin: 0;
 }
 
 .errorCode {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-sm);
+  font-family: monospace;
+  font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
-  background: var(--color-bg-tertiary);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-lg);
   max-width: 100%;
   overflow: auto;
 }
 
 .errorActions {
   display: flex;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
 }
 
-/* Forbidden */
 .forbiddenIcon {
   composes: errorIcon;
   background: var(--color-warning-bg);
   color: var(--color-warning);
 }
 
-/* Not Found */
 .notFoundIcon {
   composes: errorIcon;
-  background: var(--color-bg-tertiary);
-  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-tertiary);
 }
 
-/* Unauthorized */
 .unauthorizedIcon {
   composes: errorIcon;
   background: var(--color-info-bg);

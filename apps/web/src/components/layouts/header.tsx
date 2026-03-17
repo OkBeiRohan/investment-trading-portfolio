@@ -1,16 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { Search, Bell, Globe } from "lucide-react";
+import { Search, Bell, ChevronDown } from "lucide-react";
 import type { MarketTickerItem } from "@/app/(main)/_types";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import styles from "./header.module.css";
-
-const navItems = [
-  { label: "Dashboard", href: "/" as const },
-  { label: "Analytic", href: "/analytics" as const },
-  { label: "Trading", href: "/trade/execution" as const },
-];
 
 interface HeaderProps {
   marketTicker?: MarketTickerItem[];
@@ -26,65 +20,67 @@ function formatPrice(value: number) {
   return value.toFixed(2);
 }
 
+function getPageTitle(pathname: string) {
+  if (pathname === "/") return "Dashboard";
+  if (pathname.startsWith("/analytics")) return "Analytics";
+  if (pathname.startsWith("/trade")) return "Trading";
+  if (pathname.startsWith("/wealth")) return "Wealth";
+  if (pathname.startsWith("/organization")) return "Organization";
+  if (pathname.startsWith("/admin")) return "Admin";
+  if (pathname.startsWith("/account")) return "Account";
+  return "Dashboard";
+}
+
 export function Header({ marketTicker = [] }: HeaderProps) {
   const pathname = usePathname();
-
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
-  };
+  const pageTitle = getPageTitle(pathname);
 
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
         <div className={styles.left}>
-          <Link href="/" className={styles.logo}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={styles.logoIcon}>
-              <rect width="24" height="24" rx="6" fill="var(--color-primary)" />
-              <path d="M7 16L10.5 9L14 13L17 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className={styles.logoText}>Quantum</span>
-          </Link>
-
-          <nav className={styles.nav}>
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`${styles.navLink} ${isActive(item.href) ? styles.navActive : ""}`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <button className={styles.marketSelector} type="button">
-            <Globe size={14} />
-            <span>Market: BTC/USDT</span>
-          </button>
+          <div className={styles.titleArea}>
+            <h1 className={styles.pageTitle}>{pageTitle}</h1>
+            <span className={styles.pageSubtitle}>Overview</span>
+          </div>
         </div>
 
-        <div className={styles.right}>
-          {marketTicker.slice(0, 3).map((item) => (
+        <div className={styles.center}>
+          {marketTicker.slice(0, 4).map((item) => (
             <div key={item.symbol} className={styles.tickerItem}>
-              <span className={styles.tickerName}>{item.name}</span>
+              <span className={styles.tickerSymbol}>{item.symbol}</span>
               <span className={styles.tickerPrice}>{formatPrice(item.price)}</span>
-              <span className={item.changePercent >= 0 ? styles.tickerBadgeUp : styles.tickerBadgeDown}>
-                {item.changePercent >= 0 ? "+" : ""}{item.changePercent.toFixed(0)}%
+              <span className={item.changePercent >= 0 ? styles.tickerUp : styles.tickerDown}>
+                {item.changePercent >= 0 ? "+" : ""}{item.changePercent.toFixed(1)}%
               </span>
             </div>
           ))}
+        </div>
 
-          <button className={styles.iconBtn} type="button" aria-label="Search">
-            <Search size={18} />
-          </button>
+        <div className={styles.right}>
+          <div className={styles.searchBox}>
+            <Search size={15} className={styles.searchIcon} />
+            <input
+              type="text"
+              placeholder="Search..."
+              className={styles.searchInput}
+            />
+            <kbd className={styles.searchKbd}>⌘K</kbd>
+          </div>
+
+          <ThemeToggle iconOnly />
+
           <button className={styles.iconBtn} type="button" aria-label="Notifications">
             <Bell size={18} />
             <span className={styles.notifDot} />
           </button>
-          <div className={styles.avatar}>
-            <span className={styles.avatarText}>L</span>
-          </div>
+
+          <button className={styles.userBtn} type="button">
+            <div className={styles.avatar}>
+              <span className={styles.avatarText}>Q</span>
+            </div>
+            <ChevronDown size={14} className={styles.userChevron} />
+          </button>
         </div>
       </div>
     </header>
