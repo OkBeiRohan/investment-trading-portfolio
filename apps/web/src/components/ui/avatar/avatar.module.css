@@ -1,13 +1,12 @@
-/* Avatar Base Styles */
 .avatar {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  background-color: var(--color-bg-tertiary);
+  background-color: var(--color-bg-active);
   color: var(--color-text-secondary);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -27,13 +26,14 @@
   height: 100%;
   text-transform: uppercase;
   user-select: none;
+  background: linear-gradient(135deg, var(--color-emerald-light), var(--color-sky-light));
+  color: var(--color-text-primary);
 }
 
-/* Sizes */
 .size-xs {
   width: 1.5rem;
   height: 1.5rem;
-  font-size: var(--font-size-xs);
+  font-size: 0.625rem;
 }
 
 .size-sm {
@@ -60,7 +60,6 @@
   font-size: var(--font-size-lg);
 }
 
-/* Avatar Group */
 .group {
   display: flex;
   align-items: center;
@@ -84,7 +83,7 @@
   height: 2.5rem;
   margin-left: -0.5rem;
   border-radius: var(--radius-full);
-  background-color: var(--color-bg-tertiary);
+  background-color: var(--color-bg-active);
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);

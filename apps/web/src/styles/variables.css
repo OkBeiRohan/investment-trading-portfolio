@@ -1,31 +1,38 @@
-/* Global CSS Variables - Base and Shared */
 :root {
   /* ================================
      PRIMARY ACCENT COLORS
      ================================ */
-  --color-coral: #e07a5f;
-  --color-coral-hover: #d16a4f;
-  --color-coral-light: rgba(224, 122, 95, 0.15);
+  --color-emerald: #34d399;
+  --color-emerald-hover: #2cc48c;
+  --color-emerald-light: rgba(52, 211, 153, 0.15);
+  --color-emerald-dark: #059669;
 
   --color-mint: #a8e6cf;
   --color-mint-hover: #8fd9bc;
   --color-mint-dark: #6bbf9a;
 
-  --color-yellow: #ffd93d;
-  --color-yellow-hover: #f5cc2e;
-  --color-yellow-light: rgba(255, 217, 61, 0.2);
+  --color-coral: #f87171;
+  --color-coral-hover: #ef4444;
+  --color-coral-light: rgba(248, 113, 113, 0.12);
 
-  --color-blue: #6ec6ff;
-  --color-blue-hover: #5ab8f5;
-  --color-blue-dark: #4ca8e8;
+  --color-amber: #fbbf24;
+  --color-amber-hover: #f59e0b;
+  --color-amber-light: rgba(251, 191, 36, 0.15);
+
+  --color-sky: #38bdf8;
+  --color-sky-hover: #0ea5e9;
+  --color-sky-light: rgba(56, 189, 248, 0.12);
+
+  --color-violet: #a78bfa;
+  --color-violet-hover: #8b5cf6;
 
   /* ================================
      TYPOGRAPHY
      ================================ */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
+  --font-size-xs: 0.6875rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-base: 0.9375rem;
+  --font-size-lg: 1.0625rem;
   --font-size-xl: 1.25rem;
   --font-size-2xl: 1.5rem;
   --font-size-3xl: 1.875rem;
@@ -40,23 +47,29 @@
   --font-weight-extrabold: 800;
 
   --line-height-none: 1;
-  --line-height-tight: 1.25;
+  --line-height-tight: 1.2;
   --line-height-snug: 1.375;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.625;
   --line-height-loose: 2;
 
-  --letter-spacing-tighter: -0.05em;
-  --letter-spacing-tight: -0.025em;
+  --letter-spacing-tighter: -0.04em;
+  --letter-spacing-tight: -0.02em;
   --letter-spacing-normal: 0;
   --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-caps: 0.08em;
 
   /* ================================
      SPACING
      ================================ */
   --spacing-0: 0;
+  --spacing-px: 1px;
+  --spacing-0-5: 0.125rem;
   --spacing-1: 0.25rem;
+  --spacing-1-5: 0.375rem;
   --spacing-2: 0.5rem;
+  --spacing-2-5: 0.625rem;
   --spacing-3: 0.75rem;
   --spacing-4: 1rem;
   --spacing-5: 1.25rem;
@@ -68,7 +81,6 @@
   --spacing-20: 5rem;
   --spacing-24: 6rem;
 
-  /* Named spacing aliases (backward compatibility) */
   --spacing-xs: var(--spacing-1);
   --spacing-sm: var(--spacing-2);
   --spacing-md: var(--spacing-4);
@@ -80,7 +92,7 @@
      BORDER RADIUS
      ================================ */
   --radius-none: 0;
-  --radius-sm: 0.25rem;
+  --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
@@ -94,12 +106,12 @@
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg:
-    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl:
-    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-glow-emerald: 0 0 20px rgba(52, 211, 153, 0.15);
+  --shadow-glow-coral: 0 0 20px rgba(248, 113, 113, 0.15);
 
   /* ================================
      TRANSITIONS
@@ -112,6 +124,7 @@
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* ================================
      Z-INDEX SCALE
@@ -120,6 +133,7 @@
   --z-dropdown: 1000;
   --z-sticky: 1020;
   --z-fixed: 1030;
+  --z-sidebar: 1035;
   --z-modal-backdrop: 1040;
   --z-modal: 1050;
   --z-popover: 1060;
@@ -128,31 +142,33 @@
   /* ================================
      CHART COLORS
      ================================ */
-  --chart-1: var(--color-coral);
-  --chart-2: var(--color-mint);
-  --chart-3: var(--color-yellow);
-  --chart-4: var(--color-blue);
-  --chart-5: #9b87f5;
-  --chart-6: #f5a3c7;
-  --chart-positive: #10b981;
-  --chart-negative: #ef4444;
+  --chart-1: var(--color-emerald);
+  --chart-2: var(--color-sky);
+  --chart-3: var(--color-amber);
+  --chart-4: var(--color-violet);
+  --chart-5: var(--color-coral);
+  --chart-6: var(--color-mint);
+  --chart-positive: #34d399;
+  --chart-negative: #f87171;
 
   /* ================================
      LAYOUT
      ================================ */
-  --header-height: 4rem;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 3.5rem;
   --content-padding: var(--spacing-6);
 
   /* ================================
      GLASSMORPHISM
      ================================ */
-  --glass-blur: 12px;
+  --glass-blur: 16px;
   --glass-saturate: 180%;
 
   /* ================================
      CARD STYLES
      ================================ */
-  --card-padding: var(--spacing-6);
+  --card-padding: var(--spacing-5);
   --card-radius: var(--radius-2xl);
   --card-shadow: var(--shadow-md);
 }
