@@ -1,116 +1,198 @@
 """
-Nodes for ONNX Model Export
+ONNX export for all tier models.
+
+Exports all CPCV folds (Tier 2), HMM via pickle (skl2onnx if available),
+scalers alongside their models, and computes SHA-256 checksums for every
+artifact.  Called by the runner after quality gate passes.
 """
 
+import hashlib
 import logging
+import os
+import pickle
+from typing import Any
+
 import torch
-import lightgbm as lgb
-import xgboost as xgb
-import onnx
-import onnxmltools
-from onnxmltools.convert.common.data_types import FloatTensorType
-from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
+
+def _sha256(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 16), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def export_all_models(
-    tier0_model: xgb.Booster,
-    tier1_hmm: Any,
-    tier1_patchtst: torch.nn.Module,
-    tier2_ensemble: Dict[str, lgb.Booster],
-    tier3_lit: torch.nn.Module,
-    meta_learner: torch.nn.Module,
-    parameters: Dict[str, Any]
-) -> str:
+    artifact_paths: dict[str, str],
+    config: dict[str, Any],
+) -> dict[str, str]:
     """
-    Exports all trained models in the pipeline to ONNX format.
-    These optimized artifacts will be picked up by the Rust Algo-Worker for ultra-low latency execution.
+    Convert/copy all trained models to ONNX (where possible) and return
+    an updated ``artifact_paths`` dict with ``.onnx`` paths and checksums.
+
+    Models that are already saved as native format (XGBoost JSON, LightGBM txt,
+    PyTorch .pt) are also exported to ONNX where the tooling supports it.
     """
-    logger.info("Starting ONNX Model Exports...")
-    
-    output_dir = parameters.get("output_dir", "data/06_models")
-    opset = parameters.get("onnx_opset", 13)
-    
-    import os
+    output_dir = config.get("output_dir", config.get("export", {}).get("output_dir", "data/06_models"))
+    opset = config.get("onnx_opset", config.get("export", {}).get("onnx_opset", 13))
     os.makedirs(output_dir, exist_ok=True)
-    
-    # 1. Export Tier 0 XGBoost
-    try:
-        tier0_path = os.path.join(output_dir, "tier0_gap_predictor.onnx")
-        # dummy input for shaping
-        xgboost_initial_types = [('input', FloatTensorType([None, 10]))]
-        onnx_model_xgb = onnxmltools.convert_xgboost(tier0_model, initial_types=xgboost_initial_types)
-        onnx.save_model(onnx_model_xgb, tier0_path)
-        logger.info(f"Exported Tier 0 XGBoost -> {tier0_path}")
-    except Exception as e:
-        logger.error(f"Failed to export Tier 0 XGBoost: {e}")
 
-    # 2. Export Tier 1 PatchTST (PyTorch)
+    exported: dict[str, str] = {}
+
+    _export_tier0_xgboost(artifact_paths, output_dir, opset, exported)
+    _export_tier1_patchtst(artifact_paths, output_dir, opset, exported)
+    _export_tier1_hmm(artifact_paths, output_dir, exported)
+    _export_tier2_lightgbm(artifact_paths, output_dir, opset, exported)
+    _export_tier3_lit(artifact_paths, output_dir, opset, exported)
+    _export_meta_learner(artifact_paths, output_dir, opset, exported)
+
+    for name, path in list(exported.items()):
+        if os.path.exists(path):
+            exported[f"{name}_sha256"] = _sha256(path)
+
+    logger.info("ONNX export complete — %d artifacts", len([v for v in exported.values() if not v.startswith("sha")]))
+    return exported
+
+
+def _export_tier0_xgboost(paths, out_dir, opset, exported):
+    src = paths.get("tier0_xgboost")
+    if not src or not os.path.exists(src):
+        return
     try:
-        tier1_path = os.path.join(output_dir, "tier1_patchtst.onnx")
-        dummy_input = torch.randn(1, 60, 8) # batch, seq_len, features
+        import xgboost as xgb
+        import onnxmltools
+        from onnxmltools.convert.common.data_types import FloatTensorType
+
+        model = xgb.Booster()
+        model.load_model(src)
+        n_feats = len(model.feature_names) if model.feature_names else 10
+        initial_types = [("input", FloatTensorType([None, n_feats]))]
+        onnx_model = onnxmltools.convert_xgboost(model, initial_types=initial_types, target_opset=opset)
+        dest = os.path.join(out_dir, "tier0_gap_predictor.onnx")
+        import onnx
+        onnx.save_model(onnx_model, dest)
+        exported["tier0_gap_predictor_onnx"] = dest
+        logger.info("Exported Tier 0 XGBoost → %s", dest)
+    except Exception as e:
+        logger.error("Tier 0 ONNX export failed: %s", e)
+
+
+def _export_tier1_patchtst(paths, out_dir, opset, exported):
+    src = paths.get("tier1_patchtst")
+    if not src or not os.path.exists(src):
+        return
+    try:
+        from ..train_tier1.nodes_patchtst import SimplePatchTST
+        state = torch.load(src, map_location="cpu", weights_only=True)
+        n_feats = 8
+        seq_len = 60
+        patch_len = 5
+        model = SimplePatchTST(seq_len, patch_len, n_feats, forecast_horizon=5)
+        model.load_state_dict(state)
+        model.eval()
+        dummy = torch.randn(1, seq_len, n_feats)
+        dest = os.path.join(out_dir, "tier1_patchtst.onnx")
         torch.onnx.export(
-            tier1_patchtst, 
-            dummy_input, 
-            tier1_path, 
-            opset_version=opset,
-            input_names=['input'], 
-            output_names=['output'],
-            dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}
+            model, dummy, dest, opset_version=opset,
+            input_names=["input"], output_names=["output"],
+            dynamic_axes={"input": {0: "batch"}, "output": {0: "batch"}},
         )
-        logger.info(f"Exported Tier 1 PatchTST -> {tier1_path}")
+        exported["tier1_patchtst_onnx"] = dest
+        logger.info("Exported Tier 1 PatchTST → %s", dest)
     except Exception as e:
-        logger.error(f"Failed to export Tier 1 PatchTST: {e}")
+        logger.error("Tier 1 PatchTST ONNX export failed: %s", e)
 
-    # 3. Export Tier 2 LightGBM
+
+def _export_tier1_hmm(paths, out_dir, exported):
+    """HMM is not natively ONNX-exportable — keep as pickle with checksum."""
+    src = paths.get("tier1_hmm")
+    if not src or not os.path.exists(src):
+        return
+    exported["tier1_hmm_pkl"] = src
+    scaler_src = paths.get("tier1_hmm_scaler")
+    if scaler_src and os.path.exists(scaler_src):
+        exported["tier1_hmm_scaler_pkl"] = scaler_src
+    logger.info("Tier 1 HMM registered as pickle (no ONNX conversion for HMM)")
+
+
+def _export_tier2_lightgbm(paths, out_dir, opset, exported):
+    """Export ALL CPCV folds (not just fold_1)."""
+    lgb_keys = [k for k in paths if k.startswith("tier2_")]
+    if not lgb_keys:
+        return
     try:
-        # Assuming we just export fold_1 for simplicity, or we can export all folds 
-        if tier2_ensemble and "fold_1" in tier2_ensemble:
-            tier2_path = os.path.join(output_dir, "tier2_lightgbm_fold_1.onnx")
-            lgb_model = tier2_ensemble["fold_1"]
-            lgb_initial_types = [('input', FloatTensorType([None, 10]))] # Approximate feature len
-            onnx_model_lgb = onnxmltools.convert_lightgbm(lgb_model, initial_types=lgb_initial_types)
-            onnx.save_model(onnx_model_lgb, tier2_path)
-            logger.info(f"Exported Tier 2 LightGBM (Fold 1) -> {tier2_path}")
+        import lightgbm as lgb
+        import onnxmltools
+        from onnxmltools.convert.common.data_types import FloatTensorType
+
+        for key in lgb_keys:
+            src = paths[key]
+            if not os.path.exists(src):
+                continue
+            model = lgb.Booster(model_file=src)
+            n_feats = model.num_feature()
+            initial_types = [("input", FloatTensorType([None, n_feats]))]
+            onnx_model = onnxmltools.convert_lightgbm(model, initial_types=initial_types, target_opset=opset)
+            dest = os.path.join(out_dir, f"{key}.onnx")
+            import onnx
+            onnx.save_model(onnx_model, dest)
+            exported[f"{key}_onnx"] = dest
+            logger.info("Exported Tier 2 %s → %s", key, dest)
     except Exception as e:
-        logger.error(f"Failed to export Tier 2 LightGBM: {e}")
+        logger.error("Tier 2 LightGBM ONNX export failed: %s", e)
 
-    # 4. Export Tier 3 LiT (PyTorch)
+
+def _export_tier3_lit(paths, out_dir, opset, exported):
+    src = paths.get("tier3_lit")
+    if not src or not os.path.exists(src):
+        return
     try:
-        tier3_path = os.path.join(output_dir, "tier3_lit.onnx")
-        dummy_input = torch.randn(1, 20, 5) # batch, seq_len, features
+        from ..train_tier3.nodes_lit import SimpleLinearTransformer
+        state = torch.load(src, map_location="cpu", weights_only=True)
+        n_feats = 5
+        seq_len = 20
+        model = SimpleLinearTransformer(n_feats, forecast_horizon=1)
+        model.load_state_dict(state)
+        model.eval()
+        dummy = torch.randn(1, seq_len, n_feats)
+        dest = os.path.join(out_dir, "tier3_lit.onnx")
         torch.onnx.export(
-            tier3_lit, 
-            dummy_input, 
-            tier3_path, 
-            opset_version=opset,
-            input_names=['input'], 
-            output_names=['output'],
-            dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}
+            model, dummy, dest, opset_version=opset,
+            input_names=["input"], output_names=["output"],
+            dynamic_axes={"input": {0: "batch"}, "output": {0: "batch"}},
         )
-        logger.info(f"Exported Tier 3 LiT -> {tier3_path}")
+        exported["tier3_lit_onnx"] = dest
+        logger.info("Exported Tier 3 LiT → %s", dest)
     except Exception as e:
-        logger.error(f"Failed to export Tier 3 LiT: {e}")
+        logger.error("Tier 3 LiT ONNX export failed: %s", e)
 
-    # 5. Export Meta-Learner (PyTorch)
+
+def _export_meta_learner(paths, out_dir, opset, exported):
+    src = paths.get("meta_learner")
+    if not src or not os.path.exists(src):
+        return
     try:
-        meta_path = os.path.join(output_dir, "meta_learner.onnx")
+        from ..train_meta.nodes_metalearner import RegimeConditionedGatingNetwork
+        state = torch.load(src, map_location="cpu", weights_only=True)
+        model = RegimeConditionedGatingNetwork(num_models=4, num_regimes=4)
+        model.load_state_dict(state)
+        model.eval()
         dummy_preds = torch.randn(1, 4)
-        dummy_regimes = torch.randn(1, 4)
+        dummy_regime = torch.randn(1, 4)
+        dest = os.path.join(out_dir, "meta_learner.onnx")
         torch.onnx.export(
-            meta_learner, 
-            (dummy_preds, dummy_regimes), 
-            meta_path, 
-            opset_version=opset,
-            input_names=['model_preds', 'regime_one_hot'], 
-            output_names=['final_pred', 'weights'],
+            model, (dummy_preds, dummy_regime), dest, opset_version=opset,
+            input_names=["model_preds", "regime_one_hot"],
+            output_names=["final_pred", "weights"],
             dynamic_axes={
-                'model_preds': {0: 'batch_size'}, 'regime_one_hot': {0: 'batch_size'}, 
-                'final_pred': {0: 'batch_size'}, 'weights': {0: 'batch_size'}
-            }
+                "model_preds": {0: "batch"}, "regime_one_hot": {0: "batch"},
+                "final_pred": {0: "batch"}, "weights": {0: "batch"},
+            },
         )
-        logger.info(f"Exported Meta-Learner -> {meta_path}")
+        exported["meta_learner_onnx"] = dest
+        logger.info("Exported Meta-learner → %s", dest)
     except Exception as e:
-        logger.error(f"Failed to export Meta-Learner: {e}")
-
-    return "EXPORT_COMPLETE"
+        logger.error("Meta-learner ONNX export failed: %s", e)

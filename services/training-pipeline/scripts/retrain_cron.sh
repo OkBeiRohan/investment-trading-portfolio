@@ -1,50 +1,53 @@
 #!/bin/bash
 # ==============================================================================
-# Automated Model Retraining Script (Phase 9)
-# 
-# Purpose: Triggers the Kedro pipeline to fetch the latest Market features 
-#          from QuestDB, run CPCV over new folds, and export fresh ONNX graphs.
-# Execution: Meant to be run via Crontab (e.g. 0 2 * * 6 for every Saturday 2AM)
+# Automated Model Retraining — MongoDB-Driven Pipeline
+#
+# Reads experiment config from MongoDB, trains requested tiers, runs quality
+# gates, exports ONNX, and deploys to algo-worker if promoted.
+#
+# Execution: Crontab (e.g. 0 2 * * 6 for every Saturday 2AM)
+#   EXPERIMENT_ID must be set in the environment or passed as $1.
 # ==============================================================================
 
-set -e
+set -euo pipefail
 
-# Project root for Kedro
-export PROJECT_ROOT="/home/anandhuprakash/Code/investment-trading-portfolio/services/training-pipeline"
-export ALGO_WORKER_MODELS="/home/anandhuprakash/Code/investment-trading-portfolio/apps/algo-worker/models"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+ALGO_WORKER_MODELS="${ALGO_WORKER_MODELS:-$PROJECT_ROOT/../../apps/algo-worker/models}"
+EXPERIMENT_ID="${1:-${EXPERIMENT_ID:-}}"
+
+if [ -z "$EXPERIMENT_ID" ]; then
+    echo "[ERROR] EXPERIMENT_ID required. Pass as argument or env var."
+    exit 1
+fi
 
 cd "$PROJECT_ROOT"
 
 echo "======================================================"
-echo "[$(date)] Starting Automated Retraining Sequence"
+echo "[$(date)] Starting Automated Retraining"
+echo "  Experiment: $EXPERIMENT_ID"
 echo "======================================================"
 
-# Step 1: Ensure dependencies are fresh
-# (Optional, comment out if strictly frozen environment)
-# poetry install --no-dev 
+python -m training_pipeline.runner \
+    --experiment-id "$EXPERIMENT_ID" \
+    --log-level INFO
 
-# Step 2: Trigger the ENTIRE pipeline (Tiers 0-3 + MetaLearner + Evaluate + ONNX Export)
-echo "[$(date)] Running full Kedro pipeline orchestration..."
-kedro run 
+EXIT_CODE=$?
 
-# The pipeline inherently handles:
-# - Querying QuestDB for new OOS dataset folds
-# - Refitting LightGBM, PyTorch (LiT, PatchTST)
-# - Running VectorBT `evaluate_strategy`
-# - Exporting *.onnx files
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "[$(date)] Training pipeline FAILED (exit $EXIT_CODE)"
+    exit $EXIT_CODE
+fi
 
-# Step 3: Deployment (Swap models)
-echo "[$(date)] Kedro run successful. Initiating Model Swap..."
+echo "[$(date)] Training complete. Deploying ONNX models..."
 
-# Assuming ONNX export dumped into data/06_models
-cp -f data/06_models/*.onnx "$ALGO_WORKER_MODELS/"
-
-echo "[$(date)] ONNX models copied to Algo-Worker production directory."
-
-# Step 4: Restart the NextJS application or send SIGHUP for graceful reload
-# Doing a PM2 restart for the Node.js/NestJS Worker
-# pm2 reload algo-worker --update-env
+if [ -d "data/06_models" ]; then
+    mkdir -p "$ALGO_WORKER_MODELS"
+    cp -f data/06_models/*.onnx "$ALGO_WORKER_MODELS/" 2>/dev/null || true
+    echo "[$(date)] ONNX models copied to $ALGO_WORKER_MODELS"
+else
+    echo "[$(date)] No model directory found — skipping deploy"
+fi
 
 echo "======================================================"
-echo "[$(date)] Retraining Complete. Production models are live."
+echo "[$(date)] Retraining complete."
 echo "======================================================"
