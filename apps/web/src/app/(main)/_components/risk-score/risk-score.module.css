@@ -1,0 +1,122 @@
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-5);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-5);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.updated {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.barWrapper {
+  position: relative;
+  height: 12px;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--spacing-5);
+  overflow: visible;
+}
+
+.bar {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    var(--color-emerald) 0%,
+    var(--color-amber) 50%,
+    var(--color-coral) 100%
+  );
+}
+
+.marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  background: var(--color-text-primary);
+  border: 2px solid var(--color-bg-card);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+}
+
+.scoreSection {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-5);
+}
+
+.scoreValue {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-none);
+}
+
+.scoreDescription {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.rowDot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.rowLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.rowPct {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.rowProgress {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.semicircleSvg {
+  display: block;
+}
+
+.semicircleSvg path:last-child {
+  transition: stroke-dasharray var(--transition-slow);
+}

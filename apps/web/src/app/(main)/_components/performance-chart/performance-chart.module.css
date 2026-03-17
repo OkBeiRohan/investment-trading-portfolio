@@ -1,0 +1,62 @@
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-5);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-5);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.periodToggles {
+  display: flex;
+  gap: var(--spacing-1);
+}
+
+.periodBtn {
+  padding: var(--spacing-1-5) var(--spacing-2-5);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.periodBtn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.chartWrapper {
+  width: 100%;
+  min-height: 200px;
+}
+
+.chartSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.xAxis {
+  font-size: var(--font-size-xs);
+  fill: var(--color-text-muted);
+}
+
+.yAxis {
+  font-size: var(--font-size-xs);
+  fill: var(--color-text-muted);
+}

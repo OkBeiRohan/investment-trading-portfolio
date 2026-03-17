@@ -1,0 +1,35 @@
+.appLayout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.mainArea {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left var(--transition-slow);
+}
+
+.content {
+  flex: 1;
+  padding: var(--spacing-6);
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .mainArea {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+
+  .content {
+    padding: var(--spacing-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: var(--spacing-3);
+  }
+}

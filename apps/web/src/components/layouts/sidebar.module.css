@@ -1,0 +1,223 @@
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background-color: var(--color-bg-sidebar);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  z-index: var(--z-sidebar);
+  transition: width var(--transition-slow);
+  overflow: hidden;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+/* Logo */
+.logoSection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-5) var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+  min-height: 64px;
+  position: relative;
+}
+
+.logoMark {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logoText {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
+  white-space: nowrap;
+  animation: fadeIn var(--transition-slow) ease;
+}
+
+.collapseBtn {
+  position: absolute;
+  right: var(--spacing-3);
+  background: var(--color-bg-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-base), background var(--transition-base);
+}
+
+.sidebar:hover .collapseBtn {
+  opacity: 1;
+}
+
+.collapseBtn:hover {
+  background: var(--color-bg-active);
+  color: var(--color-text-primary);
+}
+
+.collapsed .collapseBtn {
+  opacity: 1;
+  position: static;
+  margin-left: auto;
+}
+
+/* Navigation */
+.nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-3) var(--spacing-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-0-5);
+}
+
+.navLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-caps);
+  padding: var(--spacing-1) var(--spacing-3);
+  margin-bottom: var(--spacing-1);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2-5) var(--spacing-3);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-size: var(--font-size-sm);
+}
+
+.navItem:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.navItem.active {
+  background: var(--color-bg-accent);
+  color: var(--color-primary);
+}
+
+.navIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.navText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activeIndicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: var(--color-primary);
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+}
+
+/* Footer */
+.footer {
+  padding: var(--spacing-3) var(--spacing-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.footer .navItem {
+  color: var(--color-text-tertiary);
+}
+
+.footer .navItem:hover {
+  color: var(--color-coral);
+  background: var(--color-coral-light);
+}
+
+/* Collapsed state adjustments */
+.collapsed .logoSection {
+  justify-content: center;
+  padding: var(--spacing-5) var(--spacing-2);
+}
+
+.collapsed .nav {
+  padding: var(--spacing-3) var(--spacing-1);
+}
+
+.collapsed .navItem {
+  justify-content: center;
+  padding: var(--spacing-2-5);
+}
+
+.collapsed .navGroup {
+  align-items: center;
+}
+
+.collapsed .activeIndicator {
+  left: -4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar {
+    width: var(--sidebar-collapsed-width);
+  }
+
+  .logoText,
+  .navText,
+  .navLabel {
+    display: none;
+  }
+
+  .logoSection {
+    justify-content: center;
+    padding: var(--spacing-5) var(--spacing-2);
+  }
+
+  .navItem {
+    justify-content: center;
+    padding: var(--spacing-2-5);
+  }
+
+  .collapseBtn {
+    display: none;
+  }
+}
