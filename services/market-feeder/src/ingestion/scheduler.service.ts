@@ -1,13 +1,25 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { SchedulerRegistry } from "@nestjs/schedule";
 import { CronJob } from "cron";
-import { DbConfigService, ProcessingLogRepository } from "@repo/database";
+import {
+  DbConfigService,
+  ProcessingLogRepository,
+  InstrumentRepository,
+} from "@repo/database";
 import { MarketCalendarService } from "@repo/market-sdk";
 import { InstrumentSyncService } from "./instrument-sync.service";
 import { InstrumentListSyncService } from "./instrument-list-sync.service";
 import { HistoricalBackfillService } from "./historical-backfill.service";
 import { GlobalDataService } from "./global-data.service";
 import { LiveDataService } from "./live-data.service";
+import {
+  NIFTY50_CONSTITUENTS,
+  NIFTY50_CONSTITUENTS_DATA,
+  NIFTY50_INDEX,
+  INDIA_VIX,
+  NIFTY50_FUTURES,
+  REMOVED_NIFTY50_CONSTITUENTS,
+} from "../historical-data/nifty50-instruments";
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
@@ -23,12 +35,145 @@ export class SchedulerService implements OnModuleInit {
     private readonly globalData: GlobalDataService,
     private readonly liveData: LiveDataService,
     private readonly processingLogRepo: ProcessingLogRepository,
+    private readonly instrumentRepo: InstrumentRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
+    await this.bootstrapIfFirstRun();
     await this.registerDynamicCrons();
     await this.handleStartupTasks();
   }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // FIRST-RUN BOOTSTRAP
+  // ═══════════════════════════════════════════════════════════════════════
+
+  private async bootstrapIfFirstRun(): Promise<void> {
+    const summary = await this.instrumentRepo.getSummary();
+
+    if (summary.total > 0) {
+      this.logger.log(
+        `Instruments already populated (${summary.total} total) — skipping bootstrap`,
+      );
+      return;
+    }
+
+    this.logger.log("═".repeat(60));
+    this.logger.log("FIRST RUN DETECTED — Bootstrapping instruments");
+    this.logger.log("═".repeat(60));
+
+    // Step 1: Fetch complete instrument list from Upstox BOD files
+    this.logger.log("[BOOTSTRAP] Step 1: Downloading Upstox instrument list...");
+    try {
+      const syncResult = await this.instrumentListSync.syncAll();
+      this.logger.log(
+        `[BOOTSTRAP] Instrument list: ${syncResult.totalUpserted} instruments loaded`,
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[BOOTSTRAP] Instrument list sync failed: ${msg}`);
+      this.logger.log("[BOOTSTRAP] Continuing with Nifty 50 seeding...");
+    }
+
+    // Step 2: Enable Nifty 50 index + constituents for data collection and trading
+    this.logger.log("[BOOTSTRAP] Step 2: Enabling Nifty 50 instruments...");
+    await this.seedNifty50Instruments();
+
+    // Step 3: Sync detailed instrument data (options, futures, expired)
+    this.logger.log("[BOOTSTRAP] Step 3: Syncing instrument details (options, futures)...");
+    try {
+      await this.instrumentSync.syncAll();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`[BOOTSTRAP] Instrument detail sync: ${msg}`);
+    }
+
+    this.logger.log("═".repeat(60));
+    this.logger.log("BOOTSTRAP COMPLETE — Nifty 50 instruments enabled");
+    this.logger.log("═".repeat(60));
+  }
+
+  private async seedNifty50Instruments(): Promise<void> {
+    const niftyKeys: string[] = [];
+
+    // Nifty 50 Index + India VIX
+    for (const key of [NIFTY50_INDEX, INDIA_VIX]) {
+      await this.instrumentRepo.upsert({
+        instrumentKey: key,
+        instrumentType: "INDEX",
+        exchange: "NSE",
+        segment: "INDEX",
+        tradingSymbol: key.split("|")[1],
+        name: key.split("|")[1],
+        isActive: true,
+        isNifty50: true,
+        tradingEnabled: true,
+        dataCollectionEnabled: true,
+      });
+      niftyKeys.push(key);
+    }
+
+    // Current Nifty 50 constituents
+    for (const constituent of NIFTY50_CONSTITUENTS_DATA) {
+      await this.instrumentRepo.upsert({
+        instrumentKey: constituent.instrumentKey,
+        instrumentType: "EQUITY",
+        exchange: "NSE",
+        segment: "EQ",
+        tradingSymbol: constituent.symbol,
+        name: constituent.companyName,
+        isin: constituent.isin,
+        industry: constituent.industry,
+        isActive: true,
+        isNifty50: true,
+        tradingEnabled: true,
+        dataCollectionEnabled: true,
+      });
+      niftyKeys.push(constituent.instrumentKey);
+    }
+
+    // Nifty 50 futures
+    for (const key of NIFTY50_FUTURES) {
+      await this.instrumentRepo.upsert({
+        instrumentKey: key,
+        instrumentType: "FUTURE",
+        exchange: "NSE",
+        segment: "FO",
+        tradingSymbol: "NIFTY FUT",
+        name: "NIFTY FUT",
+        underlyingKey: NIFTY50_INDEX,
+        isActive: true,
+        tradingEnabled: true,
+        dataCollectionEnabled: true,
+      });
+      niftyKeys.push(key);
+    }
+
+    // Removed Nifty 50 constituents (historical data needed but not for live trading)
+    for (const removed of REMOVED_NIFTY50_CONSTITUENTS) {
+      await this.instrumentRepo.upsert({
+        instrumentKey: removed.instrumentKey,
+        instrumentType: "EQUITY",
+        exchange: "NSE",
+        segment: "EQ",
+        tradingSymbol: removed.symbol,
+        name: removed.companyName,
+        isActive: true,
+        isNifty50: false,
+        tradingEnabled: false,
+        dataCollectionEnabled: true,
+      });
+      niftyKeys.push(removed.instrumentKey);
+    }
+
+    this.logger.log(
+      `[BOOTSTRAP] Seeded ${niftyKeys.length} Nifty 50 instruments (${NIFTY50_CONSTITUENTS_DATA.length} current + ${REMOVED_NIFTY50_CONSTITUENTS.length} removed + ${NIFTY50_FUTURES.length} futures + 2 indices)`,
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DYNAMIC CRON REGISTRATION
+  // ═══════════════════════════════════════════════════════════════════════
 
   private async registerDynamicCrons(): Promise<void> {
     const config = await this.dbConfig.getSchedulerConfig();
@@ -110,6 +255,10 @@ export class SchedulerService implements OnModuleInit {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // STARTUP TASKS
+  // ═══════════════════════════════════════════════════════════════════════
+
   private async handleStartupTasks(): Promise<void> {
     const isOpen = await this.marketCalendar.isMarketCurrentlyOpen("NSE");
 
@@ -118,7 +267,6 @@ export class SchedulerService implements OnModuleInit {
         "Market is currently closed — running startup backfill",
       );
       try {
-        await this.runInstrumentListSync();
         await this.runStartupBackfill();
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -130,6 +278,10 @@ export class SchedulerService implements OnModuleInit {
       );
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // JOB IMPLEMENTATIONS
+  // ═══════════════════════════════════════════════════════════════════════
 
   private async runInstrumentListSync(): Promise<void> {
     this.logger.log("[CRON] Instrument list sync starting");

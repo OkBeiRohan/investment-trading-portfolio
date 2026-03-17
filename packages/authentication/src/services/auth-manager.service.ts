@@ -110,8 +110,7 @@ export class AuthManagerService {
 
   /**
    * For system-level access (market-feeder, cron jobs), find any valid token.
-   * Checks data-collection-enabled accounts first, then falls back to any
-   * broker account with a non-expired access token.
+   * Priority: data-collection broker accounts -> any broker account -> any auth account
    */
   private async resolveSystemToken(
     provider: string,
@@ -119,6 +118,7 @@ export class AuthManagerService {
   ): Promise<string | null> {
     const now = new Date();
 
+    // L1: data-collection-enabled broker accounts
     const enabledAccounts =
       await this.brokerAccountRepository.findDataCollectionEnabledAccounts();
 
@@ -135,15 +135,38 @@ export class AuthManagerService {
       }
     }
 
-    const anyAccount =
+    // L2: any broker_accounts entry with a valid token
+    const anyBroker =
       await this.brokerAccountRepository.findAnyValidToken(provider);
 
-    if (anyAccount?.accessToken) {
+    if (anyBroker?.accessToken) {
       this.logger.log(
-        `System token resolved from first available broker account (user: ${anyAccount.userId})`,
+        `System token resolved from broker account (user: ${anyBroker.userId})`,
       );
-      await this.cacheToken(cacheKey, anyAccount.accessToken, this.REDIS_TTL);
-      return anyAccount.accessToken;
+      await this.cacheToken(cacheKey, anyBroker.accessToken, this.REDIS_TTL);
+      return anyBroker.accessToken;
+    }
+
+    // L3: better-auth accounts collection (where OAuth tokens are stored on first link)
+    const authAccounts = await this.accountRepository.findMany(
+      {
+        providerId: provider,
+        accessToken: { $exists: true, $ne: null },
+      },
+      { limit: 5, sort: { updatedAt: -1 } },
+    );
+
+    for (const account of authAccounts) {
+      if (
+        account.accessToken &&
+        (!account.accessTokenExpiresAt || now < account.accessTokenExpiresAt)
+      ) {
+        this.logger.log(
+          `System token resolved from auth accounts (user: ${account.userId})`,
+        );
+        await this.cacheToken(cacheKey, account.accessToken, this.REDIS_TTL);
+        return account.accessToken;
+      }
     }
 
     this.logger.warn(
