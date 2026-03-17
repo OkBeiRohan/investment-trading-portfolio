@@ -193,19 +193,22 @@ impl FeatureRegistry {
 // MODULE EXPORTS
 // ============================================
 
+#[allow(dead_code, unused_imports)]
 pub mod daily;
 pub mod index_breadth;
 pub mod nifty_future;
 pub mod options;
+#[allow(dead_code, unused_imports)]
 pub mod order_flow;
 pub mod time_context;
 pub mod volatility;
 
-// Re-export all feature structs
+#[allow(unused_imports)]
 pub use daily::*;
 pub use index_breadth::*;
 pub use nifty_future::*;
 pub use options::*;
+#[allow(unused_imports)]
 pub use order_flow::*;
 pub use time_context::*;
 pub use volatility::*;
