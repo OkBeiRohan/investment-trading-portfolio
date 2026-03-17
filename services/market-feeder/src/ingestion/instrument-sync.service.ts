@@ -19,9 +19,9 @@ import {
 import { OptionChainSnapshot } from '@repo/schema';
 import {
   UpstoxHistoricalAPIService,
-  AuthManagerService,
   type ActiveOptionContract,
 } from '@repo/market-sdk';
+import { AuthManagerService } from '@repo/authentication';
 import {
   NIFTY50_CONSTITUENTS,
   NIFTY50_CONSTITUENTS_DATA,

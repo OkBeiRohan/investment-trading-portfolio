@@ -4,7 +4,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { QuestDBModule } from '@repo/database';
+import { QuestDBModule, RedisModule } from '@repo/database';
+import { AuthModule } from '@repo/authentication';
 import { HistoricalDataModule } from './historical-data/historical-data.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import configuration from './config/configuration';
@@ -14,6 +15,10 @@ import { DatasetGenerationModule } from './dataset-generation/dataset-generation
 
 @Module({
   imports: [
+    // Auth (global — provides AuthManagerService, TokenRefreshService, etc.)
+    AuthModule,
+    RedisModule,
+
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
