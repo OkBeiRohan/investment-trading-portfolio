@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import {
   TradingConfigRepository,
@@ -6,14 +6,13 @@ import {
   AuditLogRepository,
   UserRepository,
   DbConfigService,
+  REDIS_CLIENT,
 } from "@repo/database";
 import { MarketCalendarService } from "@repo/market-sdk";
-import Redis from "ioredis";
 
 @Injectable()
 export class DailyReAuthService {
   private readonly logger = new Logger(DailyReAuthService.name);
-  private redis: Redis | null = null;
 
   constructor(
     private readonly tradingConfigRepo: TradingConfigRepository,
@@ -22,6 +21,7 @@ export class DailyReAuthService {
     private readonly userRepo: UserRepository,
     private readonly dbConfig: DbConfigService,
     private readonly marketCalendar: MarketCalendarService,
+    @Inject(REDIS_CLIENT) private readonly redis: { publish(channel: string, message: string): Promise<number> },
   ) {}
 
   /**
@@ -58,7 +58,6 @@ export class DailyReAuthService {
 
     let notified = 0;
     let skipped = 0;
-    let disabled = 0;
 
     for (const userId of userIdsToCheck) {
       try {
@@ -116,7 +115,7 @@ export class DailyReAuthService {
     }
 
     this.logger.log(
-      `Daily re-auth check complete: ${notified} notified, ${skipped} skipped (already authenticated), ${disabled} disabled`,
+      `Daily re-auth check complete: ${notified} notified, ${skipped} skipped (already authenticated)`,
     );
   }
 
@@ -142,18 +141,10 @@ export class DailyReAuthService {
 
   private async publishNotification(payload: Record<string, unknown>): Promise<void> {
     try {
-      const redis = await this.getRedis();
-      await redis.publish("notification.send", JSON.stringify(payload));
+      await this.redis.publish("notification.send", JSON.stringify(payload));
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to publish notification: ${msg}`);
     }
-  }
-
-  private async getRedis(): Promise<Redis> {
-    if (this.redis) return this.redis;
-    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-    this.redis = new Redis(redisUrl);
-    return this.redis;
   }
 }

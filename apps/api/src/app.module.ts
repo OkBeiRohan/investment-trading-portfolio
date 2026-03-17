@@ -4,6 +4,7 @@ import { DevtoolsModule } from '@nestjs/devtools-integration';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TRPCModule } from 'nestjs-trpc-v2';
 import { AuthModule } from '@repo/authentication';
+import { RedisModule } from '@repo/database';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
@@ -37,6 +38,7 @@ import { ObservabilityModule } from '@repo/observability';
       basePath: '/api/trpc',
     }),
     AuthModule,
+    RedisModule,
     HealthModule,
     UserModule,
     AdminModule,

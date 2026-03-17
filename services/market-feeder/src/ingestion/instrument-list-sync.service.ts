@@ -47,8 +47,8 @@ export class InstrumentListSyncService {
     await this.processingLogRepo.logInfo(
       "FETCH",
       "INSTRUMENT_LIST_SYNC",
-      "Starting BOD instrument list sync",
-      { service: "InstrumentListSyncService", exchanges },
+      `Starting BOD instrument list sync for ${exchanges.join(", ")}`,
+      { service: "InstrumentListSyncService" },
     );
 
     for (const exchange of exchanges) {
@@ -71,7 +71,7 @@ export class InstrumentListSyncService {
           "FETCH",
           "INSTRUMENT_LIST_SYNC",
           `${exchange} sync failed: ${msg}`,
-          { service: "InstrumentListSyncService", exchange },
+          { service: "InstrumentListSyncService" },
         );
       }
     }
@@ -81,11 +81,10 @@ export class InstrumentListSyncService {
     await this.processingLogRepo.logInfo(
       "FETCH",
       "INSTRUMENT_LIST_SYNC",
-      "Completed",
+      `Completed: ${totalUpserted} upserted, ${deactivated} deactivated`,
       {
         service: "InstrumentListSyncService",
-        totalUpserted,
-        totalDeactivated: deactivated,
+        recordsProcessed: totalUpserted,
       },
     );
 
