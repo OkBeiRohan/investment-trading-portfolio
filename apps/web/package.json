@@ -18,6 +18,7 @@
     "@repo/auth-client": "workspace:*",
     "@repo/schema": "workspace:*",
     "@repo/trpc": "workspace:*",
+    "@tanstack/react-query": "^5.90.21",
     "@vercel/analytics": "^2.0.1",
     "@vercel/otel": "^2.1.1",
     "@vercel/speed-insights": "^2.0.0",
