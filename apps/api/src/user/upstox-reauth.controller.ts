@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { UpstoxReAuthService } from '@repo/market-sdk';
+import { UpstoxReAuthService } from '@repo/authentication';
 import { ConfigService } from '@nestjs/config';
 
 /**

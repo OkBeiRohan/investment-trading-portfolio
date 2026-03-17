@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { AuthManagerService } from "../../auth/auth-manager.service";
+import { AuthManagerService } from "@repo/authentication";
 import { OrdersApi } from "./api/orders/orders.api";
 import { Candle, MarketQuote, OptionGreeks, UpstoxEnv } from "@repo/schema";
 // import {

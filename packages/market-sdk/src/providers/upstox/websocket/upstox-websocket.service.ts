@@ -5,7 +5,7 @@ import {
   OnModuleDestroy,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { AuthManagerService } from "../../../auth/auth-manager.service";
+import { AuthManagerService } from "@repo/authentication";
 import { SocketPoolService } from "../../../websocket/socket-pool.service";
 import {
   SubscriptionManagerService,

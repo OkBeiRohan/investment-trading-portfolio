@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import type { IUpstoxNotifierWebhook } from '@repo/schema';
 import { BrokerAccountRepository } from '@repo/database';
-import { TokenRefreshService } from '@repo/market-sdk';
+import { TokenRefreshService } from '@repo/authentication';
 
 /**
  * Upstox Webhook Controller

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { HttpClientService } from "../../../../core/http-client.service";
-import { AuthManagerService } from "../../../../auth/auth-manager.service";
+import { AuthManagerService } from "@repo/authentication";
 import { UPSTOX_API_URLS, UPSTOX_ENDPOINTS } from "../../constants";
 
 export interface UpstoxQuoteResponse {

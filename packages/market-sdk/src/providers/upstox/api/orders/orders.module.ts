@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { CoreModule } from "../../../../core/core.module";
-import { AuthModule } from "../../../../auth/auth.module";
+import { AuthModule } from "@repo/authentication";
 import { OrdersRepository } from "./orders.repository";
 import { OrdersService } from "./orders.service";
 

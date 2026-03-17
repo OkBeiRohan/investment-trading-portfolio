@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { AuthManagerService } from "../../auth/auth-manager.service";
+import { AuthManagerService } from "@repo/authentication";
 
 @Injectable()
 export class BinanceProvider {

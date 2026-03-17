@@ -2,6 +2,10 @@ import { Module, Global } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AuthService } from "./services/auth.service";
 import { EmailService } from "./services/email.service";
+import { AuthManagerService } from "./services/auth-manager.service";
+import { TokenRefreshService } from "./services/token-refresh.service";
+import { UpstoxReAuthService } from "./services/upstox-reauth.service";
+import { EncryptionUtil } from "./services/encryption.util";
 import { MongoDBModule } from "@repo/database";
 import { AuthModule as BetterAuthModule } from "@thallesp/nestjs-better-auth";
 
@@ -27,7 +31,20 @@ import { AuthModule as BetterAuthModule } from "@thallesp/nestjs-better-auth";
       inject: [AuthService],
     }),
   ],
-  providers: [EmailService, AuthService],
-  exports: [AuthService],
+  providers: [
+    EmailService,
+    AuthService,
+    AuthManagerService,
+    TokenRefreshService,
+    UpstoxReAuthService,
+    EncryptionUtil,
+  ],
+  exports: [
+    AuthService,
+    AuthManagerService,
+    TokenRefreshService,
+    UpstoxReAuthService,
+    EncryptionUtil,
+  ],
 })
 export class AuthModule {}

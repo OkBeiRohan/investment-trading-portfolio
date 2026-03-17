@@ -30,6 +30,7 @@
     "@nestjs/common": "^11.1.17",
     "@nestjs/core": "^11.1.17",
     "@nestjs/event-emitter": "^3.0.1",
+    "@repo/authentication": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "axios": "^1.13.6",
