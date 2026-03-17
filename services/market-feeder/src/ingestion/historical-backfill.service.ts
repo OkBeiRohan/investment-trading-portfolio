@@ -162,11 +162,17 @@ export class HistoricalBackfillService {
 
         processed++;
       } catch (err) {
-        errors.push(`${key}: ${err instanceof Error ? err.message : String(err)}`);
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('Invalid instrument key') || msg.includes('UDAPI100011')) {
+          this.logger.warn(`Skipping invalid/delisted instrument: ${key}`);
+          await this.instrumentRepo.updateFetchStatus(key, 'ERROR', 'Invalid instrument key - possibly delisted');
+        } else {
+          errors.push(`${key}: ${msg}`);
+        }
       }
     }
 
-    this.logger.log(`✓ Incremental backfill: ${processed} instruments, ${totalCandles} candles`);
+    this.logger.log(`✓ Incremental backfill: ${processed} instruments, ${totalCandles} candles, ${errors.length} errors`);
     return { phase: 'incremental', instrumentsProcessed: processed, totalCandlesFetched: totalCandles, errors, durationMs: Date.now() - start };
   }
 

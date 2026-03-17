@@ -53,6 +53,12 @@ export class AuthManagerService {
       );
     }
 
+    // "system" userId: pick any available valid token from data-collection-enabled accounts
+    if (userId === "system") {
+      const token = await this.resolveSystemToken(provider, cacheKey);
+      if (token) return token;
+    }
+
     // L2: broker_accounts (written by webhook / re-auth)
     const brokerAccount =
       await this.brokerAccountRepository.findWithAccessToken(userId, provider);
@@ -100,6 +106,50 @@ export class AuthManagerService {
     );
     await this.cacheToken(cacheKey, account.accessToken, this.REDIS_TTL);
     return account.accessToken;
+  }
+
+  /**
+   * For system-level access (market-feeder, cron jobs), find any valid token.
+   * Checks data-collection-enabled accounts first, then falls back to any
+   * broker account with a non-expired access token.
+   */
+  private async resolveSystemToken(
+    provider: string,
+    cacheKey: string,
+  ): Promise<string | null> {
+    const now = new Date();
+
+    const enabledAccounts =
+      await this.brokerAccountRepository.findDataCollectionEnabledAccounts();
+
+    for (const account of enabledAccounts) {
+      if (
+        account.accessToken &&
+        (!account.accessTokenExpiresAt || now < account.accessTokenExpiresAt)
+      ) {
+        this.logger.log(
+          `System token resolved from data-collection account (user: ${account.userId})`,
+        );
+        await this.cacheToken(cacheKey, account.accessToken, this.REDIS_TTL);
+        return account.accessToken;
+      }
+    }
+
+    const anyAccount =
+      await this.brokerAccountRepository.findAnyValidToken(provider);
+
+    if (anyAccount?.accessToken) {
+      this.logger.log(
+        `System token resolved from first available broker account (user: ${anyAccount.userId})`,
+      );
+      await this.cacheToken(cacheKey, anyAccount.accessToken, this.REDIS_TTL);
+      return anyAccount.accessToken;
+    }
+
+    this.logger.warn(
+      `No valid ${provider} token found for system access. Ensure at least one user has authenticated today.`,
+    );
+    return null;
   }
 
   private async cacheToken(

@@ -180,4 +180,25 @@ export class BrokerAccountRepository {
       )
       .exec();
   }
+
+  /**
+   * Find any broker account with a valid (non-expired) access token.
+   * Used by system-level services (market-feeder) when no specific user is targeted.
+   */
+  async findAnyValidToken(
+    providerId: string,
+  ): Promise<BrokerAccount | null> {
+    return this.brokerAccountModel
+      .findOne({
+        providerId,
+        accessToken: { $exists: true, $ne: null },
+        $or: [
+          { accessTokenExpiresAt: { $gt: new Date() } },
+          { accessTokenExpiresAt: { $exists: false } },
+        ],
+      })
+      .select("+accessToken +accessTokenExpiresAt")
+      .sort({ lastReAuthAt: -1 })
+      .exec();
+  }
 }
