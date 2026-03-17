@@ -968,7 +968,7 @@ Keep these files updated:
 
 - `README.md` - Quick start, project overview
 - `docs/ARCHITECTURE.md` - System architecture
-- `docs/PROGRESS.md` - Implementation status
+- `docs/PROJECT_STATUS.md` - Implementation status
 - `docs/COMPONENTS.md` - Component library (TODO)
 - `docs/DASHBOARD_PATTERNS.md` - Multi-dashboard design patterns (TODO)
 

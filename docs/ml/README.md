@@ -1,6 +1,6 @@
 # Machine Learning Documentation
 
-**Last Updated**: March 11, 2026
+**Last Updated**: March 17, 2026
 **Architecture**: 5-Tier Data-Bound Hierarchical System
 
 ---
@@ -60,18 +60,29 @@ This directory contains documentation for the **AI trading system** that powers 
 
 ### Models & Training
 
-| Document                                                     | Description                                          |
-| ------------------------------------------------------------ | ---------------------------------------------------- |
-| [**TIER1_MODELS.md**](./TIER1_MODELS.md)                     | Regime HMM, PatchTST, Mamba model specifications     |
-| [**META_LEARNER_EXECUTION.md**](./META_LEARNER_EXECUTION.md) | Regime-Conditioned Temporal Loss, adaptive weighting |
-| [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md)           | Python training pipeline details                     |
+| Document                                                     | Description                                                      |
+| ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| [**TIER0_MODELS.md**](./TIER0_MODELS.md)                     | Pre-Market Gap Predictor (XGBoost, 9:08 AM)                      |
+| [**TIER1_MODELS.md**](./TIER1_MODELS.md)                     | Regime HMM, PatchTST, Mamba model specifications                 |
+| [**TIER2_MODELS.md**](./TIER2_MODELS.md)                     | Intraday Navigator (LightGBM + TFT + Mamba, 5m-30m)             |
+| [**TIER3_MODELS.md**](./TIER3_MODELS.md)                     | Microstructure Scalper (LiT Transformer, 100ms ticks)            |
+| [**TIER4_MODELS.md**](./TIER4_MODELS.md)                     | Meta-Learner signal fusion and strategy selection                |
+| [**META_LEARNER_EXECUTION.md**](./META_LEARNER_EXECUTION.md) | Regime-Conditioned Temporal Loss, adaptive weighting             |
+| [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md)           | Python training pipeline details                                 |
 
-### Data Storage
+### Data Storage & Ingestion
 
 | Document                                                       | Description                              |
 | -------------------------------------------------------------- | ---------------------------------------- |
 | [**QUESTDB_TRAINING_DATA.md**](./QUESTDB_TRAINING_DATA.md)     | QuestDB 8-table schema for training data |
+| [**UPSTOX_DATA_INGESTION.md**](./UPSTOX_DATA_INGESTION.md)     | Upstox API v2/v3 data ingestion guide    |
 | [**AI_TRADING_ARCHITECTURE.md**](./AI_TRADING_ARCHITECTURE.md) | High-level architecture overview         |
+
+### Operations
+
+| Document                                                             | Description                                        |
+| -------------------------------------------------------------------- | -------------------------------------------------- |
+| [**MODEL_PIPELINE_WORKFLOW.md**](./MODEL_PIPELINE_WORKFLOW.md)       | Session-by-session timing from midnight to close   |
 
 ---
 

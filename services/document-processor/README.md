@@ -6,7 +6,8 @@
 
 The **Document Processor Service** is the AI-powered document intelligence layer that automates extraction of financial data from PDFs, images, and scanned documents. It uses state-of-the-art multimodal AI models to parse structured documents (bank statements, invoices) and unstructured documents (receipts, handwritten notes).
 
-**Port**: 3006  
+**Port**: 3006 (HTTP), 50057 (gRPC)  
+**Framework**: NestJS + TypeScript  
 **Architecture**: Event-driven with Redis Streams  
 **Database**: MongoDB (PRIMARY - document metadata, extracted data), Redis (job queue)  
 **AI Stack**: LayoutLMv3 (structured docs), Donut (unstructured docs), Tesseract (OCR preprocessing)  
@@ -234,5 +235,5 @@ python export_to_onnx.py --quantize int8
 - [Donut Paper](https://arxiv.org/abs/2111.15664)
 
 **Status**: Active Development  
-**Port**: 3006  
-**Last Updated**: January 18, 2026
+**Port**: 3006 (HTTP), 50057 (gRPC)  
+**Last Updated**: March 17, 2026

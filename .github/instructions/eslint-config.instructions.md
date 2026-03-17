@@ -11,7 +11,7 @@ You are working on **@repo/eslint-config** - shared ESLint configurations for th
 ## Package Overview
 
 **Purpose**: Consistent linting rules across all apps and packages
-**Exports**: `base.js`, `nest.js`, `next.js`, `react-internal.js`, `library.js`
+**Exports**: `base.js`, `nest-js.js`, `next-js.js`, `react-internal.js`, `library.js`
 
 ## Usage
 
@@ -20,12 +20,12 @@ Apps import the appropriate config:
 ```javascript
 // For NestJS apps
 module.exports = {
-  extends: ["@repo/eslint-config/nest"],
+  extends: ["@repo/eslint-config/nest-js"],
 };
 
 // For Next.js apps
 module.exports = {
-  extends: ["@repo/eslint-config/next"],
+  extends: ["@repo/eslint-config/next-js"],
 };
 
 // For packages

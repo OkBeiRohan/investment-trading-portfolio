@@ -12,11 +12,11 @@ You are working on the **API Server** - the main REST API and authentication ser
 
 **Purpose**: Central API server for user-facing operations
 **Port**: 3004
-**Stack**: NestJS, MongoDB, tRPC, JWT Authentication
+**Stack**: NestJS, MongoDB, tRPC, Better Auth (via `@repo/authentication`)
 
 **Responsibilities**:
 
-- User authentication and authorization (JWT + refresh tokens)
+- User authentication and authorization (Better Auth with session-based auth, httpOnly cookies)
 - User profile and settings management
 - Portfolio aggregation and reporting
 - Historical trade queries
@@ -65,26 +65,21 @@ constructor(private readonly userRepo: UserRepository) {}
 
 ### 3. Authentication & Authorization
 
-**JWT-based authentication with refresh tokens:**
+**Better Auth with session-based authentication (httpOnly cookies):**
+
+The API uses `@repo/authentication` which wraps Better Auth with NestJS integration via `@thallesp/nestjs-better-auth`. Features include organization plugin, 2FA, passkeys, and session-based auth.
 
 ```typescript
-// Use NestJS Passport strategies
-@Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(configService: ConfigService) {
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: configService.get('JWT_SECRET'),
-    });
-  }
+// Use @repo/authentication for Better Auth integration
+import { BetterAuthModule, BetterAuthGuard } from '@repo/authentication';
 
-  async validate(payload: any) {
-    return { userId: payload.sub, email: payload.email };
-  }
-}
+@Module({
+  imports: [BetterAuthModule.forRoot()],
+})
+export class AuthModule {}
 
 // Guards for routes
-@UseGuards(JwtAuthGuard)
+@UseGuards(BetterAuthGuard)
 @Get('profile')
 async getProfile(@Request() req) {
   return this.userService.findOne(req.user.userId);
@@ -140,10 +135,11 @@ async login(@Body() credentials: LoginDto) {}
 ### User Management
 
 - User registration with email verification
-- Login with JWT access + refresh tokens
+- Session-based login with httpOnly cookies (Better Auth)
 - Password reset flow
 - Profile management (name, email, preferences)
-- Two-factor authentication (2FA) support
+- Two-factor authentication (2FA) and passkey support
+- Organization-based multi-tenancy (Better Auth organization plugin)
 
 ### Portfolio Endpoints
 
@@ -320,11 +316,9 @@ NODE_ENV=production
 # Database
 MONGODB_URI=mongodb://localhost:27017
 
-# Authentication
-JWT_SECRET=<strong-secret>
-JWT_EXPIRES_IN=15m
-REFRESH_TOKEN_SECRET=<another-strong-secret>
-REFRESH_TOKEN_EXPIRES_IN=7d
+# Authentication (Better Auth)
+BETTER_AUTH_SECRET=<strong-secret>
+BETTER_AUTH_URL=http://localhost:3004
 
 # Security
 ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
@@ -376,7 +370,7 @@ Keep these files updated:
 ## References
 
 - [NestJS Documentation](https://docs.nestjs.com)
-- [Passport.js](http://www.passportjs.org/)
-- [JWT Best Practices](https://tools.ietf.org/html/rfc8725)
+- [Better Auth Documentation](https://www.better-auth.com/)
+- [@thallesp/nestjs-better-auth](https://github.com/thallesp/nestjs-better-auth)
 - [OWASP API Security](https://owasp.org/www-project-api-security/)
 

@@ -2,8 +2,8 @@
 
 > **Multi-channel notification service for trading alerts, system events, and wealth insights.**
 
-**Port**: 3004  
-**Last Updated**: January 18, 2026
+**Port**: 50054 (gRPC)  
+**Last Updated**: March 17, 2026
 
 ---
 

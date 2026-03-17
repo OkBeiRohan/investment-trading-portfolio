@@ -30,7 +30,7 @@ module.exports = {
 };
 ```
 
-### 2. `nest.js` - NestJS Apps
+### 2. `nest-js.js` - NestJS Apps
 
 For backend apps (api, algo-worker, market-feeder, data-processor).
 
@@ -47,7 +47,7 @@ module.exports = {
 };
 ```
 
-### 3. `next.js` - Next.js Apps
+### 3. `next-js.js` - Next.js Apps
 
 For frontend apps (web).
 
@@ -113,7 +113,7 @@ module.exports = {
 
 ```javascript
 // apps/api/eslint.config.mjs
-import nestConfig from "@repo/eslint-config/nest";
+import nestConfig from "@repo/eslint-config/nest-js";
 
 export default [
   ...nestConfig,
@@ -127,7 +127,7 @@ export default [
 
 ```javascript
 // apps/web/eslint.config.mjs
-import nextConfig from "@repo/eslint-config/next";
+import nextConfig from "@repo/eslint-config/next-js";
 
 export default [
   ...nextConfig,
@@ -223,3 +223,7 @@ extends: ['prettier'] // Disables ESLint rules that conflict with Prettier
 ## Contributing
 
 When adding new rules, consider their impact on all projects using this config.
+
+---
+
+**Last Updated**: March 17, 2026

@@ -16,12 +16,14 @@ The **Investment Trading Portfolio** is an algorithmic trading platform handling
 
 We follow semantic versioning and provide security updates for the following versions:
 
-| Version | Supported          | Status                   | End of Support |
-| ------- | ------------------ | ------------------------ | -------------- |
-| 0.0.2   | :white_check_mark: | Current Development      | Active         |
-| 0.0.1   | :x:                | Legacy (pre-better-auth) | Deprecated     |
+| Version     | Supported          | Status                   | End of Support     |
+| ----------- | ------------------ | ------------------------ | ------------------ |
+| 0.0.5       | :white_check_mark: | Current Development      | Active             |
+| 0.0.3-0.0.4 | :white_check_mark: | Previous Development     | Security fixes only |
+| 0.0.2       | :x:                | Legacy                   | Deprecated         |
+| 0.0.1       | :x:                | Legacy (pre-better-auth) | Deprecated         |
 
-**Note**: Currently in active development (v0.0.x). Production release (v1.0.0) will follow a stricter LTS policy:
+**Note**: Currently in active development (v0.0.5). Production release (v1.0.0) will follow a stricter LTS policy:
 
 - Latest major version: Full security + feature support
 - Previous major version: Security updates for 12 months
@@ -40,8 +42,8 @@ We follow semantic versioning and provide security updates for the following ver
    - SEBI compliance (Algo ID, rate limiting, audit trail)
    - **Risk Level**: CRITICAL - Handles live trades
 
-2. **authentication Package**
-   - better-auth integration
+2. **authentication Package (Better Auth)**
+   - Better Auth integration (v1.x)
    - Session management (httpOnly cookies)
    - 2FA (TOTP), Passkeys (WebAuthn)
    - OAuth (Google, GitHub, Discord)
@@ -89,13 +91,14 @@ We follow semantic versioning and provide security updates for the following ver
 - ✅ **Database Security**: Parameterized queries via Mongoose ODM
 - ✅ **Audit Trail**: 5-year retention in MongoDB (SEBI compliance)
 
-### Trading Security (SEBI Compliance)
+### Trading Security (SEBI 2025-2026 Compliance)
 
 - ✅ **Algo ID Generation**: `ENTITY-YYYYMMDD-VERSION-STRATEGY` format
 - ✅ **Pre-Trade Risk Checks**: Position size limits, capital allocation
 - ✅ **Rate Limiting**: 10 orders/second (Upstox limit)
 - ✅ **Kill Switch**: Emergency stop-all-orders mechanism
 - ✅ **Audit Logging**: All orders logged with timestamps, risk checks, execution details
+- ✅ **SEBI 2025-2026 Regulations**: Compliance deadline April 1, 2026
 
 ### Infrastructure Security
 
@@ -376,7 +379,7 @@ openssl rand -base64 32
 
 ### SEBI (Securities and Exchange Board of India)
 
-**Algo Trading Regulations**:
+**Algo Trading Regulations (SEBI 2025-2026)**:
 
 - ✅ Algo ID generation and logging
 - ✅ Pre-trade risk checks (position limits)
@@ -385,7 +388,7 @@ openssl rand -base64 32
 - ✅ Kill switch mechanism
 - ✅ Regular backtesting and validation
 
-**Reference**: SEBI Circular SEBI/HO/MRD/DP/CIR/P/2019/76 (Algo Trading)
+**Reference**: SEBI 2025-2026 regulations (Algo Trading), compliance deadline April 1, 2026
 
 ---
 
@@ -444,6 +447,6 @@ We thank all security researchers who responsibly disclose vulnerabilities. Cont
 
 ---
 
-**Last Updated**: December 12, 2024  
-**Version**: 0.0.2  
+**Last Updated**: March 17, 2026  
+**Version**: 0.0.5  
 **Review Schedule**: Quarterly

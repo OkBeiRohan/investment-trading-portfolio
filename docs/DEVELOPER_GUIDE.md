@@ -1,6 +1,6 @@
 # Developer Guide - Investment Trading Portfolio
 
-**Last Updated:** November 29, 2025
+**Last Updated:** March 17, 2026
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@
 
 #### Prerequisites
 
-- **Node.js 20+** (LTS recommended)
+- **Node.js >=20.9** (LTS recommended, required by Next.js 16)
 - **pnpm 9+** (install via `npm install -g pnpm`)
 - **Python 3.11+** (for ML training)
 - **MongoDB 8.0+** (local or Docker)
@@ -36,7 +36,7 @@
 
 ```powershell
 # Clone repository
-git clone https://github.com/OkBeiRohan/investment-trading-portfolio.git
+git clone https://github.com/your-username/investment-trading-portfolio.git
 cd investment-trading-portfolio
 
 # Install dependencies
@@ -627,14 +627,12 @@ pm2 restart all
 
 - **Core Architecture**: [ARCHITECTURE.md](./ARCHITECTURE.md) - System overview and design philosophy
 - **Algo Trading Architecture**: [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md) - Complete 9-layer system design
-- **Hierarchical Intelligence**: [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md) - ML model stack
-- **Market State Encoder**: [MARKET_STATE_ENCODER.md](./MARKET_STATE_ENCODER.md) - Feature engineering patterns
-- **Model Inventory**: [MODEL_INVENTORY.md](./MODEL_INVENTORY.md) - Complete model taxonomy
+- **Model Architecture**: [docs/ml/MODEL_ARCHITECTURE.md](./ml/MODEL_ARCHITECTURE.md) - 5-tier ML model hierarchy
+- **Feature Store**: [docs/ml/FEATURE_STORE.md](./ml/FEATURE_STORE.md) - Redis + QuestDB feature store
 - **Project Status**: [PROJECT_STATUS.md](./PROJECT_STATUS.md) - Implementation roadmap and gap analysis
 
 ### Advanced & R&D Topics
 
-- **Feature Store Architecture**: [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md) - Centralized feature registry (HIGH ROI)
 - **Agentic AI Research**: [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md) - Multi-agent systems (R&D ONLY, NOT PRODUCTION)
   - ⚠️ **WARNING**: Agentic AI has 600-1600ms latency, incompatible with <100ms trading requirement
   - Valid for: Post-trade analysis, strategy research, qualitative insights
@@ -649,8 +647,7 @@ For issues and questions:
 1. Check this guide first
 2. Review app-specific README in `apps/*/README.md`
 3. Check package-specific docs in `packages/*/README.md`
-4. Review `docs/PROGRESS.md` for implementation status
-5. Review `docs/PROJECT_STATUS.md` for gap analysis and roadmap
+4. Review `docs/PROJECT_STATUS.md` for implementation status and gap analysis
 6. Create an issue on GitHub
 
 ---

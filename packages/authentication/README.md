@@ -2,7 +2,7 @@
 
 Better Auth integration for the investment trading portfolio monorepo.
 
-**Last Updated**: March 16, 2026
+**Last Updated**: March 17, 2026
 
 ## Overview
 

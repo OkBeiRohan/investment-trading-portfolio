@@ -1,5 +1,7 @@
 # Meta-Learner & Execution Optimization
 
+> For specification and design, see [TIER4_MODELS.md](TIER4_MODELS.md)
+
 > **Tier 4 Meta-Learner + Execution Layer: Signal fusion, strategy selection, and execution optimization.**
 
 **Last Updated**: March 11, 2026

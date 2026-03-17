@@ -1,6 +1,8 @@
 # SQL Query Reference - Quick Guide
 
-## 📁 Available Queries
+> **Last Updated**: March 17, 2026
+
+## Available Queries
 
 ### Candles
 

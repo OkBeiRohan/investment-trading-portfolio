@@ -331,6 +331,6 @@ Part of the investment-trading-portfolio monorepo. MIT License.
 ---
 
 **Status**: ✅ Active | Production Ready  
-**Last Updated**: March 16, 2026  
+**Last Updated**: March 17, 2026  
 **Token Management**: Multi-pool (Admin-first) with daily 7am refresh lifecycle  
 **Rate Limiting**: Pool-aware with priority degradation (Orders > WebSocket > Deep OTM)

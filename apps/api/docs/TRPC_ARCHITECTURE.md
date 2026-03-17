@@ -1,5 +1,7 @@
 # tRPC Architecture - Migration Guide
 
+> **Last Updated**: March 17, 2026
+
 ## Overview
 
 The monorepo has transitioned from a separate `@repo/trpc` package to a streamlined architecture where:

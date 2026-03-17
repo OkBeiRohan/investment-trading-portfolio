@@ -1,5 +1,7 @@
 # Architecture - Authentication Package
 
+> **Last Updated**: March 17, 2026
+
 System architecture and component interaction documentation.
 
 ---

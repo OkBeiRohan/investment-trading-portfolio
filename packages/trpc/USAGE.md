@@ -1,5 +1,7 @@
 # tRPC Usage Guide
 
+> **Last Updated**: March 17, 2026
+
 This package uses the **classic tRPC React Query integration** for a simpler, more intuitive API.
 
 ## Setup

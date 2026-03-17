@@ -2,7 +2,7 @@
 
 > **Complete Educational Repository from Zerodha Varsity**  
 > **Source:** https://zerodha.com/varsity/  
-> **Last Updated:** February 4, 2026  
+> **Last Updated:** March 17, 2026  
 > **Total Modules:** 17 | **Total Chapters:** 212+
 
 📊 **[View Content Status & Fetching Progress](./CONTENT_STATUS.md)** | 🛠️ **[Implementation Guide](./IMPLEMENTATION_GUIDE.md)** | 📁 **[Structure Guide](./STRUCTURE_GUIDE.md)**
@@ -198,6 +198,6 @@ To add or update content:
 
 ---
 
-**Last Updated:** February 4, 2026  
+**Last Updated:** March 17, 2026  
 **Maintained by:** Quantum Investments Team  
 **License:** Educational use only (content copyright Zerodha)

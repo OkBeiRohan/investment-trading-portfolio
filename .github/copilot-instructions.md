@@ -42,17 +42,18 @@ Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (ONNX)
 | Model Export        | ONNX                      | Training → Inference         |
 | Live Inference      | NestJS + onnxruntime-node | `apps/algo-worker`           |
 
-### **algo-worker: 7-Layer Event-Driven Architecture**
+### **algo-worker: 6-Layer Event-Driven Processing Pipeline**
 
-All code must follow the **7-layer cognitive architecture** with strict layer separation:
+All code must follow the **6-layer processing pipeline** with strict layer separation:
 
-1. **Perception** → Subscribe to Redis `features:live` channel
-2. **Cortex** → Feature buffer and sequence preparation
+1. **Perception** → Subscribe to Redis `features:live` channel (data ingestion)
+2. **Cortex** → Feature buffer and sequence preparation (feature engine)
 3. **Prediction** → ONNX Runtime inference (GPU via Worker Thread)
-4. **Cognition** → Strategy selection + risk management
+4. **Cognition** → Strategy selection + risk management (strategy-risk)
 5. **Execution** → Smart order routing + position tracking
-6. **Memory** → Multi-tier storage (Redis/QuestDB/MongoDB)
-7. **Control** → Observability (Prometheus metrics, health checks)
+6. **Control** → Observability (Prometheus metrics, health checks) + multi-tier storage (Redis/QuestDB/MongoDB)
+
+> **Note**: These pipeline layers describe the algo-worker's data flow stages. They are distinct from the **5-tier data-bound model hierarchy** (Tier 0: Pre-Market Gap Predictor → Tier 1: Macro Director → Tier 2: Intraday Navigator → Tier 3: Microstructure Scalper → Tier 4: Meta-Learner). See `docs/ml/AI_TRADING_ARCHITECTURE.md` for model tier details.
 
 **Rules**:
 
@@ -120,7 +121,7 @@ Fold 2: [--test--][--train--]  # Future data leaks into past!
     - **algo-worker**: Place code in correct layer (`src/{layer-name}/`)
     - **training-pipeline**: Place code in Kedro pipeline (`src/training_pipeline/pipelines/{pipeline-name}/`)
 4.  **Verify**: Run unit tests and (if applicable) backtests.
-5.  **Document**: Update `docs/PROGRESS.md` and `README.md`.
+5.  **Document**: Update `docs/PROJECT_STATUS.md` and `README.md`.
 
 ---
 

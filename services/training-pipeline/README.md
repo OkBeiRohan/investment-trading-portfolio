@@ -1,11 +1,11 @@
 # Training Pipeline
 
-> **Kedro-based ML training pipeline with CPCV validation and ONNX export for 3-tier model architecture.**
+> **Kedro-based ML training pipeline with CPCV validation and ONNX export for 5-tier model architecture.**
 
 [![Powered by Kedro](https://img.shields.io/badge/powered_by-kedro-ffc900?logo=kedro)](https://kedro.org)
 
-**Last Updated**: January 18, 2026  
-**Architecture**: 3-Tier Multi-Model Ensemble
+**Last Updated**: March 17, 2026  
+**Architecture**: 5-Tier Multi-Model Ensemble
 
 ---
 
@@ -354,7 +354,7 @@ services/training-pipeline/
 |----------|-------------|
 | [TRAINING_STRATEGY.md](../../docs/ml/TRAINING_STRATEGY.md) | In-depth validation guide |
 | [TRAINING_DATA_GUIDE.md](./docs/TRAINING_DATA_GUIDE.md) | QuestDB queries |
-| [MODEL_ARCHITECTURE.md](../../docs/ml/MODEL_ARCHITECTURE.md) | 3-tier model design |
+| [MODEL_ARCHITECTURE.md](../../docs/ml/MODEL_ARCHITECTURE.md) | 5-tier model design |
 | [DATA_ARCHITECTURE.md](../../docs/ml/DATA_ARCHITECTURE.md) | Data sources |
 
 ---
@@ -370,4 +370,5 @@ services/training-pipeline/
 ---
 
 **Status**: Active Development  
-**Technology**: Python 3.11+, Kedro, PyTorch, LightGBM, ONNX, MLflow
+**Technology**: Python 3.11+, Kedro, PyTorch, LightGBM, ONNX, MLflow  
+**Last Updated**: March 17, 2026

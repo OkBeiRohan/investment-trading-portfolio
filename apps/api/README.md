@@ -2,8 +2,8 @@
 
 > **NestJS API gateway with tRPC and Better Auth authentication.**
 
-**Port**: 3000  
-**Last Updated**: January 18, 2026
+**Port**: 3004 (HTTP), 50050 (gRPC)  
+**Last Updated**: March 17, 2026
 
 ---
 
@@ -42,7 +42,7 @@ pnpm start:prod
 
 ## Features
 
-- ✅ JWT authentication with refresh tokens
+- ✅ Better Auth authentication (session-based, organization plugin)
 - ✅ User registration and profile management
 - ✅ Portfolio aggregation and reporting
 - ✅ Trade history queries
@@ -51,12 +51,12 @@ pnpm start:prod
 
 ## API Endpoints
 
-### Authentication
+### Authentication (Better Auth)
 
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login with credentials
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - Logout
+- `POST /api/auth/sign-up` - Register new user
+- `POST /api/auth/sign-in/email` - Sign in with email/password
+- `GET /api/auth/session` - Get current session
+- `POST /api/auth/sign-out` - Sign out
 
 ### Portfolio
 
@@ -92,10 +92,10 @@ tRPC routers are defined in this API app and the AppRouter type is auto-exported
 
 ## Stack
 
-- NestJS
+- NestJS 11
 - MongoDB (via @repo/database)
-- JWT + Passport.js
-- tRPC
+- Better Auth (via @repo/authentication)
+- tRPC v11
 - TypeScript
 
 ## Testing

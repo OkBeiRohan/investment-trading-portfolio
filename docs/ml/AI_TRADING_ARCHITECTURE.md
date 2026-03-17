@@ -68,12 +68,12 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
-│          TIER 2: LEVEL-0 MODELS (Macro Direction, 5min-1hr)     │
+│          TIER 2: INTRADAY NAVIGATOR (5min-1hr Direction)        │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
-│  │ LightGBM     │  │ XGBoost      │  │ PatchTST           │     │
-│  │ (117 feats)  │  │ (117 feats)  │  │ (time-series)      │     │
+│  │ LightGBM     │  │ TFT          │  │ Mamba              │     │
+│  │ (80+ feats)  │  │ (multi-hor.) │  │ (long-range)       │     │
 │  └──────────────┘  └──────────────┘  └────────────────────┘     │
-│  Input: 117 features from instrument_features table             │
+│  Input: 80+ features from instrument_features table             │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
@@ -160,9 +160,9 @@ print(df_labeled[['close', 'label_H1', 'label_H2', 'label_H3']].tail())
 
 ---
 
-## Tier 1: Base Prediction Models
+## Model Implementations
 
-### 1.1 LiT (Limit Order Book Transformer)
+### Tier 3: LiT (Limit Order Book Transformer) — Microstructure Scalper
 
 **Purpose**: Extract microstructure signals from Depth-30 order book data.
 
@@ -276,9 +276,9 @@ for epoch in range(100):
 
 ---
 
-### 1.2 LightGBM Macro-Direction Model
+### Tier 2: LightGBM Intraday Navigator
 
-**Purpose**: Primary direction predictor using 117 engineered features from `instrument_features`.
+**Purpose**: Primary direction predictor using 80+ engineered features from `instrument_features`.
 
 **Feature Engineering**:
 

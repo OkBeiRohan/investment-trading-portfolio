@@ -2,7 +2,7 @@
 
 > **Comprehensive architecture specification for the market-feeder service: a NestJS microservice that ingests real-time NSE market data via Upstox WebSocket, aggregates ticks into OHLCV candles, computes 117 features through a Rust compute-engine (NAPI-RS), and publishes results to Redis Streams for downstream consumption by the algo-worker.**
 
-**Last Updated**: March 13, 2026
+**Last Updated**: March 17, 2026
 **Service**: `market-feeder` (NestJS + TypeScript)
 **Transport**: gRPC (port 50052, proto: `@repo/schema/proto/market-feeder`)
 **Runtime**: Node.js process pinned to Core 5 (Rayon thread pool for compute-engine)

@@ -357,3 +357,7 @@ pnpm check-types
 ## License
 
 Private - Part of investment-trading-portfolio monorepo
+
+---
+
+**Last Updated**: March 17, 2026

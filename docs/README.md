@@ -2,7 +2,7 @@
 
 This folder contains **core architecture and system-wide documentation** for Quantum Investments and Trades.
 
-**Last Updated**: January 18, 2026
+**Last Updated**: March 17, 2026
 
 ---
 
@@ -12,7 +12,7 @@ This folder contains **core architecture and system-wide documentation** for Qua
 
 **System Design**:
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - Event-driven 9-layer system architecture
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - High-level system architecture (canonical overview)
 - [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md) - Complete algo trading system design
 - [DEPLOYMENT_ARCHITECTURE.md](./DEPLOYMENT_ARCHITECTURE.md) - Hybrid local-cloud deployment strategy
 - [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) - Development workflow, setup, and best practices
@@ -25,7 +25,7 @@ This folder contains **core architecture and system-wide documentation** for Qua
 
 | Document | Description |
 |----------|-------------|
-| [ml/AI_TRADING_ARCHITECTURE.md](./ml/AI_TRADING_ARCHITECTURE.md) | 4-tier hierarchical model architecture |
+| [ml/AI_TRADING_ARCHITECTURE.md](./ml/AI_TRADING_ARCHITECTURE.md) | 5-tier data-bound hierarchy |
 | [ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) | TFT, Mamba, PatchTST, LiT with code |
 | [ml/META_LEARNER_EXECUTION.md](./ml/META_LEARNER_EXECUTION.md) | Signal fusion, PPO execution |
 | [ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) | CPCV validation, Kedro, ONNX export |
@@ -39,7 +39,6 @@ This folder contains **core architecture and system-wide documentation** for Qua
 
 **Research & Advanced**:
 
-- [RESEARCH_FINDINGS.md](./RESEARCH_FINDINGS.md) - Research insights and benchmarks
 - [AGENTIC_AI_RESEARCH.md](./AGENTIC_AI_RESEARCH.md) - Multi-agent systems (R&D only)
 
 ---
@@ -50,21 +49,21 @@ This folder contains **core architecture and system-wide documentation** for Qua
 
 | App | Port | Description | Docs |
 |-----|------|-------------|------|
-| `algo-worker` | 3001 | Live trading engine with ONNX inference | [README](../apps/algo-worker/README.md) |
-| `api` | 3000 | NestJS API gateway with tRPC | [README](../apps/api/README.md) |
-| `web` | - | Next.js dashboard | [README](../apps/web/README.md) |
+| `algo-worker` | 50051 (gRPC) | Live trading engine with ONNX inference | [README](../apps/algo-worker/README.md) |
+| `api` | 3004 (HTTP) / 50050 (gRPC) | NestJS API gateway with tRPC | [README](../apps/api/README.md) |
+| `web` | 3000 | Next.js dashboard | [README](../apps/web/README.md) |
 
 **Services**:
 
 | Service | Port | Description | Docs |
 |---------|------|-------------|------|
-| `market-feeder` | 3002 | Upstox WebSocket data ingestion | [README](../services/market-feeder/README.md) |
-| `data-processor` | 3003 | Legacy features (deprecated → compute-engine) | [README](../services/data-processor/README.md) |
+| `market-feeder` | 50052 (gRPC) | Upstox WebSocket data ingestion | [README](../services/market-feeder/README.md) |
+| `data-processor` | 50053 (gRPC) | Deprecated (→ compute-engine + market-feeder) | [README](../services/data-processor/README.md) |
 | `training-pipeline` | - | Kedro ML training + ONNX export | [README](../services/training-pipeline/README.md) |
-| `notification-service` | 3004 | Email/SMS/Push alerts | [README](../services/notification-service/README.md) |
-| `wealth-management` | 3005 | Double-entry ledger | [README](../services/wealth-management/README.md) |
-| `wealth-analyzer` | 3006 | Python AI insights (Phi-3) | [README](../services/wealth-analyzer/README.md) |
-| `document-processor` | 3007 | Python OCR (LayoutLMv3) | [README](../services/document-processor/README.md) |
+| `notification-service` | 50054 (gRPC) | Email/SMS/Push alerts | [README](../services/notification-service/README.md) |
+| `wealth-management` | 50056 (gRPC) | Double-entry ledger | [README](../services/wealth-management/README.md) |
+| `wealth-analyzer` | 50055 (gRPC) | Python AI insights (Phi-3) | [README](../services/wealth-analyzer/README.md) |
+| `document-processor` | 50057 (gRPC) | Python OCR (LayoutLMv3) | [README](../services/document-processor/README.md) |
 
 **Packages**:
 
@@ -95,7 +94,7 @@ This folder contains **core architecture and system-wide documentation** for Qua
 ### Quant/ML Researcher
 
 1. [ml/README.md](./ml/README.md) - 📁 **Start here** - AI documentation
-2. [ml/AI_TRADING_ARCHITECTURE.md](./ml/AI_TRADING_ARCHITECTURE.md) - 4-tier architecture
+2. [ml/AI_TRADING_ARCHITECTURE.md](./ml/AI_TRADING_ARCHITECTURE.md) - 5-tier data-bound hierarchy
 3. [ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) - Model specifications
 4. [ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) - CPCV, Kedro
 5. [ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) - ONNX Runtime
@@ -155,4 +154,4 @@ Upstox WS → market-feeder → compute-engine (Rust, <5ms)
 ---
 
 **Status**: Production-Ready Architecture  
-**Last Updated**: January 18, 2026
+**Last Updated**: March 17, 2026

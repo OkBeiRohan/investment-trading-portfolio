@@ -1,5 +1,7 @@
 # Render Deployment Guide
 
+> **Last Updated**: March 17, 2026
+
 ## Prerequisites
 
 1. **MongoDB Atlas Account** (free M0 cluster)
@@ -236,4 +238,4 @@ If you can afford $1/month after 30-day trial:
 - **Can deploy MongoDB** (no external Atlas needed)
 - **Private networking** between services
 
-See `RAILWAY_DEPLOYMENT.md` for Railway setup.
+See [DEPLOYMENT_ARCHITECTURE.md](../../docs/DEPLOYMENT_ARCHITECTURE.md) for the overall deployment strategy.

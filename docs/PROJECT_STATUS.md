@@ -1,6 +1,6 @@
 # Algo-Worker Project Status
 
-**Last Updated**: Current Session
+**Last Updated**: March 17, 2026
 
 ## Project Overview
 
@@ -12,7 +12,7 @@ The project is transitioning to a robust microservices architecture.
 
 - **Infrastructure**: ✅ QuestDB (Time-Series) + MongoDB (Metadata) + Redis (Pub/Sub).
 - **Inference**: 🚧 Migration from Python Spawning to **ONNX Runtime** in progress.
-- **Microservices**: ❌ `market-feeder` and `data-processor` need scaffolding.
+- **Microservices**: 🔄 `market-feeder` in progress. `data-processor` deprecated (features moved to `compute-engine` + `market-feeder`).
 
 ## Package Status
 
@@ -499,7 +499,7 @@ This section compares our current implementation against industry best practices
 #### Missing (High ROI) 🚨
 
 1. **Formal Feature Store Architecture**
-   - Status: ⏳ Design Complete ([FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md)), Not Implemented
+   - Status: ⏳ Design Complete ([FEATURE_STORE.md](./ml/FEATURE_STORE.md)), Not Implemented
    - What: Centralized feature registry with online/offline serving
    - Why:
      - ❌ Feature definitions duplicated (algo-worker + training-pipeline)
@@ -524,7 +524,7 @@ This section compares our current implementation against industry best practices
 - [ ] Deploy Kafka + Faust streaming layer (2 weeks)
 - [ ] Migrate FeatureCacheService to feature store (1 week)
 
-**Reference**: [FEATURE_STORE_ARCHITECTURE.md](./FEATURE_STORE_ARCHITECTURE.md)
+**Reference**: [FEATURE_STORE.md](./ml/FEATURE_STORE.md)
 
 ---
 
@@ -541,7 +541,7 @@ This section compares our current implementation against industry best practices
 #### Missing (High ROI) 🚨
 
 1. **CI/CD Model Deployment Pipeline**
-   - Status: ⏳ Design Complete ([HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md#model-deployment-cicd-pipeline-high-roi-enhancement)), Not Implemented
+   - Status: ⏳ Design Complete ([docs/ml/MODEL_ARCHITECTURE.md](./ml/MODEL_ARCHITECTURE.md)), Not Implemented
    - What: Automated training → export → staging → canary → production
    - Current Pain:
      - ❌ Manual ONNX export (error-prone)
@@ -559,7 +559,7 @@ This section compares our current implementation against industry best practices
    - Timeline: 2-4 weeks
 
 2. **Meta-Learning Frameworks (MAML, Few-Shot)**
-   - Status: ⏳ Design Complete ([MODEL_INVENTORY.md](./MODEL_INVENTORY.md#meta-learning--automated-model-refresh-high-roi-enhancement)), Not Implemented
+   - Status: ⏳ Design Complete ([docs/ml/README.md](./ml/README.md)), Not Implemented
    - What: Fast adaptation to new market regimes (10-20 examples vs 10,000)
    - Use Cases:
      - New regime (COVID-like shock) → adapt in hours (not days of retraining)
@@ -584,7 +584,7 @@ This section compares our current implementation against industry best practices
 - [ ] Create canary deployment logic in algo-worker (1 week)
 - [ ] Prototype MAML for fast regime adaptation (3 weeks)
 
-**Reference**: [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md - CI/CD](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md#model-deployment-cicd-pipeline-high-roi-enhancement)
+**Reference**: [docs/ml/MODEL_ARCHITECTURE.md](./ml/MODEL_ARCHITECTURE.md)
 
 ---
 
@@ -808,7 +808,7 @@ This section compares our current implementation against industry best practices
 - ✅ Solid hierarchical ML architecture (9-layer, tier-based activation)
 - ✅ Sub-100ms latency achieved (local GPU deployment)
 - ✅ Institutional-grade risk management (Greeks, circuit breakers)
-- ✅ SEBI 2024-2026 compliant
+- ✅ SEBI 2025-2026 compliant (deadline April 1, 2026)
 
 **Key Gaps (High ROI)**:
 

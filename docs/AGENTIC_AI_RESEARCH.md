@@ -4,7 +4,7 @@
 
 **Last Updated**: January 13, 2026  
 **Status**: Optional R&D (Not Production Priority)  
-**Related**: [HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md](./HIERARCHICAL_INTELLIGENCE_ARCHITECTURE.md)
+**Related**: [docs/ml/MODEL_ARCHITECTURE.md](./ml/MODEL_ARCHITECTURE.md)
 
 ---
 

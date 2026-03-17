@@ -1,5 +1,7 @@
 # API Reference - Authentication Package
 
+> **Last Updated**: March 17, 2026
+
 Complete API endpoint documentation for better-auth integration.
 
 ---

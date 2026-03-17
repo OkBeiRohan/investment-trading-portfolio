@@ -2,7 +2,7 @@
 
 > **OpenTelemetry-based observability stack for distributed tracing, metrics, and logging.**
 
-**Last Updated**: January 18, 2026
+**Last Updated**: March 17, 2026
 
 ---
 

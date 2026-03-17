@@ -2,7 +2,7 @@
 
 > **Institutional-grade algorithmic trading engine for NSE index options. Implements a 5-Tier Data-Bound Hierarchical AI architecture with 117-feature Rust compute-engine and ONNX ensemble inference (<80ms E2E).**
 
-**Last Updated**: March 13, 2026
+**Last Updated**: March 17, 2026
 **Framework**: NestJS + TypeScript
 **Feature Engine**: Rust (NAPI-RS) + Rayon — 117 features in <5ms
 **ML Inference**: ONNX Runtime (TensorRT/OpenVINO) — <50ms
@@ -389,4 +389,4 @@ apps/algo-worker/
 **Features**: 117 (Rust, <5ms)
 **Inference**: ONNX Ensemble (<50ms)
 **Target Latency**: <80ms E2E (p95)
-**Last Updated**: March 13, 2026
+**Last Updated**: March 17, 2026

@@ -73,7 +73,7 @@ This document describes the **cloud-hosted services** that provide:
 | State Management | Zustand + TanStack Query |
 | Real-time | Server-Sent Events (SSE) |
 | Charts | Recharts + Lightweight Charts |
-| Auth | NextAuth.js v5 |
+| Auth | Better Auth (session-based, httpOnly cookies) |
 
 ### Pages Structure
 
@@ -104,7 +104,7 @@ apps/web/src/app/
 │       ├── accounts/page.tsx   # Account management
 │       └── insights/page.tsx   # AI insights
 ├── api/
-│   ├── auth/[...nextauth]/route.ts
+│   ├── auth/[...all]/route.ts         # Better Auth catch-all
 │   └── trpc/[trpc]/route.ts
 └── layout.tsx                  # Root layout
 ```
@@ -218,7 +218,7 @@ function ModelCard({ model }: { model: ModelMetrics }) {
 |-----------|------------|
 | Framework | NestJS 10 |
 | API Layer | tRPC + REST (hybrid) |
-| Auth | Passport.js + JWT |
+| Auth | Better Auth (`@repo/authentication` via `@thallesp/nestjs-better-auth`) |
 | Validation | Zod (via @repo/schema) |
 | Database | MongoDB + Redis |
 
@@ -230,12 +230,9 @@ apps/api/src/
 ├── app.module.ts
 ├── modules/
 │   ├── auth/
-│   │   ├── auth.module.ts
+│   │   ├── auth.module.ts             # Better Auth integration via @repo/authentication
 │   │   ├── auth.service.ts
-│   │   ├── auth.controller.ts
-│   │   └── strategies/
-│   │       ├── jwt.strategy.ts
-│   │       └── upstox.strategy.ts
+│   │   └── auth.controller.ts
 │   ├── user/
 │   │   ├── user.module.ts
 │   │   ├── user.service.ts
@@ -662,10 +659,9 @@ PORT=3000
 MONGODB_URI=mongodb+srv://...
 UPSTASH_REDIS_URL=rediss://...
 
-# Auth
-JWT_SECRET=your-jwt-secret
-NEXTAUTH_SECRET=your-nextauth-secret
-NEXTAUTH_URL=https://quantum-trades.vercel.app
+# Auth (Better Auth)
+BETTER_AUTH_SECRET=your-better-auth-secret
+BETTER_AUTH_URL=https://api.quantum-trades.com
 
 # Upstox OAuth
 UPSTOX_CLIENT_ID=your-client-id

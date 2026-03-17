@@ -2,7 +2,7 @@
 
 > **Comprehensive market data and feature storage for ML training pipeline**
 
-**Last Updated**: January 18, 2026  
+**Last Updated**: March 17, 2026  
 **Status**: Production Schema Design  
 **Related**: [QUESTDB_TRAINING_DATA.md](../../../docs/ml/QUESTDB_TRAINING_DATA.md)
 

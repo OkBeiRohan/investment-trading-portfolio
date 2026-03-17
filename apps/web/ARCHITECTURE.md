@@ -332,7 +332,9 @@ NEXT_PUBLIC_UPSTOX_AUTH_ENABLED=true
 
 ---
 
-**Last Updated**: March 16, 2026  
+**Last Updated**: March 17, 2026  
 **Auth**: better-auth (platform) + custom Upstox two-phase flow  
 **Trading Access**: Trader + Admin roles only  
 **Admin Keys**: data collection toggle, instrument management, user management
+
+> **See also**: [UFOS Vision & Design Specification](docs/ARCHITECTURE.md) for the full UFOS dashboard design spec and future-state architecture.

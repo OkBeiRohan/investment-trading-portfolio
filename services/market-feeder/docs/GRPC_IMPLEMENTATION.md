@@ -1,5 +1,7 @@
 # gRPC Implementation - Official NestJS Approach
 
+> **Last Updated**: March 17, 2026
+
 ## Overview
 
 Implemented gRPC service following **official NestJS documentation** instead of using ts-proto code generation. This approach uses `@grpc/proto-loader` at runtime for better alignment with NestJS best practices.

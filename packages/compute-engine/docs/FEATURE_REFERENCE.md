@@ -2,7 +2,7 @@
 
 > **Complete reference for all 117 features computed by the compute-engine.**
 
-**Last Updated**: March 13, 2026
+**Last Updated**: March 17, 2026
 **Total Features**: 117 across 14 categories
 **Performance**: <5ms (p95) via Rayon parallel computation
 

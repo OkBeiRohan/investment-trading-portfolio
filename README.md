@@ -1,7 +1,7 @@
 # Quantum Investments and Trades
 
 > **Institutional-grade algorithmic trading + Professional wealth management for comprehensive financial sovereignty.**
-> Event-Driven Architecture | Rust Feature Engine | ONNX Inference | SEBI 2024-2025 Compliant
+> Event-Driven Architecture | Rust Feature Engine | ONNX Inference | SEBI 2025-2026 Compliant
 
 ---
 
@@ -110,7 +110,7 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 - **Local**: algo-worker (RTX GPU) + databases (QuestDB, MongoDB, Redis)
 - **Why**: <100ms latency requires local execution, no cloud static IP compliance needed
 
-**See [DEPLOYMENT_ARCHITECTURE.md](DEPLOYMENT_ARCHITECTURE.md) for full details.**
+**See [DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md) for full details.**
 
 ### Compute Engine (Rust/NAPI-RS)
 
@@ -191,7 +191,7 @@ flowchart TD
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js >=20.9
 - Python 3.10+ (for ML training)
 - Docker & Docker Compose
 - CUDA 12+ (optional, for GPU inference)
@@ -254,7 +254,6 @@ pnpm dev  # Starts on port 3001
 
 **Legacy AI Docs** (Reference Only):
 
-- **[RESEARCH_FINDINGS.md](docs/RESEARCH_FINDINGS.md)**: Research insights
 - **[AGENTIC_AI_RESEARCH.md](docs/AGENTIC_AI_RESEARCH.md)**: Multi-agent systems (R&D only)
 
 ### 🤖 Algo Trading (apps/algo-worker)
@@ -298,14 +297,14 @@ This system is built on rigorous research from 2024-2025:
 1.  **Event-Driven > Microservices** for HFT: Industry studies show deterministic event sequencers achieve lower latency than HTTP-based microservices communication[1].
 2.  **QuestDB** for financial time-series: 2025 benchmark demonstrated 22x speed advantage over ClickHouse and 41x vs. TimescaleDB for OHLCV calculations[2].
 3.  **ONNX Runtime + Execution Providers**: More flexible than standalone TensorRT while achieving near-native performance through hardware-specific EPs[3].
-4.  **SEBI 2024-2025 Compliance**: New regulations mandate unique Algo IDs, pre-trade risk checks, and broker-level monitoring for all algorithmic strategies[4].
+4.  **SEBI 2025-2026 Compliance**: New regulations mandate unique Algo IDs, pre-trade risk checks, and broker-level monitoring for all algorithmic strategies (April 2026 deadline)[4].
 
 ### Key References
 
 - [1] "Deterministic Event-Driven Architecture for HFT" - Medium, 2024
 - [2] "QuestDB vs TimescaleDB Benchmark" - Database Performance Study, 2025
 - [3] "ONNX Runtime Execution Providers" - Microsoft AI Documentation
-- [4] "SEBI Algorithmic Trading Guidelines 2024" - SEBI Official Circular
+- [4] "SEBI Algorithmic Trading Guidelines 2025-2026" - SEBI Official Circular
 
 ---
 
@@ -333,9 +332,9 @@ This system is built on rigorous research from 2024-2025:
 
 ---
 
-## 🔐 SEBI 2024-2025 Compliance
+## 🔐 SEBI 2025-2026 Compliance
 
-Every aspect of Project Quantum adheres to latest SEBI algorithmic trading norms:
+Every aspect of Project Quantum adheres to SEBI algorithmic trading norms (April 2026 compliance deadline):
 
 - ✅ **Unique Algo ID**: Format `PROJ_QUANTUM_v{version}_USER_{userId}`
 - ✅ **Pre-Trade Risk Checks**: Position limits, margin, exposure validated before EVERY order
@@ -374,4 +373,4 @@ Please read **[Copilot Instructions](.github/copilot-instructions.md)** and cons
 
 **License**: Proprietary  
 **Status**: Production-Ready Architecture (Implementation in Progress)  
-**Last Updated**: March 13, 2026
+**Last Updated**: March 17, 2026

@@ -1,5 +1,7 @@
 # Authentication Flows
 
+> **Last Updated**: March 17, 2026
+
 Complete visual documentation of authentication flows using **better-auth**.
 
 ---

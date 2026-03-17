@@ -1,5 +1,7 @@
 # Security Best Practices - Authentication Package
 
+> **Last Updated**: March 17, 2026
+
 Comprehensive security guidelines for better-auth integration.
 
 ---

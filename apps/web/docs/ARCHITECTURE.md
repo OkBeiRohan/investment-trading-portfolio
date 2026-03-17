@@ -1,5 +1,9 @@
 # Web Dashboard Architecture - Quantum Investments and Trades (UFOS)
 
+> **Last Updated**: March 17, 2026  
+> **Document Type**: UFOS Vision and Design Specification  
+> **Current Implementation**: See [ARCHITECTURE.md](../ARCHITECTURE.md) for current implementation status
+
 > **Design Philosophy**: A next-generation financial platform bridging high-frequency algorithmic trading and holistic wealth management with forensic AI observability.
 
 ---

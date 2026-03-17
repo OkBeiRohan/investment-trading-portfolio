@@ -6,7 +6,8 @@
 
 The **Wealth Analyzer Service** is the AI/ML intelligence layer for the wealth management platform. It provides natural language query processing, anomaly detection, spending insights, and predictive analytics—all powered by locally-hosted AI models for maximum privacy and zero API costs.
 
-**Port**: 3007  
+**Port**: 3007 (HTTP), 50055 (gRPC)  
+**Framework**: NestJS + TypeScript  
 **Architecture**: Event-driven with Redis Streams  
 **Database**: MongoDB (PRIMARY - analytics cache), QuestDB (time-series queries), ChromaDB (vector store)  
 **AI Stack**: Phi-3 (local LLM), ONNX Runtime (ML inference), ChromaDB (RAG)  
@@ -218,5 +219,5 @@ pnpm run start:prod
 - [Phi-3 Documentation](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
 
 **Status**: Active Development  
-**Port**: 3007  
-**Last Updated**: January 18, 2026
+**Port**: 3007 (HTTP), 50055 (gRPC)  
+**Last Updated**: March 17, 2026
