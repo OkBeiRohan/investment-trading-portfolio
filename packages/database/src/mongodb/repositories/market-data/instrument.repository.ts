@@ -44,7 +44,7 @@ export class InstrumentRepository {
       .findOneAndUpdate(
         { instrumentKey: instrument.instrumentKey },
         { $set: instrument },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: 'after' },
       )
       .exec();
   }

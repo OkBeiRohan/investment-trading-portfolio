@@ -89,7 +89,7 @@ export class SystemConfigRepository {
       .findOneAndUpdate(
         { key },
         { $set: data },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: 'after' },
       )
       .exec();
   }
@@ -100,7 +100,7 @@ export class SystemConfigRepository {
   ): Promise<SystemConfig | null> {
     if (data.key) this.cache.delete(data.key);
     return this.model
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
   }
 

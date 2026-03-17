@@ -38,7 +38,7 @@ export class AccountRepository {
   }
 
   async update(id: string, data: Partial<Account>): Promise<Account | null> {
-    return this.accountModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    return this.accountModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
   }
 
   async updateMany(

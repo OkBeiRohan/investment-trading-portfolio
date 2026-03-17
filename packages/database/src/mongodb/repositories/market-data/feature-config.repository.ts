@@ -41,7 +41,7 @@ export class FeatureConfigRepository {
     data: Partial<FeatureConfig>,
   ): Promise<FeatureConfig | null> {
     return this.model
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
   }
 

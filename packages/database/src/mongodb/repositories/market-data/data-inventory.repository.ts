@@ -25,7 +25,7 @@ export class DataInventoryRepository {
     return this.model.findOneAndUpdate(
       { instrumentKey },
       { $set: data },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
   }
 

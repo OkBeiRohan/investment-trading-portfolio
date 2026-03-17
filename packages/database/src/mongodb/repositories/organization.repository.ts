@@ -39,7 +39,7 @@ export class OrganizationRepository {
     id: string,
     data: Partial<Organization>
   ): Promise<Organization | null> {
-    return this.orgModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    return this.orgModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
   }
 
   async deleteOrganization(id: string): Promise<boolean> {
@@ -65,7 +65,7 @@ export class OrganizationRepository {
     id: string,
     data: Partial<Member>
   ): Promise<Member | null> {
-    return this.memberModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    return this.memberModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
   }
 
   async deleteMember(id: string): Promise<boolean> {
@@ -101,7 +101,7 @@ export class OrganizationRepository {
     data: Partial<Invitation>
   ): Promise<Invitation | null> {
     return this.invitationModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
   }
 

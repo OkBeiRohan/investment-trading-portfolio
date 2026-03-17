@@ -35,7 +35,7 @@ export class TradingConfigRepository {
     data: Partial<TradingConfig>,
   ): Promise<TradingConfig | null> {
     return this.model
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
   }
 
@@ -44,7 +44,7 @@ export class TradingConfigRepository {
     data: Partial<TradingConfig>,
   ): Promise<TradingConfig | null> {
     return this.model
-      .findOneAndUpdate({ userId }, data, { new: true })
+      .findOneAndUpdate({ userId }, data, { returnDocument: 'after' })
       .exec();
   }
 
@@ -57,19 +57,19 @@ export class TradingConfigRepository {
       update[`riskLimits.${key}`] = value;
     }
     return this.model
-      .findOneAndUpdate({ userId }, { $set: update }, { new: true })
+      .findOneAndUpdate({ userId }, { $set: update }, { returnDocument: 'after' })
       .exec();
   }
 
   async enableTrading(userId: string): Promise<TradingConfig | null> {
     return this.model
-      .findOneAndUpdate({ userId }, { enabled: true }, { new: true })
+      .findOneAndUpdate({ userId }, { enabled: true }, { returnDocument: 'after' })
       .exec();
   }
 
   async disableTrading(userId: string): Promise<TradingConfig | null> {
     return this.model
-      .findOneAndUpdate({ userId }, { enabled: false }, { new: true })
+      .findOneAndUpdate({ userId }, { enabled: false }, { returnDocument: 'after' })
       .exec();
   }
 

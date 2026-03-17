@@ -40,7 +40,7 @@ export class VerificationRepository {
     data: Partial<Verification>
   ): Promise<Verification | null> {
     return this.verificationModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
   }
 
