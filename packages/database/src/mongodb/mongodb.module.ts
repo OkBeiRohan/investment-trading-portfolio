@@ -81,6 +81,10 @@ import {
   TrainingRunRepository,
 } from "./repositories/training";
 
+// Set mongoose default to return updated doc (suppresses { new: true } deprecation from better-auth)
+import mongoose from "mongoose";
+mongoose.set("returnDocument", "after");
+
 @Global()
 @Module({
   imports: [
@@ -93,8 +97,6 @@ import {
         retryAttempts: 5,
         retryDelay: 3000,
         writeConcern: { w: "majority" },
-        // For replica set with transactions, ensure MONGODB_URI includes ?replicaSet=rs0
-        // Example: mongodb://localhost:27017/?replicaSet=rs0
       },
     ),
     MongooseModule.forRoot(
