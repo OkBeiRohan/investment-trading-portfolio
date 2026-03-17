@@ -110,23 +110,29 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
     const dataCollectionEnabled =
       await this.instrumentRepo.findDataCollectionEnabled();
     for (const inst of dataCollectionEnabled) {
-      instrumentKeys.add(inst.instrumentKey);
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        instrumentKeys.add(inst.instrumentKey);
+      }
     }
 
     const nifty50 = await this.instrumentRepo.findNifty50();
     for (const inst of nifty50) {
-      instrumentKeys.add(inst.instrumentKey);
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        instrumentKeys.add(inst.instrumentKey);
+      }
     }
 
     const indices = await this.instrumentRepo.findByType("INDEX");
     for (const inst of indices) {
-      instrumentKeys.add(inst.instrumentKey);
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        instrumentKeys.add(inst.instrumentKey);
+      }
     }
 
     const now = new Date();
     const allQuestDb = await this.instrumentMasterRepo.getAllInstruments();
     for (const inst of allQuestDb) {
-      if (inst.instrumentType === "INDEX") {
+      if (inst.instrumentType === "INDEX" && this.isUpstoxInstrument(inst.instrumentKey)) {
         instrumentKeys.add(inst.instrumentKey);
       }
       if (inst.expiry && inst.expiry > now) {
@@ -139,6 +145,10 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
     }
 
     return Array.from(instrumentKeys);
+  }
+
+  private isUpstoxInstrument(key: string): boolean {
+    return key.startsWith("NSE_") || key.startsWith("BSE_") || key.startsWith("MCX_");
   }
 
   /**

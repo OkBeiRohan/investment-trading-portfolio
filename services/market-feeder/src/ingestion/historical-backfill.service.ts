@@ -408,20 +408,30 @@ export class HistoricalBackfillService {
 
     const dataEnabled = await this.instrumentRepo.findDataCollectionEnabled();
     for (const inst of dataEnabled) {
-      keys.add(inst.instrumentKey);
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        keys.add(inst.instrumentKey);
+      }
     }
 
     const nifty50 = await this.instrumentRepo.findNifty50();
     for (const inst of nifty50) {
-      keys.add(inst.instrumentKey);
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        keys.add(inst.instrumentKey);
+      }
     }
 
     const indices = await this.instrumentRepo.findByType('INDEX');
     for (const inst of indices) {
-      keys.add(inst.instrumentKey);
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        keys.add(inst.instrumentKey);
+      }
     }
 
     return Array.from(keys);
+  }
+
+  private isUpstoxInstrument(key: string): boolean {
+    return key.startsWith('NSE_') || key.startsWith('BSE_') || key.startsWith('MCX_');
   }
 
   private async storeCandles(
