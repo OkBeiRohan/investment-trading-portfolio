@@ -16,10 +16,10 @@ import {
   BrokerAccountRepository,
   AuditLogRepository,
 } from '@repo/database';
+import { AdminGuard } from '../guards/admin.guard';
 
-// TODO: Add admin role check guard
 @Controller('api/admin/trading')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, AdminGuard)
 export class AdminTradingController {
   private readonly logger = new Logger(AdminTradingController.name);
 

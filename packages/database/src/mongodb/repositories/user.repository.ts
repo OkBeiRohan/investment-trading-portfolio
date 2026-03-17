@@ -38,7 +38,7 @@ export class UserRepository {
   }
 
   async update(id: string, data: Partial<User>): Promise<User | null> {
-    return this.userModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    return this.userModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
   }
 
   async updateMany(
@@ -61,5 +61,9 @@ export class UserRepository {
 
   async count(filter: QueryFilter<User>): Promise<number> {
     return this.userModel.countDocuments(filter).exec();
+  }
+
+  async findByRole(role: string): Promise<User[]> {
+    return this.userModel.find({ role, isActive: true }).exec();
   }
 }

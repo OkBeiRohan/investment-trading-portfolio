@@ -10,12 +10,13 @@ import {
   Put,
   Query,
   UseGuards,
-} from '@nestjs/common';
-import { AuthGuard, Session } from '@repo/authentication';
-import { InstrumentRepository, AuditLogRepository } from '@repo/database';
+} from "@nestjs/common";
+import { AuthGuard, Session } from "@repo/authentication";
+import { InstrumentRepository, AuditLogRepository } from "@repo/database";
+import { AdminGuard } from "../guards/admin.guard";
 
-@Controller('api/admin/instruments')
-@UseGuards(AuthGuard)
+@Controller("api/admin/instruments")
+@UseGuards(AuthGuard, AdminGuard)
 export class AdminInstrumentsController {
   private readonly logger = new Logger(AdminInstrumentsController.name);
 
@@ -24,97 +25,170 @@ export class AdminInstrumentsController {
     private readonly auditLogRepo: AuditLogRepository,
   ) {}
 
-  /**
-   * List instruments with optional filters.
-   * @route GET /api/admin/instruments
-   */
   @Get()
   @HttpCode(HttpStatus.OK)
   async listInstruments(
-    @Query('exchange') exchange?: string,
-    @Query('segment') segment?: string,
-    @Query('status') status?: string,
-    @Query('tradingEnabled') tradingEnabled?: string,
-    @Query('search') search?: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 50,
+    @Query("exchange") exchange?: string,
+    @Query("segment") segment?: string,
+    @Query("instrumentType") instrumentType?: string,
+    @Query("tradingEnabled") tradingEnabled?: string,
+    @Query("dataCollectionEnabled") dataCollectionEnabled?: string,
+    @Query("search") search?: string,
+    @Query("page") page = 1,
+    @Query("limit") limit = 50,
   ) {
-    // TODO: Implement filtered/paginated instrument listing
-    return { page: +page, limit: +limit, items: [], total: 0 };
-  }
-
-  /**
-   * Trigger market-feeder instrument sync.
-   * @route POST /api/admin/instruments/sync
-   */
-  @Post('sync')
-  @HttpCode(HttpStatus.OK)
-  async syncInstruments(@Session() session: any) {
-    this.logger.log(`Instrument sync requested by admin ${session.user.id}`);
-
-    await this.auditLogRepo.create({
-      action: 'admin.instruments.sync',
-      category: 'admin',
-      userId: session.user.id,
+    const result = await this.instrumentRepo.findFiltered({
+      exchange,
+      segment,
+      instrumentType,
+      tradingEnabled:
+        tradingEnabled !== undefined
+          ? tradingEnabled === "true"
+          : undefined,
+      dataCollectionEnabled:
+        dataCollectionEnabled !== undefined
+          ? dataCollectionEnabled === "true"
+          : undefined,
+      isActive: true,
+      search,
+      page: +page,
+      limit: Math.min(+limit, 200),
     });
 
-    // TODO: Trigger market-feeder instrument sync via event/message
-    return { syncing: true };
+    return {
+      page: +page,
+      limit: Math.min(+limit, 200),
+      items: result.items,
+      total: result.total,
+    };
   }
 
-  /**
-   * Enable or disable trading for a specific instrument.
-   * @route PUT /api/admin/instruments/:instrumentKey/trading
-   */
-  @Put(':instrumentKey/trading')
+  @Post("sync")
   @HttpCode(HttpStatus.OK)
-  async updateTradingStatus(
-    @Param('instrumentKey') instrumentKey: string,
-    @Body() body: { enabled: boolean },
-    @Session() session: any,
-  ) {
-    // TODO: Update instrument trading status
+  async syncInstruments(@Session() session: any) {
     this.logger.log(
-      `Admin ${session.user.id} set trading=${body.enabled} for instrument ${instrumentKey}`,
+      `Instrument sync requested by admin ${session.user.id}`,
     );
 
     await this.auditLogRepo.create({
-      action: 'admin.instruments.trading-status',
-      category: 'admin',
+      action: "admin.instruments.sync",
+      category: "admin",
+      userId: session.user.id,
+    });
+
+    return { syncing: true, message: "Instrument sync will run on next scheduler cycle" };
+  }
+
+  @Put(":instrumentKey/trading")
+  @HttpCode(HttpStatus.OK)
+  async updateTradingStatus(
+    @Param("instrumentKey") instrumentKey: string,
+    @Body() body: { enabled: boolean },
+    @Session() session: any,
+  ) {
+    await this.instrumentRepo.updateTradingStatus(
+      instrumentKey,
+      body.enabled,
+    );
+
+    this.logger.log(
+      `Admin ${session.user.id} set trading=${body.enabled} for ${instrumentKey}`,
+    );
+
+    await this.auditLogRepo.create({
+      action: "admin.instruments.trading-status",
+      category: "admin",
       userId: session.user.id,
       targetId: instrumentKey,
-      targetType: 'instrument',
+      targetType: "instrument",
       details: { enabled: body.enabled },
     });
 
     return { instrumentKey, tradingEnabled: body.enabled };
   }
 
-  /**
-   * Enable or disable data collection for a specific instrument.
-   * @route PUT /api/admin/instruments/:instrumentKey/data-collection
-   */
-  @Put(':instrumentKey/data-collection')
+  @Put(":instrumentKey/data-collection")
   @HttpCode(HttpStatus.OK)
   async updateDataCollection(
-    @Param('instrumentKey') instrumentKey: string,
+    @Param("instrumentKey") instrumentKey: string,
     @Body() body: { enabled: boolean },
     @Session() session: any,
   ) {
-    // TODO: Update instrument data-collection flag
+    await this.instrumentRepo.updateDataCollectionStatus(
+      instrumentKey,
+      body.enabled,
+    );
+
     this.logger.log(
-      `Admin ${session.user.id} set data-collection=${body.enabled} for instrument ${instrumentKey}`,
+      `Admin ${session.user.id} set data-collection=${body.enabled} for ${instrumentKey}`,
     );
 
     await this.auditLogRepo.create({
-      action: 'admin.instruments.data-collection',
-      category: 'admin',
+      action: "admin.instruments.data-collection",
+      category: "admin",
       userId: session.user.id,
       targetId: instrumentKey,
-      targetType: 'instrument',
+      targetType: "instrument",
       details: { enabled: body.enabled },
     });
 
     return { instrumentKey, dataCollectionEnabled: body.enabled };
+  }
+
+  @Put("bulk/trading")
+  @HttpCode(HttpStatus.OK)
+  async bulkUpdateTradingStatus(
+    @Body() body: { instrumentKeys: string[]; enabled: boolean },
+    @Session() session: any,
+  ) {
+    const modified = await this.instrumentRepo.bulkUpdateTradingStatus(
+      body.instrumentKeys,
+      body.enabled,
+    );
+
+    this.logger.log(
+      `Admin ${session.user.id} bulk set trading=${body.enabled} for ${body.instrumentKeys.length} instruments`,
+    );
+
+    await this.auditLogRepo.create({
+      action: "admin.instruments.bulk-trading-status",
+      category: "admin",
+      userId: session.user.id,
+      details: {
+        count: body.instrumentKeys.length,
+        enabled: body.enabled,
+      },
+    });
+
+    return { modified, enabled: body.enabled };
+  }
+
+  @Put("bulk/data-collection")
+  @HttpCode(HttpStatus.OK)
+  async bulkUpdateDataCollection(
+    @Body() body: { instrumentKeys: string[]; enabled: boolean },
+    @Session() session: any,
+  ) {
+    const modified =
+      await this.instrumentRepo.bulkUpdateDataCollectionStatus(
+        body.instrumentKeys,
+        body.enabled,
+      );
+
+    this.logger.log(
+      `Admin ${session.user.id} bulk set data-collection=${body.enabled} for ${body.instrumentKeys.length} instruments`,
+    );
+
+    await this.auditLogRepo.create({
+      action: "admin.instruments.bulk-data-collection",
+      category: "admin",
+      userId: session.user.id,
+      details: {
+        count: body.instrumentKeys.length,
+        enabled: body.enabled,
+      },
+    });
+
+    return { modified, enabled: body.enabled };
   }
 }

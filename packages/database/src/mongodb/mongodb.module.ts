@@ -47,6 +47,7 @@ import {
 } from "./schemas/trading";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 import { MongoDBService } from "./mongodb.service";
+import { DbConfigService } from "./services/db-config.service";
 import {
   ConstituentChangeRepository,
   InstrumentRepository,
@@ -80,6 +81,10 @@ import {
   TrainingRunRepository,
 } from "./repositories/training";
 
+// Set mongoose default to return updated doc (suppresses { new: true } deprecation from better-auth)
+import mongoose from "mongoose";
+mongoose.set("returnDocument", "after");
+
 @Global()
 @Module({
   imports: [
@@ -92,8 +97,6 @@ import {
         retryAttempts: 5,
         retryDelay: 3000,
         writeConcern: { w: "majority" },
-        // For replica set with transactions, ensure MONGODB_URI includes ?replicaSet=rs0
-        // Example: mongodb://localhost:27017/?replicaSet=rs0
       },
     ),
     MongooseModule.forRoot(
@@ -257,6 +260,7 @@ import {
     TrainingRunRepository,
     AuthRepositoryFactory,
     MongoDBService,
+    DbConfigService,
   ],
   exports: [
     UserRepository,
@@ -280,6 +284,7 @@ import {
     TrainingRunRepository,
     AuthRepositoryFactory,
     MongoDBService,
+    DbConfigService,
   ],
 })
 export class MongoDBModule {}

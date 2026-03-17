@@ -46,7 +46,7 @@ export class PasskeyRepository {
   }
 
   async update(id: string, data: Partial<Passkey>): Promise<Passkey | null> {
-    return this.passkeyModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    return this.passkeyModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
   }
 
   async updateMany(filter: any, data: Partial<Passkey>): Promise<number> {

@@ -96,25 +96,32 @@ export class UpstoxHistoricalAPIService {
     this.rateLimiter = new TokenBucket(50, 50 / 1000);
   }
 
+  private v2Client: AxiosInstance | null = null;
+
   /**
-   * Initialize HTTP client with access token
-   * Must be called before making API requests
+   * Initialize HTTP clients with access token.
+   * V3 client for historical candles, V2 client for options/expiry/derivatives.
    */
   setAccessToken(accessToken: string): void {
+    const commonHeaders = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    };
+
     this.client = axios.create({
       baseURL: UPSTOX_CONSTANTS.API.BASE_URL_V3,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: commonHeaders,
+      timeout: 10000,
+    });
+
+    this.v2Client = axios.create({
+      baseURL: UPSTOX_CONSTANTS.API.BASE_URL_V2,
+      headers: commonHeaders,
       timeout: 10000,
     });
   }
 
-  /**
-   * Ensure client is initialized
-   */
   private ensureClient(): AxiosInstance {
     if (!this.client) {
       throw new Error(
@@ -122,6 +129,15 @@ export class UpstoxHistoricalAPIService {
       );
     }
     return this.client;
+  }
+
+  private ensureV2Client(): AxiosInstance {
+    if (!this.v2Client) {
+      throw new Error(
+        "UpstoxHistoricalAPI not initialized. Call setAccessToken() first."
+      );
+    }
+    return this.v2Client;
   }
 
   // ═══════════════════════════════════════════════════════
@@ -239,15 +255,15 @@ export class UpstoxHistoricalAPIService {
 
   /**
    * Get all expiry dates for an instrument
-   * GET /v3/option/contract/expiry?instrument_key=...
+   * GET /v2/expired-instruments/expiries?instrument_key=...
    */
   async getExpiryDates(instrumentKey: string): Promise<string[]> {
     await this.rateLimiter.wait();
-    const client = this.ensureClient();
+    const client = this.ensureV2Client();
 
     try {
       const response = await client.get<ExpiryDatesResponse>(
-        "/option/contract/expiry",
+        "/expired-instruments/expiries",
         { params: { instrument_key: instrumentKey } }
       );
 
@@ -263,14 +279,14 @@ export class UpstoxHistoricalAPIService {
 
   /**
    * Get active option contracts for an underlying + expiry
-   * GET /v3/option/contract?instrument_key=...&expiry_date=...
+   * GET /v2/option/contract?instrument_key=...&expiry_date=...
    */
   async getActiveOptionContracts(
     instrumentKey: string,
     expiryDate?: string,
   ): Promise<ActiveOptionContract[]> {
     await this.rateLimiter.wait();
-    const client = this.ensureClient();
+    const client = this.ensureV2Client();
 
     try {
       const params: Record<string, string> = { instrument_key: instrumentKey };
@@ -293,14 +309,14 @@ export class UpstoxHistoricalAPIService {
 
   /**
    * Get option chain with Greeks for an underlying + expiry
-   * GET /v3/option/chain?instrument_key=...&expiry_date=...
+   * GET /v2/option/chain?instrument_key=...&expiry_date=...
    */
   async getOptionChainV3(
     instrumentKey: string,
     expiryDate: string,
   ): Promise<OptionChainStrike[]> {
     await this.rateLimiter.wait();
-    const client = this.ensureClient();
+    const client = this.ensureV2Client();
 
     try {
       const response = await client.get<OptionChainResponse>(
@@ -320,18 +336,18 @@ export class UpstoxHistoricalAPIService {
 
   /**
    * Get expired futures for an underlying + expiry date
-   * GET /v3/expired-derivatives/future?instrument_key=...&expiry_date=...
+   * GET /v2/expired-instruments/future/contract?instrument_key=...&expiry_date=...
    */
   async getExpiredFutures(
     instrumentKey: string,
     expiryDate: string,
   ): Promise<ExpiredInstrument[]> {
     await this.rateLimiter.wait();
-    const client = this.ensureClient();
+    const client = this.ensureV2Client();
 
     try {
       const response = await client.get<ExpiredDerivativesResponse>(
-        "/expired-derivatives/future",
+        "/expired-instruments/future/contract",
         { params: { instrument_key: instrumentKey, expiry_date: expiryDate } }
       );
 
@@ -347,18 +363,18 @@ export class UpstoxHistoricalAPIService {
 
   /**
    * Get expired options for an underlying + expiry date
-   * GET /v3/expired-derivatives/option?instrument_key=...&expiry_date=...
+   * GET /v2/expired-instruments/option/contract?instrument_key=...&expiry_date=...
    */
   async getExpiredOptions(
     instrumentKey: string,
     expiryDate: string,
   ): Promise<ExpiredInstrument[]> {
     await this.rateLimiter.wait();
-    const client = this.ensureClient();
+    const client = this.ensureV2Client();
 
     try {
       const response = await client.get<ExpiredDerivativesResponse>(
-        "/expired-derivatives/option",
+        "/expired-instruments/option/contract",
         { params: { instrument_key: instrumentKey, expiry_date: expiryDate } }
       );
 

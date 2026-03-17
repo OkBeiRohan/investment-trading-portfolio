@@ -42,7 +42,7 @@ export class TwoFactorRepository {
     data: Partial<TwoFactor>
   ): Promise<TwoFactor | null> {
     return this.twoFactorModel
-      .findOneAndUpdate({ userId }, data, { new: true })
+      .findOneAndUpdate({ userId }, data, { returnDocument: 'after' })
       .exec();
   }
 

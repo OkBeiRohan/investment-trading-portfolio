@@ -31,7 +31,7 @@ export interface MarketQuote {
 export class MarketDataService {
   private readonly logger = new Logger(MarketDataService.name);
 
-  constructor(private readonly repository: MarketDataRepository) {}
+  constructor(private readonly repository: MarketDataRepository) { }
 
   /**
    * Get Last Traded Price (LTP) for instruments
@@ -100,7 +100,7 @@ export class MarketDataService {
       ask: data.depth.sell[0]?.price || 0,
       bidSize: data.depth.buy[0]?.quantity || 0,
       askSize: data.depth.sell[0]?.quantity || 0,
-      timestamp: new Date(data.last_trade_time),
+      timestamp: new Date(data.last_trade_time || ""),
     }));
   }
 }

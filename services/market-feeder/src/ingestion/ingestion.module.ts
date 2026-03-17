@@ -18,11 +18,13 @@ import {
   WebSocketModule,
   UpstoxModule,
   UpstoxWebSocketModule,
+  MarketCalendarModule,
 } from '@repo/market-sdk';
 
 // Services
 import { GapDetectorService } from './gap-detector.service';
 import { InstrumentSyncService } from './instrument-sync.service';
+import { InstrumentListSyncService } from './instrument-list-sync.service';
 import { HistoricalBackfillService } from './historical-backfill.service';
 import { GlobalDataService } from './global-data.service';
 import { SchedulerService } from './scheduler.service';
@@ -40,6 +42,7 @@ import { IngestionController } from './ingestion.controller';
     WebSocketModule,
     UpstoxModule,
     UpstoxWebSocketModule,
+    MarketCalendarModule,
   ],
   controllers: [IngestionController],
   providers: [
@@ -55,6 +58,7 @@ import { IngestionController } from './ingestion.controller';
     // Ingestion services
     GapDetectorService,
     InstrumentSyncService,
+    InstrumentListSyncService,
     HistoricalBackfillService,
     GlobalDataService,
     SchedulerService,
@@ -68,6 +72,7 @@ import { IngestionController } from './ingestion.controller';
   ],
   exports: [
     InstrumentSyncService,
+    InstrumentListSyncService,
     HistoricalBackfillService,
     GlobalDataService,
     GapDetectorService,

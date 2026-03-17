@@ -2,10 +2,36 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createBetterAuthInstance } from "../server/auth.config";
 import { EmailService } from "./email.service";
-import { createAuthConfig } from "../config/auth.config";
-import { CONFIG_TOKEN, IEnvironment } from "@repo/schema";
+import {
+  createAuthConfig,
+  IBrokerProviders,
+} from "../config/auth.config";
+import { CONFIG_TOKEN } from "@repo/schema";
 import { MongoDBService } from "@repo/database";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+
+interface IServiceAuthConfig {
+  environment: "development" | "production" | "staging" | "test";
+  auth: {
+    appName: string;
+    appUrl: string;
+    secret: string;
+    trustedOrigins: string[];
+    frontendUrl: string;
+    transactions: boolean;
+    socialProviders?: {
+      google?: { clientId: string; clientSecret: string };
+      github?: { clientId: string; clientSecret: string };
+      discord?: { clientId: string; clientSecret: string };
+    };
+    brokerProviders?: IBrokerProviders;
+    rateLimit?: {
+      enabled: boolean;
+      window: number;
+      max: number;
+    };
+  };
+}
 
 @Injectable()
 export class AuthService {
@@ -16,7 +42,8 @@ export class AuthService {
   ) {}
 
   getAuthInstance() {
-    const config = this.configService.getOrThrow<IEnvironment>(CONFIG_TOKEN);
+    const config =
+      this.configService.getOrThrow<IServiceAuthConfig>(CONFIG_TOKEN);
 
     return createBetterAuthInstance({
       adapter: mongodbAdapter(

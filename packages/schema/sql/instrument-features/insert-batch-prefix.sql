@@ -1,4 +1,4 @@
-INSERT INTO instrument_features_1m (
+INSERT INTO instrument_features (
   timestamp, instrument_key, last_price, vwap, price_vs_vwap,
   day_high, day_low, price_vs_day_high, price_vs_day_low, range_position,
   prev_day_high_dist, prev_day_low_dist, weekly_high_dist, weekly_low_dist,

@@ -6,7 +6,6 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   InstrumentMasterRepository,
   OrderbookRepository,
@@ -15,6 +14,7 @@ import {
   DataInventoryRepository,
   InstrumentRepository,
   ProcessingLogRepository,
+  DbConfigService,
 } from '@repo/database';
 import { OptionChainSnapshot } from '@repo/schema';
 import {
@@ -48,7 +48,7 @@ export class InstrumentSyncService {
   constructor(
     private readonly upstoxApi: UpstoxHistoricalAPIService,
     private readonly authManager: AuthManagerService,
-    private readonly configService: ConfigService,
+    private readonly dbConfig: DbConfigService,
     // QuestDB
     private readonly instrumentMasterRepo: InstrumentMasterRepository,
     private readonly orderbookRepo: OrderbookRepository,
@@ -468,7 +468,8 @@ export class InstrumentSyncService {
     let added = 0;
     let skipped = 0;
     const errors: string[] = [];
-    const maxExpiries = this.configService.get<number>('ingestion.maxExpiries', 52);
+    const ingestionConfig = await this.dbConfig.getIngestionConfig();
+    const maxExpiries = ingestionConfig.maxExpiries;
 
     try {
       const expiries = await this.upstoxApi.getExpiryDates(NIFTY50_INDEX);

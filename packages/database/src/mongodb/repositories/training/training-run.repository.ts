@@ -40,7 +40,7 @@ export class TrainingRunRepository {
       .findOneAndUpdate(
         { _id: runId, "stages.name": stageName },
         { $set: update },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
   }
@@ -53,7 +53,7 @@ export class TrainingRunRepository {
       .findByIdAndUpdate(
         runId,
         { $push: { artifacts: artifact } },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
   }
@@ -73,7 +73,7 @@ export class TrainingRunRepository {
       update.error = error;
     }
     return this.model
-      .findByIdAndUpdate(runId, update, { new: true })
+      .findByIdAndUpdate(runId, update, { returnDocument: 'after' })
       .exec();
   }
 
@@ -82,7 +82,7 @@ export class TrainingRunRepository {
     data: Partial<TrainingRun>,
   ): Promise<TrainingRun | null> {
     return this.model
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
   }
 

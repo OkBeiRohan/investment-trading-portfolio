@@ -7,9 +7,10 @@ import { UpstoxWebhookController } from './upstox-webhook.controller';
 import { UpstoxReAuthController } from './upstox-reauth.controller';
 import { DailyReAuthService } from './daily-reauth.service';
 import { MongoDBModule } from '@repo/database';
+import { MarketCalendarModule } from '@repo/market-sdk';
 
 @Module({
-  imports: [MongoDBModule],
+  imports: [MongoDBModule, MarketCalendarModule],
   controllers: [
     UserController,
     TradingSettingsController,

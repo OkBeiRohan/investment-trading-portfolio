@@ -45,7 +45,7 @@ export class ExperimentRepository {
       update[`metrics.${key}`] = value;
     }
     return this.model
-      .findByIdAndUpdate(id, { $set: update }, { new: true })
+      .findByIdAndUpdate(id, { $set: update }, { returnDocument: 'after' })
       .exec();
   }
 
@@ -54,7 +54,7 @@ export class ExperimentRepository {
       .findByIdAndUpdate(
         id,
         { isDeployed: true, deployedAt: new Date() },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
   }
@@ -64,7 +64,7 @@ export class ExperimentRepository {
     data: Partial<Experiment>,
   ): Promise<Experiment | null> {
     return this.model
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
   }
 

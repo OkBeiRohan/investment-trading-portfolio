@@ -42,7 +42,7 @@ export class BrokerAccountRepository {
     data: Partial<BrokerAccount>
   ): Promise<BrokerAccount | null> {
     return this.brokerAccountModel
-      .findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true })
+      .findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { returnDocument: 'after' })
       .exec();
   }
 
@@ -55,7 +55,7 @@ export class BrokerAccountRepository {
       .findOneAndUpdate(
         { userId, providerId },
         { ...data, updatedAt: new Date() },
-        { new: true, upsert: true }
+        { upsert: true, returnDocument: 'after' }
       )
       .exec();
   }
@@ -116,7 +116,7 @@ export class BrokerAccountRepository {
           updatedAt: new Date(),
           lastSyncAt: new Date(),
         },
-        { new: true }
+        { returnDocument: 'after' }
       )
       .exec();
   }
@@ -163,7 +163,7 @@ export class BrokerAccountRepository {
       .findOneAndUpdate(
         { userId, providerId: "upstox" },
         { ...data, updatedAt: new Date() },
-        { new: true }
+        { returnDocument: 'after' }
       )
       .exec();
   }
@@ -176,8 +176,29 @@ export class BrokerAccountRepository {
       .findOneAndUpdate(
         { userId, providerId: "upstox" },
         { lastReAuthAt: new Date(), updatedAt: new Date() },
-        { new: true }
+        { returnDocument: 'after' }
       )
+      .exec();
+  }
+
+  /**
+   * Find any broker account with a valid (non-expired) access token.
+   * Used by system-level services (market-feeder) when no specific user is targeted.
+   */
+  async findAnyValidToken(
+    providerId: string,
+  ): Promise<BrokerAccount | null> {
+    return this.brokerAccountModel
+      .findOne({
+        providerId,
+        accessToken: { $exists: true, $ne: null },
+        $or: [
+          { accessTokenExpiresAt: { $gt: new Date() } },
+          { accessTokenExpiresAt: { $exists: false } },
+        ],
+      })
+      .select("+accessToken +accessTokenExpiresAt")
+      .sort({ lastReAuthAt: -1 })
       .exec();
   }
 }

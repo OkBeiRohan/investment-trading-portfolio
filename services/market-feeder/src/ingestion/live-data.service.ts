@@ -1,17 +1,22 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UpstoxWebSocketService, UpstoxMarketData } from '@repo/market-sdk';
-import { TickDataRepository, TickData, InstrumentMasterRepository } from '@repo/database';
+import {
+  TickDataRepository,
+  TickData,
+  InstrumentMasterRepository,
+  InstrumentRepository,
+  DbConfigService,
+} from '@repo/database';
 
 @Injectable()
 export class LiveDataService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(LiveDataService.name);
 
-  // Buffer to batch QuestDB inserts
   private tickBuffer: TickData[] = [];
   private readonly MAX_BUFFER_SIZE = 5000;
   private flushTimer: NodeJS.Timeout | null = null;
-  private readonly FLUSH_INTERVAL_MS = 1000; // Flush every second
+  private readonly FLUSH_INTERVAL_MS = 1000;
 
   private subscriptionId: string | null = null;
   private isRunning = false;
@@ -19,7 +24,9 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
   constructor(
     private readonly upstoxWs: UpstoxWebSocketService,
     private readonly tickRepo: TickDataRepository,
-    private readonly instrumentRepo: InstrumentMasterRepository,
+    private readonly instrumentMasterRepo: InstrumentMasterRepository,
+    private readonly instrumentRepo: InstrumentRepository,
+    private readonly dbConfig: DbConfigService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -94,26 +101,54 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
   }
 
   /**
-   * Find front-month important instruments
+   * Build instrument list from MongoDB: all data-collection-enabled instruments
+   * plus Nifty 50 constituents and indices (always included).
    */
   private async getActiveInstruments(): Promise<string[]> {
-    const all = await this.instrumentRepo.getAllInstruments();
-    const now = new Date();
-    
-    const active = all.filter(inst => {
-      // Always include indices
-      if (inst.instrumentType === 'INDEX') return true;
-      
-      // Include active derivatives (not expired)
-      if (inst.expiry && inst.expiry > now) {
-        // Just as a filter to avoid blowing up limits: only fetch near term expiries
-        const daysToExpiry = (inst.expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-        return daysToExpiry <= 14; 
-      }
-      return false;
-    });
+    const instrumentKeys = new Set<string>();
 
-    return active.map(i => i.instrumentKey);
+    const dataCollectionEnabled =
+      await this.instrumentRepo.findDataCollectionEnabled();
+    for (const inst of dataCollectionEnabled) {
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        instrumentKeys.add(inst.instrumentKey);
+      }
+    }
+
+    const nifty50 = await this.instrumentRepo.findNifty50();
+    for (const inst of nifty50) {
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        instrumentKeys.add(inst.instrumentKey);
+      }
+    }
+
+    const indices = await this.instrumentRepo.findByType("INDEX");
+    for (const inst of indices) {
+      if (this.isUpstoxInstrument(inst.instrumentKey)) {
+        instrumentKeys.add(inst.instrumentKey);
+      }
+    }
+
+    const now = new Date();
+    const allQuestDb = await this.instrumentMasterRepo.getAllInstruments();
+    for (const inst of allQuestDb) {
+      if (inst.instrumentType === "INDEX" && this.isUpstoxInstrument(inst.instrumentKey)) {
+        instrumentKeys.add(inst.instrumentKey);
+      }
+      if (inst.expiry && inst.expiry > now) {
+        const daysToExpiry =
+          (inst.expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysToExpiry <= 14) {
+          instrumentKeys.add(inst.instrumentKey);
+        }
+      }
+    }
+
+    return Array.from(instrumentKeys);
+  }
+
+  private isUpstoxInstrument(key: string): boolean {
+    return key.startsWith("NSE_") || key.startsWith("BSE_") || key.startsWith("MCX_");
   }
 
   /**

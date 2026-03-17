@@ -39,7 +39,7 @@ export class SessionRepository {
 
   async update(id: string, data: Partial<Session>): Promise<Session | null> {
     return this.sessionModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .populate("userId")
       .exec();
   }

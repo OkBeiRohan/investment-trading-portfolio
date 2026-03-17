@@ -21,14 +21,21 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.1.17",
+    "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.1.17",
     "@nestjs/microservices": "^11.1.17",
     "@nestjs/platform-express": "^11.1.17",
+    "@nestjs/schedule": "^6.1.1",
+    "@repo/database": "workspace:*",
     "@repo/observability": "workspace:*",
+    "@repo/schema": "workspace:*",
+    "ioredis": "^5.10.0",
+    "nodemailer": "^8.0.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@types/nodemailer": "^7.0.11",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@nestjs/cli": "^11.0.16",

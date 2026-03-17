@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layouts/header";
+import { mockMarketTicker } from "./_data/mock";
+import styles from "./layout.module.css";
 
 export default async function Layout({ children }: LayoutProps<"/">) {
-  // Server-side session check using Better Auth
   const cookieStore = await cookies();
   const cookiePrefix = process.env.APP_NAME || "better-auth";
   const sessionToken =
@@ -15,9 +16,9 @@ export default async function Layout({ children }: LayoutProps<"/">) {
   }
 
   return (
-    <>
-      <Header />
-      {children}
-    </>
+    <div className={styles.appLayout}>
+      <Header marketTicker={mockMarketTicker} />
+      <main className={styles.content}>{children}</main>
+    </div>
   );
 }

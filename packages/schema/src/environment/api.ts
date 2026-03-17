@@ -36,9 +36,12 @@ export const environmentSchema = z
     DISCORD_CLIENT_ID: z.string().optional(),
     DISCORD_CLIENT_SECRET: z.string().optional(),
 
-    // Broker Providers (optional)
-    UPSTOX_CLIENT_ID: z.string().optional(),
-    UPSTOX_CLIENT_SECRET: z.string().optional(),
+    // Upstox (API Key = Client ID in Upstox terminology)
+    UPSTOX_API_KEY: z.string().optional(),
+    UPSTOX_API_SECRET: z.string().optional(),
+    UPSTOX_REDIRECT_URI: z
+      .string()
+      .default("http://localhost:3004/api/upstox/reauth/callback"),
 
     // Rate Limiting
     RATE_LIMIT_ENABLED: z.string().default("true"),
@@ -87,10 +90,10 @@ export const environmentSchema = z
       },
 
       brokerProviders: {
-        upstox: data.UPSTOX_CLIENT_ID
+        upstox: data.UPSTOX_API_KEY
           ? {
-              clientId: data.UPSTOX_CLIENT_ID,
-              clientSecret: data.UPSTOX_CLIENT_SECRET!,
+              clientId: data.UPSTOX_API_KEY,
+              clientSecret: data.UPSTOX_API_SECRET!,
             }
           : undefined,
       },
@@ -100,6 +103,12 @@ export const environmentSchema = z
         window: parseInt(data.RATE_LIMIT_WINDOW, 10),
         max: parseInt(data.RATE_LIMIT_MAX, 10),
       },
+    },
+
+    upstox: {
+      apiKey: data.UPSTOX_API_KEY || "",
+      apiSecret: data.UPSTOX_API_SECRET || "",
+      redirectUri: data.UPSTOX_REDIRECT_URI,
     },
   }));
 

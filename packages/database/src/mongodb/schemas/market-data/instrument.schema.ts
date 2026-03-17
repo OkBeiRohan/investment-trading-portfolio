@@ -188,16 +188,26 @@ export class Instrument {
     @Prop({ default: false, index: true })
     isNifty50!: boolean;
 
+    @Prop({ default: false, index: true })
+    tradingEnabled!: boolean;
+
+    @Prop({ default: false, index: true })
+    dataCollectionEnabled!: boolean;
+
     @Prop()
     industry?: string;
 
     @Prop()
     notes?: string;
+
+    @Prop({ type: Date })
+    lastBodSyncAt?: Date;
 }
 
 export const InstrumentSchema = SchemaFactory.createForClass(Instrument);
 
-// Compound indexes
 InstrumentSchema.index({ instrumentType: 1, isActive: 1 });
 InstrumentSchema.index({ isNifty50: 1, instrumentType: 1 });
 InstrumentSchema.index({ "fetchStatus.status": 1 });
+InstrumentSchema.index({ tradingEnabled: 1, isActive: 1 });
+InstrumentSchema.index({ dataCollectionEnabled: 1, isActive: 1 });
