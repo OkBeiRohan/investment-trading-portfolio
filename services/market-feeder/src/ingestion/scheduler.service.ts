@@ -6,14 +6,13 @@ import {
   ProcessingLogRepository,
   InstrumentRepository,
 } from "@repo/database";
-import { MarketCalendarService } from "@repo/market-sdk";
+import { MarketCalendarService, GLOBAL_SYMBOL_MAPPINGS } from "@repo/market-sdk";
 import { InstrumentSyncService } from "./instrument-sync.service";
 import { InstrumentListSyncService } from "./instrument-list-sync.service";
 import { HistoricalBackfillService } from "./historical-backfill.service";
 import { GlobalDataService } from "./global-data.service";
 import { LiveDataService } from "./live-data.service";
 import {
-  NIFTY50_CONSTITUENTS,
   NIFTY50_CONSTITUENTS_DATA,
   NIFTY50_INDEX,
   INDIA_VIX,
@@ -59,28 +58,23 @@ export class SchedulerService implements OnModuleInit {
     }
 
     this.logger.log("═".repeat(60));
-    this.logger.log("FIRST RUN DETECTED — Bootstrapping instruments");
+    this.logger.log("FIRST RUN DETECTED — Bootstrapping Nifty 50 trading setup");
     this.logger.log("═".repeat(60));
 
-    // Step 1: Fetch complete instrument list from Upstox BOD files
-    this.logger.log("[BOOTSTRAP] Step 1: Downloading Upstox instrument list...");
-    try {
-      const syncResult = await this.instrumentListSync.syncAll();
-      this.logger.log(
-        `[BOOTSTRAP] Instrument list: ${syncResult.totalUpserted} instruments loaded`,
-      );
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`[BOOTSTRAP] Instrument list sync failed: ${msg}`);
-      this.logger.log("[BOOTSTRAP] Continuing with Nifty 50 seeding...");
-    }
-
-    // Step 2: Enable Nifty 50 index + constituents for data collection and trading
-    this.logger.log("[BOOTSTRAP] Step 2: Enabling Nifty 50 instruments...");
+    // Step 1: Seed only the instruments required for Nifty 50 trading + features
+    this.logger.log("[BOOTSTRAP] Step 1: Seeding Nifty 50 instruments...");
     await this.seedNifty50Instruments();
 
-    // Step 3: Sync detailed instrument data (options, futures, expired)
-    this.logger.log("[BOOTSTRAP] Step 3: Syncing instrument details (options, futures)...");
+    // Step 2: Seed MCX commodities (required for Tier 0 features)
+    this.logger.log("[BOOTSTRAP] Step 2: Seeding MCX commodities...");
+    await this.seedMcxCommodities();
+
+    // Step 3: Seed global data instruments (Yahoo Finance symbols for feature computation)
+    this.logger.log("[BOOTSTRAP] Step 3: Seeding global data instruments...");
+    await this.seedGlobalInstruments();
+
+    // Step 4: Sync Nifty options/futures details from Upstox API
+    this.logger.log("[BOOTSTRAP] Step 4: Syncing Nifty options & expired instruments...");
     try {
       await this.instrumentSync.syncAll();
     } catch (error) {
@@ -89,12 +83,16 @@ export class SchedulerService implements OnModuleInit {
     }
 
     this.logger.log("═".repeat(60));
-    this.logger.log("BOOTSTRAP COMPLETE — Nifty 50 instruments enabled");
+    this.logger.log("BOOTSTRAP COMPLETE");
     this.logger.log("═".repeat(60));
   }
 
+  /**
+   * Seed Nifty 50 index, current 50 constituents, removed constituents,
+   * and Nifty futures. Only these are enabled for trading/data collection.
+   */
   private async seedNifty50Instruments(): Promise<void> {
-    const niftyKeys: string[] = [];
+    let count = 0;
 
     // Nifty 50 Index + India VIX
     for (const key of [NIFTY50_INDEX, INDIA_VIX]) {
@@ -110,29 +108,29 @@ export class SchedulerService implements OnModuleInit {
         tradingEnabled: true,
         dataCollectionEnabled: true,
       });
-      niftyKeys.push(key);
+      count++;
     }
 
-    // Current Nifty 50 constituents
-    for (const constituent of NIFTY50_CONSTITUENTS_DATA) {
+    // Current 50 constituents
+    for (const c of NIFTY50_CONSTITUENTS_DATA) {
       await this.instrumentRepo.upsert({
-        instrumentKey: constituent.instrumentKey,
+        instrumentKey: c.instrumentKey,
         instrumentType: "EQUITY",
         exchange: "NSE",
         segment: "EQ",
-        tradingSymbol: constituent.symbol,
-        name: constituent.companyName,
-        isin: constituent.isin,
-        industry: constituent.industry,
+        tradingSymbol: c.symbol,
+        name: c.companyName,
+        isin: c.isin,
+        industry: c.industry,
         isActive: true,
         isNifty50: true,
         tradingEnabled: true,
         dataCollectionEnabled: true,
       });
-      niftyKeys.push(constituent.instrumentKey);
+      count++;
     }
 
-    // Nifty 50 futures
+    // Nifty futures (near/next/far month)
     for (const key of NIFTY50_FUTURES) {
       await this.instrumentRepo.upsert({
         instrumentKey: key,
@@ -146,29 +144,99 @@ export class SchedulerService implements OnModuleInit {
         tradingEnabled: true,
         dataCollectionEnabled: true,
       });
-      niftyKeys.push(key);
+      count++;
     }
 
-    // Removed Nifty 50 constituents (historical data needed but not for live trading)
-    for (const removed of REMOVED_NIFTY50_CONSTITUENTS) {
+    // Removed constituents (historical data for survivorship-bias-free features)
+    for (const r of REMOVED_NIFTY50_CONSTITUENTS) {
       await this.instrumentRepo.upsert({
-        instrumentKey: removed.instrumentKey,
+        instrumentKey: r.instrumentKey,
         instrumentType: "EQUITY",
         exchange: "NSE",
         segment: "EQ",
-        tradingSymbol: removed.symbol,
-        name: removed.companyName,
+        tradingSymbol: r.symbol,
+        name: r.companyName,
         isActive: true,
         isNifty50: false,
         tradingEnabled: false,
         dataCollectionEnabled: true,
       });
-      niftyKeys.push(removed.instrumentKey);
+      count++;
     }
 
     this.logger.log(
-      `[BOOTSTRAP] Seeded ${niftyKeys.length} Nifty 50 instruments (${NIFTY50_CONSTITUENTS_DATA.length} current + ${REMOVED_NIFTY50_CONSTITUENTS.length} removed + ${NIFTY50_FUTURES.length} futures + 2 indices)`,
+      `[BOOTSTRAP] Seeded ${count} instruments: 2 indices, ${NIFTY50_CONSTITUENTS_DATA.length} constituents, ${NIFTY50_FUTURES.length} futures, ${REMOVED_NIFTY50_CONSTITUENTS.length} removed`,
     );
+  }
+
+  /**
+   * Seed MCX commodity futures required for Tier 0 features.
+   * Crude Oil, Natural Gas, Gold, Silver, Copper.
+   */
+  private async seedMcxCommodities(): Promise<void> {
+    const mcxCommodities = [
+      { prefix: "CRUDEOIL", name: "Crude Oil" },
+      { prefix: "NATURALGAS", name: "Natural Gas" },
+      { prefix: "GOLD", name: "Gold" },
+      { prefix: "SILVER", name: "Silver" },
+      { prefix: "COPPER", name: "Copper" },
+    ];
+
+    let count = 0;
+    for (const commodity of mcxCommodities) {
+      const key = `MCX_FO|${commodity.prefix}`;
+      await this.instrumentRepo.upsert({
+        instrumentKey: key,
+        instrumentType: "FUTURE",
+        exchange: "MCX",
+        segment: "MCX",
+        tradingSymbol: commodity.prefix,
+        name: commodity.name,
+        isActive: true,
+        tradingEnabled: false,
+        dataCollectionEnabled: true,
+      });
+      count++;
+    }
+
+    this.logger.log(`[BOOTSTRAP] Seeded ${count} MCX commodity instruments`);
+  }
+
+  /**
+   * Seed global instruments tracked via Yahoo Finance, Alpha Vantage, Finnhub.
+   * These are virtual instruments (GLOBAL|*) used for Tier 0/1 macro features.
+   */
+  private async seedGlobalInstruments(): Promise<void> {
+    let count = 0;
+
+    for (const instrumentKey of Object.keys(GLOBAL_SYMBOL_MAPPINGS)) {
+      const name = instrumentKey.replace("GLOBAL|", "");
+      const isForex = instrumentKey.includes("/");
+      const isBond = instrumentKey.includes("Yield");
+      const isCommodity = ["Crude Oil", "Gold", "Silver", "Copper", "Natural Gas"].some(
+        (c) => instrumentKey.includes(c),
+      );
+
+      let segment = "INDEX";
+      if (isForex) segment = "FOREX";
+      else if (isBond) segment = "BOND";
+      else if (isCommodity) segment = "COMMODITY";
+
+      await this.instrumentRepo.upsert({
+        instrumentKey,
+        instrumentType: "INDEX",
+        exchange: "GLOBAL",
+        segment,
+        tradingSymbol: name,
+        name,
+        isActive: true,
+        tradingEnabled: false,
+        dataCollectionEnabled: true,
+      });
+      count++;
+    }
+
+    this.logger.log(`[BOOTSTRAP] Seeded ${count} global instruments (Yahoo Finance)`);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
