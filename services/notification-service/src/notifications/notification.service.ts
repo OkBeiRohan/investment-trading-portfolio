@@ -18,7 +18,7 @@ export class NotificationService {
     private readonly emailChannel: EmailChannel,
     private readonly dbConfig: DbConfigService,
     private readonly auditLogRepo: AuditLogRepository,
-  ) {}
+  ) { }
 
   async sendNotification(payload: NotificationPayload): Promise<boolean> {
     const config = await this.dbConfig.getNotificationConfig();
@@ -29,7 +29,7 @@ export class NotificationService {
 
       await this.auditLogRepo.create({
         action: `notification.${payload.type}.${sent ? "sent" : "failed"}`,
-        category: "notification",
+        category: "system",
         userId: payload.userId,
         details: {
           channel: "email",
