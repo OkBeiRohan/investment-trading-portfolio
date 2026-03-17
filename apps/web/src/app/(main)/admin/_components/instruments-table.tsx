@@ -31,8 +31,10 @@ export function InstrumentsTable() {
   const toggleTradingMutation = useToggleInstrumentTrading();
   const toggleDataMutation = useToggleInstrumentDataCollection();
 
-  const instruments = data.items;
-  const totalPages = Math.ceil(data.total / data.limit);
+  const instruments = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const limit = data?.limit ?? 50;
+  const totalPages = Math.ceil(total / limit);
 
   const togglingKey =
     toggleTradingMutation.isPending
@@ -51,7 +53,7 @@ export function InstrumentsTable() {
     <SectionCard
       title="Instruments"
       action={
-        <span className={styles.textMuted}>{data.total} instruments</span>
+        <span className={styles.textMuted}>{total} instruments</span>
       }
     >
       <form className={styles.filterBar} onSubmit={handleSearchSubmit}>
@@ -190,7 +192,7 @@ export function InstrumentsTable() {
           {totalPages > 1 && (
             <div className={styles.pagination}>
               <span className={styles.paginationInfo}>
-                Page {data.page} of {totalPages}
+                Page {data?.page ?? page} of {totalPages}
               </span>
               <div className={styles.paginationButtons}>
                 <Button
