@@ -4,18 +4,44 @@
   justify-content: space-between;
   gap: var(--spacing-4);
   padding: var(--spacing-3) var(--spacing-6);
-  background-color: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border-light);
   height: var(--header-height);
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
 }
 
-/* Search */
-.searchSection {
+.left {
+  display: flex;
+  align-items: center;
+  min-width: 180px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  font-size: var(--font-size-sm);
+}
+
+.breadcrumbMuted {
+  color: var(--color-text-tertiary);
+}
+
+.breadcrumbSep {
+  color: var(--color-text-muted);
+}
+
+.breadcrumbActive {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.center {
   flex: 1;
-  max-width: 420px;
+  max-width: 440px;
+  margin: 0 auto;
 }
 
 .searchBox {
@@ -24,13 +50,14 @@
   gap: var(--spacing-2);
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--spacing-2) var(--spacing-3);
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .searchBox:focus-within {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .searchIcon {
@@ -53,17 +80,16 @@
 }
 
 .searchKbd {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   color: var(--color-text-muted);
-  background: var(--color-bg-hover);
+  background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 1px 6px;
   line-height: 1.4;
 }
 
-/* Actions */
-.actions {
+.right {
   display: flex;
   align-items: center;
   gap: var(--spacing-1);
@@ -74,16 +100,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border: none;
   background: none;
   border-radius: var(--radius-lg);
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .iconBtn:hover {
@@ -93,43 +117,59 @@
 
 .notifDot {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 7px;
-  height: 7px;
-  background: var(--color-emerald);
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  background: var(--color-primary);
   border-radius: var(--radius-full);
-  border: 1.5px solid var(--color-bg-secondary);
+  border: 1.5px solid var(--color-bg-elevated);
+}
+
+.userChip {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1) var(--spacing-2) var(--spacing-1) var(--spacing-1);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  margin-left: var(--spacing-1);
+}
+
+.userChip:hover {
+  background: var(--color-bg-hover);
 }
 
 .avatar {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, var(--color-emerald), var(--color-sky));
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: var(--spacing-2);
-  cursor: pointer;
 }
 
 .avatarText {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  color: #0b0e11;
+  color: #fff;
 }
 
-@media (max-width: 640px) {
+.userName {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 768px) {
   .header {
     padding: var(--spacing-3) var(--spacing-4);
   }
 
-  .searchSection {
-    max-width: none;
-  }
-
-  .searchKbd {
-    display: none;
-  }
+  .left { display: none; }
+  .center { max-width: none; }
+  .userName { display: none; }
+  .searchKbd { display: none; }
 }
