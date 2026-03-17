@@ -1,8 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layouts/header";
-import { Sidebar } from "@/components/layouts/sidebar";
-import { MarketTicker } from "./_components/market-ticker";
 import { mockMarketTicker } from "./_data/mock";
 import styles from "./layout.module.css";
 
@@ -19,12 +17,8 @@ export default async function Layout({ children }: LayoutProps<"/">) {
 
   return (
     <div className={styles.appLayout}>
-      <Sidebar />
-      <div className={styles.mainArea}>
-        <Header />
-        <MarketTicker items={mockMarketTicker} />
-        <main className={styles.content}>{children}</main>
-      </div>
+      <Header marketTicker={mockMarketTicker} />
+      <main className={styles.content}>{children}</main>
     </div>
   );
 }
