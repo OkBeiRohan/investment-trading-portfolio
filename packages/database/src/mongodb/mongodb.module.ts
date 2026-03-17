@@ -23,6 +23,9 @@ import {
   TwoFactorRepository,
   PasskeyRepository,
   BrokerAccountRepository,
+  TradingConfigRepository,
+  SystemConfigRepository,
+  AuditLogRepository,
 } from "./repositories";
 import {
   Invitation,
@@ -32,7 +35,16 @@ import {
   Organization,
   OrganizationSchema,
 } from "./schemas/organization";
-import { BrokerAccount, BrokerAccountSchema } from "./schemas/trading";
+import {
+  BrokerAccount,
+  BrokerAccountSchema,
+  TradingConfig,
+  TradingConfigSchema,
+  SystemConfig,
+  SystemConfigSchema,
+  AuditLog,
+  AuditLogSchema,
+} from "./schemas/trading";
 import { AuthRepositoryFactory } from "./adapter/adapter.factory";
 import { MongoDBService } from "./mongodb.service";
 import {
@@ -41,6 +53,7 @@ import {
   ProcessingLogRepository,
   IngestionLogRepository,
   DataInventoryRepository,
+  FeatureConfigRepository,
 } from "./repositories/market-data";
 import {
   IngestionLog,
@@ -53,7 +66,19 @@ import {
   ProcessingLogSchema,
   ConstituentChange,
   ConstituentChangeSchema,
+  FeatureConfig,
+  FeatureConfigSchema,
 } from "./schemas/market-data";
+import {
+  Experiment,
+  ExperimentSchema,
+  TrainingRun,
+  TrainingRunSchema,
+} from "./schemas/training";
+import {
+  ExperimentRepository,
+  TrainingRunRepository,
+} from "./repositories/training";
 
 @Global()
 @Module({
@@ -141,6 +166,26 @@ import {
           schema: BrokerAccountSchema,
           collection: "broker_accounts",
         },
+        {
+          name: TradingConfig.name,
+          schema: TradingConfigSchema,
+          collection: "trading_configs",
+        },
+        {
+          name: SystemConfig.name,
+          schema: SystemConfigSchema,
+          collection: "system_configs",
+        },
+        {
+          name: Experiment.name,
+          schema: ExperimentSchema,
+          collection: "experiments",
+        },
+        {
+          name: TrainingRun.name,
+          schema: TrainingRunSchema,
+          collection: "training_runs",
+        },
       ],
       DatabaseConnections.Trading,
     ),
@@ -161,6 +206,11 @@ import {
           schema: ConstituentChangeSchema,
           collection: "constituent_change",
         },
+        {
+          name: FeatureConfig.name,
+          schema: FeatureConfigSchema,
+          collection: "feature_configs",
+        },
       ],
       DatabaseConnections.MarketData,
     ),
@@ -175,6 +225,11 @@ import {
           name: ProcessingLog.name,
           schema: ProcessingLogSchema,
           collection: "processing_log",
+        },
+        {
+          name: AuditLog.name,
+          schema: AuditLogSchema,
+          collection: "audit_logs",
         },
       ],
       DatabaseConnections.Logging,
@@ -194,6 +249,12 @@ import {
     IngestionLogRepository,
     DataInventoryRepository,
     ConstituentChangeRepository,
+    TradingConfigRepository,
+    SystemConfigRepository,
+    AuditLogRepository,
+    FeatureConfigRepository,
+    ExperimentRepository,
+    TrainingRunRepository,
     AuthRepositoryFactory,
     MongoDBService,
   ],
@@ -211,6 +272,12 @@ import {
     IngestionLogRepository,
     DataInventoryRepository,
     ConstituentChangeRepository,
+    TradingConfigRepository,
+    SystemConfigRepository,
+    AuditLogRepository,
+    FeatureConfigRepository,
+    ExperimentRepository,
+    TrainingRunRepository,
     AuthRepositoryFactory,
     MongoDBService,
   ],

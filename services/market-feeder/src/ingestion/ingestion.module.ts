@@ -28,6 +28,7 @@ import { GlobalDataService } from './global-data.service';
 import { SchedulerService } from './scheduler.service';
 import { LiveDataService } from './live-data.service';
 import { McxHandlerService } from './mcx-handler.service';
+import { TokenRefreshCronService } from './token-refresh-cron.service';
 
 // Controller
 import { IngestionController } from './ingestion.controller';
@@ -61,6 +62,9 @@ import { IngestionController } from './ingestion.controller';
 
     // MCX commodity tick handler
     McxHandlerService,
+
+    // Cron: daily token refresh before market open
+    TokenRefreshCronService,
   ],
   exports: [
     InstrumentSyncService,

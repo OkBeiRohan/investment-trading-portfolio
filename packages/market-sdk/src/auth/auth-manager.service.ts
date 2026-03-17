@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException, Logger, Inject } from "@nestjs/common";
-import { AccountRepository, REDIS_CLIENT } from "@repo/database";
+import { AccountRepository, BrokerAccountRepository, REDIS_CLIENT } from "@repo/database";
 import * as crypto from "crypto";
 
 // Minimal Redis interface matching ioredis client
@@ -41,6 +41,7 @@ export class AuthManagerService {
 
   constructor(
     private readonly accountRepository: AccountRepository,
+    private readonly brokerAccountRepository: BrokerAccountRepository,
     @Inject(REDIS_CLIENT) private readonly redis: IRedisClient
   ) {}
 
@@ -72,25 +73,39 @@ export class AuthManagerService {
       `Token cache MISS for ${userId} (${provider}/${environment})`
     );
 
-    // L2: Query MongoDB
+    // L2: Check broker_accounts (PRIMARY — written by Upstox webhook / re-auth)
+    const brokerAccount =
+      await this.brokerAccountRepository.findWithAccessToken(userId, provider);
+
+    if (brokerAccount?.accessToken) {
+      if (
+        brokerAccount.accessTokenExpiresAt &&
+        new Date() > brokerAccount.accessTokenExpiresAt
+      ) {
+        throw new UnauthorizedException(
+          `${provider} session expired (broker account). Please re-authenticate.`
+        );
+      }
+
+      this.logger.debug(
+        `Token resolved from broker_accounts for ${userId} (${provider})`
+      );
+      await this.cacheToken(cacheKey, brokerAccount.accessToken, this.REDIS_TTL);
+      return brokerAccount.accessToken;
+    }
+
+    // L3: Fallback to Better Auth accounts collection
     const account = await this.accountRepository.findOne({
       userId,
       providerId: provider,
     });
 
-    if (!account) {
+    if (!account?.accessToken) {
       throw new UnauthorizedException(
-        `No ${provider} account linked for user ${userId}. Please connect your account.`
+        `No ${provider} access token found for user ${userId}. Please connect your account.`
       );
     }
 
-    if (!account.accessToken) {
-      throw new UnauthorizedException(
-        `${provider} access token not found. Please re-authenticate.`
-      );
-    }
-
-    // Check token expiry
     if (
       account.accessTokenExpiresAt &&
       new Date() > account.accessTokenExpiresAt
@@ -100,9 +115,10 @@ export class AuthManagerService {
       );
     }
 
-    // Cache in Redis
+    this.logger.debug(
+      `Token resolved from auth accounts (fallback) for ${userId} (${provider})`
+    );
     await this.cacheToken(cacheKey, account.accessToken, this.REDIS_TTL);
-
     return account.accessToken;
   }
 

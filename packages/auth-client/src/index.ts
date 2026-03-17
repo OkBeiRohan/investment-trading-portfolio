@@ -7,5 +7,5 @@ import { createAuthClientInstance } from "./auth-client.config";
 export * from "./auth-client.types";
 
 export const authClient = createAuthClientInstance({
-  basePath: "/api/auth",
+  baseURL: process.env.NEXT_PUBLIC_AUTH_URL || "/api/auth",
 });

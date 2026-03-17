@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConditionalModule, ConfigModule } from '@nestjs/config';
 import { DevtoolsModule } from '@nestjs/devtools-integration';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TRPCModule } from 'nestjs-trpc-v2';
 import { AuthModule } from '@repo/authentication';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
 import { UserModule } from './user/user.module';
+import { AdminModule } from './admin/admin.module';
 import { AppContext } from './app.context';
 import { AppRouter } from './app.router';
 import registerConfiguration from './environment/configuration';
@@ -16,6 +18,7 @@ import { ObservabilityModule } from '@repo/observability';
 @Module({
   imports: [
     ObservabilityModule,
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true, load: [registerConfiguration] }),
     ConditionalModule.registerWhen(
       DevtoolsModule.register({
@@ -36,6 +39,7 @@ import { ObservabilityModule } from '@repo/observability';
     AuthModule,
     HealthModule,
     UserModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppContext, TrpcAuthMiddleware, AppRouter],
