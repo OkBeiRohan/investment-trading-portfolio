@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Schema as MongooseSchema } from "mongoose";
-import type { IDataConfig, IExperimentMetrics, IExperiment, ExperimentStatus, ModelType, ValidationType } from "@repo/schema";
+import type { IDataConfig, IExperimentMetrics, IExperiment, ExperimentStatus, ExperimentModelType, ValidationType } from "@repo/schema";
 
 @Schema({ _id: false })
 export class DataConfig implements IDataConfig {
@@ -102,7 +102,7 @@ export class Experiment extends Document implements IExperiment {
       "meta_learner",
     ],
   })
-  modelType: ModelType;
+  modelType: ExperimentModelType;
 
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   hyperparameters: Record<string, any>;

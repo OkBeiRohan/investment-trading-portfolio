@@ -1,5 +1,5 @@
 export type ExperimentStatus = 'draft' | 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-export type ModelType = 'xgboost' | 'lightgbm' | 'hmm' | 'patchtst' | 'tft' | 'mamba' | 'lit' | 'meta_learner';
+export type ExperimentModelType = 'xgboost' | 'lightgbm' | 'hmm' | 'patchtst' | 'tft' | 'mamba' | 'lit' | 'meta_learner';
 export type ValidationType = 'cpcv' | 'walk_forward' | 'time_split';
 
 export interface IDataConfig {
@@ -29,7 +29,7 @@ export interface IExperiment {
   description?: string;
   status: ExperimentStatus;
   tier: number;
-  modelType: ModelType;
+  modelType: ExperimentModelType;
   hyperparameters: Record<string, unknown>;
   dataConfig: IDataConfig;
   metrics: IExperimentMetrics;
