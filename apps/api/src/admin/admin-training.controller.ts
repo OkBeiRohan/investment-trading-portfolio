@@ -109,7 +109,7 @@ export class AdminTrainingController {
   async triggerRun(@Param('id') id: string, @Session() session: any) {
     const run = await this.trainingRunRepo.create({
       experimentId: id,
-      status: 'pending',
+      status: 'queued',
     });
 
     await this.auditLogRepo.create({
