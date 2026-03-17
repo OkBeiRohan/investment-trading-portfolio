@@ -18,8 +18,10 @@ export function UsersTable() {
   const enableMutation = useEnableUserTrading();
   const disableMutation = useDisableUserTrading();
 
-  const users = data.items;
-  const totalPages = Math.ceil(data.total / data.limit);
+  const users = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const limit = data?.limit ?? 20;
+  const totalPages = Math.ceil(total / limit);
 
   function toggleTrading(userId: string, enable: boolean) {
     if (enable) {
@@ -40,7 +42,7 @@ export function UsersTable() {
     <SectionCard
       title="Trading Users"
       action={
-        <span className={styles.textMuted}>{data.total} total users</span>
+        <span className={styles.textMuted}>{total} total users</span>
       }
     >
       {users.length === 0 ? (
@@ -116,7 +118,7 @@ export function UsersTable() {
           {totalPages > 1 && (
             <div className={styles.pagination}>
               <span className={styles.paginationInfo}>
-                Page {data.page} of {totalPages}
+                Page {data?.page ?? page} of {totalPages}
               </span>
               <div className={styles.paginationButtons}>
                 <Button

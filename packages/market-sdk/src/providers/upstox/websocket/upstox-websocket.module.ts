@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { AuthModule } from "../../../auth/auth.module";
+import { AuthModule } from "@repo/authentication";
 import { WebSocketModule } from "../../../websocket/websocket.module";
 import { UpstoxWebSocketService } from "./upstox-websocket.service";
 

@@ -9,17 +9,11 @@ import { AccountRepository, BrokerAccountRepository } from "@repo/database";
  * (the initial better-auth genericOAuth account link).
  *
  * Flow:
- *  1. buildReAuthUrl(userId) → send user to Upstox authorization page
+ *  1. buildReAuthUrl(userId) -> send user to Upstox authorization page
  *  2. Upstox redirects to /api/upstox/reauth/callback?code=&state={userId}
- *  3. exchangeCodeForToken(code, userId) → POST to Upstox token endpoint
- *  4. completeReAuth(userId, token, expiresAt) → write token to better-auth
+ *  3. exchangeCodeForToken(code, userId) -> POST to Upstox token endpoint
+ *  4. completeReAuth(userId, token, expiresAt) -> write token to better-auth
  *     accounts collection + update broker_accounts.lastReAuthAt
- *
- * Lives in @repo/market-sdk/src/auth/ alongside AuthManagerService,
- * TokenRefreshService, and TokenStorageService because:
- *  - Token management is a market-data SDK concern (tokens enable API/WS calls)
- *  - Any service (api, algo-worker) may need to trigger this flow
- *  - apps/api is a gateway; business logic belongs in shared packages
  */
 @Injectable()
 export class UpstoxReAuthService {
@@ -35,13 +29,6 @@ export class UpstoxReAuthService {
     private readonly brokerAccountRepository: BrokerAccountRepository
   ) {}
 
-  /**
-   * Build the Phase 2 Upstox authorization URL.
-   *
-   * @param userId - better-auth user ID (encoded in `state` so callback can look up account)
-   * @param clientId - Upstox app clientId
-   * @param redirectUri - Phase 2 redirect URI (different from Phase 1)
-   */
   buildReAuthUrl(
     userId: string,
     clientId: string,
@@ -56,15 +43,6 @@ export class UpstoxReAuthService {
     return `${this.UPSTOX_AUTH_URL}?${params.toString()}`;
   }
 
-  /**
-   * Exchange Phase 2 authorization code for an access token.
-   *
-   * @param code - OAuth authorization code from Upstox callback
-   * @param userId - better-auth user ID (from callback `state`)
-   * @param clientId - Upstox app clientId
-   * @param clientSecret - Upstox app clientSecret
-   * @param redirectUri - Phase 2 redirect URI
-   */
   async exchangeCodeForToken(
     code: string,
     userId: string,
@@ -109,11 +87,6 @@ export class UpstoxReAuthService {
     return { accessToken: data.access_token, expiresAt };
   }
 
-  /**
-   * Complete Phase 2 re-auth:
-   * 1. Write new token to better-auth's accounts collection (AccountRepository)
-   * 2. Record lastReAuthAt on broker_accounts
-   */
   async completeReAuth(
     userId: string,
     accessToken: string,
@@ -121,7 +94,6 @@ export class UpstoxReAuthService {
   ): Promise<void> {
     this.logger.log(`Completing Phase 2 re-auth for userId: ${userId}`);
 
-    // Verify Upstox account exists before updating
     const account = await this.accountRepository.findOne({
       userId,
       providerId: "upstox",
@@ -133,13 +105,11 @@ export class UpstoxReAuthService {
       );
     }
 
-    // Write token to better-auth's accounts collection (source of truth for tokens)
     await this.accountRepository.updateMany(
       { userId, providerId: "upstox" },
       { accessToken, accessTokenExpiresAt: expiresAt }
     );
 
-    // Record re-auth timestamp on broker_accounts for admin visibility
     await this.brokerAccountRepository.updateLastReAuth(userId);
 
     this.logger.log(

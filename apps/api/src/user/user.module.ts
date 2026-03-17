@@ -7,7 +7,6 @@ import { UpstoxWebhookController } from './upstox-webhook.controller';
 import { UpstoxReAuthController } from './upstox-reauth.controller';
 import { DailyReAuthService } from './daily-reauth.service';
 import { MongoDBModule } from '@repo/database';
-import { TokenRefreshService, AuthManagerService, UpstoxReAuthService } from '@repo/market-sdk';
 
 @Module({
   imports: [MongoDBModule],
@@ -20,9 +19,6 @@ import { TokenRefreshService, AuthManagerService, UpstoxReAuthService } from '@r
   providers: [
     UserService,
     UserRouter,
-    TokenRefreshService,
-    AuthManagerService,
-    UpstoxReAuthService,
     DailyReAuthService,
   ],
 })

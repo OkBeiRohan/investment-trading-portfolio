@@ -3,8 +3,8 @@ import { BrokerAccountRepository } from "@repo/database";
 import { AuthManagerService } from "./auth-manager.service";
 
 /**
- * Token Refresh Service
- * Manages Upstox access token refresh requests
+ * Manages Upstox access-token refresh requests (v3 API).
+ * Users must approve each request via the Upstox app / WhatsApp.
  */
 @Injectable()
 export class TokenRefreshService {
@@ -15,10 +15,6 @@ export class TokenRefreshService {
     private readonly authManager: AuthManagerService
   ) {}
 
-  /**
-   * Check for expiring tokens and request refresh
-   * User will need to approve each request via app/WhatsApp
-   */
   async checkAndRefreshExpiringTokens(): Promise<void> {
     this.logger.log("Checking for expiring Upstox tokens...");
 
@@ -52,13 +48,6 @@ export class TokenRefreshService {
     }
   }
 
-  /**
-   * Request a new access token from Upstox
-   * User will need to approve via app/WhatsApp
-   *
-   * @param userId - Better-auth user ID
-   * @param upstoxUserId - Upstox user ID (UCC)
-   */
   async requestNewToken(
     userId: string,
     upstoxUserId: string
@@ -79,7 +68,6 @@ export class TokenRefreshService {
     }
 
     try {
-      // Call Upstox v3 Access Token Request API
       const baseUrl =
         environment === "sandbox"
           ? "https://api-hft.upstox.com"
@@ -126,10 +114,6 @@ export class TokenRefreshService {
     }
   }
 
-  /**
-   * Manually trigger token refresh for a specific user
-   * Useful for debugging or immediate refresh needs
-   */
   async refreshTokenForUser(
     userId: string
   ): Promise<{ requested: boolean; message: string }> {

@@ -18,10 +18,10 @@ import {
 import { IMarketCandleBase } from '@repo/schema';
 import {
   UpstoxHistoricalAPIService,
-  AuthManagerService,
   UPSTOX_DATA_AVAILABILITY,
   type UpstoxCandleDataTyped,
 } from '@repo/market-sdk';
+import { AuthManagerService } from '@repo/authentication';
 import { GapDetectorService, DateGap } from './gap-detector.service';
 import {
   NIFTY50_INDEX,

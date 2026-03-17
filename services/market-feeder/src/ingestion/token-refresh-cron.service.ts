@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { TokenRefreshService } from '@repo/market-sdk';
+import { TokenRefreshService } from '@repo/authentication';
 
 @Injectable()
 export class TokenRefreshCronService {
