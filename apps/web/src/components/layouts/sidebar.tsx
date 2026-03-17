@@ -19,17 +19,17 @@ import { useState } from "react";
 import styles from "./sidebar.module.css";
 
 const navItems = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Wealth", href: "/wealth", icon: Wallet },
-  { label: "Trade", href: "/trade/execution", icon: TrendingUp },
-  { label: "Analytics", href: "/analytics", icon: BarChart3 },
-  { label: "Strategies", href: "/trade/strategies", icon: LineChart },
+  { label: "Dashboard", href: "/" as const, icon: LayoutDashboard },
+  { label: "Wealth", href: "/wealth" as const, icon: Wallet },
+  { label: "Trade", href: "/trade/execution" as const, icon: TrendingUp },
+  { label: "Analytics", href: "/analytics" as const, icon: BarChart3 },
+  { label: "Strategies", href: "/trade/strategies" as const, icon: LineChart },
 ];
 
 const bottomItems = [
-  { label: "Organization", href: "/organization", icon: Users },
-  { label: "Admin", href: "/admin", icon: Shield },
-  { label: "Settings", href: "/account", icon: Settings },
+  { label: "Organization", href: "/organization" as const, icon: Users },
+  { label: "Admin", href: "/admin" as const, icon: Shield },
+  { label: "Settings", href: "/account" as const, icon: Settings },
 ];
 
 export function Sidebar() {
