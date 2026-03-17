@@ -75,9 +75,14 @@ export class BrokerAccount extends Document implements IBrokerAccount {
   @Prop({ type: Date, default: Date.now })
   lastSyncAt: Date;
 
-  // ─── Upstox Re-Auth Tracking ──────────────────────────────────────────
-  // Note: accessToken/accessTokenExpiresAt live in better-auth's accounts
-  // collection (same OAuth account record). broker_accounts tracks metadata only.
+  // ─── Access Token (written by Upstox webhook / Phase 2 re-auth) ─────
+  // Primary source of truth for Upstox tokens; Better Auth accounts is fallback.
+
+  @Prop({ select: false })
+  accessToken?: string;
+
+  @Prop({ type: Date })
+  accessTokenExpiresAt?: Date;
 
   @Prop({ type: Date, required: false })
   lastReAuthAt?: Date;

@@ -3,3 +3,4 @@ export * from "./instrument.repository";
 export * from "./processing-log.repository";
 export * from "./data-inventory.repository";
 export * from "./ingestion-log.repository";
+export * from "./feature-config.repository";

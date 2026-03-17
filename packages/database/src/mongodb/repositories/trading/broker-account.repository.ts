@@ -75,6 +75,20 @@ export class BrokerAccountRepository {
   }
 
   /**
+   * Find broker account with access token included (normally excluded via select: false).
+   * Used by AuthManagerService for token retrieval.
+   */
+  async findWithAccessToken(
+    userId: string,
+    providerId: string
+  ): Promise<BrokerAccount | null> {
+    return this.brokerAccountModel
+      .findOne({ userId, providerId })
+      .select("+accessToken +accessTokenExpiresAt")
+      .exec();
+  }
+
+  /**
    * Find broker account by Upstox user_id (stored in profile.userId)
    */
   async findByUpstoxUserId(

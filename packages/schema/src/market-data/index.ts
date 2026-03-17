@@ -13,3 +13,6 @@ export * from "./candle.schema";
 // Type-only schemas (internal use)
 export * from "./market-state.types";
 export * from "./model-contracts.schema";
+
+// MongoDB document interfaces
+export * from "./feature-config.schema";

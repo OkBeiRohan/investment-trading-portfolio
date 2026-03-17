@@ -19,6 +19,7 @@ import {
 import { OptionChainSnapshot } from '@repo/schema';
 import {
   UpstoxHistoricalAPIService,
+  AuthManagerService,
   type ActiveOptionContract,
 } from '@repo/market-sdk';
 import {
@@ -46,6 +47,7 @@ export class InstrumentSyncService {
 
   constructor(
     private readonly upstoxApi: UpstoxHistoricalAPIService,
+    private readonly authManager: AuthManagerService,
     private readonly configService: ConfigService,
     // QuestDB
     private readonly instrumentMasterRepo: InstrumentMasterRepository,
@@ -79,6 +81,8 @@ export class InstrumentSyncService {
     this.logger.log('═'.repeat(60));
 
     try {
+      await this.ensureApiToken();
+
       // Phase 1a: Active instruments
       this.logger.log('\n--- Phase 1a: Active Instruments ---');
       results.set('active', await this.syncActiveInstruments());
@@ -573,6 +577,11 @@ export class InstrumentSyncService {
     }
 
     return { phase: 'expired', instrumentsAdded: added, instrumentsSkipped: skipped, depthSnapshotsStored: 0, optionChainsStored: 0, errors, durationMs: Date.now() - start };
+  }
+
+  private async ensureApiToken(): Promise<void> {
+    const token = await this.authManager.getAccessToken('system', 'upstox', 'LIVE');
+    this.upstoxApi.setAccessToken(token);
   }
 
   private sleep(ms: number): Promise<void> {

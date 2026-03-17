@@ -28,6 +28,7 @@
     "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/microservices": "^11.1.17",
     "@nestjs/platform-express": "^11.1.17",
+    "@nestjs/schedule": "^6.1.1",
     "@repo/authentication": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/market-sdk": "workspace:*",
@@ -67,7 +68,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.0"
+    "typescript-eslint": "^8.57.1"
   },
   "jest": {
     "moduleFileExtensions": [

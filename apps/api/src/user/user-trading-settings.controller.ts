@@ -1,141 +1,156 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
-  HttpCode,
+  HttpException,
   HttpStatus,
-  Logger,
-  Param,
+  Post,
   Put,
-  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
-import { BrokerAccountRepository } from '@repo/database';
-import type { BrokerSegment } from '@repo/schema';
+import { AuthGuard, Session } from '@repo/authentication';
+import {
+  TradingConfigRepository,
+  BrokerAccountRepository,
+  AuditLogRepository,
+} from '@repo/database';
 
-/**
- * User Trading Settings Controller
- *
- * Allows users to manage their own Upstox trading settings and
- * admins to manage data-collection enrollment.
- *
- * Note: Route guards and session extraction should be added via
- * the app's auth middleware (NestJS guards + better-auth session).
- */
-@Controller('user')
-export class UserTradingSettingsController {
-  private readonly logger = new Logger(UserTradingSettingsController.name);
-
+@Controller('api/trading')
+@UseGuards(AuthGuard)
+export class TradingSettingsController {
   constructor(
-    private readonly brokerAccountRepository: BrokerAccountRepository,
+    private readonly tradingConfigRepo: TradingConfigRepository,
+    private readonly brokerAccountRepo: BrokerAccountRepository,
+    private readonly auditLogRepo: AuditLogRepository,
   ) {}
 
-  /**
-   * Get the current user's Upstox broker account info.
-   * Returns everything except the raw access token.
-   *
-   * @route GET /api/user/broker-account
-   */
-  @Get('broker-account')
-  @HttpCode(HttpStatus.OK)
-  async getBrokerAccount(
-    // TODO: Replace with @CurrentUser() decorator from auth guard
-    // For now userId comes from query — add proper auth guard
-  ) {
-    // Placeholder: real implementation extracts userId from session
-    return { message: 'Attach auth guard to extract userId from session' };
-  }
+  @Get('settings')
+  async getSettings(@Session() session: any) {
+    const userId = session.user.id;
+    let config = await this.tradingConfigRepo.findByUserId(userId);
 
-  /**
-   * User updates their own trading settings.
-   * Users can enable/disable trading and choose segments.
-   *
-   * @route PUT /api/user/broker-account/trading-settings
-   * Body: { hasTradingEnabled?: boolean, tradingSegments?: BrokerSegment[] }
-   */
-  @Put('broker-account/trading-settings')
-  @HttpCode(HttpStatus.OK)
-  async updateTradingSettings(
-    @Body()
-    body: {
-      userId: string; // TODO: extract from auth session instead
-      hasTradingEnabled?: boolean;
-      tradingSegments?: BrokerSegment[];
-    },
-  ) {
-    const { userId, hasTradingEnabled, tradingSegments } = body;
-
-    if (!userId) {
-      throw new UnauthorizedException('userId is required');
+    if (!config) {
+      config = await this.tradingConfigRepo.create({
+        userId,
+        enabled: false,
+        sandboxMode: true,
+        dailyReAuthRequired: true,
+        segments: {
+          equity: false,
+          fno: true,
+          mcx: false,
+          currency: false,
+        },
+        riskLimits: {
+          maxDailyLoss: 50000,
+          maxPositions: 10,
+          maxOrderSize: 1800,
+          maxDrawdownPercent: 5,
+          maxLeverageMultiple: 1,
+        },
+      });
     }
 
-    this.logger.log(
-      `Updating trading settings for user ${userId}: hasTradingEnabled=${hasTradingEnabled}, segments=${tradingSegments?.join(',')}`,
-    );
+    return config;
+  }
 
-    const updated = await this.brokerAccountRepository.updateTradingSettings(
+  @Put('settings')
+  async updateSettings(@Session() session: any, @Body() body: any) {
+    const userId = session.user.id;
+
+    const allowed = [
+      'sandboxMode',
+      'segments',
+      'riskLimits',
+      'allowedInstruments',
+      'blockedInstruments',
+      'strategyConfig',
+      'tradingStartTime',
+      'tradingEndTime',
+      'notes',
+    ];
+    const updates: Record<string, any> = {};
+    for (const key of allowed) {
+      if (body[key] !== undefined) updates[key] = body[key];
+    }
+
+    const config = await this.tradingConfigRepo.updateByUserId(userId, updates);
+
+    await this.auditLogRepo.create({
+      action: 'trading.settings.update',
+      category: 'trading',
       userId,
-      {
-        ...(hasTradingEnabled !== undefined && { hasTradingEnabled }),
-        ...(tradingSegments !== undefined && { tradingSegments }),
-      },
-    );
+      details: updates,
+    });
 
-    if (!updated) {
-      throw new UnauthorizedException(
-        'Broker account not found for this user',
-      );
-    }
-
-    return {
-      success: true,
-      hasTradingEnabled: updated.hasTradingEnabled,
-      tradingSegments: updated.tradingSegments,
-    };
+    return config;
   }
 
-  /**
-   * Admin toggles data-collection enrollment for any user.
-   * Only users with role=Admin can call this.
-   *
-   * @route PUT /api/admin/users/:userId/data-collection
-   * Body: { enabled: boolean, requestingAdminId: string }
-   */
-  @Put('admin/users/:userId/data-collection')
-  @HttpCode(HttpStatus.OK)
-  async setDataCollection(
-    @Param('userId') targetUserId: string,
-    @Body()
-    body: {
-      enabled: boolean;
-      requestingAdminId: string; // TODO: extract from auth session + role guard
-    },
-  ) {
-    const { enabled, requestingAdminId } = body;
+  @Post('enable')
+  async enableTrading(@Session() session: any) {
+    const userId = session.user.id;
 
-    if (!requestingAdminId) {
-      throw new ForbiddenException('Admin authentication required');
-    }
-
-    this.logger.log(
-      `Admin ${requestingAdminId} setting isDataCollectionEnabled=${enabled} for user ${targetUserId}`,
-    );
-
-    const updated = await this.brokerAccountRepository.updateTradingSettings(
-      targetUserId,
-      { isDataCollectionEnabled: enabled },
-    );
-
-    if (!updated) {
-      throw new UnauthorizedException(
-        `Broker account not found for user ${targetUserId}`,
+    const brokerAccount = await this.brokerAccountRepo.findOne({
+      userId,
+      providerId: 'upstox',
+    });
+    if (!brokerAccount) {
+      throw new HttpException(
+        'No Upstox account linked. Please link your Upstox account first.',
+        HttpStatus.BAD_REQUEST,
       );
     }
 
+    const config = await this.tradingConfigRepo.enableTrading(userId);
+
+    await this.auditLogRepo.create({
+      action: 'trading.enable',
+      category: 'trading',
+      userId,
+      details: { sandboxMode: config?.sandboxMode },
+    });
+
+    return { enabled: true, config };
+  }
+
+  @Post('disable')
+  async disableTrading(@Session() session: any) {
+    const userId = session.user.id;
+
+    await this.tradingConfigRepo.disableTrading(userId);
+
+    await this.auditLogRepo.create({
+      action: 'trading.disable',
+      category: 'trading',
+      userId,
+    });
+
+    return { enabled: false };
+  }
+
+  @Get('status')
+  async getStatus(@Session() session: any) {
+    const userId = session.user.id;
+    const config = await this.tradingConfigRepo.findByUserId(userId);
+    const brokerAccount = await this.brokerAccountRepo.findOne({
+      userId,
+      providerId: 'upstox',
+    });
+
+    const now = new Date();
+    const reAuthValid =
+      config?.lastReAuthAt &&
+      config?.reAuthExpiresAt &&
+      config.reAuthExpiresAt > now;
+
     return {
-      success: true,
-      userId: targetUserId,
-      isDataCollectionEnabled: updated.isDataCollectionEnabled,
+      hasConfig: !!config,
+      hasBrokerAccount: !!brokerAccount,
+      tradingEnabled: config?.enabled || false,
+      sandboxMode: config?.sandboxMode ?? true,
+      needsReAuth: !reAuthValid,
+      lastReAuthAt: config?.lastReAuthAt || null,
+      segments: config?.segments || {},
     };
   }
 }

@@ -18,6 +18,7 @@ import {
 import { IMarketCandleBase } from '@repo/schema';
 import {
   UpstoxHistoricalAPIService,
+  AuthManagerService,
   UPSTOX_DATA_AVAILABILITY,
   type UpstoxCandleDataTyped,
 } from '@repo/market-sdk';
@@ -47,6 +48,7 @@ export class HistoricalBackfillService {
 
   constructor(
     private readonly upstoxApi: UpstoxHistoricalAPIService,
+    private readonly authManager: AuthManagerService,
     private readonly gapDetector: GapDetectorService,
     private readonly configService: ConfigService,
     // QuestDB
@@ -77,6 +79,8 @@ export class HistoricalBackfillService {
     this.logger.log('═'.repeat(60));
 
     try {
+      await this.ensureApiToken();
+
       // Phase 2a
       this.logger.log('\n--- Phase 2a: Expired Futures Candles ---');
       results.set('expired-futures', await this.backfillExpiredFutures());
@@ -125,6 +129,8 @@ export class HistoricalBackfillService {
     let processed = 0;
     let totalCandles = 0;
     const errors: string[] = [];
+
+    await this.ensureApiToken();
 
     const activeKeys = this.getAllActiveKeys();
     const now = new Date();
@@ -184,6 +190,8 @@ export class HistoricalBackfillService {
     endDate: Date,
   ): Promise<{ candlesFetched: number; error?: string }> {
     try {
+      await this.ensureApiToken();
+
       const gaps = interval === 'day'
         ? await this.gapDetector.findMissingDailyRanges(instrumentKey, startDate, endDate)
         : await this.gapDetector.findMissingMinuteRanges(instrumentKey, startDate, endDate);
@@ -391,6 +399,11 @@ export class HistoricalBackfillService {
   // ═══════════════════════════════════════════════════════
   // Helpers
   // ═══════════════════════════════════════════════════════
+
+  private async ensureApiToken(): Promise<void> {
+    const token = await this.authManager.getAccessToken('system', 'upstox', 'LIVE');
+    this.upstoxApi.setAccessToken(token);
+  }
 
   private getAllActiveKeys(): string[] {
     return [...new Set([

@@ -6,7 +6,6 @@ packages:
 onlyBuiltDependencies:
   - '@nestjs/core'
   - '@parcel/watcher'
-  - '@prisma/engines'
   - '@sentry-internal/node-cpu-profiler'
   - '@sentry/cli'
   - bufferutil
@@ -15,7 +14,6 @@ onlyBuiltDependencies:
   - grpc-tools
   - msgpackr-extract
   - onnxruntime-node
-  - prisma
   - protobufjs
   - protolint
   - sharp
