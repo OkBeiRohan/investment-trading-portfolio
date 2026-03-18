@@ -17,6 +17,7 @@ import {
 import { InstrumentMasterService } from './instrument-master.service';
 import { CandleFetcherService } from './candle-fetcher.service';
 import { ConfigService } from '@nestjs/config';
+import { MarketCalendarService } from '@repo/market-sdk';
 
 @Controller('historical-data')
 export class HistoricalDataController implements OnModuleInit {
@@ -26,15 +27,24 @@ export class HistoricalDataController implements OnModuleInit {
     private readonly instrumentMasterService: InstrumentMasterService,
     private readonly candleFetcherService: CandleFetcherService,
     private readonly configService: ConfigService,
+    private readonly marketCalendar: MarketCalendarService,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     if (
       !this.configService.get<string>('AUTO_BOOTSTRAP_HISTORICAL_DATA', 'false')
     )
       return;
 
-    this.logger.log('Auto-bootstrap enabled. Starting full bootstrap...');
+    const isOpen = await this.marketCalendar.isMarketCurrentlyOpen('NSE');
+    if (isOpen) {
+      this.logger.log(
+        'Market is currently open — skipping historical bootstrap (WebSocket ingestion handles live data)',
+      );
+      return;
+    }
+
+    this.logger.log('Market is closed — starting historical data bootstrap...');
     void this.bootstrap();
   }
 

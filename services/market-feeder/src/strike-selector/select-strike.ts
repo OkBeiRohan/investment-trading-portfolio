@@ -27,33 +27,29 @@
 
 import { NestFactory } from '@nestjs/core';
 import { Module, Logger } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { DatabaseModule } from '@repo/database';
+import { AuthModule } from '@repo/authentication';
 import { StrikeSelectorService } from './strike-selector.service';
 import { UpstoxClient } from '../historical-data/upstox-client';
 import { StrikeSelectorConfig } from './strike-selector.types';
 
-// Create a minimal module for CLI execution
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
-    HttpModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        timeout: 30000,
-        maxRedirects: 5,
-        baseURL: 'https://api.upstox.com',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${configService.get<string>('UPSTOX_ACCESS_TOKEN', '')}`,
-        },
-      }),
-      inject: [ConfigService],
+    AuthModule,
+    HttpModule.register({
+      timeout: 30000,
+      maxRedirects: 5,
+      baseURL: 'https://api.upstox.com',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
     }),
     DatabaseModule.forMarketFeeder(),
   ],
