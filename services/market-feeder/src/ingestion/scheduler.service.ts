@@ -330,7 +330,18 @@ export class SchedulerService implements OnModuleInit {
   private async handleStartupTasks(): Promise<void> {
     const isOpen = await this.marketCalendar.isMarketCurrentlyOpen("NSE");
 
-    if (!isOpen) {
+    if (isOpen) {
+      this.logger.log(
+        "Market is currently open — skipping backfill, starting live WebSocket ingestion",
+      );
+      try {
+        await this.liveData.startLiveIngestion();
+        this.logger.log("Live WebSocket ingestion started successfully");
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Failed to start live WebSocket ingestion: ${msg}`);
+      }
+    } else {
       this.logger.log(
         "Market is currently closed — running startup backfill",
       );
@@ -340,10 +351,6 @@ export class SchedulerService implements OnModuleInit {
         const msg = error instanceof Error ? error.message : String(error);
         this.logger.error(`Startup backfill failed: ${msg}`);
       }
-    } else {
-      this.logger.log(
-        "Market is open — skipping heavy backfill, ready for live data",
-      );
     }
   }
 

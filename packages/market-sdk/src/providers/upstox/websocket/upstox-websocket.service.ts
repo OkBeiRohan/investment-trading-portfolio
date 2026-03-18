@@ -110,35 +110,54 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
 
     const { socketId } = event;
 
+    let token: string | undefined;
     try {
-      // Get access token
-      const token = await this.authManager.getAccessToken(
-        "system", // Use system user for WebSocket auth
+      token = await this.authManager.getAccessToken(
+        "system",
         "upstox",
         "LIVE"
       );
 
-      // Create WebSocket connection
+      const maskedToken = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
       const wsUrl = `${UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL}?access_token=${token}`;
+
+      this.logger.log(`WebSocket connecting for ${socketId} (token: ${maskedToken})`);
       const ws = new WS.WebSocket(wsUrl) as any;
 
-      // Attach to pooled socket
       const pool = this.socketPool["pools"].get("upstox");
       const pooledSocket = pool?.get(socketId);
       if (pooledSocket) {
         pooledSocket.socket = ws;
       }
 
-      // Setup event handlers
       ws.on("open", () => this.handleOpen(socketId, ws));
       ws.on("message", (data: any) => this.handleMessage(socketId, data));
-      ws.on("error", (error: any) => this.handleError(socketId, error));
-      ws.on("close", () => this.handleClose(socketId));
+      ws.on("error", (error: any) => {
+        const maskedTok = token && token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
+        this.logger.error(
+          `WebSocket error for ${socketId} | Token: ${maskedTok} | ` +
+          `URL: ${UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL} | ` +
+          `Error: ${error?.message ?? error}`,
+        );
+      });
+      ws.on("close", (code: number, reason: string) => {
+        const maskedTok = token && token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
+        this.logger.warn(
+          `Socket ${socketId} closed | Code: ${code} | Reason: ${reason || 'N/A'} | Token: ${maskedTok}`,
+        );
+        this.heartbeat.stopHeartbeat(socketId);
+        this.scheduleReconnect(socketId);
+      });
       ws.on("pong", () => this.heartbeat.recordPong(socketId));
 
       this.logger.log(`WebSocket connected for ${socketId}`);
-    } catch (error) {
-      this.logger.error(`Failed to create WebSocket for ${socketId}`, error);
+    } catch (error: any) {
+      const maskedToken = token && token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '(no token)';
+      this.logger.error(
+        `Failed to create WebSocket for ${socketId} | Token: ${maskedToken} | ` +
+        `URL: ${UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL} | ` +
+        `Error: ${error?.message ?? error}`,
+      );
     }
   }
 
@@ -185,25 +204,6 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Handle WebSocket error
-   */
-  private handleError(socketId: string, error: any): void {
-    this.logger.error(`WebSocket error for ${socketId}`, error);
-  }
-
-  /**
-   * Handle WebSocket close
-   */
-  private handleClose(socketId: string): void {
-    this.logger.warn(`Socket ${socketId} closed`);
-
-    // Stop heartbeat
-    this.heartbeat.stopHeartbeat(socketId);
-
-    // Trigger reconnect
-    this.scheduleReconnect(socketId);
-  }
 
   /**
    * Handle dead socket
