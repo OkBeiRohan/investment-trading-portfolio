@@ -12,6 +12,7 @@ import { InstrumentListSyncService } from "./instrument-list-sync.service";
 import { HistoricalBackfillService } from "./historical-backfill.service";
 import { GlobalDataService } from "./global-data.service";
 import { LiveDataService } from "./live-data.service";
+import { OptionChainLiveService } from "./option-chain-live.service";
 import {
   NIFTY50_CONSTITUENTS_DATA,
   NIFTY50_INDEX,
@@ -24,6 +25,8 @@ import {
 export class SchedulerService implements OnModuleInit {
   private readonly logger = new Logger(SchedulerService.name);
 
+  private liveIntervals: NodeJS.Timeout[] = [];
+
   constructor(
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly dbConfig: DbConfigService,
@@ -33,6 +36,7 @@ export class SchedulerService implements OnModuleInit {
     private readonly historicalBackfill: HistoricalBackfillService,
     private readonly globalData: GlobalDataService,
     private readonly liveData: LiveDataService,
+    private readonly optionChainLive: OptionChainLiveService,
     private readonly processingLogRepo: ProcessingLogRepository,
     private readonly instrumentRepo: InstrumentRepository,
   ) {}
@@ -332,8 +336,9 @@ export class SchedulerService implements OnModuleInit {
 
     if (isOpen) {
       this.logger.log(
-        "Market is currently open — skipping backfill, starting live WebSocket ingestion",
+        "Market is currently open — starting live session (WebSocket + data enrichment)",
       );
+
       try {
         await this.liveData.startLiveIngestion();
         this.logger.log("Live WebSocket ingestion started successfully");
@@ -341,6 +346,9 @@ export class SchedulerService implements OnModuleInit {
         const msg = error instanceof Error ? error.message : String(error);
         this.logger.error(`Failed to start live WebSocket ingestion: ${msg}`);
       }
+
+      await this.runLivePrefill();
+      this.startLiveIntervals();
     } else {
       this.logger.log(
         "Market is currently closed — running startup backfill",
@@ -352,6 +360,90 @@ export class SchedulerService implements OnModuleInit {
         this.logger.error(`Startup backfill failed: ${msg}`);
       }
     }
+  }
+
+  /**
+   * Prefill: immediate fetch of global data + option chain so ML features
+   * have baseline data before the first periodic interval fires.
+   */
+  private async runLivePrefill(): Promise<void> {
+    this.logger.log("[PREFILL] Running initial data fetch for live session...");
+
+    const results = await Promise.allSettled([
+      this.globalData.fetchOvernightData().then((r) => {
+        this.logger.log(`[PREFILL] Global data: ${r.symbolsFetched} symbols, ${r.totalCandles} candles`);
+      }),
+      this.optionChainLive.fetchAndStoreOptionChainSnapshot().then((r) => {
+        this.logger.log(`[PREFILL] Option chain: ${r.snapshotsStored} snapshots, ${r.ticksStored} ticks`);
+      }),
+    ]);
+
+    for (const result of results) {
+      if (result.status === "rejected") {
+        this.logger.error(`[PREFILL] Failed: ${result.reason}`);
+      }
+    }
+
+    this.logger.log("[PREFILL] Initial data fetch complete");
+  }
+
+  /**
+   * Start periodic data enrichment intervals during live market hours.
+   * Intervals auto-stop when market closes.
+   */
+  private startLiveIntervals(): void {
+    this.logger.log("[LIVE] Starting periodic data enrichment intervals");
+
+    const GLOBAL_DATA_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+    const OPTION_CHAIN_INTERVAL_MS = 60 * 1000; // 60 seconds
+
+    const globalInterval = setInterval(async () => {
+      try {
+        const isOpen = await this.marketCalendar.isMarketCurrentlyOpen("NSE");
+        if (!isOpen) {
+          this.logger.log("[LIVE] Market closed — stopping global data interval");
+          this.clearLiveIntervals();
+          return;
+        }
+        const result = await this.globalData.fetchOvernightData();
+        this.logger.debug(`[LIVE] Global data refreshed: ${result.symbolsFetched} symbols`);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`[LIVE] Global data fetch failed: ${msg}`);
+      }
+    }, GLOBAL_DATA_INTERVAL_MS);
+
+    const optionChainInterval = setInterval(async () => {
+      try {
+        const isOpen = await this.marketCalendar.isMarketCurrentlyOpen("NSE");
+        if (!isOpen) {
+          this.logger.log("[LIVE] Market closed — stopping option chain interval");
+          this.clearLiveIntervals();
+          return;
+        }
+        const result = await this.optionChainLive.fetchAndStoreOptionChainSnapshot();
+        if (result.errors.length > 0) {
+          this.logger.warn(`[LIVE] Option chain had ${result.errors.length} errors`);
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`[LIVE] Option chain fetch failed: ${msg}`);
+      }
+    }, OPTION_CHAIN_INTERVAL_MS);
+
+    this.liveIntervals.push(globalInterval, optionChainInterval);
+
+    this.logger.log(
+      `[LIVE] Intervals started: global data every ${GLOBAL_DATA_INTERVAL_MS / 1000}s, option chain every ${OPTION_CHAIN_INTERVAL_MS / 1000}s`,
+    );
+  }
+
+  private clearLiveIntervals(): void {
+    for (const interval of this.liveIntervals) {
+      clearInterval(interval);
+    }
+    this.liveIntervals = [];
+    this.logger.log("[LIVE] All live intervals cleared");
   }
 
   // ═══════════════════════════════════════════════════════════════════════
