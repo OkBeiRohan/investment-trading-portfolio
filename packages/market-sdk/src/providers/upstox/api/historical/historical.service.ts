@@ -192,7 +192,7 @@ export class UpstoxHistoricalAPIService {
           continue;
         }
 
-        const authHeader = client.defaults.headers?.Authorization || client.defaults.headers?.common?.Authorization;
+        const authHeader = this.client?.defaults.headers?.Authorization || this.client?.defaults.headers?.common?.Authorization;
         const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
           ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
           : '(no auth header)';
@@ -201,7 +201,7 @@ export class UpstoxHistoricalAPIService {
         this.logger.error(
           `Failed to fetch historical candles | ` +
           `Status: ${error.response?.status ?? 'N/A'} | Token: ${maskedToken} | ` +
-          `URL: ${client.defaults.baseURL}${url} | ` +
+          `URL: ${this.client?.defaults.baseURL}${url} | ` +
           `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
         );
         throw error;
