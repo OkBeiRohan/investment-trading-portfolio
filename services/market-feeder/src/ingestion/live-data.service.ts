@@ -155,9 +155,8 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
    * Handle incoming WebSocket message payload from Upstox
    */
   private handleMarketData(data: UpstoxMarketData) {
-    if (!data.lastTradeTime) return; // Skip updates with no explicit tick time
+    if (!data.lastTradeTime) return;
 
-    // Extract bids/asks flattening
     const bidPrices: number[] = Array(30).fill(0);
     const bidQtys: number[] = Array(30).fill(0);
     const askPrices: number[] = Array(30).fill(0);
@@ -181,13 +180,13 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
       timestamp: data.lastTradeTime,
       instrumentKey: data.instrumentKey,
       ltp: data.ltp || 0,
-      ltq: 0, 
-      cp: 0,  
-      atp: 0, 
+      ltq: data.ltq || 0,
+      cp: data.cp || 0,
+      atp: data.atp || 0,
       vtt: data.volume || 0,
       oi: data.oi || 0,
-      tbq: bidQtys.reduce((a, b) => a + b, 0),
-      tsq: askQtys.reduce((a, b) => a + b, 0),
+      tbq: data.tbq || bidQtys.reduce((a, b) => a + b, 0),
+      tsq: data.tsq || askQtys.reduce((a, b) => a + b, 0),
       bidPrices,
       bidQtys,
       askPrices,
