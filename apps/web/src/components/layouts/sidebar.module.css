@@ -4,13 +4,14 @@
   left: 0;
   bottom: 0;
   width: var(--sidebar-width);
-  background-color: var(--color-bg-sidebar);
+  background: var(--gradient-surface);
   box-shadow: var(--sidebar-shadow);
   display: flex;
   flex-direction: column;
   z-index: var(--z-sidebar);
   transition: width var(--transition-slow);
   overflow: hidden;
+  border-right: 1px solid var(--color-border-light);
 }
 
 .sidebar.collapsed {
@@ -34,19 +35,21 @@
 
 .logoMark {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-lg);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-xl);
   background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  transition: transform var(--transition-base);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
 .logoLink:hover .logoMark {
-  transform: scale(1.05);
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
 }
 
 .logoText {
@@ -62,14 +65,14 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-tertiary);
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--transition-base), background var(--transition-base), color var(--transition-base);
+  transition: opacity var(--transition-base), background var(--transition-base), color var(--transition-base), border-color var(--transition-base);
   flex-shrink: 0;
 }
 
@@ -143,6 +146,7 @@
   background: var(--nav-active-bg);
   color: var(--nav-active-text);
   font-weight: var(--font-weight-medium);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
 }
 
 .navIcon {
@@ -167,7 +171,7 @@
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
-  background: var(--nav-active-indicator);
+  background: var(--gradient-primary);
   border-radius: 0 var(--radius-full) var(--radius-full) 0;
 }
 
@@ -201,7 +205,6 @@
   transform: scale(0.98);
 }
 
-/* Collapsed state */
 .collapsed .logoSection {
   justify-content: center;
   padding: var(--spacing-5) var(--spacing-2);
@@ -276,10 +279,13 @@
     left: 0;
     right: 0;
     width: 100%;
-    height: 64px;
+    height: 68px;
     flex-direction: row;
     border-top: 1px solid var(--color-border);
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.1);
+    border-right: none;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   }
 
   .logoSection,
@@ -311,7 +317,7 @@
   .navItem {
     flex-direction: column;
     padding: var(--spacing-2) var(--spacing-3);
-    gap: 2px;
+    gap: 3px;
     border-radius: var(--radius-md);
     font-size: var(--font-size-2xs);
   }
@@ -327,6 +333,7 @@
 
   .navItem.active {
     background: none;
+    box-shadow: none;
   }
 
   .navItem.active .navIcon {

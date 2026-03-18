@@ -10,6 +10,7 @@
 
 .donutSvg {
   transform: rotate(0deg);
+  filter: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.06));
 }
 
 .donutSegment {
@@ -141,7 +142,7 @@
 .barChartBar {
   width: 100%;
   max-width: 32px;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   transition:
     height 0.6s ease,
     background-color 0.3s ease;
@@ -199,7 +200,7 @@
 .dotMatrixDot {
   width: 8px;
   height: 8px;
-  border-radius: 2px;
+  border-radius: 3px;
   transition: background-color 0.3s ease;
 }
 

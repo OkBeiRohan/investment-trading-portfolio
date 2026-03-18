@@ -1,8 +1,8 @@
 .loginButton {
   width: 100%;
   padding: 0.875rem 1.5rem;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--color-button-primary-bg), #7c3aed);
+  border-radius: var(--radius-xl);
+  background: var(--gradient-primary);
   color: var(--color-button-primary-text);
   font-weight: 600;
   font-size: var(--font-size-base);
@@ -14,8 +14,8 @@
   justify-content: center;
   gap: var(--spacing-sm);
   box-shadow:
-    0 4px 12px rgba(129, 140, 248, 0.3),
-    0 1px 3px rgba(0, 0, 0, 0.2);
+    0 4px 16px rgba(37, 99, 235, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
   backdrop-filter: blur(10px);
@@ -43,17 +43,12 @@
 
 .loginButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(129, 140, 248, 0.35);
-  background: linear-gradient(
-    135deg,
-    var(--color-button-primary-hover),
-    #6d28d9
-  );
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
 }
 
 .loginButton:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(129, 140, 248, 0.25);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
 }
 
 .loginButton:disabled {

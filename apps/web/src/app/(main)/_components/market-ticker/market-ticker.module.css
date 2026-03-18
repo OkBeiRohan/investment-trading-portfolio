@@ -2,7 +2,8 @@
   display: flex;
   gap: var(--spacing-4);
   padding: var(--spacing-2) var(--spacing-4);
-  background: var(--color-bg-card);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
   border-bottom: 1px solid var(--color-border-light);
   overflow-x: auto;
   -ms-overflow-style: none;
@@ -19,7 +20,7 @@
   gap: var(--spacing-2);
   flex-shrink: 0;
   padding: var(--spacing-1-5) var(--spacing-3);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   transition: background var(--transition-fast);
   cursor: default;
 }
@@ -50,8 +51,8 @@
 .badgeNegative {
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
 }
 
 .badgePositive {

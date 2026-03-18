@@ -31,9 +31,9 @@
 }
 
 .card {
-  background: #fff;
+  background: var(--color-bg-gradient-card);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   padding: 24px;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
@@ -88,7 +88,7 @@
 .placeholder {
   margin-top: 32px;
   border: 1px dashed #e5e7eb;
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   padding: 32px;
   text-align: center;
   color: #6b7280;
@@ -102,7 +102,7 @@
 }
 
 .loader {
-  color: #6366f1;
+  color: var(--color-primary);
   animation: spin 1s linear infinite;
 }
 

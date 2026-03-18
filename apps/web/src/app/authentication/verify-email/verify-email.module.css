@@ -54,7 +54,7 @@
 }
 
 .loader {
-  color: #6366f1;
+  color: var(--color-primary);
 }
 
 .successIcon {
@@ -81,21 +81,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-primary), #7c3aed);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-violet));
   color: white;
   padding: 0.875rem 1.5rem;
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   font-weight: 600;
   text-decoration: none;
   font-size: var(--font-size-base);
   margin-top: var(--spacing-lg);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(129, 140, 248, 0.3);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .actionButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(129, 140, 248, 0.35);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
 }
 
 .backLink {

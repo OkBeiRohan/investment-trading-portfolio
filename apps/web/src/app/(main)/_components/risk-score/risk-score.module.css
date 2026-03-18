@@ -1,13 +1,14 @@
 .card {
-  background: var(--color-bg-card);
+  background: var(--color-bg-gradient-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   padding: var(--spacing-5);
   transition: all var(--transition-base);
 }
 
 .card:hover {
   box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
 }
 
 .header {
@@ -45,7 +46,8 @@
   background: linear-gradient(
     to right,
     var(--color-emerald) 0%,
-    var(--color-amber) 50%,
+    var(--color-sky) 30%,
+    var(--color-amber) 60%,
     var(--color-coral) 100%
   );
 }
@@ -54,12 +56,12 @@
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   background: var(--color-text-primary);
-  border: 2px solid var(--color-bg-card);
+  border: 3px solid var(--color-bg-card);
   border-radius: var(--radius-full);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: left var(--transition-slow);
 }
 

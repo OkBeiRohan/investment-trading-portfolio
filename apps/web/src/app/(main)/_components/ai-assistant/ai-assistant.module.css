@@ -1,7 +1,7 @@
 .card {
-  background: var(--color-bg-card);
+  background: var(--color-bg-gradient-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   padding: var(--spacing-5);
   height: 100%;
   display: flex;
@@ -21,9 +21,9 @@
 }
 
 .sparkle {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-lg);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-xl);
   background: var(--gradient-primary);
   display: flex;
   align-items: center;
@@ -31,6 +31,7 @@
   color: #fff;
   font-size: var(--font-size-sm);
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
 .title {
@@ -54,7 +55,7 @@
 }
 
 .expandBtn:hover {
-  color: var(--color-text-primary);
+  color: var(--color-primary);
   background: var(--color-bg-hover);
 }
 
@@ -71,11 +72,12 @@
   align-self: flex-end;
   max-width: 85%;
   padding: var(--spacing-2-5) var(--spacing-3);
-  background: var(--color-primary);
+  background: var(--gradient-primary);
   color: white;
-  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-sm) var(--radius-xl);
+  border-radius: var(--radius-2xl) var(--radius-2xl) var(--radius-sm) var(--radius-2xl);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
 }
 
 .messageAssistant {
@@ -84,7 +86,7 @@
   padding: var(--spacing-3);
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
-  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-xl) var(--radius-sm);
+  border-radius: var(--radius-2xl) var(--radius-2xl) var(--radius-2xl) var(--radius-sm);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
   border: 1px solid var(--color-border-light);
@@ -102,7 +104,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   font-size: var(--font-size-2xs);
-  padding: 3px 10px;
+  padding: 4px 12px;
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -112,6 +114,7 @@
   color: var(--color-primary);
   border-color: var(--color-primary);
   background: var(--color-primary-light);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .inputRow {
@@ -125,8 +128,8 @@
   flex: 1;
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2-5) var(--spacing-3);
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
   outline: none;
@@ -143,10 +146,10 @@
 }
 
 .sendBtn {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  border-radius: var(--radius-lg);
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--radius-xl);
   background: var(--gradient-primary);
   color: white;
   border: none;
@@ -155,11 +158,12 @@
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
 .sendBtn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
 }
 
 .sendBtn:active {

@@ -42,10 +42,11 @@
   display: flex;
   gap: 2px;
   background: var(--color-bg-primary);
-  border-radius: var(--radius-lg);
-  padding: 3px;
+  border-radius: var(--radius-xl);
+  padding: 4px;
   overflow-x: auto;
   scrollbar-width: none;
+  border: 1px solid var(--color-border-light);
 }
 
 .tabsNav::-webkit-scrollbar {
@@ -53,12 +54,12 @@
 }
 
 .tabLink {
-  padding: var(--spacing-1-5) var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-4);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
   text-decoration: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   white-space: nowrap;
   transition: all var(--transition-fast);
 }
@@ -68,9 +69,10 @@
 }
 
 .tabLinkActive {
-  color: var(--color-text-primary);
+  color: var(--color-primary);
   background: var(--color-bg-elevated);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08), 0 0 0 1px rgba(37, 99, 235, 0.06);
+  font-weight: var(--font-weight-semibold);
 }
 
 .contentGrid {
@@ -92,15 +94,16 @@
 }
 
 .sectionCard {
-  background: var(--color-bg-card);
+  background: var(--color-bg-gradient-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   padding: var(--spacing-5);
   transition: all var(--transition-base);
 }
 
 .sectionCard:hover {
   box-shadow: var(--card-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .sectionHeader {
@@ -137,7 +140,7 @@
   align-items: center;
   gap: var(--spacing-3);
   padding: var(--spacing-3) var(--spacing-2);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   transition: background var(--transition-fast);
 }
 
@@ -146,9 +149,9 @@
 }
 
 .listItemIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-lg);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-xl);
   background: var(--color-bg-primary);
   display: flex;
   align-items: center;
@@ -186,9 +189,9 @@
 }
 
 .statCard {
-  background: var(--color-bg-card);
+  background: var(--color-bg-gradient-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   padding: var(--spacing-5);
   display: flex;
   flex-direction: column;
@@ -198,6 +201,7 @@
 
 .statCard:hover {
   box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
 }
 
 .statValue {

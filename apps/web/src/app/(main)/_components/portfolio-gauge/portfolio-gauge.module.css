@@ -1,7 +1,7 @@
 .card {
-  background: var(--color-bg-card);
+  background: var(--color-bg-gradient-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   padding: var(--spacing-5);
   transition: all var(--transition-base);
   height: 100%;
@@ -11,6 +11,7 @@
 
 .card:hover {
   box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
 }
 
 .header {
@@ -52,6 +53,7 @@
   width: 100%;
   max-width: 240px;
   height: auto;
+  filter: drop-shadow(0 0 12px rgba(37, 99, 235, 0.08));
 }
 
 .track {
@@ -87,7 +89,7 @@
 .changeNegative {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
 }
 
