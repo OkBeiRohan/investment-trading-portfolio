@@ -1,6 +1,6 @@
 # TIER 2: Intraday Navigator — Multi-Horizon Direction Prediction
 
-> **Core operational tier. Predicts 5m/15m/30m directional probabilities every 60 seconds using 4 years of 1-minute data with 80+ features and a three-model ensemble (LightGBM + TFT + Mamba).**
+> **Core operational tier. Predicts 5m/15m/30m directional probabilities every 60 seconds using 4 years of 1-minute data with 117 features and a two-model ensemble (LightGBM + Mamba).**
 
 **Last Updated**: March 13, 2026
 **Tier**: 2 — Intraday Navigator
@@ -25,38 +25,37 @@ Tier 2 is the **workhorse** of the system. While Tier 0 and 1 run once at market
 
 ---
 
-## Architecture: Three-Model Ensemble
+## Architecture: Two-Model Ensemble (LightGBM + Mamba)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │ TIER 2: INTRADAY NAVIGATOR (runs every 60 seconds)                   │
 │                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │ FEATURE INPUT: 80+ features from compute-engine (Rust, <5ms)    │ │
+│  │ FEATURE INPUT: 117 features from compute-engine (Rust, <5ms)    │ │
 │  │ + Tier 0 context (cached) + Tier 1 regime (cached)              │ │
 │  └────────────────────┬────────────────────────────────────────────┘ │
 │                       │                                              │
-│     ┌─────────────────┼─────────────────┐                            │
-│     ▼                 ▼                 ▼                            │
-│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐                    │
-│  │ LightGBM │  │ TFT          │  │ Mamba        │                    │
-│  │          │  │ (Temporal    │  │ (State Space │                    │
-│  │ 80+      │  │  Fusion      │  │  Model)      │                    │
-│  │ features │  │  Transformer)│  │              │                    │
-│  │          │  │              │  │              │                    │
-│  │ Point    │  │ 80×120       │  │ 80×120       │                    │
-│  │ features │  │ sequence     │  │ sequence     │                    │
-│  │          │  │              │  │              │                    │
-│  │ ~20ms    │  │ ~35ms        │  │ ~25ms        │                    │
-│  └────┬─────┘  └──────┬───────┘  └──────┬───────┘                    │
-│       │               │                 │                            │
-│       └───────────────┼─────────────────┘                            │
+│            ┌──────────┴──────────┐                                   │
+│            ▼                     ▼                                   │
+│     ┌──────────────┐      ┌──────────────┐                           │
+│     │ LightGBM     │      │ Mamba        │                           │
+│     │              │      │ (State Space │                           │
+│     │ 117          │      │  Model)      │                           │
+│     │ features     │      │              │                           │
+│     │              │      │ 117×120      │                           │
+│     │ Point        │      │ sequence     │                           │
+│     │ features     │      │              │                           │
+│     │              │      │              │                           │
+│     │ ~20ms        │      │ ~25ms        │                           │
+│     └──────┬───────┘      └──────┬───────┘                           │
+│            │                     │                                   │
+│            └──────────┬──────────┘                                   │
 │                       ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────┐ │
 │  │ PARALLEL OUTPUT (all run in Worker Threads simultaneously)      │ │
 │  │                                                                 │ │
 │  │ LightGBM:  P(up)=0.62, P(flat)=0.25, P(down)=0.13  [5m/15m/30m] │ │
-│  │ TFT:       Quantile forecasts [10%, 50%, 90%] per horizon       │ │
 │  │ Mamba:     P(up)=0.58, P(flat)=0.30, P(down)=0.12  [5m/15m/30m] │ │
 │  └─────────────────────────────────────────────────────────────────┘ │
 │                       │                                              │
@@ -66,9 +65,21 @@ Tier 2 is the **workhorse** of the system. While Tier 0 and 1 run once at market
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
+### Why Not TFT?
+
+The Temporal Fusion Transformer was initially planned but **deprecated in favor of Mamba** for these reasons:
+
+- **Redundant input**: Both TFT and Mamba process the same `[120, 80]` sequence for the same 3-class × 3-horizon task
+- **Higher latency**: TFT ~35ms vs Mamba ~25ms (40% slower)
+- **Higher memory**: TFT ~200MB vs Mamba ~150MB
+- **Research evidence**: CMDMamba (2025) achieved 10.4% better accuracy than transformer baselines; Mamba outperforms Reformer across all scenarios (2025)
+- **Quadratic complexity**: TFT's attention is O(n²) vs Mamba's O(n), critical for 120-step sequences
+
+If quantile forecasts are needed (TFT's unique advantage), add quantile output heads to Mamba rather than running a separate model.
+
 ---
 
-## Feature Set (80+ Features)
+## Feature Set (117 Features)
 
 ### Category Breakdown
 
@@ -119,7 +130,7 @@ def generate_tier2_labels(df: pd.DataFrame) -> pd.DataFrame:
 
 ### Why LightGBM?
 
-- **Fast inference**: ~20ms for 80+ features — fastest of the three
+- **Fast inference**: ~20ms for 117 features — fastest of the two
 - **Handles heterogeneous features**: Mix of continuous, categorical, ordinal natively
 - **Feature importance**: Built-in gain/split importance + SHAP for SEBI compliance
 - **Robust to outliers**: Tree-based, no need for feature scaling
@@ -194,7 +205,7 @@ def train_lightgbm_tier2(X, y, timestamps):
 
 |                 | Specification                                                           |
 | --------------- | ----------------------------------------------------------------------- |
-| **Input**       | `Float32Array[80+]` — single feature vector (current minute)            |
+| **Input**       | `Float32Array[117]` — single feature vector (current minute)            |
 | **Output**      | `Float32Array[9]` — P(down), P(flat), P(up) × 3 horizons (5m, 15m, 30m) |
 | **Inference**   | ~20ms (CPU)                                                             |
 | **ONNX Export** | `onnxmltools.convert_lightgbm()` with FP16                              |
@@ -216,7 +227,7 @@ def train_lightgbm_tier2(X, y, timestamps):
 class TFTIntraday(nn.Module):
     """
     TFT for multi-horizon intraday forecasting.
-    Input: 120-step sequence of 80+ features (2 hours of 1-min data)
+    Input: 120-step sequence of 117 features (2 hours of 1-min data)
     Output: Quantile forecasts for 5m/15m/30m horizons
     """
 
@@ -317,13 +328,13 @@ class TFTIntraday(nn.Module):
 class MambaIntraday(nn.Module):
     """
     Mamba-based intraday direction predictor.
-    Input: 120-step sequence of 80+ features
+    Input: 120-step sequence of 117 features
     Output: P(up), P(down), P(flat) for 5m/15m/30m horizons
     """
 
     def __init__(
         self,
-        input_dim: int = 80,
+        input_dim: int = 117,
         d_model: int = 256,
         d_state: int = 16,
         n_layers: int = 6,
@@ -355,7 +366,7 @@ class MambaIntraday(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: [B, 120, 80] — 2-hour feature sequence
+            x: [B, 120, 117] — 2-hour feature sequence
         Returns:
             logits: [B, 3_horizons, 3_classes]
         """
@@ -376,16 +387,27 @@ class MambaIntraday(nn.Module):
 
 |                 | Specification                                                   |
 | --------------- | --------------------------------------------------------------- |
-| **Input**       | `[B, 120, 80]` — 120 minutes × 80+ features                     |
+| **Input**       | `[B, 120, 117]` — 120 minutes × 117 features                    |
 | **Output**      | `[B, 3, 3]` — P(down), P(flat), P(up) × horizons (5m, 15m, 30m) |
 | **Inference**   | ~25ms (GPU)                                                     |
 | **ONNX Export** | `torch.onnx.export()` with opset 17                             |
+
+### Mamba ONNX Export Limitation
+
+Mamba's selective scan operation uses custom CUDA kernels NOT supported by standard ONNX opsets. `torch.onnx.export()` will fail or produce incorrect results. Options:
+
+1. **Pure PyTorch scan** (recommended for production): Rewrite the scan loop without custom kernels. Slower (~35ms vs ~25ms) but ONNX-compatible
+2. **TorchScript export**: Use `torch.jit.script()` instead of ONNX. Requires the algo-worker to load via libtorch
+3. **Direct PyTorch inference**: Skip ONNX entirely, run Mamba via PyTorch in a Python sidecar process
+4. **onnxruntime-extensions**: Register a custom operator for the selective scan
+
+For Phase 1, option 3 (Python sidecar) is recommended. Migrate to option 1 once the pure-PyTorch Mamba implementation is validated.
 
 ---
 
 ## Options-Specific Sub-Models
 
-### IV Surface Predictor (VAE + MLP)
+### IV Surface Predictor (MLP)
 
 Predicts the implied volatility surface 5m/15m ahead.
 
@@ -393,21 +415,19 @@ Predicts the implied volatility surface 5m/15m ahead.
 | ---------------- | ------------------------------------------------------------------------------------------ |
 | **Input**        | Current IV surface [21 strikes × 5 expiries] + 10 market conditions                        |
 | **Output**       | Predicted IV surface [21 × 5] for t+5m and t+15m                                           |
-| **Architecture** | VAE encoder (compress surface to 32-dim latent) + MLP decoder (reconstruct future surface) |
+| **Architecture** | MLP encoder-decoder (flatten 21×5=105 inputs → 256 → 128 → 105 output). VAE unnecessary for a 105-dim grid. |
 | **Latency**      | ~5ms                                                                                       |
 | **Use Case**     | Price options ahead of time to identify mispriced strikes                                  |
 
-### Greeks Forecaster (LSTM)
+### Greeks Derivation (Analytical)
 
-Predicts Delta, Gamma, Vega, Theta trajectories for the next 15 minutes.
+Greeks are deterministic functions of the IV surface + spot price + time to expiry. Predicting them with a separate LSTM is redundant when the IV surface is already predicted above.
 
-| Property         | Value                                                                             |
-| ---------------- | --------------------------------------------------------------------------------- |
-| **Input**        | 60-step sequence of [price, volume, OI, delta, gamma, vega, theta, IV, spot, VIX] |
-| **Output**       | 15-step forecast of [delta, gamma, vega, theta]                                   |
-| **Architecture** | 2-layer LSTM with per-Greek heads                                                 |
-| **Latency**      | ~8ms                                                                              |
-| **Use Case**     | Pre-hedge Greeks, anticipate IV crush around events                               |
+**Approach**: Derive Greeks analytically from the predicted IV surface using Black-Scholes formulas:
+- Delta, Gamma, Vega, Theta computed from predicted IV at each (strike, expiry) pair
+- No additional ML model needed
+- Zero additional latency
+- Mathematically consistent with the IV prediction (no conflicting forecasts)
 
 ---
 
@@ -436,7 +456,6 @@ TIER2_TRAINING_CONFIG = {
 
     'retraining': {
         'lightgbm': 'weekly (incremental)',
-        'tft': 'monthly (full retrain, ~4hr RTX 3050)',
         'mamba': 'monthly (full retrain, ~3hr RTX 3050)',
     }
 }
@@ -449,9 +468,8 @@ TIER2_TRAINING_CONFIG = {
 | Model              | AUC-ROC (5m) | AUC-ROC (15m) | AUC-ROC (30m) | Inference (ms) | Memory (MB) |
 | ------------------ | ------------ | ------------- | ------------- | -------------- | ----------- |
 | **LightGBM**       | >0.68        | >0.70         | >0.71         | ~20            | ~50         |
-| **TFT**            | >0.70        | >0.74         | >0.76         | ~35            | ~200        |
 | **Mamba**          | >0.69        | >0.73         | >0.75         | ~25            | ~150        |
-| **Ensemble (avg)** | >0.72        | >0.76         | >0.78         | ~40 (parallel) | ~400        |
+| **Ensemble (avg)** | >0.71        | >0.75         | >0.77         | ~25 (parallel) | ~200        |
 
 ---
 
@@ -462,4 +480,4 @@ TIER2_TRAINING_CONFIG = {
 - [TIER4_MODELS.md](./TIER4_MODELS.md) — Fuses Tier 2 output
 - [MODEL_PIPELINE_WORKFLOW.md](./MODEL_PIPELINE_WORKFLOW.md) — 60-second loop detail
 - [TRAINING_PIPELINE.md](./TRAINING_PIPELINE.md) — CPCV and training infrastructure
-- [FEATURE_SPECIFICATION.md](./FEATURE_SPECIFICATION.md) — All 80+ feature definitions
+- [FEATURE_SPECIFICATION.md](./FEATURE_SPECIFICATION.md) — All 117 feature definitions

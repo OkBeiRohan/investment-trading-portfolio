@@ -19,6 +19,8 @@
 9. [Backtesting Framework](#backtesting-framework)
 10. [Model Update Strategy](#model-update-strategy)
 11. [Monitoring &amp; Drift Detection](#monitoring--drift-detection)
+12. [Transaction Cost Model (NIFTY Options)](#transaction-cost-model-nifty-options)
+13. [Production Drift Detection & Failover](#production-drift-detection--failover)
 
 ---
 
@@ -981,6 +983,134 @@ def detect_feature_drift(
         'drift_ratio': n_drifted / len(drift_results),
         'should_retrain': n_drifted / len(drift_results) > 0.2  # >20% features drifted
     }
+```
+
+---
+
+## Transaction Cost Model (NIFTY Options)
+
+All backtesting and Sharpe ratio calculations MUST include realistic transaction costs. A strategy with gross Sharpe 2.0 can become net-negative after costs. Without this model, performance targets are meaningless.
+
+### Cost Components (per leg, per lot of 25 units)
+
+| Component | Rate | Example (premium Rs 150) | Notes |
+|-----------|------|--------------------------|-------|
+| **Brokerage** | Rs 20/order (flat) | Rs 20 | Zerodha/Upstox discount broker model |
+| **STT** | 0.0625% on sell side | Rs 2.34 (on sell) | Securities Transaction Tax; buy-side exempt for options |
+| **Exchange txn charges** | 0.0495% (NSE FO) | Rs 1.86 | NSE charges on turnover |
+| **GST** | 18% on (brokerage + exchange charges) | Rs 3.93 | On brokerage + exchange charges |
+| **SEBI turnover fees** | 0.0001% | Rs 0.04 | Negligible but included |
+| **Stamp duty** | 0.003% on buy side | Rs 0.11 | State-level, varies slightly |
+| **Slippage** | 1-5 bps typical | Rs 3.75 (at 1 bps) | Biggest variable cost; depends on liquidity |
+
+### Total Cost Estimate
+
+```python
+def estimate_round_trip_cost(
+    premium: float,
+    lot_size: int = 25,
+    slippage_bps: float = 2.0,
+    brokerage_per_order: float = 20.0,
+) -> dict:
+    """
+    Estimate total round-trip cost for a NIFTY option trade.
+    Returns cost breakdown and cost as % of premium.
+    """
+    turnover_per_leg = premium * lot_size
+    turnover_round_trip = turnover_per_leg * 2
+
+    brokerage = brokerage_per_order * 2  # buy + sell
+    stt = turnover_per_leg * 0.000625  # sell side only
+    exchange_charges = turnover_round_trip * 0.000495
+    gst = (brokerage + exchange_charges) * 0.18
+    sebi_fees = turnover_round_trip * 0.000001
+    stamp_duty = turnover_per_leg * 0.00003  # buy side only
+    slippage = turnover_round_trip * (slippage_bps / 10000)
+
+    total = brokerage + stt + exchange_charges + gst + sebi_fees + stamp_duty + slippage
+    cost_pct = (total / turnover_per_leg) * 100
+
+    return {
+        'total_cost': round(total, 2),
+        'cost_as_pct_of_premium': round(cost_pct, 3),
+        'breakdown': {
+            'brokerage': brokerage,
+            'stt': round(stt, 2),
+            'exchange_charges': round(exchange_charges, 2),
+            'gst': round(gst, 2),
+            'sebi_fees': round(sebi_fees, 2),
+            'stamp_duty': round(stamp_duty, 2),
+            'slippage': round(slippage, 2),
+        }
+    }
+
+# Example: Rs 150 premium, 25 lot size, 2 bps slippage
+# Total ~Rs 55-65 round trip, or ~1.5% of premium per trade
+```
+
+### Impact on Strategy Metrics
+
+| Metric | Without Costs | With Costs (2 bps slippage) | With Costs (5 bps) |
+|--------|--------------|----------------------------|---------------------|
+| Sharpe Ratio target | >1.5 | >1.2 | >0.9 |
+| Win rate breakeven | 50% | ~52% | ~54% |
+| Trades/day breakeven | - | Max ~15-20 | Max ~8-10 |
+
+**Rule**: All backtesting in TRAINING_PIPELINE.md MUST apply `estimate_round_trip_cost()` to every simulated trade. Raw (gross) metrics should be reported alongside net metrics, never alone.
+
+---
+
+## Production Drift Detection & Failover
+
+### Monitored Metrics
+
+| Metric | Threshold | Check Frequency | Action |
+|--------|-----------|-----------------|--------|
+| Tier 2 rolling AUC (20-day) | <0.58 | Daily EOD | Trigger retraining |
+| Feature distribution shift (KS test) | p < 0.01 for >3 features | Daily EOD | Alert + investigate |
+| Tier 4 hit rate (10-day rolling) | <45% | Daily EOD | Reduce position to 50% |
+| Tier 4 hit rate (20-day rolling) | <40% | Daily EOD | **Stop trading, manual review** |
+| Prediction calibration (ECE) | >0.15 | Weekly | Re-calibrate temperature |
+| India VIX regime change | VIX crosses 25 (up) or 15 (down) | Real-time | Adjust regime weights |
+
+### Failover Strategy
+
+```
+IF rolling_20d_hit_rate < 40%:
+    → STOP all new trades
+    → Close existing positions at market
+    → Alert admin via notification-service
+    → Trigger emergency retraining
+    → Require manual approval to resume
+
+ELIF rolling_10d_hit_rate < 45%:
+    → Reduce max position to 50% of normal
+    → Switch to default regime weights (no learned weights)
+    → Schedule accelerated retraining
+
+ELIF rolling_20d_auc < 0.58:
+    → Schedule standard retraining for next weekend
+    → Continue trading with current models
+    → Log degradation in experiment tracker
+```
+
+### Feature Drift Detection
+
+```python
+from scipy.stats import ks_2samp
+
+def detect_feature_drift(
+    reference_features: pd.DataFrame,  # Last 60 days of training data
+    live_features: pd.DataFrame,       # Last 5 days of live data
+    p_threshold: float = 0.01
+) -> list[str]:
+    """Return list of features with significant distribution shift."""
+    drifted = []
+    for col in reference_features.columns:
+        stat, p_value = ks_2samp(reference_features[col], live_features[col])
+        if p_value < p_threshold:
+            drifted.append(col)
+    return drifted
 ```
 
 ---

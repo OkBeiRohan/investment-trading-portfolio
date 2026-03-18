@@ -205,6 +205,22 @@ REGIME_CONTEXT_FEATURES = [
 ]
 ```
 
+### Tier Disagreement as Uncertainty Signal
+
+When all tiers agree (e.g., Tier 0 bullish gap, Tier 1 bull regime, Tier 2 high P(up), Tier 3 buy pressure), the system may become overconfident. Conversely, high disagreement between tiers is a strong uncertainty signal.
+
+**Implementation**: Add 3 disagreement features to the regime context:
+
+```python
+DISAGREEMENT_FEATURES = [
+    'tier_direction_entropy',     # Shannon entropy of tier directional signals
+    'tier_agreement_score',       # Cosine similarity between tier output vectors
+    'tier2_tier3_divergence',     # |P_tier2(up) - P_tier3(up)| — intraday vs micro conflict
+]
+```
+
+**Usage in position sizing**: When `tier_direction_entropy > 0.8` (high disagreement), reduce position size by 50% regardless of confidence. This prevents overcommitting when the evidence is contradictory.
+
 ### Regime-Conditioned Temporal Loss
 
 ```python
@@ -242,7 +258,7 @@ def regime_conditioned_loss(
 
 When the Meta-Learner is not yet trained (cold start), use these fixed weights:
 
-| Regime            | Tier 0 | Tier 1 | Tier 2 (LightGBM+TFT+Mamba) | Tier 3 (LiT) |
+| Regime            | Tier 0 | Tier 1 | Tier 2 (LightGBM+Mamba) | Tier 3 (LiT) |
 | ----------------- | ------ | ------ | --------------------------- | ------------ |
 | **BULL_TRENDING** | 0.05   | 0.15   | 0.60                        | 0.20         |
 | **BEAR_TRENDING** | 0.05   | 0.15   | 0.60                        | 0.20         |
@@ -367,14 +383,26 @@ class RiskManager:
 ```python
 class KellyPositionSizer:
     """
-    Kelly criterion position sizing with VIX-scaled dynamic leverage.
+    Modified Kelly position sizing for options with VIX-scaled dynamic leverage.
 
-    f* = (p · b - q) / b
+    For binary outcomes: f* = (p · b - q) / b
+    For options (asymmetric payoffs): f* = E[R] / E[R²]
+
+    The binary Kelly formula is an approximation. Options have non-linear,
+    asymmetric payoffs (a long call can lose 100% of premium but gain multiples).
+    Per Thorp (2006), the continuous Kelly analog E[R]/E[R²] is more appropriate.
+
+    IMPORTANT: Model confidence must be calibrated (Platt scaling / temperature
+    scaling) before use as win probability. Raw softmax outputs are NOT
+    calibrated probabilities.
+
+    The 0.25x fractional Kelly partially mitigates both estimation error
+    and the binary approximation error.
 
     where:
-        p = win probability (from Meta-Learner confidence)
+        p = calibrated win probability (from Meta-Learner, post Platt scaling)
         q = 1 - p
-        b = win/loss ratio (from backtest)
+        b = win/loss ratio (from rolling 60-day backtest window)
     """
 
     def __init__(self, max_kelly_fraction: float = 0.25):
@@ -494,8 +522,15 @@ Training the Meta-Learner on in-sample predictions from Tier 2 would cause massi
 
 ```python
 STRIKE_SELECTOR_CONFIG = {
-    'training_data': 'Historical option chain + realized PnL per strike',
-    'target': 'Strike that maximized risk-adjusted PnL (hindsight)',
+    'training_data': 'Historical option chain + entry-time features + realized PnL',
+    'target': 'Strike with best risk-adjusted PnL using CAUSAL features only',
+    'causal_target_note': (
+        'The target is NOT the hindsight-optimal strike (which creates circular '
+        'reasoning). Instead, strikes are ranked by PnL conditioned on features '
+        'available at entry time: delta bucket, IV percentile vs 30-day realized '
+        'vol, bid-ask spread, OI concentration, and time-to-expiry. This breaks '
+        'the circularity of predicting the realized move to select the strike.'
+    ),
     'architecture': 'LSTM(IV surface) + MLP(context)',
     'retraining': 'monthly',
 }

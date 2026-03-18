@@ -58,12 +58,34 @@ Measures NIFTY 50 constituent behavior for market-wide sentiment.
 | --- | ------------------------ | --------------------------------------------- | ------------- | ------------------ |
 | 1   | `pct_stocks_above_vwap`  | `count(ltp > vwap) / 50`                      | [0, 1]        | Bullish breadth    |
 | 2   | `pct_stocks_above_ema20` | `count(ltp > ema20) / 50`                     | [0, 1]        | Trend breadth      |
-| 3   | `weighted_return_top10`  | `Σ(return_i × weight_i)` for top 10 by volume | [-0.1, 0.1]   | Large-cap momentum |
+| 3   | `weighted_return_top10`  | `Σ(return_i × weight_i)` for top 10 by **NSE index weight** | [-0.1, 0.1]   | Heavyweight momentum (by index weight, NOT volume) |
 | 4   | `advance_decline_ratio`  | `advances / max(declines, 1)`                 | [0, ∞)        | Market direction   |
 | 5   | `breadth_momentum_5m`    | `mean(intraday_return)` across 50 stocks      | [-0.05, 0.05] | Short-term breadth |
 | 6   | `breadth_volatility`     | `std(intraday_return)` across 50 stocks       | [0, 0.1]      | Dispersion         |
 | 7   | `breadth_thrust`         | `advances / (advances + declines)`            | [0, 1]        | Thrust indicator   |
 | 8   | `new_highs_lows_ratio`   | `(new_highs - new_lows) / 50`                 | [-1, 1]       | Extremes           |
+
+### Cap-Weighted Breadth Features (7 New Features)
+
+Equal-weight breadth (above) answers "how many stocks participate?" but ignores that NIFTY 50 is free-float market-cap weighted. HDFC Bank at 11.83% counts the same as ADANIENT at 0.49%. Cap-weighted breadth answers "how much INDEX WEIGHT participates?"
+
+Research (Bruce Wood Capital, Feb 2026) shows the **divergence** between equal-weight and cap-weighted breadth is one of the strongest regime-change signals for concentrated indices.
+
+| #   | Feature                       | Formula                                                         | Range       | Purpose                     |
+| --- | ----------------------------- | --------------------------------------------------------------- | ----------- | --------------------------- |
+| 9   | `weighted_pct_above_vwap`     | `Σ(weight_i × 1{ltp_i > vwap_i})` for all 50                   | [0, 1]      | Cap-weighted bullish breadth |
+| 10  | `weighted_pct_above_ema20`    | `Σ(weight_i × 1{ltp_i > ema20_i})` for all 50                  | [0, 1]      | Cap-weighted trend breadth  |
+| 11  | `weighted_advance_decline`    | `Σ(weight_i × 1{advancing_i}) / Σ(weight_i × 1{declining_i})`  | [0, ∞)      | Weight-adjusted A/D ratio   |
+| 12  | `breadth_weight_divergence`   | `pct_stocks_above_vwap - weighted_pct_above_vwap`               | [-1, 1]     | Concentration risk signal   |
+| 13  | `top5_contribution`           | `Σ(return_i × weight_i) for top 5` / `index_return`            | [-∞, ∞]     | Heavyweight dominance       |
+| 14  | `herfindahl_return_conc`      | `Σ(weight_i × return_i)² / (Σ weight_i × return_i)²`          | [0, 1]      | Return concentration index  |
+| 15  | `is_rebalancing_week`         | `1 if within 5 days of Mar/Sep last working day`                | {0, 1}      | Index rebalancing effect    |
+
+**Total Index Breadth features: 15** (8 equal-weight + 7 cap-weighted)
+
+**Weight source**: NSE free-float market cap weights from `nifty50-constituents.json`. Weights are updated at each semi-annual rebalancing (March/September).
+
+**Current top 5 weights (March 2026)**: HDFCBANK 11.83%, ICICIBANK 8.58%, RELIANCE 8.20%, BHARTIARTL 4.56%, LT 4.38% = **37.55% of index**
 
 ---
 
@@ -357,3 +379,27 @@ QuestDB: stored in instrument_features table (same as other batch features)
 - [MODEL_ARCHITECTURE.md](./MODEL_ARCHITECTURE.md) - 5-tier model design
 - [TRAINING_PIPELINE.md](./TRAINING_PIPELINE.md) - Model training
 - [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md) - Data sources
+
+---
+
+## Feature Selection Pipeline
+
+Research (PatchTST, Luxembourg 2025; general financial ML literature) consistently shows that more features ≠ better predictions. Overlapping indicators (RSI_5, RSI_14, CCI, Williams%R are all momentum oscillators) cause multicollinearity.
+
+### Recommended Approach
+
+1. Train LightGBM on all 117+ features with CPCV
+2. Extract SHAP feature importance scores
+3. Rank features by mean |SHAP value| across folds
+4. Select top 50-60 features for deep learning models (TFT/Mamba use `feature_fraction`)
+5. LightGBM can keep all features (handles redundancy via `feature_fraction=0.8`)
+
+### Per-Model Feature Strategy
+
+| Model | Feature Count | Selection Method |
+|-------|--------------|-----------------|
+| LightGBM | All 117 | Built-in `feature_fraction=0.8` handles redundancy |
+| Mamba | Top 60 by SHAP | Reduces noise, faster training |
+| LiT (Tier 3) | 14-18 LOB-specific | Domain-constrained, no selection needed |
+| HMM (Tier 1) | 8 core features | Manual selection for covariance tractability |
+| PatchTST (Tier 1) | 15 daily features | Curated for daily regime signal |

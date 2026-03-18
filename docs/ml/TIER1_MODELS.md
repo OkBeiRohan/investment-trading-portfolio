@@ -64,7 +64,7 @@ Tier 0 Output (cached)
 ┌──────────────────────┐     ┌──────────────────────────┐
 │ HMM (4-state)        │     │ PatchTST                 │
 │                      │     │                          │
-│ Input: 32 features   │     │ Input: 512 days × 15 feat│
+│ Input: 8 features    │     │ Input: 512 days × 15 feat│
 │ Output:              │     │ Output:                  │
 │  • regime_state      │     │  • daily_direction       │
 │  • state_probability │     │  • daily_magnitude       │
@@ -220,13 +220,19 @@ import numpy as np
 class RegimeHMM:
     """
     4-state Gaussian HMM for market regime detection.
-    Trained on 26 years of daily data with emission = 32-feature vectors.
+    Trained on 26 years of daily data with emission = 8-feature vectors.
     """
 
-    def __init__(self, n_states: int = 4, n_features: int = 43):  # 43 features (was 32)
+    def __init__(self, n_states: int = 4, n_features: int = 8):
+        """
+        Using diagonal covariance (not full) to prevent overfitting.
+        Full covariance on 43 features requires ~3,784 parameters for 4 states,
+        but we only have ~6,500 daily samples (26yr).
+        Diagonal reduces this to 4×8=32 parameters.
+        """
         self.model = hmm.GaussianHMM(
             n_components=n_states,
-            covariance_type='full',    # Full covariance for correlated features
+            covariance_type='diag',    # Diagonal covariance to prevent overfitting
             n_iter=200,
             random_state=42,
             tol=1e-4,
@@ -242,7 +248,7 @@ class RegimeHMM:
         Train HMM on daily feature matrix.
 
         Args:
-            features: [N_days, 43] feature matrix (all trading days)  # 43 features
+            features: [N_days, 8] feature matrix (all trading days)  # 8 selected features
             lengths: Sequence lengths if training on multiple contiguous blocks
         """
         # Standardize features
@@ -292,7 +298,7 @@ class RegimeHMM:
 
     def predict(self, features: np.ndarray) -> dict:
         """
-        Predict current regime from latest feature vector [1, 32].
+        Predict current regime from latest feature vector [1, 8].
         Returns semantic state label + probabilities.
         """
         features_scaled = (features - self.scaler_mean) / (self.scaler_std + 1e-8)
@@ -316,7 +322,8 @@ class RegimeHMM:
 ```python
 HMM_CONFIG = {
     'n_states': 4,
-    'covariance_type': 'full',
+    'covariance_type': 'diag',
+    'feature_selection': 'HMM uses 8 core features; PatchTST uses full 15',
     'n_iter': 200,
     'data_depth_years': 26,
     'validation': 'walk_forward',
@@ -393,18 +400,23 @@ class DailyPatchTST(nn.Module):
     def forward(self, x: torch.Tensor) -> dict:
         """
         Args:
-            x: [B, 512, 15] — 512 days of 15 features
+            x: [B, 512, 15] — 512 days of 15 features.
+                Each feature channel is processed independently (channel-independent)
+                then aggregated via mean-pooling across channels.
         Returns:
             dict with 'direction' [-1,+1] and 'magnitude' [0, ∞)
         """
-        B = x.shape[0]
+        B, S, C = x.shape  # [B, 512, 15]
 
-        # Process feature-independent (channel-independent like original PatchTST)
-        # Average all features first for a univariate signal
-        x_avg = x.mean(dim=-1)  # [B, 512]
+        # Channel-independent processing (original PatchTST design)
+        # Each feature is processed as a separate univariate sequence
+        # with shared patch embedding weights across channels.
+        # This avoids averaging features which destroys multivariate information
+        # (Nie et al., 2023; Luxembourg study 2025 found averaging adds noise).
+        x_flat = x.permute(0, 2, 1).reshape(B * C, S)  # [B*C, 512]
 
-        # Unfold into patches: [B, n_patches, patch_len]
-        patches = x_avg.unfold(dimension=-1, size=16, step=8)
+        # Unfold into patches: [B*C, n_patches, patch_len]
+        patches = x_flat.unfold(dimension=-1, size=16, step=8)
 
         # Embed patches
         embedded = self.patch_embed(patches)  # [B, n_patches, d_model]
@@ -413,7 +425,9 @@ class DailyPatchTST(nn.Module):
         # Transformer
         encoded = self.encoder(embedded)  # [B, n_patches, d_model]
 
-        # Flatten
+        # Aggregate across channels (mean-pool over C independent channels)
+        encoded = encoded.reshape(B, C, self.n_patches, -1)  # [B, C, n_patches, d_model]
+        encoded = encoded.mean(dim=1)  # [B, n_patches, d_model]
         flat = encoded.flatten(1)  # [B, n_patches * d_model]
 
         return {
@@ -422,7 +436,7 @@ class DailyPatchTST(nn.Module):
         }
 ```
 
-### PatchTST Features (15 from 32, daily-only)
+### PatchTST Features (15 from 43, daily-only)
 
 ```python
 PATCHTST_FEATURES = [
@@ -491,7 +505,7 @@ def prepare_tier1_data(
     nifty_daily: pd.DataFrame,    # 26 years of OHLCV + VIX
     constituents: pd.DataFrame,   # 50 stocks daily for breadth
 ) -> pd.DataFrame:
-    """Build 32-feature matrix, one row per trading day."""
+    """Build 43-feature matrix, one row per trading day."""
     df = nifty_daily.copy()
 
     # Returns
@@ -515,6 +529,14 @@ def prepare_tier1_data(
     df['trend_strength'] = df['adx_14'] / 100.0
     df['higher_high_count_20d'] = (df['high'] > df['high'].shift(1)).rolling(20).sum()
     df['lower_low_count_20d'] = (df['low'] < df['low'].shift(1)).rolling(20).sum()
+
+    # CRITICAL: Survivorship bias prevention
+    # The `constituents` DataFrame MUST contain point-in-time NIFTY 50 membership.
+    # Using today's 50 stocks on historical dates creates look-ahead bias:
+    # excluded stocks averaged -3% annually vs survivors at +18%.
+    # Use the nifty50_constituents table (date, symbol, free_float_weight)
+    # or the HuggingFace dataset AMP4010/Historical_Nifty_50_Constituent_Weights_20Y.
+    # See NIFTY50_CONSTITUENT_CHANGES.md for the full change history.
 
     # Breadth
     df['pct_above_200sma'] = compute_breadth(constituents)

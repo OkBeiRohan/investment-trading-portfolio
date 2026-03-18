@@ -29,7 +29,7 @@ The fundamental principle: **models are segregated by the intersection of their 
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
 │  │ TIER 2: INTRADAY NAVIGATOR (4-Year Data Depth)                        │  │
 │  │ Data: 4yr 1-Min + OI + Global 1-min | Runs: Every 60 seconds          │  │
-│  │ Models: LightGBM + TFT + Mamba                                        │  │
+│  │ Models: LightGBM + Mamba                                              │  │
 │  │ Output: P(up), P(down), P(flat) for 5m, 15m, 30m horizons             │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                          ↓ Direction Signal                                 │
@@ -190,11 +190,10 @@ Predict 5m, 15m, and 30m directional magnitude using 4 years of 1-minute histori
 
 | Model        | Architecture      | Input           | Output                  | Latency |
 | ------------ | ----------------- | --------------- | ----------------------- | ------- |
-| **LightGBM** | Gradient Boosting | 80+ features    | 3-class probs           | ~20ms   |
-| **TFT**      | Temporal Fusion   | 80×120 sequence | Multi-horizon quantiles | ~35ms   |
-| **Mamba**    | State Space Model | 80×120 sequence | Direction probabilities | ~25ms   |
+| **LightGBM** | Gradient Boosting | 117 features     | 3-class probs           | ~20ms   |
+| **Mamba**    | State Space Model | 117×120 sequence | Direction probabilities | ~25ms   |
 
-### Feature Set (~116 Features)
+### Feature Set (117 Features)
 
 | Category                  | Count    | Key Features                                                       |
 | ------------------------- | -------- | ------------------------------------------------------------------ |
@@ -211,7 +210,7 @@ Predict 5m, 15m, and 30m directional magnitude using 4 years of 1-minute histori
 | Time Context (Cyclical)   | 13       | sin/cos encoding, session phase, expiry flags                      |
 | Global Macro (live 1-min) | 12       | ES/NQ returns, Brent, Gold, USD/INR during session                 |
 | MCX Commodities           | 8        | Crude Oil MCX, Nat Gas, Gold MCX, Silver, Copper (live intraday %) |
-| **Total**                 | **~125** |                                                                    |
+| **Total**                 | **117**  |                                                                    |
 
 ### Label Generation
 
@@ -292,12 +291,12 @@ $$
 
 ### Regime-Adaptive Weights
 
-| Regime        | LightGBM | TFT | LiT | Behavior                  |
-| ------------- | -------- | --- | --- | ------------------------- |
-| BULL_TRENDING | 0.5      | 0.3 | 0.2 | Trust direction models    |
-| BEAR_TRENDING | 0.5      | 0.3 | 0.2 | Trust direction models    |
-| VOLATILE      | 0.3      | 0.3 | 0.4 | Prioritize microstructure |
-| RANGING       | 0.4      | 0.4 | 0.2 | Trust regime boundaries   |
+| Regime        | LightGBM | Mamba | LiT | Behavior                  |
+| ------------- | -------- | ----- | --- | ------------------------- |
+| BULL_TRENDING | 0.5      | 0.3   | 0.2 | Trust direction models    |
+| BEAR_TRENDING | 0.5      | 0.3   | 0.2 | Trust direction models    |
+| VOLATILE      | 0.3      | 0.3   | 0.4 | Prioritize microstructure |
+| RANGING       | 0.4      | 0.4   | 0.2 | Trust regime boundaries   |
 
 ### Live Feed: Asynchronous State Management
 
@@ -319,7 +318,7 @@ Tier outputs are cached in Redis. The Meta-Learner always pulls the **latest ava
 | **Tier 0 XGBoost**  | Gap direction accuracy | >65%        | Walk-forward   |
 | **Tier 1 HMM**      | State persistence      | >5 days avg | Walk-forward   |
 | **Tier 2 LightGBM** | AUC-ROC                | >0.68       | CPCV           |
-| **Tier 2 TFT**      | MAE (returns)          | <0.3%       | CPCV           |
+| **Tier 2 Mamba**    | AUC-ROC                | >0.66       | CPCV           |
 | **Tier 3 LiT**      | AUC-ROC                | >0.65       | Rolling window |
 | **Tier 4 Meta**     | AUC-ROC                | >0.72       | CPCV           |
 | **Ensemble**        | Sharpe Ratio           | >1.5        | Backtest       |
@@ -334,7 +333,6 @@ Tier outputs are cached in Redis. The Meta-Learner always pulls the **latest ava
 | ----------------- | ------ | ------------- |
 | XGBoost (Tier 0)  | <0.5GB | ~5 min        |
 | LightGBM (Tier 2) | <1GB   | ~30 min       |
-| TFT (Tier 2)      | ~2GB   | ~4 hours      |
 | Mamba (Tier 2)    | ~2GB   | ~3 hours      |
 | LiT (Tier 3)      | ~2GB   | ~2 hours      |
 | Meta-Learner      | <0.5GB | ~5 min        |
@@ -345,10 +343,9 @@ Tier outputs are cached in Redis. The Meta-Learner always pulls the **latest ava
 | -------------------- | --------- | ---------- |
 | XGBoost              | ~5ms      | ~20MB      |
 | LightGBM             | ~20ms     | ~50MB      |
-| TFT                  | ~35ms     | ~200MB     |
 | Mamba                | ~25ms     | ~150MB     |
 | LiT                  | ~10ms     | ~100MB     |
-| **Total (parallel)** | **~50ms** | **~600MB** |
+| **Total (parallel)** | **~35ms** | **~400MB** |
 
 ---
 

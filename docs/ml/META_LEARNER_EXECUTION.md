@@ -244,7 +244,7 @@ class RegimeFeatureExtractor:
         
         # Recent model performance
         'lgb_recent_accuracy',
-        'tft_recent_accuracy'
+        'mamba_recent_accuracy'
     ]
     
     def extract(self, market_state: dict) -> torch.Tensor:
@@ -502,6 +502,8 @@ class RiskManager:
 ---
 
 ## Execution Layer: PPO Execution Agent
+
+> **Note (March 2026)**: PPO execution has been replaced with Smart TWAP/VWAP execution with Tier 3 slippage-aware limit pricing. PPO was evaluated but deemed over-engineered for NIFTY options which have reasonable ATM liquidity. The code below is retained for reference but is not used in production. See TIER4_MODELS.md for the current execution strategy.
 
 ### Purpose
 

@@ -3,7 +3,7 @@
 > **Complete schema for 26 years of historical data (2000-2026) plus tick-by-tick depth for ML training.**
 
 **Last Updated**: March 13, 2026
-**Status**: Production Schema (9 tables)
+**Status**: Production Schema (10 tables)
 **Purpose**: **Training data storage + live feature persistence**
 **Source of truth**: `packages/schema/sql/schema/*.sql`
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-QuestDB stores all time-series data across 9 tables:
+QuestDB stores all time-series data across 10 tables:
 
 | #   | Table                    | Purpose                                   | Partition | Dedup Keys                                               |
 | --- | ------------------------ | ----------------------------------------- | --------- | -------------------------------------------------------- |
@@ -24,6 +24,7 @@ QuestDB stores all time-series data across 9 tables:
 | 7   | `training_labels`        | Multi-horizon targets                     | MONTH     | timestamp, instrument_key, interval_value, interval_unit |
 | 8   | `macro_sentiment`        | NLP news sentiment                        | MONTH     | timestamp, entity, event_type                            |
 | 9   | `dataset_folds`          | CPCV train/test splits                    | MONTH     | —                                                        |
+| 10  | `nifty50_constituents`   | Point-in-time index composition           | MONTH     | timestamp, symbol                                        |
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -297,6 +298,45 @@ CREATE TABLE IF NOT EXISTS dataset_folds (
 
 ---
 
+### 10. `nifty50_constituents` — Point-in-Time Index Composition
+
+Tracks historical NIFTY 50 membership and free-float weights for survivorship-bias-free feature computation.
+
+```sql
+CREATE TABLE IF NOT EXISTS nifty50_constituents (
+    timestamp TIMESTAMP,
+    symbol SYMBOL,
+    isin STRING,
+    instrument_key STRING,
+    free_float_weight DOUBLE,
+    action SYMBOL,
+    sector STRING
+) TIMESTAMP(timestamp) PARTITION BY MONTH;
+```
+
+**Key queries**:
+
+```sql
+-- Get constituents and weights on a specific date
+SELECT symbol, free_float_weight, sector
+FROM nifty50_constituents
+WHERE timestamp <= '2024-06-15'
+AND action != 'REMOVE'
+LATEST ON timestamp PARTITION BY symbol;
+
+-- Get constituent changes in a date range
+SELECT * FROM nifty50_constituents
+WHERE timestamp BETWEEN '2024-01-01' AND '2024-12-31'
+AND action IN ('ADD', 'REMOVE')
+ORDER BY timestamp;
+```
+
+**Coverage**: 2008-present (from HuggingFace dataset), updated at each semi-annual rebalancing.
+
+**Retention**: Permanent (required for historical breadth feature recomputation).
+
+---
+
 ## Validity Rules
 
 ### Invalid Reasons (Standardized)
@@ -307,7 +347,7 @@ CREATE TABLE IF NOT EXISTS dataset_folds (
 | `PRE_OPEN`           | 9:00-9:15 pre-open session             | Exclude from most models |
 | `STALE_DATA`         | Gap >60s in tick stream                | Mark for review          |
 | `OUTLIER`            | Feature >5σ from rolling mean          | Mark for review          |
-| `INCOMPLETE_BREADTH` | <40 constituents available             | Limited models only      |
+| `INCOMPLETE_BREADTH` | <40 constituents available OR weight data missing | Exclude cap-weighted breadth features |
 | `INCOMPLETE_OPTIONS` | <10 strikes available                  | Exclude options features |
 | `CIRCUIT_LIMIT`      | Stock/index hit circuit                | Special handling         |
 | `AUCTION`            | Opening/closing auction                | Exclude                  |
