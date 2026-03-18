@@ -7,6 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { CandlesRepository } from '@repo/database';
+import { AuthManagerService } from '@repo/authentication';
 import { isAxiosError } from 'axios';
 
 export interface UpstoxCandleData {
@@ -334,7 +335,13 @@ export class UpstoxClient {
   constructor(
     private readonly api: HttpService,
     private readonly candlesRepository: CandlesRepository,
+    private readonly authManager: AuthManagerService,
   ) {}
+
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const token = await this.authManager.getAccessToken('system', 'upstox', 'LIVE');
+    return { Authorization: `Bearer ${token}` };
+  }
 
   /**
    * Fetch historical candle data using V3 API
@@ -352,12 +359,11 @@ export class UpstoxClient {
     toDate: string,
   ): Promise<UpstoxCandleData[]> {
     try {
-      // V3 API endpoint: /v3/historical-candle/:instrument_key/:unit/:interval/:to_date/:from_date
       const encodedKey = encodeURIComponent(instrumentKey);
+      const headers = await this.getAuthHeaders();
+      const url = `/v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`;
       const response = await firstValueFrom(
-        this.api.get<UpstoxHistoricalResponse>(
-          `/v3/historical-candle/${encodedKey}/${unit}/${interval}/${toDate}/${fromDate}`,
-        ),
+        this.api.get<UpstoxHistoricalResponse>(url, { headers }),
       );
 
       if (response.data.status !== 'success' || !response.data.data?.candles) {
@@ -380,19 +386,18 @@ export class UpstoxClient {
       }));
     } catch (error) {
       if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
         this.logger.error(
-          `Axios error fetching candles for ${instrumentKey}: ${
-            error.response
-              ? `Status ${error.response.status} - ${JSON.stringify(
-                  error.response.data,
-                )}`
-              : error.message
-          }`,
+          `Failed to fetch candles | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
         );
         throw error;
       }
 
-      // Log non-axios errors
       this.logger.error(
         `Error: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -739,13 +744,14 @@ export class UpstoxClient {
     instrumentKeys: string[],
   ): Promise<InstrumentMasterData[]> {
     try {
-      // API endpoint: /v2/market-quote/quotes?instrument_key=KEY1&instrument_key=KEY2
       const params = new URLSearchParams();
       instrumentKeys.forEach((key) => params.append('instrument_key', key));
+      const headers = await this.getAuthHeaders();
 
       const response = await firstValueFrom(
         this.api.get<UpstoxMarketQuoteResponse>(
           `/v2/market-quote/quotes?${params.toString()}`,
+          { headers },
         ),
       );
 
@@ -795,9 +801,11 @@ export class UpstoxClient {
   async getExpiries(instrumentKey: string): Promise<string[]> {
     try {
       const encodedKey = encodeURIComponent(instrumentKey);
+      const headers = await this.getAuthHeaders();
       const response = await firstValueFrom(
         this.api.get<ExpiriesResponse>(
           `/v2/expired-instruments/expiries?instrument_key=${encodedKey}`,
+          { headers },
         ),
       );
 
@@ -832,9 +840,11 @@ export class UpstoxClient {
   ): Promise<ExpiredFutureContract[]> {
     try {
       const encodedKey = encodeURIComponent(instrumentKey);
+      const headers = await this.getAuthHeaders();
       const response = await firstValueFrom(
         this.api.get<ExpiredFutureContractsResponse>(
           `/v2/expired-instruments/future/contract?instrument_key=${encodedKey}&expiry_date=${expiryDate}`,
+          { headers },
         ),
       );
 
@@ -855,9 +865,11 @@ export class UpstoxClient {
   ): Promise<ExpiredOptionContract[]> {
     try {
       const encodedKey = encodeURIComponent(instrumentKey);
+      const headers = await this.getAuthHeaders();
       const response = await firstValueFrom(
         this.api.get<ExpiredOptionContractsResponse>(
           `/v2/expired-instruments/option/contract?instrument_key=${encodedKey}&expiry_date=${expiryDate}`,
+          { headers },
         ),
       );
 
@@ -888,9 +900,11 @@ export class UpstoxClient {
   ): Promise<UpstoxCandleData[]> {
     try {
       const encodedKey = encodeURIComponent(expiredInstrumentKey);
+      const headers = await this.getAuthHeaders();
       const response = await firstValueFrom(
         this.api.get<ExpiredHistoricalCandleResponse>(
           `/v2/expired-instruments/historical-candle/${encodedKey}/${interval}/${toDate}/${fromDate}`,
+          { headers },
         ),
       );
 
@@ -978,9 +992,10 @@ export class UpstoxClient {
       if (expiryDate) {
         url += `&expiry_date=${expiryDate}`;
       }
+      const headers = await this.getAuthHeaders();
 
       const response = await firstValueFrom(
-        this.api.get<OptionContractsResponse>(url),
+        this.api.get<OptionContractsResponse>(url, { headers }),
       );
 
       if (response.data.status !== 'success' || !response.data.data) {
@@ -1014,9 +1029,11 @@ export class UpstoxClient {
   ): Promise<OptionChainItem[]> {
     try {
       const encodedKey = encodeURIComponent(instrumentKey);
+      const headers = await this.getAuthHeaders();
       const response = await firstValueFrom(
         this.api.get<OptionChainResponse>(
           `/v2/option/chain?instrument_key=${encodedKey}&expiry_date=${expiryDate}`,
+          { headers },
         ),
       );
 
@@ -1050,10 +1067,12 @@ export class UpstoxClient {
     try {
       const params = new URLSearchParams();
       instrumentKeys.forEach((key) => params.append('instrument_key', key));
+      const headers = await this.getAuthHeaders();
 
       const response = await firstValueFrom(
         this.api.get<OptionGreeksResponse>(
           `/v3/market-quote/option-greek?${params.toString()}`,
+          { headers },
         ),
       );
 
@@ -1116,10 +1135,12 @@ export class UpstoxClient {
     try {
       const params = new URLSearchParams();
       instrumentKeys.forEach((key) => params.append('instrument_key', key));
+      const headers = await this.getAuthHeaders();
 
       const response = await firstValueFrom(
         this.api.get<UpstoxMarketQuoteResponse>(
           `/v2/market-quote/quotes?${params.toString()}`,
+          { headers },
         ),
       );
 
@@ -1158,9 +1179,11 @@ export class UpstoxClient {
   ): Promise<ExpiredFutureContract[]> {
     try {
       const encodedKey = encodeURIComponent(instrumentKey);
+      const headers = await this.getAuthHeaders();
       const response = await firstValueFrom(
         this.api.get<ExpiredFutureContractsResponse>(
           `/v2/expired-instruments/futures?instrument_key=${encodedKey}&expiry=${expiryDate}`,
+          { headers },
         ),
       );
 
@@ -1192,9 +1215,10 @@ export class UpstoxClient {
       if (segment) {
         url += `?segment=${segment}`;
       }
+      const headers = await this.getAuthHeaders();
 
       const response = await firstValueFrom(
-        this.api.get<FundsAndMarginResponse>(url),
+        this.api.get<FundsAndMarginResponse>(url, { headers }),
       );
 
       if (response.data.status !== 'success' || !response.data.data) {

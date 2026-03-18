@@ -5,7 +5,6 @@
 
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { StrikeSelectorService } from './strike-selector.service';
 import { StrikeSelectorBootstrap } from './strike-selector.bootstrap';
 import { UpstoxClient } from '../historical-data/upstox-client';
@@ -13,19 +12,14 @@ import { DatabaseModule } from '@repo/database';
 
 @Module({
   imports: [
-    HttpModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        timeout: 30000,
-        maxRedirects: 5,
-        baseURL: 'https://api.upstox.com',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${configService.get<string>('UPSTOX_ACCESS_TOKEN', '')}`,
-        },
-      }),
-      inject: [ConfigService],
+    HttpModule.register({
+      timeout: 30000,
+      maxRedirects: 5,
+      baseURL: 'https://api.upstox.com',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
     }),
     DatabaseModule.forMarketFeeder(),
   ],
