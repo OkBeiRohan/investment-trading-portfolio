@@ -32,6 +32,13 @@ export const UPSTOX_CONSTANTS = {
     MAX_CONNECTIONS_PLUS: 5,
     MAX_SUBSCRIPTIONS_PER_SOCKET: 3000,
     MAX_SUBSCRIPTIONS_PLUS: 5000,
+    /** V3 per-mode instrument limits (per connection) */
+    V3_MODE_LIMITS: {
+      ltpc: 5000,
+      full: 2000,
+      full_d30: 50,
+      option_greeks: 3000,
+    } as Record<string, number>,
   },
   INTERVALS: {
     "1m": "1minute",

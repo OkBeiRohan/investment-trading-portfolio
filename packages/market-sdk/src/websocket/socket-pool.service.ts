@@ -21,6 +21,7 @@ export interface SocketPoolConfig {
   reconnectDelay: number;
   heartbeatInterval: number;
   feedMode?: FeedMode;
+  modeLimits?: Record<string, number>;
 }
 
 /**
@@ -238,11 +239,12 @@ export class SocketPoolService implements OnModuleDestroy {
     feedMode: FeedMode = 'full',
   ): Promise<PooledSocket> {
     const id = `${provider}-${feedMode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const capacity = config.modeLimits?.[feedMode] ?? config.maxInstrumentsPerSocket;
 
     const pooledSocket: PooledSocket = {
       id,
       socket: null as any,
-      capacity: config.maxInstrumentsPerSocket,
+      capacity,
       used: 0,
       priority,
       feedMode,

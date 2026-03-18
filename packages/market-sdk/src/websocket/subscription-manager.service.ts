@@ -37,7 +37,8 @@ export class SubscriptionManagerService {
   constructor(private readonly socketPool: SocketPoolService) {}
 
   /**
-   * Subscribe to instruments with priority
+   * Subscribe to instruments with priority.
+   * Automatically chunks across multiple sockets when instrument count exceeds per-socket capacity.
    */
   async subscribe(
     provider: string,
@@ -48,47 +49,52 @@ export class SubscriptionManagerService {
     feedMode?: 'ltpc' | 'full' | 'full_d30' | 'option_greeks',
   ): Promise<string> {
     const subscriptionId = `${provider}-${userId}-${Date.now()}`;
+    const socketIds: string[] = [];
 
-    // Get socket from pool (pass feedMode so correct limits apply)
-    const socket = await this.socketPool.getSocket(
-      provider,
-      instruments,
-      priority,
-      feedMode as any,
-    );
+    let remaining = [...instruments];
 
-    // Add instruments to socket
-    this.socketPool.addInstruments(provider, socket.id, instruments);
+    while (remaining.length > 0) {
+      const socket = await this.socketPool.getSocket(
+        provider,
+        remaining,
+        priority,
+        feedMode as any,
+      );
 
-    // Create subscription
+      const available = socket.capacity - socket.used;
+      const batch = remaining.splice(0, available);
+
+      this.socketPool.addInstruments(provider, socket.id, batch);
+      socketIds.push(socket.id);
+
+      if (!this.instrumentToSocket.has(provider)) {
+        this.instrumentToSocket.set(provider, new Map());
+      }
+      const providerMapping = this.instrumentToSocket.get(provider)!;
+      batch.forEach((instrument) => providerMapping.set(instrument, socket.id));
+
+      this.logger.log(
+        `Allocated ${batch.length} instruments to socket ${socket.id} (${socket.used + batch.length}/${socket.capacity}) [${feedMode ?? 'default'}]`,
+      );
+    }
+
     const subscription: Subscription = {
       id: subscriptionId,
       userId,
       instruments,
       priority,
-      socketId: socket.id,
+      socketId: socketIds[0],
       createdAt: new Date(),
       callback,
     };
 
-    // Store subscription
     if (!this.subscriptions.has(provider)) {
       this.subscriptions.set(provider, new Map());
     }
     this.subscriptions.get(provider)!.set(subscriptionId, subscription);
 
-    // Track instrument-to-socket mapping
-    if (!this.instrumentToSocket.has(provider)) {
-      this.instrumentToSocket.set(provider, new Map());
-    }
-
-    const providerMapping = this.instrumentToSocket.get(provider)!;
-    instruments.forEach((instrument) => {
-      providerMapping.set(instrument, socket.id);
-    });
-
     this.logger.log(
-      `Subscribed ${userId} to ${instruments.length} instruments on socket ${socket.id} (priority: ${priority})`
+      `Subscribed ${userId} to ${instruments.length} instruments across ${socketIds.length} socket(s) (priority: ${priority}, mode: ${feedMode ?? 'default'})`,
     );
 
     return subscriptionId;

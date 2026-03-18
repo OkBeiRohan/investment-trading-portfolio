@@ -67,13 +67,13 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    // Initialize socket pool for Upstox
     this.socketPool.initializePool("upstox", {
       maxConnections: UPSTOX_CONSTANTS.WEBSOCKET_LIMITS.MAX_CONNECTIONS_PLUS,
       maxInstrumentsPerSocket:
         UPSTOX_CONSTANTS.WEBSOCKET_LIMITS.MAX_SUBSCRIPTIONS_PLUS,
       reconnectDelay: 5000,
       heartbeatInterval: 30000,
+      modeLimits: UPSTOX_CONSTANTS.WEBSOCKET_LIMITS.V3_MODE_LIMITS,
     });
 
     // Load Protobuf schema for Upstox
@@ -229,36 +229,13 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private messageCount = 0;
-
   /**
    * Handle incoming V3 message -- one FeedResponse contains data for multiple instruments
    */
   private handleMessage(socketId: string, data: any): void {
     try {
-      this.messageCount++;
-
-      if (this.messageCount <= 5) {
-        this.logger.log(
-          `[MSG #${this.messageCount}] Raw data size: ${data.length} bytes`,
-        );
-      }
-
       const feedItems = this.decodeV3FeedResponse(data);
-
-      if (this.messageCount <= 5) {
-        this.logger.log(
-          `[MSG #${this.messageCount}] Decoded ${feedItems?.length ?? 0} feed items`,
-        );
-      }
-
       if (!feedItems) return;
-
-      if (this.messageCount <= 3 && feedItems.length > 0) {
-        this.logger.log(
-          `[MSG #${this.messageCount}] Sample: ${JSON.stringify(feedItems[0])}`,
-        );
-      }
 
       for (const item of feedItems) {
         this.subscriptionManager.routeData("upstox", item.instrumentKey, item);
@@ -357,19 +334,6 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
       });
 
       const typeVal = obj.type;
-
-      if (this.messageCount <= 5) {
-        const feedKeys = obj.feeds ? Object.keys(obj.feeds) : [];
-        this.logger.log(
-          `[DECODE #${this.messageCount}] type=${typeVal} | feedKeys=${feedKeys.length} | ` +
-          `hasMarketInfo=${!!obj.marketInfo} | currentTs=${obj.currentTs}` +
-          (feedKeys.length > 0 && feedKeys.length <= 3
-            ? ` | feeds=${JSON.stringify(obj.feeds)}`
-            : feedKeys.length > 0
-              ? ` | sampleFeed=${JSON.stringify(obj.feeds[feedKeys[0]])}`
-              : ''),
-        );
-      }
 
       if (typeVal === "market_info" || typeVal === 2) {
         this.logger.debug(
