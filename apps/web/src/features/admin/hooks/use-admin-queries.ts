@@ -73,11 +73,16 @@ export interface UsersResponse {
 
 export interface Instrument {
   instrumentKey: string;
-  symbol: string;
+  tradingSymbol: string;
+  name: string;
   exchange: string;
   segment?: string;
   instrumentType?: string;
+  isin?: string;
+  industry?: string;
   lotSize?: number;
+  isNifty50?: boolean;
+  nifty50WeightPct?: number;
   tradingEnabled?: boolean;
   dataCollectionEnabled?: boolean;
 }
