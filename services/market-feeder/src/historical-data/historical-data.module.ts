@@ -13,6 +13,7 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { DatabaseModule } from '@repo/database';
+import { MarketCalendarModule } from '@repo/market-sdk';
 
 // Core Services
 import { UpstoxClient } from './upstox-client';
@@ -33,6 +34,7 @@ import { HistoricalDataController } from './historical-data.controller';
         Accept: 'application/json',
       },
     }),
+    MarketCalendarModule,
     DatabaseModule.forMarketFeeder(),
   ],
   controllers: [HistoricalDataController],
