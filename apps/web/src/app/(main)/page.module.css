@@ -5,15 +5,13 @@
   animation: fadeIn var(--transition-slow) ease;
 }
 
-/* Stats row */
-.statsRow {
+.heroRow {
   animation: fadeIn var(--transition-slow) ease;
 }
 
-/* Main grid: chart + gauge */
-.mainGrid {
+.middleRow {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-5);
   align-items: stretch;
   animation: fadeIn var(--transition-slow) ease 50ms both;
@@ -23,86 +21,35 @@
   min-width: 0;
 }
 
-.chartCard {
-  height: 100%;
-}
-
-.chartCard > * {
-  height: 100%;
-}
-
-.gaugeArea {
+.aiArea {
   min-width: 0;
 }
 
-/* Middle grid: metrics + watchlist */
-.middleGrid {
+.bottomRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-5);
-  align-items: stretch;
-  animation: fadeIn var(--transition-slow) ease 100ms both;
-}
-
-.metricsArea {
-  min-width: 0;
-}
-
-.watchlistArea {
-  min-width: 0;
-}
-
-/* Bottom grid: transactions + allocation + AI */
-.bottomGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: var(--spacing-5);
   align-items: start;
-  animation: fadeIn var(--transition-slow) ease 150ms both;
+  animation: fadeIn var(--transition-slow) ease 100ms both;
 }
 
 .transfersArea {
   min-width: 0;
 }
 
-.allocationArea {
+.spendingArea {
   min-width: 0;
 }
 
-.aiArea {
-  min-width: 0;
-}
-
-/* Responsive */
 @media (max-width: 1280px) {
-  .mainGrid {
-    grid-template-columns: 1fr 300px;
-  }
-
-  .bottomGrid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .aiArea {
-    grid-column: 1 / -1;
+  .middleRow {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 1024px) {
-  .mainGrid {
+  .bottomRow {
     grid-template-columns: 1fr;
-  }
-
-  .middleGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .bottomGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .aiArea {
-    grid-column: auto;
   }
 }
 

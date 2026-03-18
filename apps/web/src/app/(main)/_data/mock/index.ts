@@ -13,4 +13,9 @@ export {
   mockAIMessages,
   mockTradingMetrics,
   mockMarketMood,
+  mockPortfolioPills,
+  mockTransfers,
+  mockSpendingCategories,
+  mockChartMetrics,
+  mockAIKnowledge,
 } from "./dashboard.mock";

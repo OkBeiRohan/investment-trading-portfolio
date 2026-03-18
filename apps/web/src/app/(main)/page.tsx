@@ -1,70 +1,51 @@
 import styles from "./page.module.css";
-import { PortfolioGauge } from "./_components/portfolio-gauge";
-import { PerformanceChart } from "./_components/performance-chart";
-import { TradingMetrics } from "./_components/trading-metrics";
+import { PortfolioHero } from "./_components/portfolio-hero";
+import { CandlestickChart } from "./_components/candlestick-chart";
 import { AIAssistant } from "./_components/ai-assistant";
-import { TransactionsList } from "./_components/transactions";
-import { AllocationChart } from "./_components/allocation-chart";
-import { StatsGrid } from "./_components/stats-grid";
-import { Watchlist } from "./_components/watchlist";
+import { TransfersCard } from "./_components/transfers-card";
+import { SpendingOverview } from "./_components/spending-overview";
 import {
   mockPortfolio,
-  mockAllocation,
-  mockPerformance,
-  mockTransactions,
+  mockPortfolioPills,
+  mockChartMetrics,
   mockAIMessages,
-  mockTradingMetrics,
-  mockStats,
-  mockWatchlist,
+  mockAIKnowledge,
+  mockTransfers,
+  mockSpendingCategories,
 } from "./_data/mock";
 
 export default function DashboardPage() {
   return (
     <div className={styles.dashboard}>
-      <section className={styles.statsRow}>
-        <StatsGrid stats={mockStats} />
+      <section className={styles.heroRow}>
+        <PortfolioHero
+          totalValue={mockPortfolio.totalValue}
+          pills={mockPortfolioPills}
+        />
       </section>
 
-      <section className={styles.mainGrid}>
+      <section className={styles.middleRow}>
         <div className={styles.chartArea}>
-          <div className={styles.chartCard}>
-            <PerformanceChart data={mockPerformance} title="Portfolio Performance" />
-          </div>
-        </div>
-        <div className={styles.gaugeArea}>
-          <PortfolioGauge
-            totalValue={mockPortfolio.totalValue}
-            todayChange={mockPortfolio.todayChange}
-            todayChangePercent={mockPortfolio.todayChangePercent}
-            investedValue={mockPortfolio.investedValue}
-          />
-        </div>
-      </section>
-
-      <section className={styles.middleGrid}>
-        <div className={styles.metricsArea}>
-          <TradingMetrics metrics={mockTradingMetrics} />
-        </div>
-        <div className={styles.watchlistArea}>
-          <Watchlist items={mockWatchlist} />
-        </div>
-      </section>
-
-      <section className={styles.bottomGrid}>
-        <div className={styles.transfersArea}>
-          <TransactionsList
-            transactions={mockTransactions}
-            title="Recent Transactions"
-          />
-        </div>
-        <div className={styles.allocationArea}>
-          <AllocationChart
-            allocations={mockAllocation}
-            totalValue={mockPortfolio.totalValue}
-          />
+          <CandlestickChart metrics={mockChartMetrics} />
         </div>
         <div className={styles.aiArea}>
-          <AIAssistant messages={mockAIMessages} />
+          <AIAssistant
+            initialMessages={mockAIMessages}
+            knowledge={mockAIKnowledge}
+          />
+        </div>
+      </section>
+
+      <section className={styles.bottomRow}>
+        <div className={styles.transfersArea}>
+          <TransfersCard transfers={mockTransfers} />
+        </div>
+        <div className={styles.spendingArea}>
+          <SpendingOverview
+            totalValue={mockPortfolio.totalValue}
+            weeklyChange={-30}
+            categories={mockSpendingCategories}
+          />
         </div>
       </section>
     </div>
