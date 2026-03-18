@@ -90,13 +90,51 @@ export class ConstituentChangeRepository {
   }
 
   /**
-   * Seed initial Nifty 50 data from hardcoded values
+   * Get constituents with weights at a specific date.
+   * Replays changes from inception, tracking the latest weight for each instrument.
+   */
+  async getConstituentsWithWeightsAtDate(
+    indexName: string,
+    asOfDate: Date,
+  ): Promise<Array<{ instrumentKey: string; symbol: string; weightPct: number; sector: string }>> {
+    const changes = await this.model
+      .find({ indexName, effectiveDate: { $lte: asOfDate } })
+      .sort({ effectiveDate: 1 })
+      .exec();
+
+    const constituents = new Map<
+      string,
+      { instrumentKey: string; symbol: string; weightPct: number; sector: string }
+    >();
+
+    for (const change of changes) {
+      if (change.removedInstrumentKey) {
+        constituents.delete(change.removedInstrumentKey);
+      }
+      if (change.addedInstrumentKey) {
+        constituents.set(change.addedInstrumentKey, {
+          instrumentKey: change.addedInstrumentKey,
+          symbol: change.addedSymbol ?? "",
+          weightPct: change.addedWeightPct ?? 0,
+          sector: change.addedSector ?? "",
+        });
+      }
+    }
+
+    return Array.from(constituents.values());
+  }
+
+  /**
+   * Seed initial Nifty 50 data from hardcoded values (with weight + sector)
    */
   async seedNifty50(
     initialConstituents: Array<{
       instrumentKey: string;
       symbol: string;
       companyName: string;
+      weightPct?: number;
+      sector?: string;
+      isin?: string;
     }>,
     asOfDate: Date = new Date("2020-01-01"),
   ): Promise<number> {
@@ -115,6 +153,9 @@ export class ConstituentChangeRepository {
             addedInstrumentKey: c.instrumentKey,
             addedSymbol: c.symbol,
             addedCompanyName: c.companyName,
+            addedIsin: c.isin,
+            addedWeightPct: c.weightPct,
+            addedSector: c.sector,
             source: "initial_seed",
           },
         },
@@ -124,5 +165,40 @@ export class ConstituentChangeRepository {
 
     const result = await this.model.bulkWrite(ops);
     return result.upsertedCount;
+  }
+
+  /**
+   * Seed a constituent replacement (removal + addition in one change)
+   */
+  async seedReplacement(change: {
+    removedInstrumentKey: string;
+    removedSymbol: string;
+    removedCompanyName: string;
+    addedInstrumentKey: string;
+    addedSymbol: string;
+    effectiveDate: Date;
+    source?: string;
+  }): Promise<void> {
+    await this.model.updateOne(
+      {
+        indexName: "Nifty 50",
+        effectiveDate: change.effectiveDate,
+        removedInstrumentKey: change.removedInstrumentKey,
+      },
+      {
+        $set: {
+          indexName: "Nifty 50",
+          effectiveDate: change.effectiveDate,
+          changeType: "REPLACE" as const,
+          removedInstrumentKey: change.removedInstrumentKey,
+          removedSymbol: change.removedSymbol,
+          removedCompanyName: change.removedCompanyName,
+          addedInstrumentKey: change.addedInstrumentKey,
+          addedSymbol: change.addedSymbol,
+          source: change.source ?? "historical_seed",
+        },
+      },
+      { upsert: true },
+    );
   }
 }

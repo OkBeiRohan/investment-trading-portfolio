@@ -115,7 +115,7 @@ export class SchedulerService implements OnModuleInit {
       count++;
     }
 
-    // Current 50 constituents
+    // Current 50 constituents (with weight and sector data)
     for (const c of NIFTY50_CONSTITUENTS_DATA) {
       await this.instrumentRepo.upsert({
         instrumentKey: c.instrumentKey,
@@ -130,6 +130,7 @@ export class SchedulerService implements OnModuleInit {
         isNifty50: true,
         tradingEnabled: true,
         dataCollectionEnabled: true,
+        nifty50WeightPct: c.weightPct,
       });
       count++;
     }

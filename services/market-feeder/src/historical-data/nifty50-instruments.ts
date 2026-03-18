@@ -20,6 +20,11 @@ interface Nifty50Constituent {
   series: string;
   isin: string;
   instrumentKey: string;
+  weightPct: number;
+}
+
+interface SectorWeights {
+  [sector: string]: number;
 }
 
 interface Nifty50Data {
@@ -27,6 +32,9 @@ interface Nifty50Data {
     index: string;
     lastUpdated: string;
     totalConstituents: number;
+    weightSource: string;
+    weightAsOfDate: string;
+    sectorWeights: SectorWeights;
   };
   constituents: Nifty50Constituent[];
 }
@@ -534,8 +542,18 @@ export const REMOVED_NIFTY50_CONSTITUENTS = [
   }
 ];
 
-// Export metadata
+// Export metadata and weight data
 export const NIFTY50_METADATA = data.metadata;
+export const NIFTY50_SECTOR_WEIGHTS = data.metadata.sectorWeights;
+
+export function getConstituentWeight(symbol: string): number {
+  const constituent = data.constituents.find((c) => c.symbol === symbol);
+  return constituent?.weightPct ?? 0;
+}
+
+export function getConstituentsByWeight(): Nifty50Constituent[] {
+  return [...data.constituents].sort((a, b) => b.weightPct - a.weightPct);
+}
 
 export const NIFTY50_INDEX = 'NSE_INDEX|Nifty 50';
 export const INDIA_VIX = 'NSE_INDEX|India VIX';
