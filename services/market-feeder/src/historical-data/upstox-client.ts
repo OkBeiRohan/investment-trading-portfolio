@@ -782,12 +782,19 @@ export class UpstoxClient {
         };
       });
     } catch (error) {
-      this.logger.error(
-        `Error fetching market quotes: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get market quotes | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       throw error;
     }
   }
@@ -819,11 +826,19 @@ export class UpstoxClient {
 
       return response.data.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching expiries: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get expiries | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       throw error;
     }
   }
@@ -850,11 +865,19 @@ export class UpstoxClient {
 
       return response.data.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching expired future contract for ${expiryDate}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get expired future contract | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       return [];
     }
   }
@@ -875,11 +898,19 @@ export class UpstoxClient {
 
       return response.data.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching expired option contract for ${expiryDate}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get expired option contract | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       return [];
     }
   }
@@ -929,20 +960,18 @@ export class UpstoxClient {
       }));
     } catch (error) {
       if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
         this.logger.error(
-          `Axios error fetching expired candles: ${
-            error.response
-              ? `Status ${error.response.status} - ${JSON.stringify(
-                  error.response.data,
-                )}`
-              : error.message
-          }`,
+          `Failed to get expired historical candles | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
         );
-        throw error;
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
       }
-      this.logger.error(
-        `Error: ${error instanceof Error ? error.message : String(error)}`,
-      );
       throw error;
     }
   }
@@ -1008,11 +1037,19 @@ export class UpstoxClient {
 
       return response.data.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching option contracts: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get option contracts | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       throw error;
     }
   }
@@ -1047,11 +1084,19 @@ export class UpstoxClient {
 
       return response.data.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching option chain: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get option chain | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       throw error;
     }
   }
@@ -1089,11 +1134,19 @@ export class UpstoxClient {
 
       return result;
     } catch (error) {
-      this.logger.error(
-        `Error fetching option greeks: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get option greeks | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       throw error;
     }
   }
@@ -1115,11 +1168,19 @@ export class UpstoxClient {
 
       return uniqueExpiries;
     } catch (error) {
-      this.logger.error(
-        `Error fetching active expiries: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get active expiries | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       throw error;
     }
   }
@@ -1150,19 +1211,18 @@ export class UpstoxClient {
 
       return response.data.data;
     } catch (error) {
-      if (isAxiosError(error) && error.response) {
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
         this.logger.error(
-          `Error fetching market quotes with depth: Status ${error.response.status} - ${JSON.stringify(error.response.data)}`,
-        );
-        this.logger.error(
-          `Request URL: ${error.config?.url}, Headers: ${JSON.stringify(error.config?.headers)}`,
+          `Failed to get market quote with depth | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
         );
       } else {
-        this.logger.error(
-          `Error fetching market quotes with depth: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
       }
       throw error;
     }
@@ -1180,11 +1240,9 @@ export class UpstoxClient {
     try {
       const encodedKey = encodeURIComponent(instrumentKey);
       const headers = await this.getAuthHeaders();
+      const url = `/v2/expired-instruments/future/contract?instrument_key=${encodedKey}&expiry_date=${expiryDate}`;
       const response = await firstValueFrom(
-        this.api.get<ExpiredFutureContractsResponse>(
-          `/v2/expired-instruments/futures?instrument_key=${encodedKey}&expiry=${expiryDate}`,
-          { headers },
-        ),
+        this.api.get<ExpiredFutureContractsResponse>(url, { headers }),
       );
 
       if (response.data.status !== 'success') {
@@ -1193,11 +1251,21 @@ export class UpstoxClient {
 
       return response.data.data || [];
     } catch (error) {
-      this.logger.error(
-        `Error fetching expired futures: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get expired futures | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(
+          `Error fetching expired futures: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
       return [];
     }
   }
@@ -1231,11 +1299,19 @@ export class UpstoxClient {
 
       return response.data.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching funds and margin: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      if (isAxiosError(error)) {
+        const maskedAuth = error.config?.headers?.Authorization;
+        const maskedToken = typeof maskedAuth === 'string' && maskedAuth.startsWith('Bearer ')
+          ? `Bearer ${maskedAuth.slice(7, 11)}...${maskedAuth.slice(-4)}`
+          : '(no auth header)';
+        this.logger.error(
+          `Failed to get funds and margin | Status: ${error.response?.status ?? 'N/A'} | ` +
+          `Token: ${maskedToken} | URL: ${error.config?.baseURL}${error.config?.url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+        );
+      } else {
+        this.logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       throw error;
     }
   }

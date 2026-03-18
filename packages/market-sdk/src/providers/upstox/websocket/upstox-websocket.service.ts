@@ -111,6 +111,7 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
     const { socketId } = event;
 
     let token: string | undefined;
+    const wsUrl = UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL_V3;
     try {
       token = await this.authManager.getAccessToken(
         "system",
@@ -119,10 +120,15 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
       );
 
       const maskedToken = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
-      const wsUrl = `${UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL}?access_token=${token}`;
 
-      this.logger.log(`WebSocket connecting for ${socketId} (token: ${maskedToken})`);
-      const ws = new WS.WebSocket(wsUrl) as any;
+      this.logger.log(`WebSocket V3 connecting for ${socketId} (token: ${maskedToken})`);
+      const ws = new WS.WebSocket(wsUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "*/*",
+        },
+        followRedirects: true,
+      }) as any;
 
       const pool = this.socketPool["pools"].get("upstox");
       const pooledSocket = pool?.get(socketId);
@@ -136,8 +142,7 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
         const maskedTok = token && token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
         this.logger.error(
           `WebSocket error for ${socketId} | Token: ${maskedTok} | ` +
-          `URL: ${UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL} | ` +
-          `Error: ${error?.message ?? error}`,
+          `URL: ${wsUrl} | Error: ${error?.message ?? error}`,
         );
       });
       ws.on("close", (code: number, reason: string) => {
@@ -150,13 +155,12 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
       });
       ws.on("pong", () => this.heartbeat.recordPong(socketId));
 
-      this.logger.log(`WebSocket connected for ${socketId}`);
+      this.logger.log(`WebSocket V3 connected for ${socketId}`);
     } catch (error: any) {
       const maskedToken = token && token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '(no token)';
       this.logger.error(
         `Failed to create WebSocket for ${socketId} | Token: ${maskedToken} | ` +
-        `URL: ${UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL} | ` +
-        `Error: ${error?.message ?? error}`,
+        `URL: ${wsUrl} | Error: ${error?.message ?? error}`,
       );
     }
   }
