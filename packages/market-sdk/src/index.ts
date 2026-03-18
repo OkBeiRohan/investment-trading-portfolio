@@ -45,6 +45,7 @@ export * from "./multiplexer/types";
 export { WebSocketModule } from "./websocket/websocket.module";
 export { SocketPoolService } from "./websocket/socket-pool.service";
 export type {
+  FeedMode,
   PooledSocket,
   SocketPoolConfig,
 } from "./websocket/socket-pool.service";

@@ -92,12 +92,12 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
   async subscribe(
     userId: string,
     instruments: string[],
-    mode: "ltpc" | "full" = "ltpc",
+    mode: "ltpc" | "full" | "full_d30" | "option_greeks" = "full",
     priority: SubscriptionPriority = SubscriptionPriority.NORMAL,
     callback: (data: UpstoxMarketData) => void
   ): Promise<string> {
     this.logger.log(
-      `Subscribing user ${userId} to ${instruments.length} instruments`
+      `Subscribing user ${userId} to ${instruments.length} instruments (mode: ${mode})`,
     );
 
     return this.subscriptionManager.subscribe(
@@ -105,7 +105,8 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
       userId,
       instruments,
       priority,
-      callback
+      callback,
+      mode,
     );
   }
 

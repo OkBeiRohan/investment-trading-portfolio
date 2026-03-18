@@ -44,15 +44,17 @@ export class SubscriptionManagerService {
     userId: string,
     instruments: string[],
     priority: SubscriptionPriority,
-    callback: (data: any) => void
+    callback: (data: any) => void,
+    feedMode?: 'ltpc' | 'full' | 'full_d30' | 'option_greeks',
   ): Promise<string> {
     const subscriptionId = `${provider}-${userId}-${Date.now()}`;
 
-    // Get socket from pool
+    // Get socket from pool (pass feedMode so correct limits apply)
     const socket = await this.socketPool.getSocket(
       provider,
       instruments,
-      priority
+      priority,
+      feedMode as any,
     );
 
     // Add instruments to socket

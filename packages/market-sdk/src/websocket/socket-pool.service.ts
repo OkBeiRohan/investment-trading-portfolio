@@ -1,14 +1,15 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 
+export type FeedMode = 'ltpc' | 'full' | 'full_d30' | 'option_greeks';
+
 export interface PooledSocket {
   id: string;
   socket: WebSocket;
   capacity: number;
   used: number;
   priority: number;
-  /** Feed mode for all instruments on this socket */
-  feedMode: 'ltpc' | 'full' | 'full_d30';
+  feedMode: FeedMode;
   instruments: Set<string>;
   createdAt: Date;
   lastActivity: Date;
@@ -19,8 +20,7 @@ export interface SocketPoolConfig {
   maxInstrumentsPerSocket: number;
   reconnectDelay: number;
   heartbeatInterval: number;
-  /** Default feed mode for sockets in this pool */
-  feedMode?: 'ltpc' | 'full' | 'full_d30';
+  feedMode?: FeedMode;
 }
 
 /**
@@ -61,7 +61,7 @@ export class SocketPoolService implements OnModuleDestroy {
     provider: string,
     instruments: string[],
     priority: number = 1,
-    feedMode?: 'ltpc' | 'full' | 'full_d30'
+    feedMode?: FeedMode,
   ): Promise<PooledSocket> {
     const pool = this.pools.get(provider);
     const config = this.configs.get(provider);
@@ -70,7 +70,7 @@ export class SocketPoolService implements OnModuleDestroy {
       throw new Error(`Pool not initialized for provider: ${provider}`);
     }
 
-    const resolvedFeedMode = feedMode ?? config.feedMode ?? 'full_d30';
+    const resolvedFeedMode = feedMode ?? config.feedMode ?? 'full';
 
     // Try to find existing socket with capacity AND matching feed mode
     const existingSocket = this.findBestFitSocket(
@@ -183,7 +183,7 @@ export class SocketPoolService implements OnModuleDestroy {
     pool: Map<string, PooledSocket>,
     requiredCapacity: number,
     priority: number,
-    feedMode: 'ltpc' | 'full' | 'full_d30' = 'full_d30'
+    feedMode: FeedMode = 'full',
   ): PooledSocket | null {
     let bestFit: PooledSocket | null = null;
     let minWaste = Infinity;
@@ -235,7 +235,7 @@ export class SocketPoolService implements OnModuleDestroy {
     provider: string,
     config: SocketPoolConfig,
     priority: number,
-    feedMode: 'ltpc' | 'full' | 'full_d30' = 'full_d30'
+    feedMode: FeedMode = 'full',
   ): Promise<PooledSocket> {
     const id = `${provider}-${feedMode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
