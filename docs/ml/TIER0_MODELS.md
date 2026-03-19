@@ -1,6 +1,6 @@
-# TIER 0: Pre-Market Opening Calibrator
+# TIER 0: Pre-Market Gap Predictor
 
-> **Calibrates the expected opening price, volatility, and directional bias by combining global overnight signals with the 9:08 AM pre-open freeze price. Since the freeze price already captures ~90% of the overnight gap, this model primarily predicts the freeze-to-open residual and opening volatility regime.**
+> **Predicts the 9:15 AM opening gap direction, magnitude, and expected volatility using global overnight data and the 9:08 AM pre-open freeze price.**
 
 **Last Updated**: March 13, 2026
 **Tier**: 0 — Pre-Market Intelligence
@@ -50,18 +50,6 @@ The **gap** between yesterday's 15:30 close and today's 09:15 open is a massive 
 
 ---
 
-### What This Model Actually Predicts
-
-The pre-open call auction at 09:08 is itself a price-discovery mechanism — the freeze price is the auction equilibrium incorporating overnight information from all market participants. By including `actual_gap_points` and `actual_gap_pct` (freeze price vs prev close) as input features, **this model is NOT predicting the overnight gap from scratch**. Instead, it:
-
-1. **Calibrates the freeze-to-open residual**: How much will the actual 09:15 opening price deviate from the 09:08 freeze price? (typically 0.05-0.15%)
-2. **Classifies opening volatility**: Will the first 15 minutes be LOW/MEDIUM/HIGH volatility?
-3. **Estimates directional bias**: Conditional on the freeze price, what is the likely direction in the first hour?
-
-The model adds value by incorporating global overnight signals (US futures, MCX, sentiment) that retail participants in the pre-open session may not have fully priced in, plus historical patterns of freeze-to-open deviations.
-
----
-
 ## Architecture
 
 ### Model: XGBoost Gradient Boosting
@@ -73,7 +61,7 @@ The model adds value by incorporating global overnight signals (US futures, MCX,
 | **Input**         | **24 features** — global overnight (12) + MCX commodities (8) + pre-market context (4)                   |
 | **Output**        | `expected_gap_pct`, `expected_volatility`, `opening_bias`, `confidence`                                  |
 | **Training Data** | 4+ years of pre-open snapshots + realized gaps                                                           |
-| **Validation**    | Walk-forward (12-month train, 2-month test, rolling)                                                     |
+| **Validation**    | Combinatorial Purged Cross-Validation (CPCV) with strict purging and embargoing                          |
 | **Export**        | ONNX with FP16 quantization                                                                              |
 
 ### Why Not Deep Learning?
@@ -399,41 +387,42 @@ TIER0_VOL_PARAMS = {
 }
 ```
 
-### Walk-Forward Validation
+### Combinatorial Purged Cross-Validation (CPCV)
 
 ```python
-def walk_forward_validate_tier0(features, target, train_months=12, test_months=2):
+def cpcv_validate_tier0(features, target, n_splits=5, n_test_splits=2, purge_days=5, embargo_days=5):
     """
-    Walk-forward validation: 12-month train, 2-month test, rolling.
-    Previous 6mo/1mo was too thin (~125 samples for 24 features).
-    12mo gives ~250 samples, meeting the 10x features rule of thumb.
-    No CPCV needed (daily data, no intraday leakage risk).
+    CPCV validation for daily data.
+    Even though this is daily data, macroeconomic regimes and volatility clustering
+    span across train/test boundaries. Strict purging and embargoing are mandatory
+    to prevent target leakage.
     """
+    from cpcv import CombinatorialPurgedKFold
+    
+    cv = CombinatorialPurgedKFold(
+        n_splits=n_splits, 
+        n_test_splits=n_test_splits,
+        purge_gap=purge_days,
+        embargo_gap=embargo_days
+    )
+    
     results = []
     dates = features.index.to_series()
-
-    for split_date in pd.date_range(dates.min() + pd.DateOffset(months=train_months),
-                                     dates.max() - pd.DateOffset(months=test_months),
-                                     freq='MS'):
-        train_end = split_date
-        test_end = split_date + pd.DateOffset(months=test_months)
-
-        train_mask = dates < train_end
-        test_mask = (dates >= train_end) & (dates < test_end)
-
+    
+    for fold, (train_idx, test_idx) in enumerate(cv.split(features, target)):
         model = xgb.XGBRegressor(**TIER0_XGB_PARAMS)
-        model.fit(features[train_mask], target[train_mask],
-                  eval_set=[(features[test_mask], target[test_mask])],
+        model.fit(features.iloc[train_idx], target.iloc[train_idx],
+                  eval_set=[(features.iloc[test_idx], target.iloc[test_idx])],
                   verbose=False)
 
-        preds = model.predict(features[test_mask])
-        direction_acc = ((preds > 0) == (target[test_mask] > 0)).mean()
+        preds = model.predict(features.iloc[test_idx])
+        direction_acc = ((preds > 0) == (target.iloc[test_idx] > 0)).mean()
 
         results.append({
-            'split_date': split_date,
+            'fold': fold,
             'direction_accuracy': direction_acc,
-            'rmse': np.sqrt(((preds - target[test_mask])**2).mean()),
-            'mae': np.abs(preds - target[test_mask]).mean()
+            'rmse': np.sqrt(((preds - target.iloc[test_idx])**2).mean()),
+            'mae': np.abs(preds - target.iloc[test_idx]).mean()
         })
 
     return pd.DataFrame(results)

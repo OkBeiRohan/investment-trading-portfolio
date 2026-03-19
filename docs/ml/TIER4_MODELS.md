@@ -59,11 +59,11 @@ Without Tier 4, the system would have 4 independent opinions (one per tier) with
 │                                            │                            │
 │  ┌─────────────────┐  ┌──────────────┐  ┌──▼─────────────┐              │
 │  │ STRIKE SELECTOR │  │ RISK MANAGER │  │ POSITION SIZER │              │
-│  │ (Neural Net)    │  │ (Rule-based) │  │ (Kelly)        │              │
-│  │                 │  │              │  │                │              │
-│  │ delta-based     │  │ Greeks: ✓/✗ │  │ f* = (p·b -    │              │
-│  │ strike picking  │  │ MaxLoss: ✓/✗│  │  q) / b        │              │
-│  │ IV surface scan │  │Leverage: ✓/✗│  │ scaled by VIX  │              │
+│  │ (Deterministic) │  │ (Rule-based) │  │ (Fractional    │              │
+│  │                 │  │              │  │  Kelly)        │              │
+│  │ Black-Scholes   │  │ Greeks: ✓/✗ │  │ f* = (p·b -    │              │
+│  │ payoff scan     │  │ MaxLoss: ✓/✗│  │  q) / b        │              │
+│  │                 │  │Leverage: ✓/✗│  │ scaled by VIX  │              │
 │  └────────┬────────┘  └──────┬───────┘  └──────┬─────────┘              │
 │           │                  │                  │                       │
 │           └──────────────────┼──────────────────┘                       │
@@ -267,66 +267,63 @@ When the Meta-Learner is not yet trained (cold start), use these fixed weights:
 
 ---
 
-## Component 2: Strike Selector (Neural Network)
+## Component 2: Strike Selector (Underlying-First + Deterministic Pricing)
+
+### Why Not a Neural Network?
+
+Training a neural network to pick the "Strike that maximized risk-adjusted PnL (hindsight)" introduces severe target leakage. The historically "perfect" strike depends on the *entire future path* of the underlying asset until expiry, which the model cannot know. This leads to overfitting to specific historical volatility realizations.
+
+Instead, we use an **Underlying-First + Deterministic Pricing** approach:
+1. The Meta-Learner predicts the underlying's expected move and volatility.
+2. We use a deterministic options pricing model (e.g., Black-Scholes) to simulate the payoff of all available strikes.
+3. We select the strike with the best asymmetric payoff (highest expected return/risk ratio).
 
 ### Architecture
 
 ```python
-class StrikeSelector(nn.Module):
+class DeterministicStrikeSelector:
     """
-    Neural network for optimal option strike selection.
-    Input: direction signal + IV surface + Greeks + liquidity data
+    Selects optimal option strike using deterministic pricing models.
+    Input: predicted underlying move, predicted volatility, current IV surface
     Output: recommended strike, option type, strategy
     """
 
-    def __init__(self, n_strikes: int = 21):  # ATM ± 10
-        super().__init__()
+    def __init__(self, pricing_model="black_scholes"):
+        self.pricing_model = pricing_model
 
-        # IV surface encoder
-        self.iv_encoder = nn.LSTM(
-            input_size=5,    # IV at each expiry for a given strike
-            hidden_size=32,
-            num_layers=1,
-            batch_first=True
-        )
-
-        # Direction + context
-        self.context_proj = nn.Linear(16, 32)  # direction(3) + regime(4) + greeks(4) + meta(5)
-
-        # Selection head
-        self.strike_head = nn.Sequential(
-            nn.Linear(64, 128),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.Linear(128, n_strikes)  # Score per strike
-        )
-
-        self.type_head = nn.Linear(64, 2)       # CE or PE
-        self.strategy_head = nn.Linear(64, 7)    # Strategy selection
-
-    def forward(self, iv_surface, context) -> dict:
+    def select_strike(self, current_spot, expected_move, expected_vol, iv_surface, days_to_expiry):
         """
-        Args:
-            iv_surface: [B, 21, 5] — IV for 21 strikes × 5 expiries
-            context: [B, 16] — direction + regime + Greeks + meta
-        Returns:
-            strike scores, option type probs, strategy probs
+        Simulate payoffs for all strikes and select the best one.
         """
-        # Encode IV surface
-        iv_encoded, _ = self.iv_encoder(iv_surface)
-        iv_summary = iv_encoded[:, -1, :]  # [B, 32]
-
-        # Encode context
-        ctx = self.context_proj(context)  # [B, 32]
-
-        # Combine
-        combined = torch.cat([iv_summary, ctx], dim=-1)  # [B, 64]
-
+        best_strike = None
+        best_score = -float('inf')
+        best_type = None
+        
+        # Scan available strikes
+        for strike in iv_surface.strikes:
+            # Simulate CE and PE payoffs based on expected move and vol
+            ce_payoff = self._simulate_payoff(current_spot, expected_move, expected_vol, strike, 'CE', days_to_expiry, iv_surface)
+            pe_payoff = self._simulate_payoff(current_spot, expected_move, expected_vol, strike, 'PE', days_to_expiry, iv_surface)
+            
+            # Score based on reward/risk
+            if ce_payoff.score > best_score:
+                best_score = ce_payoff.score
+                best_strike = strike
+                best_type = 'CE'
+            if pe_payoff.score > best_score:
+                best_score = pe_payoff.score
+                best_strike = strike
+                best_type = 'PE'
+                
         return {
-            'strike_scores': self.strike_head(combined),    # [B, 21]
-            'option_type': self.type_head(combined),        # [B, 2] CE/PE
-            'strategy': self.strategy_head(combined),       # [B, 7]
+            'strike': best_strike,
+            'option_type': best_type,
+            'strategy': self._determine_strategy(expected_move, expected_vol)
         }
+        
+    def _simulate_payoff(self, spot, move, vol, strike, opt_type, dte, iv_surface):
+        # Implementation of Black-Scholes pricing for the expected future state
+        pass
 ```
 
 ### Strategy Menu
@@ -378,11 +375,18 @@ class RiskManager:
 
 ---
 
-## Component 4: Position Sizer (Kelly Criterion)
+## Component 4: Position Sizer (Calibrated Fractional Kelly)
+
+### Why Probability Calibration?
+
+Deep learning models (especially attention-based gating networks) are notoriously uncalibrated—they are often overconfident. If the model outputs a 70% confidence but the true historical accuracy is 55%, plugging 70% directly into the Kelly formula leads to massive **overbetting**. Overbetting mathematically guarantees long-term ruin, even if the strategy has a positive expected value (MacLean et al., 1992).
+
+The Meta-Learner's raw confidence must pass through a **Probability Calibration** layer (e.g., Isotonic Regression or Beta Calibration) before Kelly sizing. We also enforce a strict **Fractional Kelly** (e.g., Half-Kelly) to account for parameter uncertainty.
 
 ```python
 class KellyPositionSizer:
     """
+<<<<<<< Current (Your changes)
     Modified Kelly position sizing for options with VIX-scaled dynamic leverage.
 
     For binary outcomes: f* = (p · b - q) / b
@@ -403,38 +407,50 @@ class KellyPositionSizer:
         p = calibrated win probability (from Meta-Learner, post Platt scaling)
         q = 1 - p
         b = win/loss ratio (from rolling 60-day backtest window)
+=======
+    Fractional Kelly criterion position sizing with calibrated probabilities
+    and VIX-scaled dynamic leverage.
+
+    f* = (p_calibrated · b - q_calibrated) / b
+>>>>>>> Incoming (Background Agent changes)
     """
 
-    def __init__(self, max_kelly_fraction: float = 0.25):
-        self.max_kelly = max_kelly_fraction  # Never bet more than 25% Kelly
+    def __init__(self, kelly_fraction: float = 0.5, max_position_pct: float = 0.10):
+        self.kelly_fraction = kelly_fraction  # e.g., Half-Kelly
+        self.max_position_pct = max_position_pct
 
     def compute_position_size(
         self,
-        confidence: float,
+        raw_confidence: float,
+        calibrator: ProbabilityCalibrator,
         win_loss_ratio: float,
         regime: str,
         vix: float,
         account_equity: float
     ) -> float:
-        p = confidence
+        # 1. Calibrate probability
+        p = calibrator.calibrate(raw_confidence)
         q = 1 - p
         b = win_loss_ratio
 
-        # Full Kelly
+        # 2. Full Kelly
         full_kelly = (p * b - q) / b if b > 0 else 0
         full_kelly = max(0, full_kelly)
 
-        # Fractional Kelly (more conservative)
-        kelly_fraction = min(full_kelly * self.max_kelly, self.max_kelly)
+        # 3. Fractional Kelly
+        fractional_kelly = full_kelly * self.kelly_fraction
+        
+        # 4. Cap at max position size
+        safe_fraction = min(fractional_kelly, self.max_position_pct)
 
-        # VIX scaling: reduce size in high-vol environments
+        # 5. VIX scaling: reduce size in high-vol environments
         vix_scale = 1.0
         if vix > 25:
             vix_scale = 0.5
         elif vix > 20:
             vix_scale = 0.7
 
-        # Regime scaling
+        # 6. Regime scaling
         regime_scale = {
             'BULL_TRENDING': 1.0,
             'BEAR_TRENDING': 0.7,
@@ -442,7 +458,7 @@ class KellyPositionSizer:
             'RANGING': 0.8
         }.get(regime, 0.5)
 
-        position_value = account_equity * kelly_fraction * vix_scale * regime_scale
+        position_value = account_equity * safe_fraction * vix_scale * regime_scale
         return position_value
 ```
 

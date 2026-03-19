@@ -755,6 +755,17 @@ def export_pytorch_onnx(
 
 ## Backtesting Framework
 
+### Deflated Sharpe Ratio (DSR) & Probability of Backtest Overfitting (PBO)
+
+Traditional Sharpe ratios are highly misleading for high-frequency data because returns are non-normal (fat tails, skewness) and because hyperparameter tuning involves multiple testing. Searching through hundreds of configurations guarantees finding a false positive (Probability of Backtest Overfitting). 
+
+We mandate the **Deflated Sharpe Ratio (DSR)** (Bailey & Lopez de Prado, 2014) for all model promotions. DSR mathematically discounts the Sharpe ratio based on:
+1. The number of independent trials attempted during hyperparameter search.
+2. The non-normality (skewness and kurtosis) of the strategy's returns.
+3. The length of the backtest.
+
+A model is only promoted if its DSR implies a >95% confidence that the true Sharpe ratio is greater than 0.
+
 ### Realistic Transaction Costs (NSE F&O)
 
 ```python
@@ -887,6 +898,7 @@ def calculate_metrics(
 
         # Risk-adjusted
         'sharpe_ratio': returns.mean() / returns.std() * np.sqrt(252 * 375),
+        'deflated_sharpe_ratio': calculate_dsr(returns, num_trials=100), # Accounts for PBO and non-normality
         'sortino_ratio': (
             returns.mean() / returns[returns < 0].std() * np.sqrt(252 * 375)
             if len(returns[returns < 0]) > 0 else np.inf
@@ -939,7 +951,7 @@ def calculate_metrics(
 │                                                                             │
 │  MONDAY 08:00 IST (1hr before market)                                       │
 │  ├── 7. Compare new vs production model                                     │
-│  ├── 8. Deploy if new model better by >0.5% Sharpe                          │
+│  ├── 8. Deploy if Deflated Sharpe Ratio (DSR) > 95% confidence              │
 │  └── 9. A/B test (optional): Run both, compare                              │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘

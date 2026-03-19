@@ -349,9 +349,11 @@ HMM_CONFIG = {
     'feature_selection': 'HMM uses 8 core features; PatchTST uses full 15',
     'n_iter': 200,
     'data_depth_years': 26,
-    'validation': 'walk_forward',
-    'train_window_years': 20,
-    'test_window_months': 6,
+    'validation': 'cpcv',
+    'cpcv_splits': 5,
+    'cpcv_test_splits': 2,
+    'purge_days': 5,
+    'embargo_days': 5,
     'min_state_persistence': 5,  # days — reject models with unstable states
     'retraining_frequency': 'weekly',
 }
@@ -601,9 +603,9 @@ def export_patchtst(model: DailyPatchTST, path='models/tier1_patchtst.onnx'):
 
 | Metric                        | Target                              | Validation   |
 | ----------------------------- | ----------------------------------- | ------------ |
-| HMM state persistence         | >5 days average                     | Walk-forward |
-| PatchTST directional accuracy | >58%                                | Walk-forward |
-| Combined regime accuracy      | >65% on held-out months             | Walk-forward |
+| HMM state persistence         | >5 days average                     | CPCV (Purged)|
+| PatchTST directional accuracy | >58%                                | CPCV (Purged)|
+| Combined regime accuracy      | >65% on held-out months             | CPCV (Purged)|
 | Inference latency             | <8ms total (3ms HMM + 5ms PatchTST) | Benchmark    |
 | Memory footprint              | <50MB                               | Profiled     |
 
