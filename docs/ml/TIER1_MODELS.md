@@ -354,6 +354,7 @@ HMM_CONFIG = {
     'cpcv_test_splits': 2,
     'purge_days': 5,
     'embargo_days': 5,
+    'note': 'CPCV preferred over walk-forward to prevent macro regime leakage across folds',
     'min_state_persistence': 5,  # days — reject models with unstable states
     'retraining_frequency': 'weekly',
 }

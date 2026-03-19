@@ -34,16 +34,23 @@ This correctly models actual trading constraints (risk and time) rather than arb
 ## 3. Microstructure Intelligence (Tier 3)
 
 ### The Problem
-Using heavy deep learning models (like Transformers) on aggregated order flow features (e.g., 14 summarized data points) is prone to overfitting and violates latency constraints.
+Microstructure prediction requires processing the full depth-30 LOB at high frequency (every 100ms) while maintaining low latency. The architecture must handle both the spatial structure of the order book and temporal dynamics.
 
-### The Solution: Queue Imbalance & DeepLOB
-For ultra-low latency tick-level prediction, we use fast, semi-parametric **Local Logistic Regression** on Queue Imbalance. It is proven that Level 1 queue imbalance provides significant predictive power for the direction of the very next mid-price movement.
+### The Solution: Phased Activation (Rules → MLP → LiT Transformer)
 
-For multi-horizon (10s - 1m) microstructure prediction, we use the **DeepLOB** architecture. DeepLOB uses Convolutional Neural Networks (CNNs) to capture the spatial structure of the full limit order book (Level 2/3 depth arrays) before passing features to LSTMs for temporal dependencies.
+We use a three-phase progressive activation approach to handle the cold-start problem (zero historical LOB data at launch):
+
+- **Phase 1 (Months 1-3)**: Analytical rules based on **Queue Imbalance** and OFI thresholds. Queue imbalance at Level 1 provides significant next-tick predictive power (Gould & Bonart, 2015; Cont, Kukanov & Stoikov, 2014).
+- **Phase 2 (Months 4-6)**: Shallow MLP trained on accumulated LOB data.
+- **Phase 3 (Month 6+)**: Full **LiT (Limit Order Book Transformer)**, which uses structured patches and transformer-based self-attention on the raw Depth-30 LOB.
+
+**Why LiT over DeepLOB**: LiT (King's College London, Frontiers in AI, Oct 2025) consistently outperforms both DeepLOB (Zhang et al., 2019) and TransLOB across multiple LOB datasets and prediction horizons. LiT also demonstrates robust performance under distributional shifts via fine-tuning, making it practical for dynamic financial environments. DeepLOB's CNN+LSTM architecture is older and does not capture long-range LOB dependencies as effectively as transformer self-attention.
 
 *References:*
-- *Gould, M. D., & Bonart, J. (2015). Queue Imbalance as a One-Tick-Ahead Price Predictor in a Limit Order Book.*
+- *Briola, A., et al. (2025). LiT: Limit Order Book Transformer. Frontiers in Artificial Intelligence.*
 - *Zhang, Z., Zohren, S., & Roberts, S. (2019). DeepLOB: Deep Convolutional Neural Networks for Limit Order Books.*
+- *Cont, R., Kukanov, A., & Stoikov, S. (2014). The Price Impact of Order Book Events.*
+- *Gould, M. D., & Bonart, J. (2015). Queue Imbalance as a One-Tick-Ahead Price Predictor.*
 
 ## 4. Signal Fusion & Sizing (Tier 4)
 
@@ -83,3 +90,23 @@ We mandate the **Deflated Sharpe Ratio** for all model promotions. DSR mathemati
 3. The length of the backtest.
 
 *Reference: Bailey, D. H., & López de Prado, M. (2014). The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting and Non-Normality.*
+
+## 7. Data-Bound Rule & Feature History Compliance
+
+### The Problem
+The architecture's cardinal rule states: "A model trained on 26 years of daily data must never consume features that only exist for 7 days." But multiple tiers violate this: Tier 1 feeds 0-history features (MCX websocket, Tier 0 outputs, FinBERT sentiment) into its "26-year" model. Tier 2 lists order-flow features (OFI, depth imbalance) as inputs but these have zero multi-year history.
+
+### The Solution: Feature-Group Segregation
+Each tier splits features into groups by historical depth. Features with insufficient history are:
+1. **Excluded from training entirely** (order flow features until ≥6 months archived)
+2. **Used at inference-time only** (Tier 0 outputs, MCX, sentiment enrich the context vector but do NOT participate in historical model training)
+
+This ensures the training window matches the actual data availability of the features used.
+
+## 8. Sample Size Accuracy
+
+### The Problem
+Multiple documents overstated sample counts by up to 10x. The arithmetic 4yr × 252 days × 375 min = **378,000 rows**, not "~4M". Similarly, 3.5yr gives ~331K, not "~850K". Overstated sample counts hide overfitting risk — fitting LightGBM + Mamba + Meta-learner is harder to justify on 378K autocorrelated samples than on 4M.
+
+### The Correction
+All sample counts are now verified arithmetic. The ~378K 1-minute samples (per instrument) are sufficient for LightGBM (which handles autocorrelation via `bagging_freq`) but require careful regularization for deep sequence models like Mamba.

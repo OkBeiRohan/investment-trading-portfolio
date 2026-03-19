@@ -1,6 +1,6 @@
-# TIER 0: Pre-Market Gap Predictor
+# TIER 0: Pre-Market Opening Calibrator
 
-> **Predicts the 9:15 AM opening gap direction, magnitude, and expected volatility using global overnight data and the 9:08 AM pre-open freeze price.**
+> **Calibrates the expected opening price, volatility, and directional bias by combining global overnight signals with the 9:08 AM pre-open freeze price. Since the freeze price already captures ~90% of the overnight gap via the pre-open call auction, this model primarily predicts the freeze-to-open residual and opening volatility regime.**
 
 **Last Updated**: March 13, 2026
 **Tier**: 0 — Pre-Market Intelligence
@@ -47,6 +47,18 @@ The **gap** between yesterday's 15:30 close and today's 09:15 open is a massive 
 | 09:08:00 – 09:14:59 | Match engine calculates equilibrium price                 | We use the frozen indicative price |
 | 09:14:55            | Tier 0 fires final prediction + overnight candle snapshot | Consolidation for Tier 1/2         |
 | 09:15:00            | Continuous trading begins, gap is realized                | Tier 0 output consumed downstream  |
+
+---
+
+### What This Model Actually Predicts
+
+The pre-open call auction at 09:08 is itself a price-discovery mechanism — the freeze price is the auction equilibrium incorporating overnight information from all market participants. By including `actual_gap_points` and `actual_gap_pct` (freeze price vs prev close) as input features, **this model is NOT predicting the overnight gap from scratch**. Instead, it:
+
+1. **Calibrates the freeze-to-open residual**: How much will the actual 09:15 opening price deviate from the 09:08 freeze price? (typically 0.05-0.15%)
+2. **Classifies opening volatility**: Will the first 15 minutes be LOW/MEDIUM/HIGH volatility?
+3. **Estimates directional bias**: Conditional on the freeze price, what is the likely direction in the first hour?
+
+The model adds value by incorporating global overnight signals (US futures, MCX, sentiment) that retail participants in the pre-open session may not have fully priced in, plus historical patterns of freeze-to-open deviations.
 
 ---
 
@@ -396,6 +408,10 @@ def cpcv_validate_tier0(features, target, n_splits=5, n_test_splits=2, purge_day
     Even though this is daily data, macroeconomic regimes and volatility clustering
     span across train/test boundaries. Strict purging and embargoing are mandatory
     to prevent target leakage.
+    
+    Note: With ~1000 daily samples/year (4yr = ~4000 total) and 24 features,
+    CPCV with 5 splits / 2 test splits gives ~1600 train / ~800 test per fold.
+    This is adequate for 24-feature XGBoost (well above the 10x features rule).
     """
     from cpcv import CombinatorialPurgedKFold
     

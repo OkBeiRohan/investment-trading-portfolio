@@ -386,33 +386,27 @@ The Meta-Learner's raw confidence must pass through a **Probability Calibration*
 ```python
 class KellyPositionSizer:
     """
-<<<<<<< Current (Your changes)
-    Modified Kelly position sizing for options with VIX-scaled dynamic leverage.
+    Calibrated Fractional Kelly for options with VIX-scaled dynamic leverage.
 
     For binary outcomes: f* = (p · b - q) / b
     For options (asymmetric payoffs): f* = E[R] / E[R²]
 
-    The binary Kelly formula is an approximation. Options have non-linear,
-    asymmetric payoffs (a long call can lose 100% of premium but gain multiples).
-    Per Thorp (2006), the continuous Kelly analog E[R]/E[R²] is more appropriate.
+    CRITICAL: Raw neural network outputs are NOT calibrated probabilities.
+    Model confidence MUST pass through a Probability Calibration layer
+    (Isotonic Regression or Beta Calibration) before Kelly sizing.
+    A predicted 70% confidence must match ~70% empirical win rate.
+    (MacLean, Ziemba & Blazenko, 1992; Thorp, 2006)
 
-    IMPORTANT: Model confidence must be calibrated (Platt scaling / temperature
-    scaling) before use as win probability. Raw softmax outputs are NOT
-    calibrated probabilities.
-
-    The 0.25x fractional Kelly partially mitigates both estimation error
-    and the binary approximation error.
+    We enforce strict Fractional Kelly (Half-Kelly) plus a hard cap
+    on max position size to account for:
+    1. Parameter estimation uncertainty
+    2. Non-linear option payoff asymmetry
+    3. Model calibration imperfection
 
     where:
-        p = calibrated win probability (from Meta-Learner, post Platt scaling)
+        p = calibrated win probability (post Isotonic Regression)
         q = 1 - p
         b = win/loss ratio (from rolling 60-day backtest window)
-=======
-    Fractional Kelly criterion position sizing with calibrated probabilities
-    and VIX-scaled dynamic leverage.
-
-    f* = (p_calibrated · b - q_calibrated) / b
->>>>>>> Incoming (Background Agent changes)
     """
 
     def __init__(self, kelly_fraction: float = 0.5, max_position_pct: float = 0.10):
