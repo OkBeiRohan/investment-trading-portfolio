@@ -60,10 +60,37 @@ export class ConstituentChange {
   @Prop({ sparse: true })
   removedIsin?: string;
 
+  // ============= WEIGHT DATA =============
+
+  /**
+   * Weight of added stock at time of inclusion (% of index)
+   */
+  @Prop()
+  addedWeightPct?: number;
+
+  /**
+   * Weight of removed stock at time of removal (% of index)
+   */
+  @Prop()
+  removedWeightPct?: number;
+
+  /**
+   * Sector of added company
+   */
+  @Prop()
+  addedSector?: string;
+
+  /**
+   * Sector of removed company
+   */
+  @Prop()
+  removedSector?: string;
+
   // ============= METADATA =============
 
   /**
    * Industry of added company
+   * @deprecated Use addedSector instead
    */
   @Prop()
   industry?: string;

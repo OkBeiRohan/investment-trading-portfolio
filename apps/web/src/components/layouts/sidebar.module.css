@@ -4,13 +4,14 @@
   left: 0;
   bottom: 0;
   width: var(--sidebar-width);
-  background-color: var(--color-bg-sidebar);
+  background: var(--gradient-surface);
   box-shadow: var(--sidebar-shadow);
   display: flex;
   flex-direction: column;
   z-index: var(--z-sidebar);
   transition: width var(--transition-slow);
   overflow: hidden;
+  border-right: 1px solid var(--color-border-light);
 }
 
 .sidebar.collapsed {
@@ -20,17 +21,35 @@
 .logoSection {
   display: flex;
   align-items: center;
-  gap: var(--spacing-3);
+  justify-content: space-between;
   padding: var(--spacing-5) var(--spacing-4);
-  min-height: 64px;
-  position: relative;
+  min-height: var(--header-height);
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  text-decoration: none;
 }
 
 .logoMark {
   flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-xl);
+  background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.logoLink:hover .logoMark {
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
 }
 
 .logoText {
@@ -42,20 +61,19 @@
 }
 
 .collapseBtn {
-  position: absolute;
-  right: var(--spacing-3);
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-tertiary);
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--transition-base), background var(--transition-base);
+  transition: opacity var(--transition-base), background var(--transition-base), color var(--transition-base), border-color var(--transition-base);
+  flex-shrink: 0;
 }
 
 .sidebar:hover .collapseBtn {
@@ -64,19 +82,18 @@
 
 .collapseBtn:hover {
   background: var(--color-bg-active);
-  color: var(--color-text-primary);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .collapsed .collapseBtn {
   opacity: 1;
-  position: static;
-  margin-left: auto;
 }
 
 .nav {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-4) var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-6);
@@ -89,7 +106,7 @@
 }
 
 .navLabel {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -103,20 +120,21 @@
   align-items: center;
   gap: var(--spacing-3);
   padding: var(--spacing-2-5) var(--spacing-3);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   color: var(--color-text-secondary);
   cursor: pointer;
   position: relative;
-  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  transition: all var(--transition-fast);
   border: none;
   background: none;
   width: 100%;
   text-align: left;
   font-size: var(--font-size-sm);
+  text-decoration: none;
 }
 
 .navItem:hover {
-  background: var(--color-bg-hover);
+  background: var(--nav-hover-bg);
   color: var(--color-text-primary);
 }
 
@@ -125,9 +143,10 @@
 }
 
 .navItem.active {
-  background: var(--color-bg-active);
-  color: var(--color-primary);
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
   font-weight: var(--font-weight-medium);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
 }
 
 .navIcon {
@@ -135,8 +154,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .navText {
@@ -151,23 +170,39 @@
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
-  height: 18px;
-  background: var(--color-primary);
+  height: 20px;
+  background: var(--gradient-primary);
   border-radius: 0 var(--radius-full) var(--radius-full) 0;
 }
 
 .footer {
-  padding: var(--spacing-3) var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-3);
   border-top: 1px solid var(--color-border-light);
 }
 
-.footer .navItem {
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2-5) var(--spacing-3);
+  border-radius: var(--radius-lg);
   color: var(--color-text-tertiary);
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
 }
 
-.footer .navItem:hover {
+.logoutBtn:hover {
   color: var(--color-error);
   background: var(--color-error-bg);
+}
+
+.logoutBtn:active {
+  transform: scale(0.98);
 }
 
 .collapsed .logoSection {
@@ -175,11 +210,20 @@
   padding: var(--spacing-5) var(--spacing-2);
 }
 
+.collapsed .logoLink {
+  justify-content: center;
+}
+
 .collapsed .nav {
-  padding: var(--spacing-4) var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-1-5);
 }
 
 .collapsed .navItem {
+  justify-content: center;
+  padding: var(--spacing-2-5);
+}
+
+.collapsed .logoutBtn {
   justify-content: center;
   padding: var(--spacing-2-5);
 }
@@ -189,7 +233,11 @@
 }
 
 .collapsed .activeIndicator {
-  left: -4px;
+  left: -2px;
+}
+
+.collapsed .footer {
+  padding: var(--spacing-3) var(--spacing-1-5);
 }
 
 @media (max-width: 768px) {
@@ -208,12 +256,87 @@
     padding: var(--spacing-5) var(--spacing-2);
   }
 
-  .navItem {
+  .logoLink {
+    justify-content: center;
+  }
+
+  .navItem,
+  .logoutBtn {
     justify-content: center;
     padding: var(--spacing-2-5);
   }
 
   .collapseBtn {
     display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 68px;
+    flex-direction: row;
+    border-top: 1px solid var(--color-border);
+    border-right: none;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+
+  .logoSection,
+  .footer,
+  .navLabel,
+  .collapseBtn {
+    display: none;
+  }
+
+  .nav {
+    flex-direction: row;
+    padding: 0 var(--spacing-2);
+    gap: 0;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .navGroup {
+    flex-direction: row;
+    gap: 0;
+  }
+
+  .navGroup:last-child {
+    display: none;
+  }
+
+  .navItem {
+    flex-direction: column;
+    padding: var(--spacing-2) var(--spacing-3);
+    gap: 3px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-2xs);
+  }
+
+  .navText {
+    display: block;
+    font-size: var(--font-size-2xs);
+  }
+
+  .activeIndicator {
+    display: none;
+  }
+
+  .navItem.active {
+    background: none;
+    box-shadow: none;
+  }
+
+  .navItem.active .navIcon {
+    color: var(--nav-active-text);
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   NIFTY50_CONSTITUENTS_DATA,
   REMOVED_NIFTY50_CONSTITUENTS,
+  NIFTY50_SECTOR_WEIGHTS,
 } from '../historical-data/nifty50-instruments';
 
 /**
@@ -120,12 +121,10 @@ export class ConstituentManagerService {
   getAllUniqueConstituents(): string[] {
     const all = new Set<string>();
 
-    // Add current
     for (const constituent of NIFTY50_CONSTITUENTS_DATA) {
       all.add(constituent.instrumentKey);
     }
 
-    // Add removed
     for (const removal of REMOVED_NIFTY50_CONSTITUENTS) {
       all.add(removal.instrumentKey);
       if (removal.addedInstrument) {
@@ -134,5 +133,59 @@ export class ConstituentManagerService {
     }
 
     return [...all];
+  }
+
+  /**
+   * Get weight of a constituent by instrument key (current constituents only)
+   */
+  getWeight(instrumentKey: string): number {
+    const constituent = NIFTY50_CONSTITUENTS_DATA.find(
+      (c) => c.instrumentKey === instrumentKey,
+    );
+    return constituent?.weightPct ?? 0;
+  }
+
+  /**
+   * Get weight of a constituent by symbol (current constituents only)
+   */
+  getWeightBySymbol(symbol: string): number {
+    const constituent = NIFTY50_CONSTITUENTS_DATA.find(
+      (c) => c.symbol === symbol,
+    );
+    return constituent?.weightPct ?? 0;
+  }
+
+  /**
+   * Get all current constituents with weights, sorted by weight descending
+   */
+  getConstituentsWithWeights(): Array<{
+    instrumentKey: string;
+    symbol: string;
+    weightPct: number;
+    industry: string;
+  }> {
+    return NIFTY50_CONSTITUENTS_DATA
+      .map((c) => ({
+        instrumentKey: c.instrumentKey,
+        symbol: c.symbol,
+        weightPct: c.weightPct,
+        industry: c.industry,
+      }))
+      .sort((a, b) => b.weightPct - a.weightPct);
+  }
+
+  /**
+   * Get sector weights for the index
+   */
+  getSectorWeights(): Record<string, number> {
+    return { ...NIFTY50_SECTOR_WEIGHTS };
+  }
+
+  /**
+   * Get total weight of top N constituents
+   */
+  getTopNWeight(n: number): number {
+    const sorted = this.getConstituentsWithWeights();
+    return sorted.slice(0, n).reduce((sum, c) => sum + c.weightPct, 0);
   }
 }

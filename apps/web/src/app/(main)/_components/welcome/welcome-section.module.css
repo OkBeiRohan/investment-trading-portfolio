@@ -1,5 +1,5 @@
 .welcome {
-  margin-bottom: var(--spacing-6);
+  margin-bottom: var(--spacing-4);
 }
 
 .greeting {
@@ -9,22 +9,22 @@
 }
 
 .title {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
   margin: 0;
 }
 
 .subtitle {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   margin: 0;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .title {
-    font-size: var(--font-size-2xl);
+    font-size: var(--font-size-xl);
   }
 }

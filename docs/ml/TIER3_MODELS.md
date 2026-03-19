@@ -113,6 +113,45 @@ pub fn compute_depth_imbalance(lob: &DepthSnapshot, levels: usize) -> f64 {
 }
 ```
 
+### Enhanced OFI for Phase 3 (LiT Transformer)
+
+The Level-1-only OFI above is a simplification suitable for Phase 1 rules and Phase 2 MLP. For Phase 3, the LiT Transformer should receive richer order flow signals based on Cont, Kukanov & Stoikov (2014):
+
+```rust
+/// Multi-level OFI: weighted contribution from levels 1-5
+/// Closer levels have higher weight (inverse-distance weighting)
+pub fn compute_multilevel_ofi(
+    current_lob: &DepthSnapshot,
+    prev_lob: &DepthSnapshot,
+    levels: usize  // typically 5
+) -> f64 {
+    let mut weighted_ofi = 0.0;
+    let mut total_weight = 0.0;
+
+    for level in 0..levels {
+        let weight = 1.0 / (level as f64 + 1.0);  // L1=1.0, L2=0.5, L3=0.33...
+        let bid_delta = current_lob.bids[level].quantity - prev_lob.bids[level].quantity;
+        let ask_delta = current_lob.asks[level].quantity - prev_lob.asks[level].quantity;
+        weighted_ofi += weight * (bid_delta - ask_delta);
+        total_weight += weight;
+    }
+
+    let normalizer = total_weight.max(1.0);
+    (weighted_ofi / normalizer).clamp(-1.0, 1.0)
+}
+```
+
+**Additional Phase 3 features to add** (from academic literature):
+
+| Feature | Formula | Source |
+|---------|---------|--------|
+| `multilevel_ofi_5` | Weighted OFI across levels 1-5 | Cont, Kukanov & Stoikov (2014) |
+| `vpin` | Volume-synchronized probability of informed trading | Easley, Lopez de Prado & O'Hara (2012) |
+| `queue_imbalance` | (bid_qty_L1 - ask_qty_L1) / (bid_qty_L1 + ask_qty_L1) | Huang & Polak (2011) |
+| `price_impact_est` | Amihud illiquidity ratio (|return| / volume) | Amihud (2002) |
+
+These 4 features bring the Phase 3 feature count from 14 to 18, providing the LiT Transformer with richer microstructure information.
+
 ---
 
 ## Phase 1: Analytical Rules (Months 1-3)

@@ -53,10 +53,14 @@ export class AuthManagerService {
       );
     }
 
-    // "system" userId: pick any available valid token from data-collection-enabled accounts
     if (userId === "system") {
       const token = await this.resolveSystemToken(provider, cacheKey);
-      if (token) return token;
+      if (token) {
+        const masked = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
+        this.logger.log(`System access token resolved (token: ${masked})`);
+        return token;
+      }
+      this.logger.warn(`System token resolution returned null for ${provider}/${environment}`);
     }
 
     // L2: broker_accounts (written by webhook / re-auth)
@@ -110,44 +114,16 @@ export class AuthManagerService {
 
   /**
    * For system-level access (market-feeder, cron jobs), find any valid token.
-   * Priority: data-collection broker accounts -> any broker account -> any auth account
+   * Priority: accounts collection (fresh OAuth) -> data-collection broker accounts -> any broker account
    */
   private async resolveSystemToken(
     provider: string,
     cacheKey: string,
   ): Promise<string | null> {
     const now = new Date();
+    const maskToken = (t: string) => t.length > 8 ? `${t.slice(0, 4)}...${t.slice(-4)}` : '****';
 
-    // L1: data-collection-enabled broker accounts
-    const enabledAccounts =
-      await this.brokerAccountRepository.findDataCollectionEnabledAccounts();
-
-    for (const account of enabledAccounts) {
-      if (
-        account.accessToken &&
-        (!account.accessTokenExpiresAt || now < account.accessTokenExpiresAt)
-      ) {
-        this.logger.log(
-          `System token resolved from data-collection account (user: ${account.userId})`,
-        );
-        await this.cacheToken(cacheKey, account.accessToken, this.REDIS_TTL);
-        return account.accessToken;
-      }
-    }
-
-    // L2: any broker_accounts entry with a valid token
-    const anyBroker =
-      await this.brokerAccountRepository.findAnyValidToken(provider);
-
-    if (anyBroker?.accessToken) {
-      this.logger.log(
-        `System token resolved from broker account (user: ${anyBroker.userId})`,
-      );
-      await this.cacheToken(cacheKey, anyBroker.accessToken, this.REDIS_TTL);
-      return anyBroker.accessToken;
-    }
-
-    // L3: better-auth accounts collection (where OAuth tokens are stored on first link)
+    // L1: better-auth accounts collection (most recently authenticated OAuth tokens)
     const authAccounts = await this.accountRepository.findMany(
       {
         providerId: provider,
@@ -162,15 +138,52 @@ export class AuthManagerService {
         (!account.accessTokenExpiresAt || now < account.accessTokenExpiresAt)
       ) {
         this.logger.log(
-          `System token resolved from auth accounts (user: ${account.userId})`,
+          `System token resolved from accounts collection (user: ${account.userId}, token: ${maskToken(account.accessToken)}, expiresAt: ${account.accessTokenExpiresAt ?? 'not set'})`,
         );
         await this.cacheToken(cacheKey, account.accessToken, this.REDIS_TTL);
         return account.accessToken;
+      } else if (account.accessToken && account.accessTokenExpiresAt && now >= account.accessTokenExpiresAt) {
+        this.logger.warn(
+          `Skipping expired token from accounts collection (user: ${account.userId}, token: ${maskToken(account.accessToken)}, expired: ${account.accessTokenExpiresAt.toISOString()})`,
+        );
       }
     }
 
+    // L2: data-collection-enabled broker accounts
+    const enabledAccounts =
+      await this.brokerAccountRepository.findDataCollectionEnabledAccounts();
+
+    for (const account of enabledAccounts) {
+      if (
+        account.accessToken &&
+        (!account.accessTokenExpiresAt || now < account.accessTokenExpiresAt)
+      ) {
+        this.logger.log(
+          `System token resolved from data-collection broker account (user: ${account.userId}, token: ${maskToken(account.accessToken)}, expiresAt: ${account.accessTokenExpiresAt ?? 'not set'})`,
+        );
+        await this.cacheToken(cacheKey, account.accessToken, this.REDIS_TTL);
+        return account.accessToken;
+      } else if (account.accessToken && account.accessTokenExpiresAt && now >= account.accessTokenExpiresAt) {
+        this.logger.warn(
+          `Skipping expired token from broker account (user: ${account.userId}, token: ${maskToken(account.accessToken)}, expired: ${account.accessTokenExpiresAt.toISOString()})`,
+        );
+      }
+    }
+
+    // L3: any broker_accounts entry with a valid token
+    const anyBroker =
+      await this.brokerAccountRepository.findAnyValidToken(provider);
+
+    if (anyBroker?.accessToken) {
+      this.logger.log(
+        `System token resolved from broker account fallback (user: ${anyBroker.userId}, token: ${maskToken(anyBroker.accessToken)})`,
+      );
+      await this.cacheToken(cacheKey, anyBroker.accessToken, this.REDIS_TTL);
+      return anyBroker.accessToken;
+    }
+
     this.logger.warn(
-      `No valid ${provider} token found for system access. Ensure at least one user has authenticated today.`,
+      `No valid ${provider} token found for system access across accounts or broker_accounts. Ensure at least one user has authenticated today.`,
     );
     return null;
   }

@@ -14,7 +14,7 @@ This document describes the **5-Tier Data-Bound Hierarchical AI Architecture** f
 ### Key Innovations
 
 1. **Data-bound model segregation**: Models are separated by the intersection of their target horizon and historical data depth
-2. **Pre-market gap prediction**: Tier 0 uses global overnight data to predict the 9:15 AM gap
+2. **Pre-market opening calibration**: Tier 0 calibrates the freeze-to-open residual using global overnight data + the 09:08 auction freeze price
 3. **Regime-Conditioned Temporal Loss**: Meta-Learner prevents whipsawing during strong macro trends
 
 ```
@@ -44,8 +44,8 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
                         EXECUTION LAYER
 ┌─────────────────────────────────────────────────────────────────┐
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
-│  │ PPO Agent    │  │ Exit Manager │  │ Position Sizing    │     │
-│  │ (Slippage)   │  │              │  │ (Kelly Criterion)  │     │
+│  │ Smart TWAP   │  │ Exit Manager │  │ Calibrated Kelly   │     │
+│  │ (Slippage)   │  │              │  │ (Frac. Kelly+VIX)  │     │
 │  └──────────────┘  └──────────────┘  └────────────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
@@ -59,39 +59,38 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
-│          TIER 3: MICROSTRUCTURE (LiT + Order Flow)              │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
-│  │ LiT          │  │ OFI-CNN      │  │ TLOB               │     │
-│  │ Transformer  │  │ (Order Flow) │  │ (LOB patterns)     │     │
-│  └──────────────┘  └──────────────┘  └────────────────────┘     │
-│  Input: Depth-30 LOB snapshots (10s-1min horizon)               │
+│          TIER 3: MICROSTRUCTURE (Phased: Rules → MLP → LiT)     │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Phase 1: OFI rules │ Phase 2: MLP │ Phase 3: LiT Trans. │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  Input: Depth-30 LOB snapshots + 14-18 OFI features             │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
 │          TIER 2: INTRADAY NAVIGATOR (5min-1hr Direction)        │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
-│  │ LightGBM     │  │ TFT          │  │ Mamba              │     │
-│  │ (80+ feats)  │  │ (multi-hor.) │  │ (long-range)       │     │
-│  └──────────────┘  └──────────────┘  └────────────────────┘     │
-│  Input: 80+ features from instrument_features table             │
+│  ┌──────────────┐  ┌──────────────┐                             │
+│  │ LightGBM     │  │ Mamba (SSM)  │                             │
+│  │ (117 feats)  │  │ (long-range) │                             │
+│  └──────────────┘  └──────────────┘                             │
+│  Input: 117 features from instrument_features table             │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
 │          TIER 1: MACRO DIRECTOR (Regime + Volatility)           │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
-│  │ TFT          │  │ Mamba (SSM)  │  │ HMM (Regime)       │     │
-│  │ (multi-hor.) │  │ (long-range) │  │ (state detection)  │     │
-│  └──────────────┘  └──────────────┘  └────────────────────┘     │
+│  ┌──────────────┐  ┌──────────────┐                             │
+│  │ HMM (4-state)│  │ PatchTST     │                             │
+│  │ (regime det.)│  │ (daily trend)│                             │
+│  └──────────────┘  └──────────────┘                             │
 │  Input: Daily + macro features, regime labels                   │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
-│          TIER 0: PRE-MARKET GAP PREDICTOR                       │
+│          TIER 0: PRE-MARKET OPENING CALIBRATOR                  │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │ Uses global overnight data (S&P500, GIFT Nifty, VIX,      │  │
-│  │ crude, news sentiment) to predict 9:15 AM gap             │  │
+│  │ Calibrates freeze-to-open residual using overnight data    │  │
+│  │ (S&P500, GIFT Nifty, MCX, sentiment) + 09:08 freeze price │  │
 │  └───────────────────────────────────────────────────────────┘  │
-│  Input: Global macro features, overnight_news_sentiment         │
+│  Input: 24 features (12 global + 8 MCX + 4 pre-market)         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -101,14 +100,14 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 
 ### Prediction Horizons
 
-| Horizon   | Target                | Use Case            | Primary Models  |
-| --------- | --------------------- | ------------------- | --------------- |
-| H1: 10s   | Price direction       | Scalping            | LiT, TLOB       |
-| H2: 1min  | Direction + magnitude | Entry signals       | LightGBM, Mamba |
-| H3: 5min  | Trend continuation    | Position sizing     | TFT, PatchTST   |
-| H4: 15min | Trend reversal        | Exit signals        | TFT, TimeMixer  |
-| H5: 1hr   | Session direction     | Strategy selection  | PatchTST, HMM   |
-| H6: EOD   | Daily move            | Overnight positions | TFT Ensemble    |
+| Horizon   | Target                | Use Case            | Primary Models           | Tier |
+| --------- | --------------------- | ------------------- | ------------------------ | ---- |
+| H1: 10s   | Price direction       | Execution timing    | LiT Transformer          | 3    |
+| H2: 5min  | Direction + magnitude | Entry signals       | LightGBM, Mamba          | 2    |
+| H3: 15min | Trend continuation    | Position management | LightGBM, Mamba          | 2    |
+| H4: 30min | Trend reversal        | Strategy confirm    | LightGBM, Mamba          | 2    |
+| H5: Daily | Regime + trend        | Strategy selection  | HMM (regime), PatchTST   | 1    |
+| H6: Gap   | Opening calibration   | Pre-market context  | XGBoost                  | 0    |
 
 ### Label Generation
 
@@ -118,44 +117,38 @@ import numpy as np
 
 def generate_multi_horizon_labels(
     df: pd.DataFrame,
-    horizons: list[int] = [10, 60, 300, 900, 3600]
+    horizons_minutes: list[int] = [5, 15, 30]
 ) -> pd.DataFrame:
     """
-    Generate labels for multiple prediction horizons.
+    Generate Triple-Barrier labels for multiple prediction horizons.
+    Uses dynamic volatility-adjusted barriers (Lopez de Prado, 2018).
 
     Args:
         df: OHLCV DataFrame with 'close' column (1-min bars)
-        horizons: Forward periods in seconds
+        horizons_minutes: Forward periods in minutes (must be >= 1 for 1-min data)
 
     Returns:
-        DataFrame with classification and regression labels
+        DataFrame with 3-class labels per horizon
     """
     result = df.copy()
+    rolling_vol = df['close'].pct_change().rolling(20).std()
 
-    for h, seconds in enumerate(horizons, 1):
-        periods = seconds // 60  # Convert to 1-min bars
+    for horizon in horizons_minutes:
+        k = 1.5  # Barrier width multiplier (tunable)
+        barrier_width = rolling_vol * np.sqrt(horizon) * k
 
-        # Forward returns (regression target)
-        result[f'return_H{h}'] = (
-            df['close'].shift(-periods) / df['close'] - 1
-        )
-
-        # Dynamic threshold based on horizon
-        # Longer horizons need larger moves to be significant
-        threshold = 0.001 * np.sqrt(periods)
-
-        # 3-class classification: DOWN=0, NEUTRAL=1, UP=2
-        result[f'label_H{h}'] = np.where(
-            result[f'return_H{h}'] < -threshold, 0,
-            np.where(result[f'return_H{h}'] > threshold, 2, 1)
+        fwd_return = df['close'].shift(-horizon) / df['close'] - 1
+        result[f'label_{horizon}m'] = np.where(
+            fwd_return < -barrier_width, 0,    # DOWN
+            np.where(fwd_return > barrier_width, 2, 1)  # UP or NEUTRAL
         )
 
     return result
 
-# Example usage
+# Example usage (1-min bars, horizons in minutes)
 df = pd.read_parquet('nifty_1min.parquet')
-df_labeled = generate_multi_horizon_labels(df)
-print(df_labeled[['close', 'label_H1', 'label_H2', 'label_H3']].tail())
+df_labeled = generate_multi_horizon_labels(df, horizons_minutes=[5, 15, 30])
+print(df_labeled[['close', 'label_5m', 'label_15m', 'label_30m']].tail())
 ```
 
 ---
@@ -278,7 +271,7 @@ for epoch in range(100):
 
 ### Tier 2: LightGBM Intraday Navigator
 
-**Purpose**: Primary direction predictor using 80+ engineered features from `instrument_features`.
+**Purpose**: Primary direction predictor using 117 engineered features from `instrument_features`.
 
 **Feature Engineering**:
 

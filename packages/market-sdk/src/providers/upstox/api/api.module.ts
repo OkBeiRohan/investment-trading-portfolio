@@ -1,5 +1,4 @@
 import { Module } from "@nestjs/common";
-import { AuthenticationModule } from "./authentication/api/authentication.module";
 import { HttpModule } from "@nestjs/axios";
 import UpstoxHttpConfigService from "./config/http-config.service";
 import { MarketDataModule } from "./market-data/market-data.module";
@@ -28,7 +27,6 @@ import { ChargesModule } from "./charges/charges.module";
     HttpModule.registerAsync({
       useClass: UpstoxHttpConfigService,
     }),
-    AuthenticationModule,
     MarketDataModule,
     HistoricalModule,
     OrdersModule,
@@ -39,7 +37,6 @@ import { ChargesModule } from "./charges/charges.module";
   ],
   providers: [],
   exports: [
-    AuthenticationModule,
     MarketDataModule,
     HistoricalModule,
     OrdersModule,
@@ -49,4 +46,4 @@ import { ChargesModule } from "./charges/charges.module";
     ChargesModule,
   ],
 })
-export class UpstoxApiModule {}
+export class UpstoxApiModule { }

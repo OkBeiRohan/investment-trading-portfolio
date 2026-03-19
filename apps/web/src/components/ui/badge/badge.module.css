@@ -5,17 +5,17 @@
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-full);
   white-space: nowrap;
-  letter-spacing: var(--letter-spacing-wide);
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .size-sm {
   padding: 2px var(--spacing-2);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
 }
 
 .size-md {
   padding: var(--spacing-1) var(--spacing-3);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
 }
 
 .variant-default {
@@ -44,8 +44,9 @@
 }
 
 .variant-neutral {
-  background-color: var(--color-bg-hover);
+  background-color: var(--color-bg-primary);
   color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 
 .icon {

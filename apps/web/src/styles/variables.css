@@ -2,40 +2,49 @@
   /* ================================
      PRIMARY ACCENT COLORS
      ================================ */
-  --color-emerald: #34d399;
-  --color-emerald-hover: #2cc48c;
-  --color-emerald-light: rgba(52, 211, 153, 0.15);
-  --color-emerald-dark: #059669;
+  --color-ocean: #2563eb;
+  --color-ocean-hover: #1d4ed8;
+  --color-ocean-light: rgba(37, 99, 235, 0.12);
+  --color-ocean-dark: #1e40af;
 
-  --color-mint: #a8e6cf;
-  --color-mint-hover: #8fd9bc;
-  --color-mint-dark: #6bbf9a;
+  --color-sky: #0ea5e9;
+  --color-sky-hover: #0284c7;
+  --color-sky-light: rgba(14, 165, 233, 0.12);
 
-  --color-coral: #f87171;
-  --color-coral-hover: #ef4444;
-  --color-coral-light: rgba(248, 113, 113, 0.12);
+  --color-cyan: #06b6d4;
+  --color-cyan-hover: #0891b2;
+  --color-cyan-light: rgba(6, 182, 212, 0.1);
 
-  --color-amber: #fbbf24;
-  --color-amber-hover: #f59e0b;
-  --color-amber-light: rgba(251, 191, 36, 0.15);
+  --color-emerald: #10b981;
+  --color-emerald-hover: #059669;
+  --color-emerald-light: rgba(16, 185, 129, 0.12);
+  --color-emerald-dark: #047857;
 
-  --color-sky: #38bdf8;
-  --color-sky-hover: #0ea5e9;
-  --color-sky-light: rgba(56, 189, 248, 0.12);
+  --color-coral: #f43f5e;
+  --color-coral-hover: #e11d48;
+  --color-coral-light: rgba(244, 63, 94, 0.1);
 
-  --color-violet: #a78bfa;
-  --color-violet-hover: #8b5cf6;
+  --color-amber: #f59e0b;
+  --color-amber-hover: #d97706;
+  --color-amber-light: rgba(245, 158, 11, 0.12);
+
+  --color-violet: #7c3aed;
+  --color-violet-hover: #6d28d9;
+
+  --color-indigo: #4f46e5;
+  --color-indigo-hover: #4338ca;
 
   /* ================================
      TYPOGRAPHY
      ================================ */
+  --font-size-2xs: 0.625rem;
   --font-size-xs: 0.6875rem;
   --font-size-sm: 0.8125rem;
-  --font-size-base: 0.9375rem;
-  --font-size-lg: 1.0625rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.125rem;
+  --font-size-2xl: 1.375rem;
+  --font-size-3xl: 1.75rem;
   --font-size-4xl: 2.25rem;
   --font-size-5xl: 3rem;
   --font-size-6xl: 3.75rem;
@@ -54,11 +63,11 @@
   --line-height-loose: 2;
 
   --letter-spacing-tighter: -0.04em;
-  --letter-spacing-tight: -0.02em;
+  --letter-spacing-tight: -0.025em;
   --letter-spacing-normal: 0;
   --letter-spacing-wide: 0.025em;
   --letter-spacing-wider: 0.05em;
-  --letter-spacing-caps: 0.08em;
+  --letter-spacing-caps: 0.06em;
 
   /* ================================
      SPACING
@@ -103,15 +112,17 @@
   /* ================================
      SHADOWS
      ================================ */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
-  --shadow-glow-emerald: 0 0 20px rgba(52, 211, 153, 0.15);
-  --shadow-glow-coral: 0 0 20px rgba(248, 113, 113, 0.15);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.2);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.04);
+  --shadow-glow-blue: 0 0 24px rgba(37, 99, 235, 0.15);
+  --shadow-glow-cyan: 0 0 24px rgba(6, 182, 212, 0.12);
+  --shadow-glow-emerald: 0 0 20px rgba(16, 185, 129, 0.12);
+  --shadow-glow-coral: 0 0 20px rgba(244, 63, 94, 0.12);
 
   /* ================================
      TRANSITIONS
@@ -142,27 +153,27 @@
   /* ================================
      CHART COLORS
      ================================ */
-  --chart-1: var(--color-emerald);
-  --chart-2: var(--color-sky);
-  --chart-3: var(--color-amber);
-  --chart-4: var(--color-violet);
-  --chart-5: var(--color-coral);
-  --chart-6: var(--color-mint);
-  --chart-positive: #34d399;
-  --chart-negative: #f87171;
+  --chart-1: #2563eb;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #7c3aed;
+  --chart-5: #f43f5e;
+  --chart-6: #06b6d4;
+  --chart-positive: #10b981;
+  --chart-negative: #f43f5e;
 
   /* ================================
      LAYOUT
      ================================ */
-  --sidebar-width: 260px;
-  --sidebar-collapsed-width: 72px;
-  --header-height: 3.5rem;
+  --sidebar-width: 244px;
+  --sidebar-collapsed-width: 68px;
+  --header-height: 60px;
   --content-padding: var(--spacing-6);
 
   /* ================================
      GLASSMORPHISM
      ================================ */
-  --glass-blur: 16px;
+  --glass-blur: 24px;
   --glass-saturate: 180%;
 
   /* ================================

@@ -26,8 +26,8 @@
   height: 100%;
   text-transform: uppercase;
   user-select: none;
-  background: linear-gradient(135deg, var(--color-emerald-light), var(--color-sky-light));
-  color: var(--color-text-primary);
+  background: var(--gradient-primary);
+  color: #ffffff;
 }
 
 .size-xs {

@@ -33,3 +33,38 @@ export interface MarketMood {
   score: number;
   label: string;
 }
+
+export interface PortfolioPill {
+  label: string;
+  value: number;
+  variant: "stock" | "fo" | "crypto";
+}
+
+export interface CandlestickDataPoint {
+  month: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  date: string;
+  volume: number;
+}
+
+export interface TransferItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  amount: number;
+  type: "sent" | "received" | "swap";
+}
+
+export interface SpendingCategory {
+  label: string;
+  color: string;
+  flex: number;
+}
+
+export interface AIKnowledgeEntry {
+  keywords: string[];
+  response: string;
+}

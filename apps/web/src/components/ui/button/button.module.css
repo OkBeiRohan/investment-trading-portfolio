@@ -4,7 +4,7 @@
   justify-content: center;
   gap: var(--spacing-2);
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition:
@@ -15,7 +15,7 @@
   outline: none;
   position: relative;
   white-space: nowrap;
-  letter-spacing: var(--letter-spacing-wide);
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .button:focus-visible {
@@ -32,14 +32,14 @@
 }
 
 .variant-primary {
-  background-color: var(--color-button-primary-bg);
-  color: var(--color-button-primary-text);
+  background: var(--gradient-primary);
+  color: #ffffff;
   font-weight: var(--font-weight-semibold);
 }
 
 .variant-primary:hover:not(:disabled) {
-  background-color: var(--color-button-primary-hover);
-  box-shadow: var(--shadow-glow-emerald);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
 }
 
 .variant-secondary {
@@ -50,6 +50,8 @@
 
 .variant-secondary:hover:not(:disabled) {
   background-color: var(--color-button-secondary-hover);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .variant-ghost {
@@ -59,7 +61,7 @@
 
 .variant-ghost:hover:not(:disabled) {
   background-color: var(--color-button-ghost-hover);
-  color: var(--color-text-primary);
+  color: var(--color-primary);
 }
 
 .variant-outline {
@@ -70,27 +72,28 @@
 
 .variant-outline:hover:not(:disabled) {
   background-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .variant-danger {
-  background-color: var(--color-error);
+  background: var(--gradient-danger);
   color: #ffffff;
 }
 
 .variant-danger:hover:not(:disabled) {
-  opacity: 0.9;
-  box-shadow: var(--shadow-glow-coral);
+  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.35);
+  transform: translateY(-1px);
 }
 
 .size-sm {
   height: 2rem;
   padding: 0 var(--spacing-3);
   font-size: var(--font-size-xs);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .size-md {
-  height: 2.25rem;
+  height: 2.375rem;
   padding: 0 var(--spacing-4);
   font-size: var(--font-size-sm);
 }
@@ -142,7 +145,7 @@
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   cursor: pointer;
   color: var(--color-text-secondary);
   background: transparent;
@@ -155,7 +158,7 @@
 
 .iconButton:hover {
   background-color: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  color: var(--color-primary);
 }
 
 .iconButton:focus-visible {
@@ -172,8 +175,8 @@
 }
 
 .iconSize-md {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.375rem;
+  height: 2.375rem;
 }
 
 .iconSize-lg {

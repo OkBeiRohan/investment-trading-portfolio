@@ -119,10 +119,19 @@ export class HttpClientService {
         // Record failure for circuit breaker
         this.circuitBreaker.recordFailure(provider);
 
-        // Log error
+        const status = error.response?.status;
+        const responseBody = error.response?.data;
+        const authHeader = config.headers?.Authorization || config.headers?.authorization;
+        const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+          ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
+          : '(no auth header)';
+
         this.logger.error(
-          `${provider} ${config.method} ${config.url} - Attempt ${attempt}/${maxAttempts} failed:`,
-          error.message
+          `${provider} ${config.method} ${config.url} - Attempt ${attempt}/${maxAttempts} failed | ` +
+          `Status: ${status ?? 'N/A'} | Token: ${maskedToken} | ` +
+          `Params: ${JSON.stringify(config.params ?? {})} | ` +
+          `Body: ${JSON.stringify(config.data ?? {})} | ` +
+          `Response: ${JSON.stringify(responseBody ?? error.message)}`,
         );
 
         // Check if we should retry

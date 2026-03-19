@@ -188,6 +188,13 @@ export class Instrument {
     @Prop({ default: false, index: true })
     isNifty50!: boolean;
 
+    /**
+     * NIFTY 50 index weight (% of index, free-float market cap based).
+     * Only set for current NIFTY 50 constituents. Updated at each rebalancing.
+     */
+    @Prop()
+    nifty50WeightPct?: number;
+
     @Prop({ default: false, index: true })
     tradingEnabled!: boolean;
 

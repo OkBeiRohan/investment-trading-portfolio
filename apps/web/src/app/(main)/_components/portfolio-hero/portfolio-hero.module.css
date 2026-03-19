@@ -1,0 +1,225 @@
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius);
+  padding: var(--spacing-8) var(--spacing-10);
+  box-shadow: var(--card-shadow);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-10);
+  align-items: center;
+  transition: box-shadow var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* ── LEFT SIDE ── */
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.breadcrumbLink {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-base);
+}
+
+.breadcrumbLink:hover {
+  color: var(--color-primary);
+}
+
+.breadcrumbSeparator {
+  color: var(--color-text-tertiary);
+}
+
+.breadcrumbCurrent {
+  color: var(--color-text-secondary);
+}
+
+.title {
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tighter);
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-4);
+}
+
+.pill {
+  position: relative;
+  width: 180px;
+  min-height: 72px;
+  border-radius: 40px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-base);
+}
+
+.pill:hover {
+  transform: scale(1.04);
+}
+
+.pillBlob {
+  position: absolute;
+  inset: 0;
+  border-radius: 40px;
+}
+
+.pillStock .pillBlob {
+  background: linear-gradient(135deg, #fca5a5, #f87171, #fb923c);
+}
+
+.pillFo .pillBlob {
+  background: linear-gradient(135deg, #fbbf24, #60a5fa, #3b82f6);
+}
+
+.pillCrypto .pillBlob {
+  background: linear-gradient(135deg, #34d399, #06b6d4);
+}
+
+.pillContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-3);
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.pillLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  opacity: 0.9;
+}
+
+.pillValue {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  margin-top: var(--spacing-0-5);
+}
+
+.pillValueNegative {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  margin-top: var(--spacing-0-5);
+  color: var(--color-coral);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ── RIGHT SIDE (GAUGE) ── */
+.right {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.gaugeSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gaugeWrapper {
+  position: relative;
+  width: 300px;
+  height: 180px;
+}
+
+.gaugeSvg {
+  width: 100%;
+  height: 100%;
+}
+
+.gaugeTrack {
+  stroke: var(--gauge-track);
+  fill: none;
+}
+
+.gaugeFill {
+  stroke: url(#portfolioHeroGaugeGrad);
+  fill: none;
+}
+
+.gaugeDot {
+  fill: var(--color-primary);
+}
+
+.gaugeInfo {
+  position: absolute;
+  bottom: var(--spacing-2);
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.gaugeLabel {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--spacing-0-5);
+}
+
+.gaugeValue {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.viewBtn {
+  margin-top: var(--spacing-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  padding: var(--spacing-2) var(--spacing-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.viewBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .card {
+    grid-template-columns: 1fr;
+  }
+
+  .right {
+    margin-top: var(--spacing-6);
+  }
+}

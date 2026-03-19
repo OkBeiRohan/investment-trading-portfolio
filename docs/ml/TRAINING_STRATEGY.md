@@ -19,6 +19,8 @@
 9. [Backtesting Framework](#backtesting-framework)
 10. [Model Update Strategy](#model-update-strategy)
 11. [Monitoring &amp; Drift Detection](#monitoring--drift-detection)
+12. [Transaction Cost Model (NIFTY Options)](#transaction-cost-model-nifty-options)
+13. [Production Drift Detection & Failover](#production-drift-detection--failover)
 
 ---
 
@@ -40,7 +42,7 @@ The training strategy is designed for **financial time-series** with specific ch
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  RAW DATA (4 years: 2022-2026)                                              │
-│  ├── ~1,000,000 1-minute candles                                            │
+│  ├── ~378,000 1-minute candles (per instrument, 4yr)                        │
 │  ├── 100+ computed features                                                 │
 │  └── Multi-horizon labels (5m, 15m, 30m)                                    │
 │                                                                             │
@@ -74,7 +76,7 @@ Data:     │←─────────────── TRAINING ───
           2022-01                               2025-06  2025-09  2026-01
 
 Split:    │════════ 3.5 years ════════════════════│ 3 mo │  3 mo  │
-          │         ~850K samples                 │ 75K  │  75K   │
+          │         ~331K samples                 │ 28K  │  28K   │
 ```
 
 ### Split Implementation
@@ -753,6 +755,39 @@ def export_pytorch_onnx(
 
 ## Backtesting Framework
 
+### Deflated Sharpe Ratio (DSR) & Probability of Backtest Overfitting (PBO)
+
+Traditional Sharpe ratios are highly misleading for high-frequency data because returns are non-normal (fat tails, skewness) and because hyperparameter tuning involves multiple testing. Searching through hundreds of configurations guarantees finding a false positive (Probability of Backtest Overfitting). 
+
+We mandate the **Deflated Sharpe Ratio (DSR)** (Bailey & Lopez de Prado, 2014) for all model promotions. DSR mathematically discounts the Sharpe ratio based on:
+1. The number of independent trials attempted during hyperparameter search.
+2. The non-normality (skewness and kurtosis) of the strategy's returns.
+3. The length of the backtest.
+
+A model is only promoted if its DSR implies a >95% confidence that the true Sharpe ratio is greater than 0.
+
+### Mandatory Feature Family Ablation
+
+Before deploying any model, a feature ablation study must prove incremental value from each feature group. The docs currently assume every feature block adds value without proving it.
+
+**Required ablation table for Tier 2 LightGBM**:
+
+| Feature Set | Features Used | AUC-ROC (OOF) | Sharpe (backtest) | Add vs Baseline |
+|-------------|--------------|----------------|-------------------|-----------------|
+| **Baseline** | Futures + Price Structure (24) | Report | Report | — |
+| **+Breadth** | + Index Breadth (15) | Report | Report | Δ |
+| **+Options** | + Options (14) | Report | Report | Δ |
+| **+Volatility** | + Volatility (10) | Report | Report | Δ |
+| **+Macro** | + Global Macro (12) | Report | Report | Δ |
+| **+Momentum** | + Momentum + MA + Bollinger (24) | Report | Report | Δ |
+| **+Time** | + Time Context (13) | Report | Report | Δ |
+| **+OrderFlow** | + Order Flow (8, when available) | Report | Report | Δ |
+| **Full (117)** | All features | Report | Report | vs Baseline |
+
+**Decision rule**: A feature group is only included if it improves AUC-ROC by ≥0.005 on OOF predictions AND does not degrade Sharpe ratio. Groups that fail this test are dropped to reduce noise and overfitting risk.
+
+This is especially important for the options features (IV, PCR, GEX) and the IV Surface Predictor / SSVI model, which add significant complexity. They should be treated as **experimental until ablations prove they add value** over the simpler underlying-driven baseline.
+
 ### Realistic Transaction Costs (NSE F&O)
 
 ```python
@@ -885,6 +920,7 @@ def calculate_metrics(
 
         # Risk-adjusted
         'sharpe_ratio': returns.mean() / returns.std() * np.sqrt(252 * 375),
+        'deflated_sharpe_ratio': calculate_dsr(returns, num_trials=100), # Accounts for PBO and non-normality
         'sortino_ratio': (
             returns.mean() / returns[returns < 0].std() * np.sqrt(252 * 375)
             if len(returns[returns < 0]) > 0 else np.inf
@@ -937,7 +973,7 @@ def calculate_metrics(
 │                                                                             │
 │  MONDAY 08:00 IST (1hr before market)                                       │
 │  ├── 7. Compare new vs production model                                     │
-│  ├── 8. Deploy if new model better by >0.5% Sharpe                          │
+│  ├── 8. Deploy if Deflated Sharpe Ratio (DSR) > 95% confidence              │
 │  └── 9. A/B test (optional): Run both, compare                              │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -981,6 +1017,134 @@ def detect_feature_drift(
         'drift_ratio': n_drifted / len(drift_results),
         'should_retrain': n_drifted / len(drift_results) > 0.2  # >20% features drifted
     }
+```
+
+---
+
+## Transaction Cost Model (NIFTY Options)
+
+All backtesting and Sharpe ratio calculations MUST include realistic transaction costs. A strategy with gross Sharpe 2.0 can become net-negative after costs. Without this model, performance targets are meaningless.
+
+### Cost Components (per leg, per lot of 25 units)
+
+| Component | Rate | Example (premium Rs 150) | Notes |
+|-----------|------|--------------------------|-------|
+| **Brokerage** | Rs 20/order (flat) | Rs 20 | Zerodha/Upstox discount broker model |
+| **STT** | 0.0625% on sell side | Rs 2.34 (on sell) | Securities Transaction Tax; buy-side exempt for options |
+| **Exchange txn charges** | 0.0495% (NSE FO) | Rs 1.86 | NSE charges on turnover |
+| **GST** | 18% on (brokerage + exchange charges) | Rs 3.93 | On brokerage + exchange charges |
+| **SEBI turnover fees** | 0.0001% | Rs 0.04 | Negligible but included |
+| **Stamp duty** | 0.003% on buy side | Rs 0.11 | State-level, varies slightly |
+| **Slippage** | 1-5 bps typical | Rs 3.75 (at 1 bps) | Biggest variable cost; depends on liquidity |
+
+### Total Cost Estimate
+
+```python
+def estimate_round_trip_cost(
+    premium: float,
+    lot_size: int = 25,
+    slippage_bps: float = 2.0,
+    brokerage_per_order: float = 20.0,
+) -> dict:
+    """
+    Estimate total round-trip cost for a NIFTY option trade.
+    Returns cost breakdown and cost as % of premium.
+    """
+    turnover_per_leg = premium * lot_size
+    turnover_round_trip = turnover_per_leg * 2
+
+    brokerage = brokerage_per_order * 2  # buy + sell
+    stt = turnover_per_leg * 0.000625  # sell side only
+    exchange_charges = turnover_round_trip * 0.000495
+    gst = (brokerage + exchange_charges) * 0.18
+    sebi_fees = turnover_round_trip * 0.000001
+    stamp_duty = turnover_per_leg * 0.00003  # buy side only
+    slippage = turnover_round_trip * (slippage_bps / 10000)
+
+    total = brokerage + stt + exchange_charges + gst + sebi_fees + stamp_duty + slippage
+    cost_pct = (total / turnover_per_leg) * 100
+
+    return {
+        'total_cost': round(total, 2),
+        'cost_as_pct_of_premium': round(cost_pct, 3),
+        'breakdown': {
+            'brokerage': brokerage,
+            'stt': round(stt, 2),
+            'exchange_charges': round(exchange_charges, 2),
+            'gst': round(gst, 2),
+            'sebi_fees': round(sebi_fees, 2),
+            'stamp_duty': round(stamp_duty, 2),
+            'slippage': round(slippage, 2),
+        }
+    }
+
+# Example: Rs 150 premium, 25 lot size, 2 bps slippage
+# Total ~Rs 55-65 round trip, or ~1.5% of premium per trade
+```
+
+### Impact on Strategy Metrics
+
+| Metric | Without Costs | With Costs (2 bps slippage) | With Costs (5 bps) |
+|--------|--------------|----------------------------|---------------------|
+| Sharpe Ratio target | >1.5 | >1.2 | >0.9 |
+| Win rate breakeven | 50% | ~52% | ~54% |
+| Trades/day breakeven | - | Max ~15-20 | Max ~8-10 |
+
+**Rule**: All backtesting in TRAINING_PIPELINE.md MUST apply `estimate_round_trip_cost()` to every simulated trade. Raw (gross) metrics should be reported alongside net metrics, never alone.
+
+---
+
+## Production Drift Detection & Failover
+
+### Monitored Metrics
+
+| Metric | Threshold | Check Frequency | Action |
+|--------|-----------|-----------------|--------|
+| Tier 2 rolling AUC (20-day) | <0.58 | Daily EOD | Trigger retraining |
+| Feature distribution shift (KS test) | p < 0.01 for >3 features | Daily EOD | Alert + investigate |
+| Tier 4 hit rate (10-day rolling) | <45% | Daily EOD | Reduce position to 50% |
+| Tier 4 hit rate (20-day rolling) | <40% | Daily EOD | **Stop trading, manual review** |
+| Prediction calibration (ECE) | >0.15 | Weekly | Re-calibrate temperature |
+| India VIX regime change | VIX crosses 25 (up) or 15 (down) | Real-time | Adjust regime weights |
+
+### Failover Strategy
+
+```
+IF rolling_20d_hit_rate < 40%:
+    → STOP all new trades
+    → Close existing positions at market
+    → Alert admin via notification-service
+    → Trigger emergency retraining
+    → Require manual approval to resume
+
+ELIF rolling_10d_hit_rate < 45%:
+    → Reduce max position to 50% of normal
+    → Switch to default regime weights (no learned weights)
+    → Schedule accelerated retraining
+
+ELIF rolling_20d_auc < 0.58:
+    → Schedule standard retraining for next weekend
+    → Continue trading with current models
+    → Log degradation in experiment tracker
+```
+
+### Feature Drift Detection
+
+```python
+from scipy.stats import ks_2samp
+
+def detect_feature_drift(
+    reference_features: pd.DataFrame,  # Last 60 days of training data
+    live_features: pd.DataFrame,       # Last 5 days of live data
+    p_threshold: float = 0.01
+) -> list[str]:
+    """Return list of features with significant distribution shift."""
+    drifted = []
+    for col in reference_features.columns:
+        stat, p_value = ks_2samp(reference_features[col], live_features[col])
+        if p_value < p_threshold:
+            drifted.append(col)
+    return drifted
 ```
 
 ---

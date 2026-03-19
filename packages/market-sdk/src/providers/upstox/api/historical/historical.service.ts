@@ -192,9 +192,17 @@ export class UpstoxHistoricalAPIService {
           continue;
         }
 
+        const authHeader = this.client?.defaults.headers?.Authorization || this.client?.defaults.headers?.common?.Authorization;
+        const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+          ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
+          : '(no auth header)';
+        const url = `/historical-candle/${request.instrument_key}/${request.unit}/${request.interval}/${chunk.to.toISOString().split("T")[0]}/${chunk.from.toISOString().split("T")[0]}`;
+
         this.logger.error(
-          `Failed to fetch chunk ${chunk.from.toISOString()} - ${chunk.to.toISOString()}`,
-          error
+          `Failed to fetch historical candles | ` +
+          `Status: ${error.response?.status ?? 'N/A'} | Token: ${maskedToken} | ` +
+          `URL: ${this.client?.defaults.baseURL}${url} | ` +
+          `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
         );
         throw error;
       }
@@ -272,7 +280,16 @@ export class UpstoxHistoricalAPIService {
       }
       return [];
     } catch (error: any) {
-      this.logger.error(`Failed to get expiry dates for ${instrumentKey}`, error.message);
+      const authHeader = client.defaults.headers?.Authorization || client.defaults.headers?.common?.Authorization;
+      const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
+        : '(no auth header)';
+      this.logger.error(
+        `Failed to get expiry dates | Status: ${error.response?.status ?? 'N/A'} | ` +
+        `Token: ${maskedToken} | URL: ${client.defaults.baseURL}/expired-instruments/expiries | ` +
+        `Params: ${JSON.stringify({ instrument_key: instrumentKey })} | ` +
+        `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+      );
       throw error;
     }
   }
@@ -302,7 +319,16 @@ export class UpstoxHistoricalAPIService {
       }
       return [];
     } catch (error: any) {
-      this.logger.error(`Failed to get option contracts for ${instrumentKey}`, error.message);
+      const authHeader = client.defaults.headers?.Authorization || client.defaults.headers?.common?.Authorization;
+      const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
+        : '(no auth header)';
+      this.logger.error(
+        `Failed to get option contracts | Status: ${error.response?.status ?? 'N/A'} | ` +
+        `Token: ${maskedToken} | URL: ${client.defaults.baseURL}/option/contract | ` +
+        `Params: ${JSON.stringify({ instrument_key: instrumentKey, expiry_date: expiryDate })} | ` +
+        `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+      );
       throw error;
     }
   }
@@ -329,7 +355,16 @@ export class UpstoxHistoricalAPIService {
       }
       return [];
     } catch (error: any) {
-      this.logger.error(`Failed to get option chain for ${instrumentKey}`, error.message);
+      const authHeader = client.defaults.headers?.Authorization || client.defaults.headers?.common?.Authorization;
+      const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
+        : '(no auth header)';
+      this.logger.error(
+        `Failed to get option chain | Status: ${error.response?.status ?? 'N/A'} | ` +
+        `Token: ${maskedToken} | URL: ${client.defaults.baseURL}/option/chain | ` +
+        `Params: ${JSON.stringify({ instrument_key: instrumentKey, expiry_date: expiryDate })} | ` +
+        `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+      );
       throw error;
     }
   }
@@ -356,7 +391,16 @@ export class UpstoxHistoricalAPIService {
       }
       return [];
     } catch (error: any) {
-      this.logger.error(`Failed to get expired futures for ${instrumentKey}/${expiryDate}`, error.message);
+      const authHeader = client.defaults.headers?.Authorization || client.defaults.headers?.common?.Authorization;
+      const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
+        : '(no auth header)';
+      this.logger.error(
+        `Failed to get expired futures | Status: ${error.response?.status ?? 'N/A'} | ` +
+        `Token: ${maskedToken} | URL: ${client.defaults.baseURL}/expired-instruments/future/contract | ` +
+        `Params: ${JSON.stringify({ instrument_key: instrumentKey, expiry_date: expiryDate })} | ` +
+        `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+      );
       return [];
     }
   }
@@ -383,7 +427,16 @@ export class UpstoxHistoricalAPIService {
       }
       return [];
     } catch (error: any) {
-      this.logger.error(`Failed to get expired options for ${instrumentKey}/${expiryDate}`, error.message);
+      const authHeader = client.defaults.headers?.Authorization || client.defaults.headers?.common?.Authorization;
+      const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
+        : '(no auth header)';
+      this.logger.error(
+        `Failed to get expired options | Status: ${error.response?.status ?? 'N/A'} | ` +
+        `Token: ${maskedToken} | URL: ${client.defaults.baseURL}/expired-instruments/option/contract | ` +
+        `Params: ${JSON.stringify({ instrument_key: instrumentKey, expiry_date: expiryDate })} | ` +
+        `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+      );
       return [];
     }
   }
@@ -469,7 +522,16 @@ export class UpstoxHistoricalAPIService {
       }
       return {};
     } catch (error: any) {
-      this.logger.error(`Failed to get market quotes`, error.message);
+      const authHeader = client.defaults.headers?.Authorization || client.defaults.headers?.common?.Authorization;
+      const maskedToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? `Bearer ${authHeader.slice(7, 11)}...${authHeader.slice(-4)}`
+        : '(no auth header)';
+      this.logger.error(
+        `Failed to get market quotes | Status: ${error.response?.status ?? 'N/A'} | ` +
+        `Token: ${maskedToken} | ` +
+        `Params: ${JSON.stringify({ instrument_key: instrumentKeys.join(",") })} | ` +
+        `Response: ${JSON.stringify(error.response?.data ?? error.message)}`,
+      );
       return {};
     }
   }

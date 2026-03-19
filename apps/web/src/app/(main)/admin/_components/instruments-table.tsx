@@ -111,8 +111,10 @@ export function InstrumentsTable() {
             <thead>
               <tr>
                 <th>Symbol</th>
+                <th>Name</th>
                 <th>Exchange</th>
                 <th>Type</th>
+                <th className={styles.textRight}>Weight</th>
                 <th className={styles.textRight}>Lot Size</th>
                 <th>Trading</th>
                 <th>Data Collection</th>
@@ -122,7 +124,17 @@ export function InstrumentsTable() {
             <tbody>
               {instruments.map((inst) => (
                 <tr key={inst.instrumentKey}>
-                  <td className={styles.textBold}>{inst.symbol}</td>
+                  <td className={styles.textBold}>
+                    {inst.tradingSymbol}
+                    {inst.isNifty50 && (
+                      <Badge variant="info" size="sm" style={{ marginLeft: 6 }}>
+                        N50
+                      </Badge>
+                    )}
+                  </td>
+                  <td className={`${styles.textMuted} ${styles.cellNameTruncate}`}>
+                    {inst.name ?? "—"}
+                  </td>
                   <td>
                     <Badge variant="neutral" size="sm">
                       {inst.exchange}
@@ -130,6 +142,11 @@ export function InstrumentsTable() {
                   </td>
                   <td className={styles.textMuted}>
                     {inst.instrumentType ?? "—"}
+                  </td>
+                  <td className={styles.textRight}>
+                    {inst.nifty50WeightPct
+                      ? `${inst.nifty50WeightPct}%`
+                      : "—"}
                   </td>
                   <td className={styles.textRight}>{inst.lotSize ?? "—"}</td>
                   <td>

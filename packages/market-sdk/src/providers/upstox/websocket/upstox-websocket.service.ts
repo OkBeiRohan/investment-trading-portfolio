@@ -14,6 +14,7 @@ import {
 import { HeartbeatService } from "../../../websocket/heartbeat.service";
 import { UPSTOX_CONSTANTS } from "../constants";
 import * as protobuf from "protobufjs";
+import * as path from "path";
 import * as WS from "ws";
 
 export interface UpstoxMarketData {
@@ -21,10 +22,23 @@ export interface UpstoxMarketData {
   instrumentKey: string;
   ltp?: number;
   lastTradeTime?: Date;
+  ltq?: number;
+  cp?: number;
   volume?: number;
   oi?: number;
-  bid?: { price: number; quantity: number; orders: number }[];
-  ask?: { price: number; quantity: number; orders: number }[];
+  iv?: number;
+  atp?: number;
+  tbq?: number;
+  tsq?: number;
+  bid?: { price: number; quantity: number }[];
+  ask?: { price: number; quantity: number }[];
+  optionGreeks?: {
+    delta?: number;
+    theta?: number;
+    gamma?: number;
+    vega?: number;
+    rho?: number;
+  };
 }
 
 /**
@@ -53,13 +67,13 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    // Initialize socket pool for Upstox
     this.socketPool.initializePool("upstox", {
       maxConnections: UPSTOX_CONSTANTS.WEBSOCKET_LIMITS.MAX_CONNECTIONS_PLUS,
       maxInstrumentsPerSocket:
         UPSTOX_CONSTANTS.WEBSOCKET_LIMITS.MAX_SUBSCRIPTIONS_PLUS,
       reconnectDelay: 5000,
       heartbeatInterval: 30000,
+      modeLimits: UPSTOX_CONSTANTS.WEBSOCKET_LIMITS.V3_MODE_LIMITS,
     });
 
     // Load Protobuf schema for Upstox
@@ -78,12 +92,12 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
   async subscribe(
     userId: string,
     instruments: string[],
-    mode: "ltpc" | "full" = "ltpc",
+    mode: "ltpc" | "full" | "full_d30" | "option_greeks" = "full",
     priority: SubscriptionPriority = SubscriptionPriority.NORMAL,
     callback: (data: UpstoxMarketData) => void
   ): Promise<string> {
     this.logger.log(
-      `Subscribing user ${userId} to ${instruments.length} instruments`
+      `Subscribing user ${userId} to ${instruments.length} instruments (mode: ${mode})`,
     );
 
     return this.subscriptionManager.subscribe(
@@ -91,7 +105,8 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
       userId,
       instruments,
       priority,
-      callback
+      callback,
+      mode,
     );
   }
 
@@ -110,50 +125,72 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
 
     const { socketId } = event;
 
+    let token: string | undefined;
+    const wsUrl = UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL_V3;
     try {
-      // Get access token
-      const token = await this.authManager.getAccessToken(
-        "system", // Use system user for WebSocket auth
+      token = await this.authManager.getAccessToken(
+        "system",
         "upstox",
         "LIVE"
       );
 
-      // Create WebSocket connection
-      const wsUrl = `${UPSTOX_CONSTANTS.WEBSOCKET.MARKET_DATA_URL}?access_token=${token}`;
-      const ws = new WS.WebSocket(wsUrl) as any;
+      const maskedToken = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
 
-      // Attach to pooled socket
+      this.logger.log(`WebSocket V3 connecting for ${socketId} (token: ${maskedToken})`);
+      const ws = new WS.WebSocket(wsUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "*/*",
+        },
+        followRedirects: true,
+      }) as any;
+
       const pool = this.socketPool["pools"].get("upstox");
       const pooledSocket = pool?.get(socketId);
       if (pooledSocket) {
         pooledSocket.socket = ws;
       }
 
-      // Setup event handlers
       ws.on("open", () => this.handleOpen(socketId, ws));
       ws.on("message", (data: any) => this.handleMessage(socketId, data));
-      ws.on("error", (error: any) => this.handleError(socketId, error));
-      ws.on("close", () => this.handleClose(socketId));
+      ws.on("error", (error: any) => {
+        const maskedTok = token && token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
+        this.logger.error(
+          `WebSocket error for ${socketId} | Token: ${maskedTok} | ` +
+          `URL: ${wsUrl} | Error: ${error?.message ?? error}`,
+        );
+      });
+      ws.on("close", (code: number, reason: string) => {
+        const maskedTok = token && token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
+        this.logger.warn(
+          `Socket ${socketId} closed | Code: ${code} | Reason: ${reason || 'N/A'} | Token: ${maskedTok}`,
+        );
+        this.heartbeat.stopHeartbeat(socketId);
+        this.scheduleReconnect(socketId);
+      });
       ws.on("pong", () => this.heartbeat.recordPong(socketId));
 
-      this.logger.log(`WebSocket connected for ${socketId}`);
-    } catch (error) {
-      this.logger.error(`Failed to create WebSocket for ${socketId}`, error);
+      this.logger.log(`WebSocket V3 connected for ${socketId}`);
+    } catch (error: any) {
+      const maskedToken = token && token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '(no token)';
+      this.logger.error(
+        `Failed to create WebSocket for ${socketId} | Token: ${maskedToken} | ` +
+        `URL: ${wsUrl} | Error: ${error?.message ?? error}`,
+      );
     }
   }
 
   /**
-   * Handle socket open
+   * Handle socket open -- send V3 subscription message
    */
   private handleOpen(socketId: string, ws: any): void {
     this.logger.log(`Socket ${socketId} opened`);
 
-    // Start heartbeat
     this.heartbeat.startHeartbeat(
       socketId,
       {
-        interval: 30000, // 30 seconds
-        timeout: 35000, // 35 seconds
+        interval: 30000,
+        timeout: 35000,
         maxMissed: 3,
       },
       () => {
@@ -163,47 +200,51 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
       }
     );
 
-    // Reset reconnect attempts
     this.reconnectAttempts.set(socketId, 0);
+
+    const pool = this.socketPool["pools"].get("upstox");
+    const pooledSocket = pool?.get(socketId);
+    if (!pooledSocket || pooledSocket.instruments.size === 0) {
+      this.logger.warn(`Socket ${socketId} has no instruments to subscribe to`);
+      return;
+    }
+
+    const instrumentKeys = Array.from(pooledSocket.instruments);
+    const mode = pooledSocket.feedMode || "full_d30";
+
+    const subMessage = {
+      guid: `sub-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      method: "sub",
+      data: {
+        mode,
+        instrumentKeys,
+      },
+    };
+
+    const binaryMsg = Buffer.from(JSON.stringify(subMessage));
+    ws.send(binaryMsg);
+
+    this.logger.log(
+      `Sent V3 subscription for ${instrumentKeys.length} instruments (mode: ${mode}) on ${socketId}`,
+    );
   }
 
   /**
-   * Handle incoming message
+   * Handle incoming V3 message -- one FeedResponse contains data for multiple instruments
    */
   private handleMessage(socketId: string, data: any): void {
     try {
-      // Decode Protobuf message
-      const decoded = this.decodeProtobuf(data);
+      const feedItems = this.decodeV3FeedResponse(data);
+      if (!feedItems) return;
 
-      if (!decoded) return;
-
-      // Route to subscriptions
-      const { instrumentKey, ...marketData } = decoded;
-      this.subscriptionManager.routeData("upstox", instrumentKey, decoded);
+      for (const item of feedItems) {
+        this.subscriptionManager.routeData("upstox", item.instrumentKey, item);
+      }
     } catch (error) {
       this.logger.error(`Failed to decode message from ${socketId}`, error);
     }
   }
 
-  /**
-   * Handle WebSocket error
-   */
-  private handleError(socketId: string, error: any): void {
-    this.logger.error(`WebSocket error for ${socketId}`, error);
-  }
-
-  /**
-   * Handle WebSocket close
-   */
-  private handleClose(socketId: string): void {
-    this.logger.warn(`Socket ${socketId} closed`);
-
-    // Stop heartbeat
-    this.heartbeat.stopHeartbeat(socketId);
-
-    // Trigger reconnect
-    this.scheduleReconnect(socketId);
-  }
 
   /**
    * Handle dead socket
@@ -250,76 +291,150 @@ export class UpstoxWebSocketService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Load Protobuf schema for Upstox
+   * Load Protobuf V3 schema from the actual .proto file
    */
   private async loadProtobufSchema(): Promise<void> {
-    try {
-      // Upstox Protobuf schema (simplified)
-      const schema = `
-        syntax = "proto3";
-        
-        message FeedResponse {
-          string type = 1;
-          
-          message LTPC {
-            double ltp = 1;
-            int64 ltt = 2;
-            double cp = 3;
-            int64 volume = 4;
-            int64 oi = 5;
-          }
-          
-          message MarketLevel {
-            double price = 1;
-            int32 quantity = 2;
-            int32 orders = 3;
-          }
-          
-          message DepthData {
-            repeated MarketLevel buy = 1;
-            repeated MarketLevel sell = 2;
-          }
-          
-          LTPC ltpc = 2;
-          DepthData depth = 3;
-        }
-      `;
+    const candidates = [
+      path.resolve(__dirname, "proto", "MarketDataFeedV3.proto"),
+      path.resolve(__dirname, "..", "websocket", "proto", "MarketDataFeedV3.proto"),
+      path.resolve(__dirname, "..", "..", "..", "..", "src", "providers", "upstox", "websocket", "proto", "MarketDataFeedV3.proto"),
+    ];
 
-      this.protobufRoot = protobuf.parse(schema).root;
-      this.logger.log("Protobuf schema loaded");
-    } catch (error) {
-      this.logger.error("Failed to load Protobuf schema", error);
+    for (const protoPath of candidates) {
+      try {
+        this.protobufRoot = await protobuf.load(protoPath);
+        this.logger.log(`Protobuf V3 schema loaded from ${protoPath}`);
+        return;
+      } catch {
+        // try next candidate
+      }
     }
+    this.logger.error(
+      `Failed to load Protobuf V3 schema. Tried paths: ${candidates.join(", ")}`,
+    );
   }
 
   /**
-   * Decode Protobuf message
+   * Decode V3 FeedResponse -- returns an array of market data items (one per instrument)
    */
-  private decodeProtobuf(data: Buffer): UpstoxMarketData | null {
+  private decodeV3FeedResponse(data: Buffer): UpstoxMarketData[] | null {
     if (!this.protobufRoot) return null;
 
     try {
-      const FeedResponse = this.protobufRoot.lookupType("FeedResponse");
-      const message = FeedResponse.decode(data);
-      const object = FeedResponse.toObject(message);
+      const FeedResponse = this.protobufRoot.lookupType(
+        "com.upstox.marketdatafeederv3udapi.rpc.proto.FeedResponse",
+      );
+      const message = FeedResponse.decode(
+        data instanceof Buffer ? new Uint8Array(data) : data,
+      );
+      const obj = FeedResponse.toObject(message, {
+        longs: Number,
+        enums: String,
+        defaults: true,
+      });
 
-      // Transform to UpstoxMarketData
-      return {
-        mode: object.ltpc ? "ltpc" : "full",
-        instrumentKey: "", // Extract from message
-        ltp: object.ltpc?.ltp,
-        lastTradeTime: object.ltpc?.ltt
-          ? new Date(object.ltpc.ltt * 1000)
-          : undefined,
-        volume: object.ltpc?.volume,
-        oi: object.ltpc?.oi,
-        bid: object.depth?.buy,
-        ask: object.depth?.sell,
-      };
+      const typeVal = obj.type;
+
+      if (typeVal === "market_info" || typeVal === 2) {
+        this.logger.debug(
+          `Market info received: ${JSON.stringify(obj.marketInfo?.segmentStatus ?? {})}`,
+        );
+        return null;
+      }
+
+      if (!obj.feeds) return null;
+
+      const results: UpstoxMarketData[] = [];
+
+      for (const [instrumentKey, feed] of Object.entries(obj.feeds) as [string, any][]) {
+        const item = this.transformFeedToMarketData(instrumentKey, feed);
+        if (item) results.push(item);
+      }
+
+      return results.length > 0 ? results : null;
     } catch (error) {
-      this.logger.error("Protobuf decode failed", error);
+      this.logger.error("Protobuf V3 decode failed", error);
       return null;
     }
+  }
+
+  private transformFeedToMarketData(
+    instrumentKey: string,
+    feed: any,
+  ): UpstoxMarketData | null {
+    if (!feed) return null;
+
+    const fullFeed = feed.fullFeed?.marketFF || feed.fullFeed?.indexFF;
+    const ltpcData = feed.ltpc || fullFeed?.ltpc;
+    const greeksFeed = feed.firstLevelWithGreeks;
+
+    if (!ltpcData && !fullFeed && !greeksFeed) return null;
+
+    const ltpc = ltpcData || greeksFeed?.ltpc;
+
+    const result: UpstoxMarketData = {
+      mode: fullFeed ? "full" : "ltpc",
+      instrumentKey,
+      ltp: ltpc?.ltp,
+      lastTradeTime: ltpc?.ltt ? new Date(Number(ltpc.ltt)) : undefined,
+      ltq: ltpc?.ltq ? Number(ltpc.ltq) : undefined,
+      cp: ltpc?.cp,
+    };
+
+    if (feed.fullFeed?.marketFF) {
+      const mff = feed.fullFeed.marketFF;
+      result.volume = mff.vtt ? Number(mff.vtt) : undefined;
+      result.oi = mff.oi;
+      result.iv = mff.iv;
+      result.atp = mff.atp;
+      result.tbq = mff.tbq;
+      result.tsq = mff.tsq;
+
+      if (mff.marketLevel?.bidAskQuote) {
+        const quotes = mff.marketLevel.bidAskQuote;
+        result.bid = quotes.map((q: any) => ({
+          price: q.bidP || 0,
+          quantity: q.bidQ ? Number(q.bidQ) : 0,
+        }));
+        result.ask = quotes.map((q: any) => ({
+          price: q.askP || 0,
+          quantity: q.askQ ? Number(q.askQ) : 0,
+        }));
+      }
+
+      if (mff.optionGreeks) {
+        result.optionGreeks = {
+          delta: mff.optionGreeks.delta,
+          theta: mff.optionGreeks.theta,
+          gamma: mff.optionGreeks.gamma,
+          vega: mff.optionGreeks.vega,
+          rho: mff.optionGreeks.rho,
+        };
+      }
+    } else if (greeksFeed) {
+      result.volume = greeksFeed.vtt ? Number(greeksFeed.vtt) : undefined;
+      result.oi = greeksFeed.oi;
+      result.iv = greeksFeed.iv;
+
+      if (greeksFeed.optionGreeks) {
+        result.optionGreeks = {
+          delta: greeksFeed.optionGreeks.delta,
+          theta: greeksFeed.optionGreeks.theta,
+          gamma: greeksFeed.optionGreeks.gamma,
+          vega: greeksFeed.optionGreeks.vega,
+          rho: greeksFeed.optionGreeks.rho,
+        };
+      }
+
+      if (greeksFeed.firstDepth) {
+        result.bid = [{ price: greeksFeed.firstDepth.bidP || 0, quantity: Number(greeksFeed.firstDepth.bidQ || 0) }];
+        result.ask = [{ price: greeksFeed.firstDepth.askP || 0, quantity: Number(greeksFeed.firstDepth.askQ || 0) }];
+      }
+    } else if (feed.fullFeed?.indexFF) {
+      // Index feeds have no depth/OI, just LTPC + OHLC
+    }
+
+    return result;
   }
 
   /**

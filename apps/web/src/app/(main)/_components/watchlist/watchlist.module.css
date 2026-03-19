@@ -1,8 +1,14 @@
 .card {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   padding: var(--spacing-5);
+  height: 100%;
+  transition: all var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 
 .header {
@@ -13,20 +19,21 @@
 }
 
 .title {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
 .seeAll {
-  font-size: var(--font-size-sm);
-  color: var(--color-link);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
   text-decoration: none;
+  font-weight: var(--font-weight-medium);
   transition: color var(--transition-fast);
 }
 
 .seeAll:hover {
-  color: var(--color-link-hover);
+  color: var(--color-primary-hover);
 }
 
 .list {
@@ -38,13 +45,15 @@
 .row {
   display: flex;
   align-items: center;
-  gap: var(--spacing-4);
-  padding: var(--spacing-3) 0;
-  border-bottom: 1px solid var(--color-border-subtle);
+  gap: var(--spacing-3);
+  padding: var(--spacing-2-5) var(--spacing-2);
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast);
+  cursor: pointer;
 }
 
-.row:last-child {
-  border-bottom: none;
+.row:hover {
+  background: var(--color-bg-hover);
 }
 
 .symbol {
@@ -54,32 +63,39 @@
 }
 
 .name {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   margin-left: var(--spacing-1);
 }
 
 .sparkline {
   flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .priceSection {
   margin-left: auto;
   text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .price {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .changePositive {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   color: var(--color-profit);
+  font-weight: var(--font-weight-medium);
 }
 
 .changeNegative {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   color: var(--color-loss);
+  font-weight: var(--font-weight-medium);
 }

@@ -31,6 +31,7 @@ import { SchedulerService } from './scheduler.service';
 import { LiveDataService } from './live-data.service';
 import { McxHandlerService } from './mcx-handler.service';
 import { TokenRefreshCronService } from './token-refresh-cron.service';
+import { OptionChainLiveService } from './option-chain-live.service';
 
 // Controller
 import { IngestionController } from './ingestion.controller';
@@ -67,6 +68,9 @@ import { IngestionController } from './ingestion.controller';
     // MCX commodity tick handler
     McxHandlerService,
 
+    // Live option chain snapshots + ticks
+    OptionChainLiveService,
+
     // Cron: daily token refresh before market open
     TokenRefreshCronService,
   ],
@@ -78,6 +82,7 @@ import { IngestionController } from './ingestion.controller';
     GapDetectorService,
     LiveDataService,
     McxHandlerService,
+    OptionChainLiveService,
   ],
 })
 export class IngestionModule {}

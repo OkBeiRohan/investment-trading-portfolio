@@ -154,7 +154,7 @@
 
 ---
 
-## QuestDB Storage Schema (9 Tables)
+## QuestDB Storage Schema (10 Tables)
 
 ### Table 1: `instrument_master`
 
@@ -216,6 +216,31 @@ CREATE TABLE IF NOT EXISTS dataset_folds (
   created_at TIMESTAMP
 ) timestamp(created_at) PARTITION BY MONTH WAL;
 ```
+
+### NIFTY 50 Constituent Weights Table (Survivorship-Bias-Free)
+
+```sql
+CREATE TABLE IF NOT EXISTS nifty50_constituents (
+    timestamp TIMESTAMP,
+    symbol SYMBOL,
+    isin STRING,
+    instrument_key STRING,
+    free_float_weight DOUBLE,       -- NSE free-float market cap weight (%)
+    action SYMBOL,                  -- ADD, REMOVE, REWEIGHT
+    sector STRING
+) TIMESTAMP(timestamp) PARTITION BY MONTH;
+```
+
+**Purpose**: Enable point-in-time constituent lookups for survivorship-bias-free feature computation.
+
+**Critical rule**: ALL breadth features (pct_above_vwap, advance_decline, etc.) computed on historical data MUST query this table to get the correct 50 stocks on each date. Using today's constituents on 2005 data creates look-ahead bias (excluded stocks averaged -3% annually vs survivors at +18%).
+
+**Data sources**:
+- Historical (2008-present): HuggingFace dataset `AMP4010/Historical_Nifty_50_Constituent_Weights_20Y`
+- Real-time: NSE semi-annual rebalancing announcements (March/September)
+- Weight updates: After each rebalancing, insert REWEIGHT rows for all 50 constituents
+
+**Rebalancing handling**: Semi-annual rebalancing (last working day of March and September) causes index-effect price distortions. The `is_rebalancing_week` feature flag should be set for the 5 trading days around each rebalancing date.
 
 ---
 

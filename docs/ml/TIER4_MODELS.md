@@ -59,11 +59,11 @@ Without Tier 4, the system would have 4 independent opinions (one per tier) with
 │                                            │                            │
 │  ┌─────────────────┐  ┌──────────────┐  ┌──▼─────────────┐              │
 │  │ STRIKE SELECTOR │  │ RISK MANAGER │  │ POSITION SIZER │              │
-│  │ (Neural Net)    │  │ (Rule-based) │  │ (Kelly)        │              │
-│  │                 │  │              │  │                │              │
-│  │ delta-based     │  │ Greeks: ✓/✗ │  │ f* = (p·b -    │              │
-│  │ strike picking  │  │ MaxLoss: ✓/✗│  │  q) / b        │              │
-│  │ IV surface scan │  │Leverage: ✓/✗│  │ scaled by VIX  │              │
+│  │ (Deterministic) │  │ (Rule-based) │  │ (Fractional    │              │
+│  │                 │  │              │  │  Kelly)        │              │
+│  │ Black-Scholes   │  │ Greeks: ✓/✗ │  │ f* = (p·b -    │              │
+│  │ payoff scan     │  │ MaxLoss: ✓/✗│  │  q) / b        │              │
+│  │                 │  │Leverage: ✓/✗│  │ scaled by VIX  │              │
 │  └────────┬────────┘  └──────┬───────┘  └──────┬─────────┘              │
 │           │                  │                  │                       │
 │           └──────────────────┼──────────────────┘                       │
@@ -205,6 +205,22 @@ REGIME_CONTEXT_FEATURES = [
 ]
 ```
 
+### Tier Disagreement as Uncertainty Signal
+
+When all tiers agree (e.g., Tier 0 bullish gap, Tier 1 bull regime, Tier 2 high P(up), Tier 3 buy pressure), the system may become overconfident. Conversely, high disagreement between tiers is a strong uncertainty signal.
+
+**Implementation**: Add 3 disagreement features to the regime context:
+
+```python
+DISAGREEMENT_FEATURES = [
+    'tier_direction_entropy',     # Shannon entropy of tier directional signals
+    'tier_agreement_score',       # Cosine similarity between tier output vectors
+    'tier2_tier3_divergence',     # |P_tier2(up) - P_tier3(up)| — intraday vs micro conflict
+]
+```
+
+**Usage in position sizing**: When `tier_direction_entropy > 0.8` (high disagreement), reduce position size by 50% regardless of confidence. This prevents overcommitting when the evidence is contradictory.
+
 ### Regime-Conditioned Temporal Loss
 
 ```python
@@ -242,7 +258,7 @@ def regime_conditioned_loss(
 
 When the Meta-Learner is not yet trained (cold start), use these fixed weights:
 
-| Regime            | Tier 0 | Tier 1 | Tier 2 (LightGBM+TFT+Mamba) | Tier 3 (LiT) |
+| Regime            | Tier 0 | Tier 1 | Tier 2 (LightGBM+Mamba) | Tier 3 (LiT) |
 | ----------------- | ------ | ------ | --------------------------- | ------------ |
 | **BULL_TRENDING** | 0.05   | 0.15   | 0.60                        | 0.20         |
 | **BEAR_TRENDING** | 0.05   | 0.15   | 0.60                        | 0.20         |
@@ -251,66 +267,63 @@ When the Meta-Learner is not yet trained (cold start), use these fixed weights:
 
 ---
 
-## Component 2: Strike Selector (Neural Network)
+## Component 2: Strike Selector (Underlying-First + Deterministic Pricing)
+
+### Why Not a Neural Network?
+
+Training a neural network to pick the "Strike that maximized risk-adjusted PnL (hindsight)" introduces severe target leakage. The historically "perfect" strike depends on the *entire future path* of the underlying asset until expiry, which the model cannot know. This leads to overfitting to specific historical volatility realizations.
+
+Instead, we use an **Underlying-First + Deterministic Pricing** approach:
+1. The Meta-Learner predicts the underlying's expected move and volatility.
+2. We use a deterministic options pricing model (e.g., Black-Scholes) to simulate the payoff of all available strikes.
+3. We select the strike with the best asymmetric payoff (highest expected return/risk ratio).
 
 ### Architecture
 
 ```python
-class StrikeSelector(nn.Module):
+class DeterministicStrikeSelector:
     """
-    Neural network for optimal option strike selection.
-    Input: direction signal + IV surface + Greeks + liquidity data
+    Selects optimal option strike using deterministic pricing models.
+    Input: predicted underlying move, predicted volatility, current IV surface
     Output: recommended strike, option type, strategy
     """
 
-    def __init__(self, n_strikes: int = 21):  # ATM ± 10
-        super().__init__()
+    def __init__(self, pricing_model="black_scholes"):
+        self.pricing_model = pricing_model
 
-        # IV surface encoder
-        self.iv_encoder = nn.LSTM(
-            input_size=5,    # IV at each expiry for a given strike
-            hidden_size=32,
-            num_layers=1,
-            batch_first=True
-        )
-
-        # Direction + context
-        self.context_proj = nn.Linear(16, 32)  # direction(3) + regime(4) + greeks(4) + meta(5)
-
-        # Selection head
-        self.strike_head = nn.Sequential(
-            nn.Linear(64, 128),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.Linear(128, n_strikes)  # Score per strike
-        )
-
-        self.type_head = nn.Linear(64, 2)       # CE or PE
-        self.strategy_head = nn.Linear(64, 7)    # Strategy selection
-
-    def forward(self, iv_surface, context) -> dict:
+    def select_strike(self, current_spot, expected_move, expected_vol, iv_surface, days_to_expiry):
         """
-        Args:
-            iv_surface: [B, 21, 5] — IV for 21 strikes × 5 expiries
-            context: [B, 16] — direction + regime + Greeks + meta
-        Returns:
-            strike scores, option type probs, strategy probs
+        Simulate payoffs for all strikes and select the best one.
         """
-        # Encode IV surface
-        iv_encoded, _ = self.iv_encoder(iv_surface)
-        iv_summary = iv_encoded[:, -1, :]  # [B, 32]
-
-        # Encode context
-        ctx = self.context_proj(context)  # [B, 32]
-
-        # Combine
-        combined = torch.cat([iv_summary, ctx], dim=-1)  # [B, 64]
-
+        best_strike = None
+        best_score = -float('inf')
+        best_type = None
+        
+        # Scan available strikes
+        for strike in iv_surface.strikes:
+            # Simulate CE and PE payoffs based on expected move and vol
+            ce_payoff = self._simulate_payoff(current_spot, expected_move, expected_vol, strike, 'CE', days_to_expiry, iv_surface)
+            pe_payoff = self._simulate_payoff(current_spot, expected_move, expected_vol, strike, 'PE', days_to_expiry, iv_surface)
+            
+            # Score based on reward/risk
+            if ce_payoff.score > best_score:
+                best_score = ce_payoff.score
+                best_strike = strike
+                best_type = 'CE'
+            if pe_payoff.score > best_score:
+                best_score = pe_payoff.score
+                best_strike = strike
+                best_type = 'PE'
+                
         return {
-            'strike_scores': self.strike_head(combined),    # [B, 21]
-            'option_type': self.type_head(combined),        # [B, 2] CE/PE
-            'strategy': self.strategy_head(combined),       # [B, 7]
+            'strike': best_strike,
+            'option_type': best_type,
+            'strategy': self._determine_strategy(expected_move, expected_vol)
         }
+        
+    def _simulate_payoff(self, spot, move, vol, strike, opt_type, dte, iv_surface):
+        # Implementation of Black-Scholes pricing for the expected future state
+        pass
 ```
 
 ### Strategy Menu
@@ -362,51 +375,76 @@ class RiskManager:
 
 ---
 
-## Component 4: Position Sizer (Kelly Criterion)
+## Component 4: Position Sizer (Calibrated Fractional Kelly)
+
+### Why Probability Calibration?
+
+Deep learning models (especially attention-based gating networks) are notoriously uncalibrated—they are often overconfident. If the model outputs a 70% confidence but the true historical accuracy is 55%, plugging 70% directly into the Kelly formula leads to massive **overbetting**. Overbetting mathematically guarantees long-term ruin, even if the strategy has a positive expected value (MacLean et al., 1992).
+
+The Meta-Learner's raw confidence must pass through a **Probability Calibration** layer (e.g., Isotonic Regression or Beta Calibration) before Kelly sizing. We also enforce a strict **Fractional Kelly** (e.g., Half-Kelly) to account for parameter uncertainty.
 
 ```python
 class KellyPositionSizer:
     """
-    Kelly criterion position sizing with VIX-scaled dynamic leverage.
+    Calibrated Fractional Kelly for options with VIX-scaled dynamic leverage.
 
-    f* = (p · b - q) / b
+    For binary outcomes: f* = (p · b - q) / b
+    For options (asymmetric payoffs): f* = E[R] / E[R²]
+
+    CRITICAL: Raw neural network outputs are NOT calibrated probabilities.
+    Model confidence MUST pass through a Probability Calibration layer
+    (Isotonic Regression or Beta Calibration) before Kelly sizing.
+    A predicted 70% confidence must match ~70% empirical win rate.
+    (MacLean, Ziemba & Blazenko, 1992; Thorp, 2006)
+
+    We enforce strict Fractional Kelly (Half-Kelly) plus a hard cap
+    on max position size to account for:
+    1. Parameter estimation uncertainty
+    2. Non-linear option payoff asymmetry
+    3. Model calibration imperfection
 
     where:
-        p = win probability (from Meta-Learner confidence)
+        p = calibrated win probability (post Isotonic Regression)
         q = 1 - p
-        b = win/loss ratio (from backtest)
+        b = win/loss ratio (from rolling 60-day backtest window)
     """
 
-    def __init__(self, max_kelly_fraction: float = 0.25):
-        self.max_kelly = max_kelly_fraction  # Never bet more than 25% Kelly
+    def __init__(self, kelly_fraction: float = 0.5, max_position_pct: float = 0.10):
+        self.kelly_fraction = kelly_fraction  # e.g., Half-Kelly
+        self.max_position_pct = max_position_pct
 
     def compute_position_size(
         self,
-        confidence: float,
+        raw_confidence: float,
+        calibrator: ProbabilityCalibrator,
         win_loss_ratio: float,
         regime: str,
         vix: float,
         account_equity: float
     ) -> float:
-        p = confidence
+        # 1. Calibrate probability
+        p = calibrator.calibrate(raw_confidence)
         q = 1 - p
         b = win_loss_ratio
 
-        # Full Kelly
+        # 2. Full Kelly
         full_kelly = (p * b - q) / b if b > 0 else 0
         full_kelly = max(0, full_kelly)
 
-        # Fractional Kelly (more conservative)
-        kelly_fraction = min(full_kelly * self.max_kelly, self.max_kelly)
+        # 3. Fractional Kelly
+        fractional_kelly = full_kelly * self.kelly_fraction
+        
+        # 4. Cap at max position size
+        safe_fraction = min(fractional_kelly, self.max_position_pct)
 
-        # VIX scaling: reduce size in high-vol environments
+        # 5. VIX scaling: reduce size in high-vol environments
         vix_scale = 1.0
         if vix > 25:
             vix_scale = 0.5
         elif vix > 20:
             vix_scale = 0.7
 
-        # Regime scaling
+        # 6. Regime scaling
         regime_scale = {
             'BULL_TRENDING': 1.0,
             'BEAR_TRENDING': 0.7,
@@ -414,7 +452,7 @@ class KellyPositionSizer:
             'RANGING': 0.8
         }.get(regime, 0.5)
 
-        position_value = account_equity * kelly_fraction * vix_scale * regime_scale
+        position_value = account_equity * safe_fraction * vix_scale * regime_scale
         return position_value
 ```
 
@@ -494,8 +532,15 @@ Training the Meta-Learner on in-sample predictions from Tier 2 would cause massi
 
 ```python
 STRIKE_SELECTOR_CONFIG = {
-    'training_data': 'Historical option chain + realized PnL per strike',
-    'target': 'Strike that maximized risk-adjusted PnL (hindsight)',
+    'training_data': 'Historical option chain + entry-time features + realized PnL',
+    'target': 'Strike with best risk-adjusted PnL using CAUSAL features only',
+    'causal_target_note': (
+        'The target is NOT the hindsight-optimal strike (which creates circular '
+        'reasoning). Instead, strikes are ranked by PnL conditioned on features '
+        'available at entry time: delta bucket, IV percentile vs 30-day realized '
+        'vol, bid-ask spread, OI concentration, and time-to-expiry. This breaks '
+        'the circularity of predicting the realized move to select the strike.'
+    ),
     'architecture': 'LSTM(IV surface) + MLP(context)',
     'retraining': 'monthly',
 }

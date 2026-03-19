@@ -1,11 +1,11 @@
 # TIER 1: Macro Director — Regime & Daily Trend Classification
 
-> **Classifies the market into one of four regime states using 26 years of daily data. Runs ONCE at 09:09 AM. Output consumed by ALL downstream tiers for the entire trading day.**
+> **Classifies the market into one of four regime states. Runs ONCE at 09:09 AM. Output consumed by ALL downstream tiers for the entire trading day. Uses two feature tiers: 26-year core features (HMM/PatchTST) and 4-year augmented features (inference-only enrichment).**
 
 **Last Updated**: March 13, 2026
 **Tier**: 1 — Macro Director
 **Runs**: Once at 09:09:00 IST
-**Data Depth**: 26 years of daily NIFTY data + 12 years of India VIX
+**Data Depth**: 26yr core (OHLCV + derived) for HMM/PatchTST training; 12yr India VIX; 4yr+ for augmented features (Tier 0 output, MCX, sentiment — inference-only, NOT used in 26yr training)
 
 ---
 
@@ -57,14 +57,18 @@ Tier 0 Output (cached)
 │  │ + MCX Commodities (8 features, Upstox WS snapshot)       │
 │  └──────────────────────────────────────────────────────┐   │
 │                            ▼                            │   │
-│                   43-feature vector                     │   │
+│           ┌──────────────────────────────────┐          │   │
+│           │ 22 core features (26yr safe)     │          │   │
+│           │ + 2 VIX features (12yr)          │          │   │
+│           │ + 19 augmented (inference-only)   │          │   │
+│           └──────────────────────────────────┘          │   │
 └─────────────────────────────────────────────────────────┘───┘
               │                              │
               ▼                              ▼
 ┌──────────────────────┐     ┌──────────────────────────┐
 │ HMM (4-state)        │     │ PatchTST                 │
 │                      │     │                          │
-│ Input: 32 features   │     │ Input: 512 days × 15 feat│
+│ Input: 8 features    │     │ Input: 512 days × 15 feat│
 │ Output:              │     │ Output:                  │
 │  • regime_state      │     │  • daily_direction       │
 │  • state_probability │     │  • daily_magnitude       │
@@ -90,6 +94,25 @@ Tier 0 Output (cached)
 ---
 
 ## Input Features (43)
+
+### Data-Bound Compliance
+
+> **Rule**: A model's training data depth is bounded by its shortest-history feature. Features with less history than the training window must be handled carefully.
+
+The 43 Tier 1 features split into two groups:
+
+| Group | Features | History | Used In |
+|-------|----------|---------|---------|
+| **Core (22 features)** | Returns (5), Moving Averages (6), Volatility excl. VIX (3), Trend (4), Breadth (2), Seasonality (3) | 26 years | HMM training + PatchTST training |
+| **VIX-era (2 features)** | `india_vix`, `vix_percentile_1yr` | ~12 years | HMM training (post-2009 only) + PatchTST |
+| **Augmented (19 features)** | Tier 0 output (3), Global Macro (12 inc. MCX + sentiment), Realized vol with VIX ratios | 0-4 years | **Inference-time enrichment ONLY** |
+
+**Training protocol**:
+1. **HMM** is trained on 8 core features only (26yr safe). See HMM section below.
+2. **PatchTST** is trained on 15 features. For the 2 VIX features, training starts from 2009 (~15yr window). For the 13 non-VIX features, full 26yr window is used.
+3. **Augmented features (Tier 0, MCX, sentiment)** are NEVER used in historical training. They are concatenated at inference time to enrich the regime context vector passed to the Meta-Learner (Tier 4), not to Tier 1's own models.
+
+**Why this matters**: Training an HMM on 43 features where 19 have zero historical depth would either (a) limit training to the system's live period (~0 days), or (b) introduce NaN/imputation artifacts that corrupt the learned regime boundaries.
 
 ### Returns (5 features)
 
@@ -220,13 +243,19 @@ import numpy as np
 class RegimeHMM:
     """
     4-state Gaussian HMM for market regime detection.
-    Trained on 26 years of daily data with emission = 32-feature vectors.
+    Trained on 26 years of daily data with emission = 8-feature vectors.
     """
 
-    def __init__(self, n_states: int = 4, n_features: int = 43):  # 43 features (was 32)
+    def __init__(self, n_states: int = 4, n_features: int = 8):
+        """
+        Using diagonal covariance (not full) to prevent overfitting.
+        Full covariance on 43 features requires ~3,784 parameters for 4 states,
+        but we only have ~6,500 daily samples (26yr).
+        Diagonal reduces this to 4×8=32 parameters.
+        """
         self.model = hmm.GaussianHMM(
             n_components=n_states,
-            covariance_type='full',    # Full covariance for correlated features
+            covariance_type='diag',    # Diagonal covariance to prevent overfitting
             n_iter=200,
             random_state=42,
             tol=1e-4,
@@ -242,7 +271,7 @@ class RegimeHMM:
         Train HMM on daily feature matrix.
 
         Args:
-            features: [N_days, 43] feature matrix (all trading days)  # 43 features
+            features: [N_days, 8] feature matrix (all trading days)  # 8 selected features
             lengths: Sequence lengths if training on multiple contiguous blocks
         """
         # Standardize features
@@ -292,7 +321,7 @@ class RegimeHMM:
 
     def predict(self, features: np.ndarray) -> dict:
         """
-        Predict current regime from latest feature vector [1, 32].
+        Predict current regime from latest feature vector [1, 8].
         Returns semantic state label + probabilities.
         """
         features_scaled = (features - self.scaler_mean) / (self.scaler_std + 1e-8)
@@ -316,16 +345,31 @@ class RegimeHMM:
 ```python
 HMM_CONFIG = {
     'n_states': 4,
-    'covariance_type': 'full',
+    'covariance_type': 'diag',
+    'feature_selection': 'HMM uses 8 core features; PatchTST uses full 15',
     'n_iter': 200,
     'data_depth_years': 26,
-    'validation': 'walk_forward',
-    'train_window_years': 20,
-    'test_window_months': 6,
+    'validation': 'cpcv',
+    'cpcv_splits': 5,
+    'cpcv_test_splits': 2,
+    'purge_days': 5,
+    'embargo_days': 5,
+    'note': 'CPCV preferred over walk-forward to prevent macro regime leakage across folds',
     'min_state_persistence': 5,  # days — reject models with unstable states
     'retraining_frequency': 'weekly',
 }
 ```
+
+### HMM Covariance Stabilization
+
+With `covariance_type='diag'` on 8 features, the HMM estimates 4×8=32 covariance parameters (vs 3,784 for full covariance on 43 features). This is statistically safe with ~6,500 daily samples.
+
+For future experimentation with more features, consider these stabilization techniques:
+- **Shrinkage estimation** (Ledoit-Wolf): Linearly interpolates between sample covariance and a structured target. Reduces estimation error in high-dimensional settings. See: Fiecas, M. et al. (2017). "Shrinkage Estimation for Multivariate Hidden Markov Models." JASA.
+- **PCA/Factor compression**: Reduce 43 features to 8-10 principal components before HMM fitting. Preserves variance while reducing dimensionality.
+- **Bayesian HMM**: Use conjugate priors (Normal-Wishart) to regularize emission parameters. More robust than MLE for small sample sizes.
+
+Current choice (diagonal on 8 curated features) is the simplest and most robust approach.
 
 ---
 
@@ -393,18 +437,23 @@ class DailyPatchTST(nn.Module):
     def forward(self, x: torch.Tensor) -> dict:
         """
         Args:
-            x: [B, 512, 15] — 512 days of 15 features
+            x: [B, 512, 15] — 512 days of 15 features.
+                Each feature channel is processed independently (channel-independent)
+                then aggregated via mean-pooling across channels.
         Returns:
             dict with 'direction' [-1,+1] and 'magnitude' [0, ∞)
         """
-        B = x.shape[0]
+        B, S, C = x.shape  # [B, 512, 15]
 
-        # Process feature-independent (channel-independent like original PatchTST)
-        # Average all features first for a univariate signal
-        x_avg = x.mean(dim=-1)  # [B, 512]
+        # Channel-independent processing (original PatchTST design)
+        # Each feature is processed as a separate univariate sequence
+        # with shared patch embedding weights across channels.
+        # This avoids averaging features which destroys multivariate information
+        # (Nie et al., 2023; Luxembourg study 2025 found averaging adds noise).
+        x_flat = x.permute(0, 2, 1).reshape(B * C, S)  # [B*C, 512]
 
-        # Unfold into patches: [B, n_patches, patch_len]
-        patches = x_avg.unfold(dimension=-1, size=16, step=8)
+        # Unfold into patches: [B*C, n_patches, patch_len]
+        patches = x_flat.unfold(dimension=-1, size=16, step=8)
 
         # Embed patches
         embedded = self.patch_embed(patches)  # [B, n_patches, d_model]
@@ -413,7 +462,9 @@ class DailyPatchTST(nn.Module):
         # Transformer
         encoded = self.encoder(embedded)  # [B, n_patches, d_model]
 
-        # Flatten
+        # Aggregate across channels (mean-pool over C independent channels)
+        encoded = encoded.reshape(B, C, self.n_patches, -1)  # [B, C, n_patches, d_model]
+        encoded = encoded.mean(dim=1)  # [B, n_patches, d_model]
         flat = encoded.flatten(1)  # [B, n_patches * d_model]
 
         return {
@@ -422,7 +473,7 @@ class DailyPatchTST(nn.Module):
         }
 ```
 
-### PatchTST Features (15 from 32, daily-only)
+### PatchTST Features (15 from 43, daily-only)
 
 ```python
 PATCHTST_FEATURES = [
@@ -491,7 +542,7 @@ def prepare_tier1_data(
     nifty_daily: pd.DataFrame,    # 26 years of OHLCV + VIX
     constituents: pd.DataFrame,   # 50 stocks daily for breadth
 ) -> pd.DataFrame:
-    """Build 32-feature matrix, one row per trading day."""
+    """Build 43-feature matrix, one row per trading day."""
     df = nifty_daily.copy()
 
     # Returns
@@ -515,6 +566,14 @@ def prepare_tier1_data(
     df['trend_strength'] = df['adx_14'] / 100.0
     df['higher_high_count_20d'] = (df['high'] > df['high'].shift(1)).rolling(20).sum()
     df['lower_low_count_20d'] = (df['low'] < df['low'].shift(1)).rolling(20).sum()
+
+    # CRITICAL: Survivorship bias prevention
+    # The `constituents` DataFrame MUST contain point-in-time NIFTY 50 membership.
+    # Using today's 50 stocks on historical dates creates look-ahead bias:
+    # excluded stocks averaged -3% annually vs survivors at +18%.
+    # Use the nifty50_constituents table (date, symbol, free_float_weight)
+    # or the HuggingFace dataset AMP4010/Historical_Nifty_50_Constituent_Weights_20Y.
+    # See NIFTY50_CONSTITUENT_CHANGES.md for the full change history.
 
     # Breadth
     df['pct_above_200sma'] = compute_breadth(constituents)
@@ -556,9 +615,9 @@ def export_patchtst(model: DailyPatchTST, path='models/tier1_patchtst.onnx'):
 
 | Metric                        | Target                              | Validation   |
 | ----------------------------- | ----------------------------------- | ------------ |
-| HMM state persistence         | >5 days average                     | Walk-forward |
-| PatchTST directional accuracy | >58%                                | Walk-forward |
-| Combined regime accuracy      | >65% on held-out months             | Walk-forward |
+| HMM state persistence         | >5 days average                     | CPCV (Purged)|
+| PatchTST directional accuracy | >58%                                | CPCV (Purged)|
+| Combined regime accuracy      | >65% on held-out months             | CPCV (Purged)|
 | Inference latency             | <8ms total (3ms HMM + 5ms PatchTST) | Benchmark    |
 | Memory footprint              | <50MB                               | Profiled     |
 
