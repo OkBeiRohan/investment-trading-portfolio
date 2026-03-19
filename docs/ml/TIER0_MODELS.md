@@ -473,6 +473,21 @@ def export_tier0_to_onnx(model, output_path='models/tier0_gap_predictor.onnx'):
 
 ## Performance Targets
 
+### Mandatory Baseline: Freeze Price → Open
+
+Since the 09:08 freeze/IEP (Indicative Equilibrium Price) already contains most of the gap information via the pre-open call auction, the model MUST be benchmarked against a naive baseline:
+
+```
+Baseline: predicted_open = freeze_price
+Baseline gap prediction: actual_gap_pct = (freeze_price - prev_close) / prev_close * 100
+```
+
+The model only adds value if it improves on this baseline. Key baseline metrics to report:
+- **Baseline RMSE** of (actual_open - freeze_price) / prev_close
+- **Baseline direction accuracy** of sign(freeze_price - prev_close) vs sign(actual_open - prev_close)
+
+If the model cannot beat this baseline by a statistically significant margin (p < 0.05 on paired t-test), the model should be replaced by the naive baseline to avoid unnecessary complexity.
+
 | Metric                     | Target | Validation   |
 | -------------------------- | ------ | ------------ |
 | Gap direction accuracy     | >65%   | Walk-forward |

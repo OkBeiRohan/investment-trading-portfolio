@@ -766,6 +766,28 @@ We mandate the **Deflated Sharpe Ratio (DSR)** (Bailey & Lopez de Prado, 2014) f
 
 A model is only promoted if its DSR implies a >95% confidence that the true Sharpe ratio is greater than 0.
 
+### Mandatory Feature Family Ablation
+
+Before deploying any model, a feature ablation study must prove incremental value from each feature group. The docs currently assume every feature block adds value without proving it.
+
+**Required ablation table for Tier 2 LightGBM**:
+
+| Feature Set | Features Used | AUC-ROC (OOF) | Sharpe (backtest) | Add vs Baseline |
+|-------------|--------------|----------------|-------------------|-----------------|
+| **Baseline** | Futures + Price Structure (24) | Report | Report | — |
+| **+Breadth** | + Index Breadth (15) | Report | Report | Δ |
+| **+Options** | + Options (14) | Report | Report | Δ |
+| **+Volatility** | + Volatility (10) | Report | Report | Δ |
+| **+Macro** | + Global Macro (12) | Report | Report | Δ |
+| **+Momentum** | + Momentum + MA + Bollinger (24) | Report | Report | Δ |
+| **+Time** | + Time Context (13) | Report | Report | Δ |
+| **+OrderFlow** | + Order Flow (8, when available) | Report | Report | Δ |
+| **Full (117)** | All features | Report | Report | vs Baseline |
+
+**Decision rule**: A feature group is only included if it improves AUC-ROC by ≥0.005 on OOF predictions AND does not degrade Sharpe ratio. Groups that fail this test are dropped to reduce noise and overfitting risk.
+
+This is especially important for the options features (IV, PCR, GEX) and the IV Surface Predictor / SSVI model, which add significant complexity. They should be treated as **experimental until ablations prove they add value** over the simpler underlying-driven baseline.
+
 ### Realistic Transaction Costs (NSE F&O)
 
 ```python

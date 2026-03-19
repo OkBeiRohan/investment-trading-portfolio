@@ -360,6 +360,17 @@ HMM_CONFIG = {
 }
 ```
 
+### HMM Covariance Stabilization
+
+With `covariance_type='diag'` on 8 features, the HMM estimates 4×8=32 covariance parameters (vs 3,784 for full covariance on 43 features). This is statistically safe with ~6,500 daily samples.
+
+For future experimentation with more features, consider these stabilization techniques:
+- **Shrinkage estimation** (Ledoit-Wolf): Linearly interpolates between sample covariance and a structured target. Reduces estimation error in high-dimensional settings. See: Fiecas, M. et al. (2017). "Shrinkage Estimation for Multivariate Hidden Markov Models." JASA.
+- **PCA/Factor compression**: Reduce 43 features to 8-10 principal components before HMM fitting. Preserves variance while reducing dimensionality.
+- **Bayesian HMM**: Use conjugate priors (Normal-Wishart) to regularize emission parameters. More robust than MLE for small sample sizes.
+
+Current choice (diagonal on 8 curated features) is the simplest and most robust approach.
+
 ---
 
 ## Model 2: PatchTST (Daily Trend Forecaster)
