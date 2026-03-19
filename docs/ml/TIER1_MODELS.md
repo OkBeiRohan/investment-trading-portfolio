@@ -1,11 +1,11 @@
 # TIER 1: Macro Director — Regime & Daily Trend Classification
 
-> **Classifies the market into one of four regime states using 26 years of daily data. Runs ONCE at 09:09 AM. Output consumed by ALL downstream tiers for the entire trading day.**
+> **Classifies the market into one of four regime states. Runs ONCE at 09:09 AM. Output consumed by ALL downstream tiers for the entire trading day. Uses two feature tiers: 26-year core features (HMM/PatchTST) and 4-year augmented features (inference-only enrichment).**
 
 **Last Updated**: March 13, 2026
 **Tier**: 1 — Macro Director
 **Runs**: Once at 09:09:00 IST
-**Data Depth**: 26 years of daily NIFTY data + 12 years of India VIX
+**Data Depth**: 26yr core (OHLCV + derived) for HMM/PatchTST training; 12yr India VIX; 4yr+ for augmented features (Tier 0 output, MCX, sentiment — inference-only, NOT used in 26yr training)
 
 ---
 
@@ -57,7 +57,11 @@ Tier 0 Output (cached)
 │  │ + MCX Commodities (8 features, Upstox WS snapshot)       │
 │  └──────────────────────────────────────────────────────┐   │
 │                            ▼                            │   │
-│                   43-feature vector                     │   │
+│           ┌──────────────────────────────────┐          │   │
+│           │ 22 core features (26yr safe)     │          │   │
+│           │ + 2 VIX features (12yr)          │          │   │
+│           │ + 19 augmented (inference-only)   │          │   │
+│           └──────────────────────────────────┘          │   │
 └─────────────────────────────────────────────────────────┘───┘
               │                              │
               ▼                              ▼
@@ -90,6 +94,25 @@ Tier 0 Output (cached)
 ---
 
 ## Input Features (43)
+
+### Data-Bound Compliance
+
+> **Rule**: A model's training data depth is bounded by its shortest-history feature. Features with less history than the training window must be handled carefully.
+
+The 43 Tier 1 features split into two groups:
+
+| Group | Features | History | Used In |
+|-------|----------|---------|---------|
+| **Core (22 features)** | Returns (5), Moving Averages (6), Volatility excl. VIX (3), Trend (4), Breadth (2), Seasonality (3) | 26 years | HMM training + PatchTST training |
+| **VIX-era (2 features)** | `india_vix`, `vix_percentile_1yr` | ~12 years | HMM training (post-2009 only) + PatchTST |
+| **Augmented (19 features)** | Tier 0 output (3), Global Macro (12 inc. MCX + sentiment), Realized vol with VIX ratios | 0-4 years | **Inference-time enrichment ONLY** |
+
+**Training protocol**:
+1. **HMM** is trained on 8 core features only (26yr safe). See HMM section below.
+2. **PatchTST** is trained on 15 features. For the 2 VIX features, training starts from 2009 (~15yr window). For the 13 non-VIX features, full 26yr window is used.
+3. **Augmented features (Tier 0, MCX, sentiment)** are NEVER used in historical training. They are concatenated at inference time to enrich the regime context vector passed to the Meta-Learner (Tier 4), not to Tier 1's own models.
+
+**Why this matters**: Training an HMM on 43 features where 19 have zero historical depth would either (a) limit training to the system's live period (~0 days), or (b) introduce NaN/imputation artifacts that corrupt the learned regime boundaries.
 
 ### Returns (5 features)
 

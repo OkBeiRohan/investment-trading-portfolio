@@ -96,6 +96,23 @@ If quantile forecasts are needed (TFT's unique advantage), add quantile output h
 | **Regime Context**  | 4     | Tier 1 (Redis)             | `regime_state` (one-hot: 4 features)                                                 |
 | **Global Macro**    | 12    | Yahoo Finance (live 1-min) | `es_return_1m/5m`, `nq_return`, `brent_return`, `gold_return`, `dxy_change`          |
 
+### Data-Bound Compliance Warning
+
+> **Train/serve skew risk**: Not all 117 features have 4 years of history.
+
+| Feature Group | History Available | Training Handling |
+|---------------|-------------------|-------------------|
+| **NIFTY Future, Price, Momentum, MA, Bollinger** (~50 features) | 4 years | Full historical training |
+| **Options** (14 features: IV, PCR, GEX, skew) | ~3 years (F&O data from Upstox) | Train from 2023+ |
+| **Order Flow** (8 features: OFI, depth imbalance, sweep) | **0 years** (live LOB only) | **Excluded from training until ≥6 months archived** |
+| **Regime Context** (4 features from Tier 1) | System-live only | Inference-time enrichment only |
+| **Global Macro** (12 features) | ~4 years (Yahoo Finance) | Full historical training |
+
+**Protocol**:
+- LightGBM trains on the ~95 features with ≥3 years of history. Order flow features are set to NaN and handled by LightGBM's native missing-value support.
+- Mamba trains on the same ~95 features. Order flow features are zero-filled for historical data and only contribute once live LOB collection begins.
+- Once ≥6 months of LOB data is archived, retrain with order flow features enabled. This is the same phased approach used in Tier 3.
+
 ### Label Generation
 
 ```python
@@ -439,7 +456,7 @@ Greeks are deterministic functions of the IV surface + spot price + time to expi
 TIER2_TRAINING_CONFIG = {
     'data_depth_years': 4,
     'resolution': '1min',
-    'total_samples': '~4M rows (4yr × 252 days × 375 min/day)',
+    'total_samples': '~378K rows (4yr × 252 days × 375 min/day)',
 
     'cpcv': {
         'n_splits': 5,

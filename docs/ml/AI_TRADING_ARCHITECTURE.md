@@ -69,19 +69,19 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
 │          TIER 2: INTRADAY NAVIGATOR (5min-1hr Direction)        │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
-│  │ LightGBM     │  │ TFT          │  │ Mamba              │     │
-│  │ (80+ feats)  │  │ (multi-hor.) │  │ (long-range)       │     │
-│  └──────────────┘  └──────────────┘  └────────────────────┘     │
+│  ┌──────────────┐  ┌──────────────┐                             │
+│  │ LightGBM     │  │ Mamba (SSM)  │                             │
+│  │ (80+ feats)  │  │ (long-range) │                             │
+│  └──────────────┘  └──────────────┘                             │
 │  Input: 80+ features from instrument_features table             │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
 ┌─────────────────────────────────────────────────────────────────┐
 │          TIER 1: MACRO DIRECTOR (Regime + Volatility)           │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │
-│  │ TFT          │  │ Mamba (SSM)  │  │ HMM (Regime)       │     │
-│  │ (multi-hor.) │  │ (long-range) │  │ (state detection)  │     │
-│  └──────────────┘  └──────────────┘  └────────────────────┘     │
+│  ┌──────────────┐  ┌──────────────┐                             │
+│  │ HMM (4-state)│  │ PatchTST     │                             │
+│  │ (regime det.)│  │ (daily trend)│                             │
+│  └──────────────┘  └──────────────┘                             │
 │  Input: Daily + macro features, regime labels                   │
 └─────────────────────────────────────────────────────────────────┘
                               ▲
@@ -105,10 +105,10 @@ Tier 0 (Pre-Market) → Tier 1 (Macro) → Tier 2 (Intraday) → Tier 3 (Microst
 | --------- | --------------------- | ------------------- | --------------- |
 | H1: 10s   | Price direction       | Scalping            | LiT, TLOB       |
 | H2: 1min  | Direction + magnitude | Entry signals       | LightGBM, Mamba |
-| H3: 5min  | Trend continuation    | Position sizing     | TFT, PatchTST   |
-| H4: 15min | Trend reversal        | Exit signals        | TFT, TimeMixer  |
+| H3: 5min  | Trend continuation    | Position sizing     | LightGBM, Mamba  |
+| H4: 15min | Trend reversal        | Exit signals        | LightGBM, Mamba |
 | H5: 1hr   | Session direction     | Strategy selection  | PatchTST, HMM   |
-| H6: EOD   | Daily move            | Overnight positions | TFT Ensemble    |
+| H6: EOD   | Daily move            | Overnight positions | PatchTST, HMM   |
 
 ### Label Generation
 

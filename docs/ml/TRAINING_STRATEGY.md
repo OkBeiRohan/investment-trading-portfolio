@@ -42,7 +42,7 @@ The training strategy is designed for **financial time-series** with specific ch
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  RAW DATA (4 years: 2022-2026)                                              │
-│  ├── ~1,000,000 1-minute candles                                            │
+│  ├── ~378,000 1-minute candles (per instrument, 4yr)                        │
 │  ├── 100+ computed features                                                 │
 │  └── Multi-horizon labels (5m, 15m, 30m)                                    │
 │                                                                             │
@@ -76,7 +76,7 @@ Data:     │←─────────────── TRAINING ───
           2022-01                               2025-06  2025-09  2026-01
 
 Split:    │════════ 3.5 years ════════════════════│ 3 mo │  3 mo  │
-          │         ~850K samples                 │ 75K  │  75K   │
+          │         ~331K samples                 │ 28K  │  28K   │
 ```
 
 ### Split Implementation

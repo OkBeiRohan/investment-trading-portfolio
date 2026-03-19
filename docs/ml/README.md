@@ -16,7 +16,7 @@ This directory contains documentation for the **AI trading system** that powers 
 │                                                                             │
 │  DATA UNIVERSE                                                              │
 │  ├── Daily OHLCV: 2000-2026 (6,500 trading days) ─── Tier 1                 │
-│  ├── 1-Min OHLCV: 2022-2026 (~1M candles/instrument) ─── Tier 2             │
+│  ├── 1-Min OHLCV: 2022-2026 (~378K candles/instrument) ─── Tier 2           │
 │  ├── India VIX: Feb 2014-2026 ─── Tier 1                                    │
 │  ├── Global Markets: US Futures, Commodities, Forex ─── Tier 0, 1, 2        │
 │  ├── Expired F&O: Full chain with strikes, OI ─── Tier 2                    │
@@ -93,7 +93,7 @@ This directory contains documentation for the **AI trading system** that powers 
 | Data Type                 | Coverage             | Volume        | Source            |
 | ------------------------- | -------------------- | ------------- | ----------------- |
 | Daily OHLCV (Indian)      | 26 years (2000-2026) | ~6,500 days   | Upstox            |
-| 1-Min OHLCV (Indian)      | 4 years (2022-2026)  | ~1M candles   | Upstox            |
+| 1-Min OHLCV (Indian)      | 4 years (2022-2026)  | ~378K candles | Upstox            |
 | India VIX                 | 12 years (2014-2026) | ~3,000 days   | Upstox            |
 | Expired F&O               | Full chain           | All strikes   | Upstox            |
 | Live Tick (Depth-30)      | Today onwards        | Continuous    | Upstox WS         |

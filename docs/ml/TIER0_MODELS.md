@@ -1,6 +1,6 @@
-# TIER 0: Pre-Market Gap Predictor
+# TIER 0: Pre-Market Opening Calibrator
 
-> **Predicts the 9:15 AM opening gap direction, magnitude, and expected volatility using global overnight data and the 9:08 AM pre-open freeze price.**
+> **Calibrates the expected opening price, volatility, and directional bias by combining global overnight signals with the 9:08 AM pre-open freeze price. Since the freeze price already captures ~90% of the overnight gap, this model primarily predicts the freeze-to-open residual and opening volatility regime.**
 
 **Last Updated**: March 13, 2026
 **Tier**: 0 — Pre-Market Intelligence
@@ -50,6 +50,18 @@ The **gap** between yesterday's 15:30 close and today's 09:15 open is a massive 
 
 ---
 
+### What This Model Actually Predicts
+
+The pre-open call auction at 09:08 is itself a price-discovery mechanism — the freeze price is the auction equilibrium incorporating overnight information from all market participants. By including `actual_gap_points` and `actual_gap_pct` (freeze price vs prev close) as input features, **this model is NOT predicting the overnight gap from scratch**. Instead, it:
+
+1. **Calibrates the freeze-to-open residual**: How much will the actual 09:15 opening price deviate from the 09:08 freeze price? (typically 0.05-0.15%)
+2. **Classifies opening volatility**: Will the first 15 minutes be LOW/MEDIUM/HIGH volatility?
+3. **Estimates directional bias**: Conditional on the freeze price, what is the likely direction in the first hour?
+
+The model adds value by incorporating global overnight signals (US futures, MCX, sentiment) that retail participants in the pre-open session may not have fully priced in, plus historical patterns of freeze-to-open deviations.
+
+---
+
 ## Architecture
 
 ### Model: XGBoost Gradient Boosting
@@ -61,7 +73,7 @@ The **gap** between yesterday's 15:30 close and today's 09:15 open is a massive 
 | **Input**         | **24 features** — global overnight (12) + MCX commodities (8) + pre-market context (4)                   |
 | **Output**        | `expected_gap_pct`, `expected_volatility`, `opening_bias`, `confidence`                                  |
 | **Training Data** | 4+ years of pre-open snapshots + realized gaps                                                           |
-| **Validation**    | Walk-forward (6-month train, 1-month test, rolling)                                                      |
+| **Validation**    | Walk-forward (12-month train, 2-month test, rolling)                                                     |
 | **Export**        | ONNX with FP16 quantization                                                                              |
 
 ### Why Not Deep Learning?
@@ -390,9 +402,11 @@ TIER0_VOL_PARAMS = {
 ### Walk-Forward Validation
 
 ```python
-def walk_forward_validate_tier0(features, target, train_months=6, test_months=1):
+def walk_forward_validate_tier0(features, target, train_months=12, test_months=2):
     """
-    Walk-forward validation: 6-month train, 1-month test, rolling.
+    Walk-forward validation: 12-month train, 2-month test, rolling.
+    Previous 6mo/1mo was too thin (~125 samples for 24 features).
+    12mo gives ~250 samples, meeting the 10x features rule of thumb.
     No CPCV needed (daily data, no intraday leakage risk).
     """
     results = []

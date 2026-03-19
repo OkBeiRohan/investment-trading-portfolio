@@ -140,8 +140,8 @@ Realized and implied volatility metrics.
 | #   | Feature               | Formula                                      | Range        | Purpose           |
 | --- | --------------------- | -------------------------------------------- | ------------ | ----------------- |
 | 35  | `india_vix`           | India VIX from NSE                           | [10, 50]     | Market fear index |
-| 36  | `realized_vol_5m`     | `std(log_returns) × √(252×390)` (5 periods)  | [0.05, 0.50] | Short-term RV     |
-| 37  | `realized_vol_15m`    | `std(log_returns) × √(252×390)` (15 periods) | [0.05, 0.50] | Medium-term RV    |
+| 36  | `realized_vol_5m`     | `std(log_returns) × √(252×375)` (5 periods)  | [0.05, 0.50] | Short-term RV     |
+| 37  | `realized_vol_15m`    | `std(log_returns) × √(252×375)` (15 periods) | [0.05, 0.50] | Medium-term RV    |
 | 38  | `realized_vol_20d`    | 20-day daily realized volatility             | [0.05, 0.50] | Daily RV          |
 | 39  | `realized_vol_60d`    | 60-day daily realized volatility             | [0.05, 0.50] | Long-term RV      |
 | 40  | `vol_expansion_ratio` | `realized_vol_5m / realized_vol_15m`         | [0.5, 2.0]   | Vol regime shift  |
