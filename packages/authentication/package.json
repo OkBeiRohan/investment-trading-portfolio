@@ -20,15 +20,15 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@better-auth/core": "^1.5.5",
-    "@better-auth/passkey": "^1.5.5",
+    "@better-auth/core": "^1.5.6",
+    "@better-auth/passkey": "^1.5.6",
     "@nestjs/common": "^11.1.17",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.1.17",
     "@repo/database": "workspace:*",
     "@repo/schema": "workspace:*",
     "@thallesp/nestjs-better-auth": "^2.5.1",
-    "better-auth": "^1.5.5"
+    "better-auth": "^1.5.6"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

@@ -10,5 +10,8 @@
   "python.autoComplete.extraPaths": [
     "${workspaceFolder}/services/training-pipeline/src"
   ],
-  "python-envs.pythonProjects": []
+  "python-envs.pythonProjects": [],
+  "cursorpyright.analysis.extraPaths": [
+    "${workspaceFolder}/services/training-pipeline/src"
+  ]
 }

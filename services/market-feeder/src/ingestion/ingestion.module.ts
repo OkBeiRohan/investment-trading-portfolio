@@ -32,6 +32,7 @@ import { LiveDataService } from './live-data.service';
 import { McxHandlerService } from './mcx-handler.service';
 import { TokenRefreshCronService } from './token-refresh-cron.service';
 import { OptionChainLiveService } from './option-chain-live.service';
+import { ConstituentWeightIngestionService } from './constituent-weight-ingestion.service';
 
 // Controller
 import { IngestionController } from './ingestion.controller';
@@ -73,6 +74,9 @@ import { IngestionController } from './ingestion.controller';
 
     // Cron: daily token refresh before market open
     TokenRefreshCronService,
+
+    // HuggingFace constituent weight data
+    ConstituentWeightIngestionService,
   ],
   exports: [
     InstrumentSyncService,
@@ -83,6 +87,7 @@ import { IngestionController } from './ingestion.controller';
     LiveDataService,
     McxHandlerService,
     OptionChainLiveService,
+    ConstituentWeightIngestionService,
   ],
 })
 export class IngestionModule {}

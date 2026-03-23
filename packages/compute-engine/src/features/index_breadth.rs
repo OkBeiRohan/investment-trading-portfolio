@@ -86,21 +86,51 @@ impl Feature for WeightedReturnTop10 {
   }
 
   fn compute(&self, input: &FeatureInput, _deps: &ComputedDependencies) -> FeatureValue {
-    // TODO: Implement weighted return calculation
-    // Requires market cap weights (not available in current input)
-    // For now, return equal-weighted average of top 10 by volume
+    if input.constituents.is_empty() {
+      return FeatureValue::Scalar(0.0);
+    }
 
-    let mut stocks: Vec<_> = input.constituents.iter().collect();
-    stocks.sort_by(|a, b| b.volume.partial_cmp(&a.volume).unwrap());
+    let has_weights = input.constituents.iter().any(|s| {
+      s.weight_pct.unwrap_or(0.0) > 0.0
+    });
 
-    let top10_return: f64 = stocks
-      .iter()
-      .take(10)
-      .map(|s| (s.ltp - s.open) / s.open)
-      .sum::<f64>()
-      / 10.0;
+    if has_weights {
+      let mut stocks: Vec<_> = input.constituents.iter().collect();
+      stocks.sort_by(|a, b| {
+        b.weight_pct.unwrap_or(0.0).partial_cmp(&a.weight_pct.unwrap_or(0.0)).unwrap()
+      });
 
-    FeatureValue::Scalar(top10_return)
+      let top10: Vec<_> = stocks.iter().take(10).collect();
+      let total_weight: f64 = top10.iter().map(|s| s.weight_pct.unwrap_or(0.0)).sum();
+
+      if total_weight <= 0.0 {
+        return FeatureValue::Scalar(0.0);
+      }
+
+      let weighted_return: f64 = top10
+        .iter()
+        .map(|s| {
+          let ret = (s.ltp - s.open) / s.open;
+          let w = s.weight_pct.unwrap_or(0.0);
+          ret * w
+        })
+        .sum::<f64>()
+        / total_weight;
+
+      FeatureValue::Scalar(weighted_return)
+    } else {
+      let mut stocks: Vec<_> = input.constituents.iter().collect();
+      stocks.sort_by(|a, b| b.volume.partial_cmp(&a.volume).unwrap());
+
+      let top10_return: f64 = stocks
+        .iter()
+        .take(10)
+        .map(|s| (s.ltp - s.open) / s.open)
+        .sum::<f64>()
+        / 10.0;
+
+      FeatureValue::Scalar(top10_return)
+    }
   }
 }
 
@@ -307,18 +337,21 @@ mod tests {
           ltp: 2500.0,
           open: 2480.0,
           volume: 500000.0,
+          weight_pct: Some(8.20),
         },
         ConstituentTick {
           symbol: "TCS".to_string(),
           ltp: 3200.0,
           open: 3220.0,
           volume: 300000.0,
+          weight_pct: Some(2.35),
         },
         ConstituentTick {
           symbol: "INFY".to_string(),
           ltp: 1500.0,
           open: 1500.0,
           volume: 400000.0,
+          weight_pct: Some(3.97),
         },
       ],
       options: vec![],

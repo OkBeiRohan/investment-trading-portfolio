@@ -50,6 +50,7 @@ import { MongoDBService } from "./mongodb.service";
 import { DbConfigService } from "./services/db-config.service";
 import {
   ConstituentChangeRepository,
+  ConstituentWeightSnapshotRepository,
   InstrumentRepository,
   ProcessingLogRepository,
   IngestionLogRepository,
@@ -67,6 +68,8 @@ import {
   ProcessingLogSchema,
   ConstituentChange,
   ConstituentChangeSchema,
+  ConstituentWeightSnapshot,
+  ConstituentWeightSnapshotSchema,
   FeatureConfig,
   FeatureConfigSchema,
 } from "./schemas/market-data";
@@ -210,6 +213,11 @@ mongoose.set("returnDocument", "after");
           collection: "constituent_change",
         },
         {
+          name: ConstituentWeightSnapshot.name,
+          schema: ConstituentWeightSnapshotSchema,
+          collection: "constituent_weight_snapshots",
+        },
+        {
           name: FeatureConfig.name,
           schema: FeatureConfigSchema,
           collection: "feature_configs",
@@ -252,6 +260,7 @@ mongoose.set("returnDocument", "after");
     IngestionLogRepository,
     DataInventoryRepository,
     ConstituentChangeRepository,
+    ConstituentWeightSnapshotRepository,
     TradingConfigRepository,
     SystemConfigRepository,
     AuditLogRepository,
@@ -276,6 +285,7 @@ mongoose.set("returnDocument", "after");
     IngestionLogRepository,
     DataInventoryRepository,
     ConstituentChangeRepository,
+    ConstituentWeightSnapshotRepository,
     TradingConfigRepository,
     SystemConfigRepository,
     AuditLogRepository,

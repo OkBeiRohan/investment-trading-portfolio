@@ -1,6 +1,11 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+  OnApplicationShutdown,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { UpstoxWebSocketService, UpstoxMarketData } from '@repo/market-sdk';
+import { UpstoxWebSocketService, UpstoxMarketData, SubscriptionPriority } from '@repo/market-sdk';
 import {
   TickDataRepository,
   TickData,
@@ -10,7 +15,9 @@ import {
 } from '@repo/database';
 
 @Injectable()
-export class LiveDataService implements OnApplicationBootstrap, OnApplicationShutdown {
+export class LiveDataService
+  implements OnApplicationBootstrap, OnApplicationShutdown
+{
   private readonly logger = new Logger(LiveDataService.name);
 
   private tickBuffer: TickData[] = [];
@@ -59,7 +66,8 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
       return;
     }
 
-    const { d30Instruments, fullInstruments } = this.splitByTier(allInstruments);
+    const { d30Instruments, fullInstruments } =
+      this.splitByTier(allInstruments);
     const callback = this.handleMarketData.bind(this);
 
     this.logger.log(
@@ -69,23 +77,37 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
     try {
       if (d30Instruments.length > 0) {
         const subId = await this.upstoxWs.subscribe(
-          userId, d30Instruments, 'full_d30', 20, callback,
+          userId,
+          d30Instruments,
+          'full_d30',
+          SubscriptionPriority.CRITICAL,
+          callback,
         );
         this.subscriptionIds.push(subId);
-        this.logger.log(`Tier 1 (full_d30): subscribed ${d30Instruments.length} instruments (sub: ${subId})`);
+        this.logger.log(
+          `Tier 1 (full_d30): subscribed ${d30Instruments.length} instruments (sub: ${subId})`,
+        );
       }
 
       if (fullInstruments.length > 0) {
         const subId = await this.upstoxWs.subscribe(
-          userId, fullInstruments, 'full', 15, callback,
+          userId,
+          fullInstruments,
+          'full',
+          SubscriptionPriority.HIGH,
+          callback,
         );
         this.subscriptionIds.push(subId);
-        this.logger.log(`Tier 2 (full): subscribed ${fullInstruments.length} instruments (sub: ${subId})`);
+        this.logger.log(
+          `Tier 2 (full): subscribed ${fullInstruments.length} instruments (sub: ${subId})`,
+        );
       }
 
       this.startFlushTimer();
       this.isRunning = true;
-      this.logger.log(`Successfully started live ingestion (${this.subscriptionIds.length} subscriptions)`);
+      this.logger.log(
+        `Successfully started live ingestion (${this.subscriptionIds.length} subscriptions)`,
+      );
     } catch (error) {
       this.logger.error('Failed to start live ingestion', error);
       throw error;
@@ -104,7 +126,11 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
     const d30Set = new Set<string>();
 
     for (const key of allInstruments) {
-      if (key.startsWith('NSE_INDEX|') || key.startsWith('BSE_INDEX|') || key.startsWith('MCX_INDEX|')) {
+      if (
+        key.startsWith('NSE_INDEX|') ||
+        key.startsWith('BSE_INDEX|') ||
+        key.startsWith('MCX_INDEX|')
+      ) {
         d30Set.add(key);
       }
       if (key.startsWith('NSE_FO|') && !key.includes('|') === false) {
@@ -137,14 +163,14 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
     if (!this.isRunning) return;
 
     this.logger.log('Stopping live data ingestion...');
-    
+
     this.stopFlushTimer();
     await this.flushBuffer();
 
     for (const subId of this.subscriptionIds) {
       await this.upstoxWs.unsubscribe(subId);
     }
-    
+
     this.subscriptionIds = [];
     this.isRunning = false;
 
@@ -173,7 +199,7 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
       }
     }
 
-    const indices = await this.instrumentRepo.findByType("INDEX");
+    const indices = await this.instrumentRepo.findByType('INDEX');
     for (const inst of indices) {
       if (this.isUpstoxInstrument(inst.instrumentKey)) {
         instrumentKeys.add(inst.instrumentKey);
@@ -183,7 +209,10 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
     const now = new Date();
     const allQuestDb = await this.instrumentMasterRepo.getAllInstruments();
     for (const inst of allQuestDb) {
-      if (inst.instrumentType === "INDEX" && this.isUpstoxInstrument(inst.instrumentKey)) {
+      if (
+        inst.instrumentType === 'INDEX' &&
+        this.isUpstoxInstrument(inst.instrumentKey)
+      ) {
         instrumentKeys.add(inst.instrumentKey);
       }
       if (inst.expiry && inst.expiry > now) {
@@ -199,7 +228,9 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
   }
 
   private isUpstoxInstrument(key: string): boolean {
-    return key.startsWith("NSE_") || key.startsWith("BSE_") || key.startsWith("MCX_");
+    return (
+      key.startsWith('NSE_') || key.startsWith('BSE_') || key.startsWith('MCX_')
+    );
   }
 
   /**
@@ -245,12 +276,14 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
     };
 
     this.tickBuffer.push(tick);
-    
+
     // Broadcast internal event for Real-time Feature computation
     this.eventEmitter.emit('market.tick', tick);
 
     if (this.tickBuffer.length >= this.MAX_BUFFER_SIZE) {
-      this.flushBuffer().catch(e => this.logger.error('Error flushing tick buffer', e));
+      this.flushBuffer().catch((e) =>
+        this.logger.error('Error flushing tick buffer', e),
+      );
     }
   }
 
@@ -261,7 +294,9 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
     this.stopFlushTimer();
     this.flushTimer = setInterval(() => {
       if (this.tickBuffer.length > 0) {
-        this.flushBuffer().catch(e => this.logger.error('Error in interval flush', e));
+        this.flushBuffer().catch((e) =>
+          this.logger.error('Error in interval flush', e),
+        );
       }
     }, this.FLUSH_INTERVAL_MS);
   }
@@ -298,7 +333,10 @@ export class LiveDataService implements OnApplicationBootstrap, OnApplicationShu
         this.lastStatsLog = now;
       }
     } catch (error) {
-      this.logger.error(`Failed to insert ${ticksToInsert.length} ticks to DB`, error);
+      this.logger.error(
+        `Failed to insert ${ticksToInsert.length} ticks to DB`,
+        error,
+      );
       this.tickBuffer.unshift(...ticksToInsert);
     }
   }

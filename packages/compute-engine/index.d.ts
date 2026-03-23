@@ -29,6 +29,12 @@ export interface ConstituentTick {
   ltp: number
   open: number
   volume: number
+  /**
+   * Nifty 50 index weight (% of index, free-float market cap).
+   * Sourced from HuggingFace dataset monthly snapshots.
+   * Defaults to 0.0 if unavailable (equal-weight fallback in features).
+   */
+  weightPct?: number
 }
 
 /** Single level of order book depth */

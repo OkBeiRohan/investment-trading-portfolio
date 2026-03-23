@@ -5,6 +5,7 @@ import {
   DbConfigService,
   ProcessingLogRepository,
   InstrumentRepository,
+  ConstituentWeightSnapshotRepository,
 } from "@repo/database";
 import { MarketCalendarService, GLOBAL_SYMBOL_MAPPINGS } from "@repo/market-sdk";
 import { InstrumentSyncService } from "./instrument-sync.service";
@@ -13,6 +14,7 @@ import { HistoricalBackfillService } from "./historical-backfill.service";
 import { GlobalDataService } from "./global-data.service";
 import { LiveDataService } from "./live-data.service";
 import { OptionChainLiveService } from "./option-chain-live.service";
+import { ConstituentWeightIngestionService } from "./constituent-weight-ingestion.service";
 import {
   NIFTY50_CONSTITUENTS_DATA,
   NIFTY50_INDEX,
@@ -37,12 +39,15 @@ export class SchedulerService implements OnModuleInit {
     private readonly globalData: GlobalDataService,
     private readonly liveData: LiveDataService,
     private readonly optionChainLive: OptionChainLiveService,
+    private readonly constituentWeightIngestion: ConstituentWeightIngestionService,
     private readonly processingLogRepo: ProcessingLogRepository,
     private readonly instrumentRepo: InstrumentRepository,
+    private readonly weightSnapshotRepo: ConstituentWeightSnapshotRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
     await this.bootstrapIfFirstRun();
+    await this.ensureConstituentWeightsLoaded();
     await this.registerDynamicCrons();
     await this.handleStartupTasks();
   }
@@ -242,6 +247,45 @@ export class SchedulerService implements OnModuleInit {
     }
 
     this.logger.log(`[BOOTSTRAP] Seeded ${count} global instruments (Yahoo Finance)`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // AUTO-INGEST CONSTITUENT WEIGHTS (runs on every startup)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Check if the HuggingFace constituent weight snapshots are loaded.
+   * If the collection is empty, auto-ingest from the local CSV files.
+   * Runs on every startup (not just first-run) since weight data is
+   * independent of instrument seeding.
+   */
+  private async ensureConstituentWeightsLoaded(): Promise<void> {
+    try {
+      const count = await this.weightSnapshotRepo.count("Nifty 50");
+
+      if (count > 0) {
+        this.logger.log(
+          `Constituent weight snapshots already loaded (${count} snapshots) — skipping ingestion`,
+        );
+        return;
+      }
+
+      this.logger.log(
+        "[AUTO-INGEST] No constituent weight snapshots found — ingesting from HuggingFace CSV data...",
+      );
+
+      const result = await this.constituentWeightIngestion.ingestAll();
+
+      this.logger.log(
+        `[AUTO-INGEST] Constituent weights loaded: ${result.snapshotsProcessed} snapshots ` +
+          `(${result.uniqueSymbols} symbols, ${result.dateRange.start} → ${result.dateRange.end})`,
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `[AUTO-INGEST] Constituent weight ingestion failed (non-fatal): ${msg}`,
+      );
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
