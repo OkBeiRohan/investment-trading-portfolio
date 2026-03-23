@@ -76,6 +76,11 @@ pub struct ConstituentTick {
   pub ltp: f64,
   pub open: f64,
   pub volume: f64,
+  /// Nifty 50 index weight (% of index, free-float market cap).
+  /// Sourced from HuggingFace dataset monthly snapshots.
+  /// Defaults to 0.0 if unavailable (equal-weight fallback in features).
+  #[serde(default)]
+  pub weight_pct: Option<f64>,
   // NOTE: VWAP is COMPUTED from historical cache, not provided as input
 }
 
@@ -246,10 +251,12 @@ mod tests {
       ltp: 2500.0,
       open: 2480.0,
       volume: 500000.0,
+      weight_pct: Some(8.20),
     };
 
     assert_eq!(tick.symbol, "RELIANCE");
     assert_eq!(tick.ltp, 2500.0);
+    assert_eq!(tick.weight_pct, Some(8.20));
   }
 
   #[test]

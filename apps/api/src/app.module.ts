@@ -10,6 +10,7 @@ import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
 import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
+import { MarketDataModule } from './market-data/market-data.module';
 import { AppContext } from './app.context';
 import { AppRouter } from './app.router';
 import registerConfiguration from './environment/configuration';
@@ -42,6 +43,7 @@ import { ObservabilityModule } from '@repo/observability';
     HealthModule,
     UserModule,
     AdminModule,
+    MarketDataModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppContext, TrpcAuthMiddleware, AppRouter],

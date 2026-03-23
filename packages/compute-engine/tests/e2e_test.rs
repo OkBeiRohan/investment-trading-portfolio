@@ -24,63 +24,71 @@ fn create_realistic_input() -> FeatureInput {
       ltp: 2450.0,
       open: 2430.0,
       volume: 500000.0,
+      weight_pct: Some(8.20),
     },
     ConstituentTick {
       symbol: "TCS".to_string(),
       ltp: 3650.0,
       open: 3620.0,
       volume: 300000.0,
+      weight_pct: Some(2.35),
     },
     ConstituentTick {
       symbol: "HDFCBANK".to_string(),
       ltp: 1680.0,
       open: 1670.0,
       volume: 450000.0,
+      weight_pct: Some(11.83),
     },
     ConstituentTick {
       symbol: "INFY".to_string(),
       ltp: 1520.0,
       open: 1510.0,
       volume: 350000.0,
+      weight_pct: Some(3.97),
     },
     ConstituentTick {
       symbol: "ICICIBANK".to_string(),
       ltp: 1050.0,
       open: 1045.0,
       volume: 400000.0,
+      weight_pct: Some(8.58),
     },
     ConstituentTick {
       symbol: "HINDUNILVR".to_string(),
       ltp: 2380.0,
       open: 2375.0,
       volume: 200000.0,
+      weight_pct: Some(1.81),
     },
     ConstituentTick {
       symbol: "BAJFINANCE".to_string(),
       ltp: 6850.0,
       open: 6820.0,
       volume: 150000.0,
+      weight_pct: Some(2.30),
     },
     ConstituentTick {
       symbol: "SBIN".to_string(),
       ltp: 620.0,
       open: 615.0,
       volume: 550000.0,
+      weight_pct: Some(4.34),
     },
     ConstituentTick {
       symbol: "BHARTIARTL".to_string(),
       ltp: 1180.0,
       open: 1175.0,
       volume: 280000.0,
+      weight_pct: Some(4.56),
     },
     ConstituentTick {
       symbol: "ITC".to_string(),
       ltp: 425.0,
       open: 422.0,
       volume: 320000.0,
+      weight_pct: Some(2.63),
     },
-    // Add 40 more stocks to make 50 total
-    // (simplified - repeating pattern for test)
   ];
 
   // Realistic option chain around ATM strike

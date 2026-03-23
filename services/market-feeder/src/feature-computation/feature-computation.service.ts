@@ -166,6 +166,18 @@ export class FeatureComputationService {
       batchEnd,
     );
 
+    // 5b. Fetch point-in-time weight snapshot for this batch.
+    //     Monthly granularity → one lookup per batch is sufficient.
+    let weightMap: Map<string, number> | undefined;
+    try {
+      const weights = await this.constituentManager.getWeightsAtDate(batchStart);
+      if (weights.length > 0) {
+        weightMap = new Map(weights.map((w) => [w.symbol, w.weightPct]));
+      }
+    } catch {
+      // Non-fatal: features will fall back to current/equal weights
+    }
+
     // 6. Process each timestamp and accumulate results for batch insert
     const marketStatesToInsert: InstrumentFeatures[] = [];
     const trainingLabelsToInsert: TrainingLabels[] = [];
@@ -189,17 +201,16 @@ export class FeatureComputationService {
 
         // Skip if insufficient data
         if (constituentCandles.length < 30) {
-          // At least 60% of constituents
-
           continue;
         }
 
-        // Build feature input
+        // Build feature input (with point-in-time weights from HF dataset)
         const featureInput = this.buildFeatureInput(
           timestamp,
           constituentCandles,
           futuresCandle ?? null,
           indiaVixCandle ?? null,
+          weightMap,
         );
 
         // Compute features
@@ -374,16 +385,21 @@ export class FeatureComputationService {
   }
 
   /**
-   * Build FeatureInput for compute-engine
+   * Build FeatureInput for compute-engine.
+   *
+   * @param weightMap - Optional symbol→weightPct map from the HuggingFace weight
+   *                    snapshot closest to this timestamp. When absent, falls back
+   *                    to the in-memory current weights.
    */
   private buildFeatureInput(
     timestamp: Date,
     constituentCandles: MarketCandle[],
     futuresCandle: MarketCandle | null,
     indiaVixCandle: MarketCandle | null,
+    weightMap?: Map<string, number>,
   ): FeatureInput {
     return {
-      timestamp: timestamp.getTime(), // Unix timestamp in milliseconds
+      timestamp: timestamp.getTime(),
       niftyFuture: futuresCandle
         ? {
             ltp: futuresCandle.close,
@@ -403,14 +419,19 @@ export class FeatureComputationService {
             volume: 0,
             openInterest: 0,
           },
-      constituents: constituentCandles.map((candle) => ({
-        symbol: candle.instrumentKey,
-        ltp: candle.close,
-        open: candle.open,
-        volume: candle.volume ?? 0,
-      })),
-      options: [], // Placeholder for now - will add option chain data later
-      indiaVix: indiaVixCandle?.close, // Use close price from India VIX candle
+      constituents: constituentCandles.map((candle) => {
+        const symbol = candle.instrumentKey;
+        const weight = weightMap?.get(symbol) ?? this.constituentManager.getWeight(symbol);
+        return {
+          symbol,
+          ltp: candle.close,
+          open: candle.open,
+          volume: candle.volume ?? 0,
+          weightPct: weight > 0 ? weight : undefined,
+        };
+      }),
+      options: [],
+      indiaVix: indiaVixCandle?.close,
     };
   }
 

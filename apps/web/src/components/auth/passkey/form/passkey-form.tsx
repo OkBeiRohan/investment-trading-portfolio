@@ -20,7 +20,7 @@ export function PasskeyForm() {
       const { data, error } = await authClient.signIn.passkey();
 
       if (error) {
-        setError(error.message || "Passkey authentication failed");
+        setError(error.message?.toString() || "Passkey authentication failed");
         setLoading(false);
       } else {
         await handleAuthSuccess();

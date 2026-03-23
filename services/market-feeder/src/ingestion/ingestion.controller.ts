@@ -8,6 +8,7 @@ import { InstrumentSyncService } from './instrument-sync.service';
 import { HistoricalBackfillService } from './historical-backfill.service';
 import { GlobalDataService } from './global-data.service';
 import { LiveDataService } from './live-data.service';
+import { ConstituentWeightIngestionService } from './constituent-weight-ingestion.service';
 
 @Controller('ingestion')
 export class IngestionController {
@@ -18,6 +19,7 @@ export class IngestionController {
     private readonly historicalBackfill: HistoricalBackfillService,
     private readonly globalData: GlobalDataService,
     private readonly liveData: LiveDataService,
+    private readonly constituentWeightIngestion: ConstituentWeightIngestionService,
   ) {}
 
   /**
@@ -131,6 +133,26 @@ export class IngestionController {
   }
 
   /**
+   * Ingest HuggingFace Nifty 50 constituent weight data into MongoDB.
+   * Safe to re-run (idempotent). Reads from local CSV files.
+   */
+  @Post('constituent-weights/ingest')
+  async ingestConstituentWeights() {
+    this.logger.log('Starting constituent weight ingestion from HuggingFace data...');
+    const result = await this.constituentWeightIngestion.ingestAll();
+    return { success: true, ...result };
+  }
+
+  /**
+   * Get current ingestion status for constituent weight data.
+   */
+  @Get('constituent-weights/status')
+  async constituentWeightsStatus() {
+    const status = await this.constituentWeightIngestion.getStatus();
+    return { success: true, ...status };
+  }
+
+  /**
    * Health check
    */
   @Get('health')
@@ -149,6 +171,8 @@ export class IngestionController {
         overnightData: 'POST /ingestion/overnight-data',
         startLive: 'POST /ingestion/live/start',
         stopLive: 'POST /ingestion/live/stop',
+        constituentWeightsIngest: 'POST /ingestion/constituent-weights/ingest',
+        constituentWeightsStatus: 'GET /ingestion/constituent-weights/status',
       },
       cronJobs: {
         nightlyBackfill: '12:00 AM IST (Mon-Fri)',

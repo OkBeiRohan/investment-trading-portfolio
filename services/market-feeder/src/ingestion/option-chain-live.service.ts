@@ -201,7 +201,7 @@ export class OptionChainLiveService {
       errors.push(msg);
       this.logger.error(`Option chain live fetch failed: ${msg}`);
       await this.processingLogRepo.logError(
-        'LIVE',
+        'FETCH',
         'OPTION_CHAIN_SNAPSHOT',
         msg,
         { service: 'OptionChainLiveService' },

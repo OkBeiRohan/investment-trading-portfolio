@@ -304,6 +304,7 @@ mod tests {
         ltp: 1000.0 + (i as f64 * 10.0),
         open: 995.0 + (i as f64 * 10.0),
         volume: 50000.0 + (i as f64 * 1000.0),
+        weight_pct: Some(2.0),
       });
     }
 

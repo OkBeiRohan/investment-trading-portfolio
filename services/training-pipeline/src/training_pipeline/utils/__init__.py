@@ -7,6 +7,7 @@ from .model_registry import ModelRegistry
 from .quality_gate import check_quality_gate
 from .drift_detector import detect_drift
 from .reporting import generate_report
+from .constituent_weights import ConstituentWeightsLoader
 
 __all__ = [
     "QuestDBTrainingLoader",
@@ -18,4 +19,5 @@ __all__ = [
     "check_quality_gate",
     "detect_drift",
     "generate_report",
+    "ConstituentWeightsLoader",
 ]
