@@ -1,6 +1,6 @@
 # Machine Learning Documentation
 
-**Last Updated**: March 17, 2026
+**Last Updated**: March 24, 2026
 **Architecture**: 5-Tier Data-Bound Hierarchical System
 
 ---
@@ -69,6 +69,7 @@ This directory contains documentation for the **AI trading system** that powers 
 | [**TIER4_MODELS.md**](./TIER4_MODELS.md)                     | Meta-Learner signal fusion and strategy selection                |
 | [**META_LEARNER_EXECUTION.md**](./META_LEARNER_EXECUTION.md) | Regime-Conditioned Temporal Loss, adaptive weighting             |
 | [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md)           | Python training pipeline details                                 |
+| [**MLFLOW_PLATFORM.md**](./MLFLOW_PLATFORM.md)                   | MLflow 3.x experiment tracking, HPO, evaluation, model comparison |
 
 ### Data Storage & Ingestion
 
@@ -83,6 +84,15 @@ This directory contains documentation for the **AI trading system** that powers 
 | Document                                                             | Description                                        |
 | -------------------------------------------------------------------- | -------------------------------------------------- |
 | [**MODEL_PIPELINE_WORKFLOW.md**](./MODEL_PIPELINE_WORKFLOW.md)       | Session-by-session timing from midnight to close   |
+| [**THEORY_AND_EVIDENCE.md**](./THEORY_AND_EVIDENCE.md)                   | CPCV theory, triple-barrier method, literature references  |
+
+### MLOps & Experiment Management
+
+| Document                                               | Description                                                          |
+| ------------------------------------------------------ | -------------------------------------------------------------------- |
+| [**MLFLOW_PLATFORM.md**](./MLFLOW_PLATFORM.md)         | MLflow 3.x platform: tracking, HPO, evaluation, comparison, registry |
+| [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md)     | Python training pipeline (runner, tiers, ONNX export)                |
+| [**TRAINING_STRATEGY.md**](./TRAINING_STRATEGY.md)     | CPCV validation, walk-forward, drift detection                       |
 
 ---
 
