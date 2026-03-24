@@ -11,13 +11,14 @@ RUN pip install --no-cache-dir uv
 COPY services/training-pipeline/pyproject.toml services/training-pipeline/requirements.txt ./
 
 RUN uv pip install --system --no-cache \
-    mlflow>=2.19.0 \
-    boto3>=1.35.0 \
-    prometheus-client>=0.21.0 \
-    opentelemetry-api>=1.29.0 \
-    opentelemetry-sdk>=1.29.0 \
-    opentelemetry-exporter-otlp>=1.29.0 \
-    opentelemetry-instrumentation-logging>=0.50b0
+    "mlflow>=3.10.1" \
+    "optuna>=4.0.0" \
+    "boto3>=1.35.0" \
+    "prometheus-client>=0.21.0" \
+    "opentelemetry-api>=1.29.0" \
+    "opentelemetry-sdk>=1.29.0" \
+    "opentelemetry-exporter-otlp>=1.29.0" \
+    "opentelemetry-instrumentation-logging>=0.50b0"
 
 RUN uv pip install --system --no-cache -r requirements.txt
 
