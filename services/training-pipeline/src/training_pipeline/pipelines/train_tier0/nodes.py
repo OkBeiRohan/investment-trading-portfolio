@@ -17,7 +17,7 @@ from sklearn.preprocessing import StandardScaler
 
 import mlflow
 import mlflow.xgboost
-from ...utils.mlflow_tracking import log_model_params, log_shap_artifact, log_fold_metrics
+from ...utils.mlflow_tracking import log_model_params, log_shap_artifact, log_fold_metrics, get_xgboost_signature
 from ...utils.observability import TRAINING_EPOCH_DURATION, TRAINING_RUN_TOTAL, TRAINING_DATA_ROWS, traced_stage, update_gpu_metrics
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def train_xgboost_gap_model(
 
     Returns dict with keys: model, scaler, metrics, oof, artifacts.
     """
-    mlflow.xgboost.autolog(log_datasets=False, log_models=False)
+    mlflow.xgboost.autolog(log_datasets=True, log_models=True)
 
     logger.info("=== Tier 0: XGBoost Gap Predictor (walk-forward) ===")
 
@@ -196,7 +196,8 @@ def train_xgboost_gap_model(
         "n_folds": float(fold_idx),
     })
     log_shap_artifact(shap_importance, available_feats, "tier0_shap")
-    mlflow.xgboost.log_model(best_model, "tier0_model")
+    signature = get_xgboost_signature(len(available_feats))
+    mlflow.xgboost.log_model(best_model, name="tier0_model", signature=signature)
     mlflow.log_artifact(scaler_path)
     TRAINING_RUN_TOTAL.labels(tier="0", status="completed").inc()
 

@@ -61,7 +61,7 @@ def train_lit_model(
     Returns dict with: model, scaler, metrics, oof, artifacts.
     """
     logger.info("=== Tier 3: LiT Microstructure (rolling window) ===")
-    mlflow.pytorch.autolog(log_models=False)
+    mlflow.pytorch.autolog(log_models=True)
 
     tier3_cfg = config.get("tier3", config)
     lit_cfg = tier3_cfg.get("lit", {})
@@ -225,7 +225,7 @@ def train_lit_model(
     model_path = "data/06_models/tier3_lit.pt"
     scaler_path = "data/06_models/tier3_lit_scaler.pkl"
     torch.save(best_model.state_dict(), model_path)
-    mlflow.pytorch.log_model(best_model, "tier3_lit_model")
+    mlflow.pytorch.log_model(best_model, name="tier3_lit_model")
     import pickle
     with open(scaler_path, "wb") as f:
         pickle.dump(best_scaler, f)

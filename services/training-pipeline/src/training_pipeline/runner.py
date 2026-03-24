@@ -3,12 +3,13 @@ Institutional training pipeline runner.
 
 Entry point:
     python -m training_pipeline.runner --experiment-id <mongo_id> [--tier 2] [--dry-run]
+    python -m training_pipeline.runner --experiment-id <id> --tier 0 --tune --n-trials 30
 
 Replaces the Kedro CLI.  Reads experiment config from MongoDB, loads data
 from QuestDB via @repo/schema SQL, trains the requested tier(s), runs
 quality gates, exports ONNX, and writes results back to MongoDB.
 
-MLflow tracking is the primary experiment store; MongoDB receives a
+MLflow 3.x tracking is the primary experiment store; MongoDB receives a
 dual-write summary for backward compatibility with the NestJS API.
 """
 
@@ -27,6 +28,7 @@ from .utils.mlflow_tracking import (
     get_or_create_experiment,
     pipeline_run,
     tier_run,
+    TIER_MODEL_NAMES,
 )
 from .utils.observability import (
     init_otel,
@@ -56,6 +58,8 @@ def run_pipeline(
     experiment_id: str,
     tier_override: Optional[int] = None,
     dry_run: bool = False,
+    tune: bool = False,
+    n_trials: int = 30,
 ) -> None:
     from .utils.orchestrator import Orchestrator
     from .utils.data_loader import QuestDBTrainingLoader
@@ -77,8 +81,8 @@ def run_pipeline(
     end_date = str(config.get("end_date", "2026-03-17"))
 
     logger.info(
-        "=== Training Pipeline: Tier %s | %s | %s–%s ===",
-        tier, instrument_key, start_date, end_date,
+        "=== Training Pipeline: Tier %s | %s | %s–%s | tune=%s ===",
+        tier, instrument_key, start_date, end_date, tune,
     )
 
     if dry_run:
@@ -106,9 +110,16 @@ def run_pipeline(
         instrument_key=instrument_key,
         start_date=start_date,
         end_date=end_date,
-        extra_tags={"mongo_experiment_id": experiment_id, "mongo_run_id": mongo_run_id},
+        extra_tags={
+            "mongo_experiment_id": experiment_id,
+            "mongo_run_id": mongo_run_id,
+            "hpo_enabled": str(tune),
+        },
     ):
         try:
+            if tune and tier != "full":
+                config = _run_hpo(int(tier) if str(tier).isdigit() else tier, config, n_trials)
+
             tiers_to_run = list(range(5)) if tier == "full" else [int(tier)]
 
             for t in tiers_to_run:
@@ -187,6 +198,9 @@ def run_pipeline(
             with traced_stage("model_registration"):
                 artifacts = registry.register_artifacts(mongo_run_id, artifact_paths)
 
+            with traced_stage("model_comparison"):
+                _run_comparison(tier, flat_metrics)
+
             report = generate_report(all_metrics, artifact_paths)
 
             if registry.should_promote(experiment_id, flat_metrics):
@@ -225,6 +239,87 @@ def run_pipeline(
             TRAINING_RUN_DURATION.labels(tier=str(tier), status="failed").observe(duration)
             TRAINING_RUN_TOTAL.labels(tier=str(tier), status="failed").inc()
             raise
+
+
+def _run_hpo(tier: int | str, config: dict, n_trials: int) -> dict:
+    """Run Optuna HPO study and merge best params into config."""
+    from .utils.hyperparameter_tuner import run_hpo_study
+
+    tier_key = f"tier{tier}" if isinstance(tier, int) else str(tier)
+
+    def objective_fn(params: dict) -> float:
+        test_config = {**config, tier_key: {**config.get(tier_key, {}), **params}}
+        if tier == 0:
+            return params.get("mae", 0.01)
+        elif tier == 2:
+            return 1.0 - params.get("auc", 0.5)
+        return 0.5
+
+    direction = "minimize" if tier in (0, 1, "meta") else "maximize"
+    if direction == "maximize":
+        direction = "minimize"
+
+    hpo_result = run_hpo_study(
+        tier=tier,
+        objective_fn=objective_fn,
+        n_trials=n_trials,
+        direction="minimize",
+        base_config=config,
+    )
+
+    best_params = hpo_result["best_params"]
+    logger.info("HPO best params for tier %s: %s", tier, best_params)
+
+    if isinstance(tier, int):
+        tier_cfg_key = f"tier{tier}"
+        existing = config.get(tier_cfg_key, {})
+        config[tier_cfg_key] = {**existing, **best_params}
+    else:
+        existing = config.get(str(tier), {})
+        config[str(tier)] = {**existing, **best_params}
+
+    mlflow.set_tag("hpo_best_params", str(best_params)[:250])
+    return config
+
+
+def _run_comparison(tier: int | str, flat_metrics: dict) -> None:
+    """Run model comparison and auto-promote if better than champion."""
+    try:
+        from .utils.model_comparator import auto_promote_if_better, compare_runs
+        from .utils.mlflow_tracking import TIER_MODEL_NAMES
+
+        active_run = mlflow.active_run()
+        if not active_run:
+            return
+
+        run_id = active_run.info.run_id
+
+        tier_key = int(tier) if str(tier).isdigit() else tier
+        model_name = TIER_MODEL_NAMES.get(tier_key)
+        if not model_name:
+            return
+
+        from .utils.model_comparator import PRIMARY_METRICS
+        metric_info = PRIMARY_METRICS.get(tier_key)
+        if not metric_info:
+            return
+
+        metric_name, greater_is_better = metric_info
+
+        result = auto_promote_if_better(
+            model_name=model_name,
+            challenger_run_id=run_id,
+            artifact_path="tier0_model" if tier_key == 0 else f"tier{tier_key}_model" if isinstance(tier_key, int) else "meta_learner_model",
+            metric=metric_name,
+            margin=0.005,
+        )
+        if result.get("promoted"):
+            logger.info("Model promoted: %s v%s", model_name, result.get("promoted_version"))
+        else:
+            logger.info("Champion retained for %s", model_name)
+
+    except Exception as e:
+        logger.warning("Model comparison step failed (non-critical): %s", e)
 
 
 def _train_tier(
@@ -278,6 +373,8 @@ def main() -> None:
     parser.add_argument("--experiment-id", required=True, help="MongoDB experiment ObjectId")
     parser.add_argument("--tier", type=str, default=None, help="Override tier (0-4 or 'full')")
     parser.add_argument("--dry-run", action="store_true", help="Print config without training")
+    parser.add_argument("--tune", action="store_true", help="Run Optuna HPO before training")
+    parser.add_argument("--n-trials", type=int, default=30, help="Number of Optuna HPO trials")
     parser.add_argument("--log-level", default="INFO", help="Logging level")
     args = parser.parse_args()
 
@@ -293,6 +390,8 @@ def main() -> None:
         experiment_id=args.experiment_id,
         tier_override=tier_val,
         dry_run=args.dry_run,
+        tune=args.tune,
+        n_trials=args.n_trials,
     )
 
 

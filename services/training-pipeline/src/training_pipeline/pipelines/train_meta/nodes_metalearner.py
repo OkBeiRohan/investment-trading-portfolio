@@ -112,7 +112,7 @@ def train_meta_learner(
     num_regimes = meta_cfg.get("num_regimes", 4)
     volatile_idx = meta_cfg.get("volatile_regime_idx", 3)
 
-    mlflow.pytorch.autolog(log_models=False)
+    mlflow.pytorch.autolog(log_models=True)
     log_model_params({
         "tier": "meta",
         "model_type": "gating_network",
@@ -204,6 +204,9 @@ def train_meta_learner(
 
         logger.info("Meta Epoch %d/%d | train=%.4f val=%.4f", epoch + 1, epochs, avg_train, avg_val)
 
+        if (epoch + 1) % 5 == 0 or epoch == 0:
+            mlflow.pytorch.log_model(model, name=f"meta_checkpoint_epoch{epoch+1}")
+
         if avg_val < best_val_loss:
             best_val_loss = avg_val
             patience_counter = 0
@@ -217,7 +220,7 @@ def train_meta_learner(
     model_path = "data/06_models/meta_learner.pt"
     torch.save(model.state_dict(), model_path)
 
-    mlflow.pytorch.log_model(model, "meta_learner_model")
+    mlflow.pytorch.log_model(model, name="meta_learner_model")
     mlflow.log_dict(gate_weights_log, "gate_weights_evolution.json")
     TRAINING_RUN_TOTAL.labels(tier="meta", status="completed").inc()
 

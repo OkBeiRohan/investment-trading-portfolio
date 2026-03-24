@@ -2,8 +2,9 @@
 MLflow integration module for the institutional training pipeline.
 
 Provides centralized experiment management, nested run tracking,
-model signature inference, and dual-write to MongoDB for backward
-compatibility with the NestJS API and web frontend.
+model signature inference, system metrics monitoring, alias-based
+model registry, and dual-write to MongoDB for backward compatibility
+with the NestJS API and web frontend.
 """
 
 import logging
@@ -36,13 +37,29 @@ TIER_EXPERIMENT_MAP = {
     "backtest": "evaluate-strategy",
 }
 
+TIER_MODEL_NAMES = {
+    0: "trading-tier0-xgboost-gap",
+    1: "trading-tier1-patchtst",
+    2: "trading-tier2-lightgbm-cpcv",
+    3: "trading-tier3-lit-microstructure",
+    "meta": "trading-meta-learner",
+}
+
 
 def init_mlflow(tracking_uri: Optional[str] = None) -> None:
-    """Initialize MLflow tracking URI from environment or argument."""
+    """Initialize MLflow tracking URI, system metrics, and logging."""
     uri = tracking_uri or os.environ.get(
         "MLFLOW_TRACKING_URI", "http://localhost:5000"
     )
     mlflow.set_tracking_uri(uri)
+
+    try:
+        mlflow.config.enable_system_metrics_logging()
+        mlflow.config.set_system_metrics_sampling_interval(5)
+        logger.info("MLflow system metrics logging enabled (5s interval)")
+    except Exception as e:
+        logger.warning("Could not enable system metrics logging: %s", e)
+
     logger.info("MLflow tracking URI set to %s", uri)
 
 
@@ -68,8 +85,12 @@ def _hardware_tags() -> dict[str, str]:
         "cpu_count": str(os.cpu_count() or 0),
         "python_version": platform.python_version(),
     }
-    disk = shutil.disk_usage("/")
-    tags["disk_total_gb"] = f"{disk.total / (1024 ** 3):.1f}"
+    try:
+        disk = shutil.disk_usage("/")
+        tags["disk_total_gb"] = f"{disk.total / (1024 ** 3):.1f}"
+    except OSError:
+        disk = shutil.disk_usage(".")
+        tags["disk_total_gb"] = f"{disk.total / (1024 ** 3):.1f}"
 
     try:
         import torch
@@ -162,6 +183,37 @@ def fold_run(
         run_name=name,
         nested=nested,
         tags={"fold_id": str(fold_id), "horizon": horizon},
+    ) as run:
+        yield run
+
+
+@contextmanager
+def hpo_study_run(
+    tier: int | str,
+    n_trials: int,
+    nested: bool = True,
+):
+    """Context manager for a hyperparameter optimization study run."""
+    name = f"hpo_study_tier_{tier}"
+    with mlflow.start_run(
+        run_name=name,
+        nested=nested,
+        tags={"tier": str(tier), "run_type": "hpo_study", "n_trials": str(n_trials)},
+    ) as run:
+        mlflow.log_param("n_trials", n_trials)
+        yield run
+
+
+@contextmanager
+def hpo_trial_run(
+    trial_number: int,
+    nested: bool = True,
+):
+    """Context manager for an individual HPO trial child run."""
+    with mlflow.start_run(
+        run_name=f"trial_{trial_number}",
+        nested=nested,
+        tags={"run_type": "hpo_trial", "trial_number": str(trial_number)},
     ) as run:
         yield run
 
@@ -265,41 +317,72 @@ def register_and_promote(
     model_name: str,
     run_id: str,
     artifact_path: str = "model",
-    stage: str = "Staging",
+    alias: str = "champion",
 ) -> Optional[str]:
     """
-    Register a model version in MLflow Model Registry and transition
-    it to the specified stage.
+    Register a model version in MLflow Model Registry and assign
+    it the specified alias (e.g. @champion, @challenger).
 
+    Uses the modern alias-based workflow instead of deprecated stages.
     Returns the model version string or None on failure.
     """
     try:
         client = mlflow.MlflowClient()
         model_uri = f"runs:/{run_id}/{artifact_path}"
+
+        try:
+            client.get_registered_model(model_name)
+        except mlflow.exceptions.MlflowException:
+            client.create_registered_model(
+                model_name,
+                description=f"Production model for {model_name}",
+            )
+            logger.info("Created registered model '%s'", model_name)
+
         mv = client.create_model_version(
             name=model_name,
             source=model_uri,
             run_id=run_id,
         )
-        client.transition_model_version_stage(
+        client.set_registered_model_alias(
             name=model_name,
+            alias=alias,
             version=mv.version,
-            stage=stage,
         )
         logger.info(
-            "Registered model '%s' version %s → %s",
-            model_name, mv.version, stage,
+            "Registered model '%s' version %s with alias @%s",
+            model_name, mv.version, alias,
         )
         return mv.version
     except Exception as e:
-        try:
-            client.create_registered_model(model_name)
-            return register_and_promote(
-                model_name, run_id, artifact_path, stage
-            )
-        except Exception:
-            logger.error("Failed to register model '%s': %s", model_name, e)
-            return None
+        logger.error("Failed to register model '%s': %s", model_name, e)
+        return None
+
+
+def set_model_alias(
+    model_name: str,
+    alias: str,
+    version: str,
+) -> None:
+    """Set an alias on a registered model version."""
+    try:
+        client = mlflow.MlflowClient()
+        client.set_registered_model_alias(
+            name=model_name, alias=alias, version=version,
+        )
+        logger.info("Set alias @%s on '%s' version %s", alias, model_name, version)
+    except Exception as e:
+        logger.error("Failed to set alias @%s on '%s': %s", alias, model_name, e)
+
+
+def get_champion_run_id(model_name: str) -> Optional[str]:
+    """Retrieve the run_id of the current @champion version."""
+    try:
+        client = mlflow.MlflowClient()
+        mv = client.get_model_version_by_alias(model_name, "champion")
+        return mv.run_id
+    except Exception:
+        return None
 
 
 def _flatten_dict(

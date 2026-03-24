@@ -60,7 +60,7 @@ def train_lightgbm_cpcv(
     Returns dict with: models, metrics, oof, artifacts.
     """
     logger.info("=== Tier 2: LightGBM CPCV (multi-horizon) ===")
-    mlflow.lightgbm.autolog(log_datasets=False, log_models=False)
+    mlflow.lightgbm.autolog(log_datasets=True, log_models=True)
 
     tier2_cfg = config.get("tier2", config)
     lgb_params = tier2_cfg.get("lightgbm", config.get("lightgbm", {}))

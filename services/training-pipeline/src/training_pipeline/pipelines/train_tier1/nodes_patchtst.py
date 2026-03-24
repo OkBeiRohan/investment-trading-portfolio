@@ -70,7 +70,7 @@ def train_patchtst_model(
 
     Returns dict with: model, scaler, metrics, oof, artifacts.
     """
-    mlflow.pytorch.autolog(log_models=False)
+    mlflow.pytorch.autolog(log_models=True)
 
     logger.info("=== Tier 1: PatchTST (walk-forward) ===")
 
@@ -185,6 +185,8 @@ def train_patchtst_model(
             mlflow.log_metrics({"train_loss": train_loss}, step=epoch)
             TRAINING_EPOCH_LOSS.labels(tier="1", model_type="patchtst", loss_type="train").set(train_loss)
 
+        mlflow.pytorch.log_model(model, name=f"tier1_checkpoint_fold{fold_idx}")
+
         test_vals = scaler.transform(df_test[available].values)
         test_targets = df_test[target_col].values
         Xt, yt = _build_sequences(test_vals, test_targets, seq_len, forecast_horizon)
@@ -233,7 +235,7 @@ def train_patchtst_model(
         "patchtst_avg_mse": avg_mse,
         "patchtst_n_folds": float(fold_idx),
     })
-    mlflow.pytorch.log_model(best_model, "tier1_patchtst_model")
+    mlflow.pytorch.log_model(best_model, name="tier1_patchtst_model")
     mlflow.log_artifact(scaler_path)
     TRAINING_RUN_TOTAL.labels(tier="1", status="completed").inc()
 
