@@ -15,6 +15,11 @@ import torch.nn as nn
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
+import mlflow
+import mlflow.pytorch
+from ...utils.mlflow_tracking import log_model_params
+from ...utils.observability import TRAINING_EPOCH_LOSS, TRAINING_EPOCH_DURATION, TRAINING_RUN_TOTAL
+
 logger = logging.getLogger(__name__)
 
 TIER3_FEATURES = [
@@ -56,6 +61,7 @@ def train_lit_model(
     Returns dict with: model, scaler, metrics, oof, artifacts.
     """
     logger.info("=== Tier 3: LiT Microstructure (rolling window) ===")
+    mlflow.pytorch.autolog(log_models=False)
 
     tier3_cfg = config.get("tier3", config)
     lit_cfg = tier3_cfg.get("lit", {})
@@ -87,6 +93,19 @@ def train_lit_model(
     if target_col not in df.columns:
         logger.error("Target %s missing", target_col)
         return _neutral_result()
+
+    log_model_params({
+        "tier": 3,
+        "model_type": "lit",
+        "input_dim": len(available),
+        "hidden_dim": lit_cfg.get("d_model", 32),
+        "n_layers": lit_cfg.get("n_layers", 2),
+        "forecast_horizon": forecast_horizon,
+        "sequence_length": seq_len,
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "learning_rate": lr,
+    }, prefix="tier3")
 
     df = df.dropna(subset=available + [target_col]).sort_values("timestamp").reset_index(drop=True)
     df["_date"] = pd.to_datetime(df["timestamp"]).dt.date
@@ -148,13 +167,27 @@ def train_lit_model(
         criterion = nn.MSELoss()
 
         model.train()
-        for _ in range(epochs):
+        for epoch in range(epochs):
+            epoch_losses = []
             for bx, by in dl:
                 bx, by = bx.to(device), by.to(device)
                 optimizer.zero_grad()
                 loss = criterion(model(bx), by)
                 loss.backward()
                 optimizer.step()
+                epoch_losses.append(loss.item())
+            train_loss = float(np.mean(epoch_losses))
+            model.eval()
+            with torch.no_grad():
+                if len(X_te) > 0:
+                    val_preds = model(torch.tensor(np.array(X_te), dtype=torch.float32).to(device))
+                    val_loss = float(criterion(val_preds, torch.tensor(np.array(y_te), dtype=torch.float32).to(device)))
+                else:
+                    val_loss = float("nan")
+            mlflow.log_metrics({"train_loss": train_loss, "val_loss": val_loss}, step=epoch)
+            TRAINING_EPOCH_LOSS.labels(tier="3", model_type="lit", loss_type="train").set(train_loss)
+            TRAINING_EPOCH_LOSS.labels(tier="3", model_type="lit", loss_type="val").set(val_loss)
+            model.train()
 
         model.eval()
         if len(X_te) > 0:
@@ -192,11 +225,13 @@ def train_lit_model(
     model_path = "data/06_models/tier3_lit.pt"
     scaler_path = "data/06_models/tier3_lit_scaler.pkl"
     torch.save(best_model.state_dict(), model_path)
+    mlflow.pytorch.log_model(best_model, "tier3_lit_model")
     import pickle
     with open(scaler_path, "wb") as f:
         pickle.dump(best_scaler, f)
 
     metrics = {"lit_avg_mse": avg_mse, "lit_direction_accuracy": avg_dir, "lit_n_folds": fold_idx}
+    TRAINING_RUN_TOTAL.labels(tier="3", status="completed").inc()
     logger.info("Tier 3 complete — avg MSE=%.6f DirAcc=%.3f over %d folds", avg_mse, avg_dir, fold_idx)
 
     return {

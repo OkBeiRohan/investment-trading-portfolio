@@ -12,7 +12,14 @@ import os
 import pickle
 from typing import Any
 
+import time
+
+import mlflow
+import mlflow.onnx
 import torch
+
+from ...utils.mlflow_tracking import register_and_promote
+from ...utils.observability import ONNX_EXPORT_DURATION, ONNX_MODEL_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -42,19 +49,91 @@ def export_all_models(
 
     exported: dict[str, str] = {}
 
+    start = time.monotonic()
     _export_tier0_xgboost(artifact_paths, output_dir, opset, exported)
+    ONNX_EXPORT_DURATION.labels(tier="0").observe(time.monotonic() - start)
+
+    start = time.monotonic()
     _export_tier1_patchtst(artifact_paths, output_dir, opset, exported)
+    ONNX_EXPORT_DURATION.labels(tier="1").observe(time.monotonic() - start)
+
+    start = time.monotonic()
     _export_tier1_hmm(artifact_paths, output_dir, exported)
+    ONNX_EXPORT_DURATION.labels(tier="1_hmm").observe(time.monotonic() - start)
+
+    start = time.monotonic()
     _export_tier2_lightgbm(artifact_paths, output_dir, opset, exported)
+    ONNX_EXPORT_DURATION.labels(tier="2").observe(time.monotonic() - start)
+
+    start = time.monotonic()
     _export_tier3_lit(artifact_paths, output_dir, opset, exported)
+    ONNX_EXPORT_DURATION.labels(tier="3").observe(time.monotonic() - start)
+
+    start = time.monotonic()
     _export_meta_learner(artifact_paths, output_dir, opset, exported)
+    ONNX_EXPORT_DURATION.labels(tier="meta").observe(time.monotonic() - start)
+
+    for name, path in list(exported.items()):
+        if os.path.exists(path) and path.endswith(".onnx"):
+            size = os.path.getsize(path)
+            tier_label = name.split("_")[0] if "_" in name else "unknown"
+            ONNX_MODEL_SIZE.labels(tier=tier_label, model_name=name).set(size)
+            mlflow.log_metric(f"{name}_size_bytes", size)
+            try:
+                mlflow.log_artifact(path, "onnx_models")
+            except Exception as e:
+                logger.warning("Could not log ONNX artifact %s to MLflow: %s", name, e)
 
     for name, path in list(exported.items()):
         if os.path.exists(path):
             exported[f"{name}_sha256"] = _sha256(path)
 
     logger.info("ONNX export complete — %d artifacts", len([v for v in exported.values() if not v.startswith("sha")]))
+    _register_models(exported)
     return exported
+
+
+def _register_models(exported: dict[str, str]) -> None:
+    """Register exported ONNX models in MLflow Model Registry."""
+    registry_map = {
+        "tier0_gap_predictor_onnx": "tier0_gap_predictor",
+        "tier1_patchtst_onnx": "tier1_patchtst",
+        "tier3_lit_onnx": "tier3_lit",
+        "meta_learner_onnx": "meta_learner",
+    }
+    for artifact_key, model_name in registry_map.items():
+        path = exported.get(artifact_key)
+        if not path or not os.path.exists(path):
+            continue
+        try:
+            run = mlflow.active_run()
+            if run:
+                register_and_promote(
+                    model_name=model_name,
+                    run_id=run.info.run_id,
+                    artifact_path="onnx_models",
+                    stage="Staging",
+                )
+        except Exception as e:
+            logger.warning("Could not register model %s: %s", model_name, e)
+
+    for artifact_key in exported:
+        if artifact_key.startswith("tier2_") and artifact_key.endswith("_onnx"):
+            path = exported.get(artifact_key)
+            if not path or not os.path.exists(path):
+                continue
+            model_name = artifact_key.replace("_onnx", "")
+            try:
+                run = mlflow.active_run()
+                if run:
+                    register_and_promote(
+                        model_name=model_name,
+                        run_id=run.info.run_id,
+                        artifact_path="onnx_models",
+                        stage="Staging",
+                    )
+            except Exception as e:
+                logger.warning("Could not register model %s: %s", model_name, e)
 
 
 def _export_tier0_xgboost(paths, out_dir, opset, exported):

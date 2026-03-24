@@ -8,6 +8,10 @@ skipped.
 import logging
 from typing import Any
 
+import mlflow
+
+from .observability import MODEL_QUALITY_GATE
+
 logger = logging.getLogger(__name__)
 
 QUALITY_THRESHOLDS: dict[int | str, dict[str, float]] = {
@@ -67,8 +71,21 @@ def check_quality_gate(
             msg = f"{metric_name}={actual:.4f} (need {cmp}{threshold_val})"
             failures.append(msg)
             logger.warning("QUALITY GATE FAIL: %s", msg)
+            MODEL_QUALITY_GATE.labels(tier=str(tier), metric_name=metric_name).set(0.0)
         else:
             logger.info("QUALITY GATE OK: %s=%.4f %s%.4f", metric_name, actual, cmp, threshold_val)
+            MODEL_QUALITY_GATE.labels(tier=str(tier), metric_name=metric_name).set(1.0)
+
+    try:
+        if mlflow.active_run():
+            gate_metrics = {f"qg_{k}": float(v) for k, v in metrics.items() if isinstance(v, (int, float))}
+            gate_metrics["quality_gate_passed"] = 1.0 if not failures else 0.0
+            mlflow.log_metrics(gate_metrics)
+            mlflow.set_tag("quality_gate_passed", str(not bool(failures)))
+            if failures:
+                mlflow.set_tag("quality_gate_failures", "; ".join(failures))
+    except Exception:
+        pass
 
     if failures:
         reason = "; ".join(failures)

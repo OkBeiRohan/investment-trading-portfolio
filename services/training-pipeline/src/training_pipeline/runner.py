@@ -7,24 +7,38 @@ Entry point:
 Replaces the Kedro CLI.  Reads experiment config from MongoDB, loads data
 from QuestDB via @repo/schema SQL, trains the requested tier(s), runs
 quality gates, exports ONNX, and writes results back to MongoDB.
+
+MLflow tracking is the primary experiment store; MongoDB receives a
+dual-write summary for backward compatibility with the NestJS API.
 """
 
 import argparse
 import logging
 import os
 import sys
+import time
 import traceback
 from typing import Optional
 
+import mlflow
+
+from .utils.mlflow_tracking import (
+    init_mlflow,
+    get_or_create_experiment,
+    pipeline_run,
+    tier_run,
+)
+from .utils.observability import (
+    init_otel,
+    setup_structured_logging,
+    start_metrics_server,
+    traced_stage,
+    TRAINING_RUN_DURATION,
+    TRAINING_RUN_TOTAL,
+    update_gpu_metrics,
+)
+
 logger = logging.getLogger("training_pipeline")
-
-
-def _setup_logging(level: str = "INFO") -> None:
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
 
 
 def _resolve_schema_sql_dir() -> str:
@@ -51,6 +65,8 @@ def run_pipeline(
     from .utils.model_registry import ModelRegistry
     from .utils.reporting import generate_report
 
+    init_mlflow()
+
     orchestrator = Orchestrator()
     experiment = orchestrator.load_experiment(experiment_id)
     config = orchestrator.get_training_config(experiment)
@@ -60,14 +76,17 @@ def run_pipeline(
     start_date = str(config.get("start_date", "2023-01-01"))
     end_date = str(config.get("end_date", "2026-03-17"))
 
-    logger.info("=== Training Pipeline: Tier %s | %s | %s–%s ===", tier, instrument_key, start_date, end_date)
+    logger.info(
+        "=== Training Pipeline: Tier %s | %s | %s–%s ===",
+        tier, instrument_key, start_date, end_date,
+    )
 
     if dry_run:
         logger.info("[DRY RUN] Config: %s", config)
         return
 
     pipeline_name = f"train_tier{tier}" if tier != "full" else "full_training"
-    run_id = orchestrator.create_run(experiment_id, pipeline_name, config)
+    mongo_run_id = orchestrator.create_run(experiment_id, pipeline_name, config)
 
     loader = QuestDBTrainingLoader(schema_sql_dir=_resolve_schema_sql_dir())
     db = orchestrator._db
@@ -77,74 +96,135 @@ def run_pipeline(
     all_metrics: dict = {}
     artifact_paths: dict = {}
 
-    try:
-        tiers_to_run = list(range(5)) if tier == "full" else [int(tier)]
+    mlflow_experiment_id = get_or_create_experiment(tier)
+    pipeline_start = time.monotonic()
 
-        for t in tiers_to_run:
-            orchestrator.update_stage(run_id, f"tier_{t}", "running")
-            result = _train_tier(t, loader, config, instrument_key, start_date, end_date)
+    with pipeline_run(
+        experiment_id=mlflow_experiment_id,
+        run_name=f"pipeline_{experiment_id}_{tier}",
+        tier=tier,
+        instrument_key=instrument_key,
+        start_date=start_date,
+        end_date=end_date,
+        extra_tags={"mongo_experiment_id": experiment_id, "mongo_run_id": mongo_run_id},
+    ):
+        try:
+            tiers_to_run = list(range(5)) if tier == "full" else [int(tier)]
 
-            all_metrics[f"tier_{t}"] = result.get("metrics", {})
-            if "oof" in result:
-                all_oof[f"tier_{t}"] = result["oof"]
-            if "artifacts" in result:
-                artifact_paths.update(result["artifacts"])
+            for t in tiers_to_run:
+                orchestrator.update_stage(mongo_run_id, f"tier_{t}", "running")
 
-            orchestrator.update_stage(run_id, f"tier_{t}", "completed", metrics=result.get("metrics"))
+                with tier_run(tier=t):
+                    with traced_stage(f"train_tier_{t}", {"tier": t}):
+                        result = _train_tier(
+                            t, loader, config, instrument_key, start_date, end_date
+                        )
 
-        if len(tiers_to_run) > 1 or tier == "full":
-            orchestrator.update_stage(run_id, "meta_learner", "running")
-            meta_result = _train_meta(all_oof, config)
-            all_metrics["meta"] = meta_result.get("metrics", {})
-            if "artifacts" in meta_result:
-                artifact_paths.update(meta_result["artifacts"])
-            orchestrator.update_stage(run_id, "meta_learner", "completed", metrics=meta_result.get("metrics"))
+                all_metrics[f"tier_{t}"] = result.get("metrics", {})
+                if "oof" in result:
+                    all_oof[f"tier_{t}"] = result["oof"]
+                if "artifacts" in result:
+                    artifact_paths.update(result["artifacts"])
 
-        flat_metrics = {}
-        for k, v in all_metrics.items():
-            if isinstance(v, dict):
-                for mk, mv in v.items():
-                    flat_metrics[f"{k}_{mk}"] = mv
-            else:
-                flat_metrics[k] = v
+                orchestrator.update_stage(
+                    mongo_run_id, f"tier_{t}", "completed",
+                    metrics=result.get("metrics"),
+                )
+                update_gpu_metrics()
 
-        orchestrator.update_stage(run_id, "quality_gate", "running")
-        gate_passed, gate_reason = check_quality_gate(int(tier) if tier != "full" else 4, flat_metrics)
-        orchestrator.update_stage(
-            run_id, "quality_gate",
-            "completed" if gate_passed else "failed",
-            metrics={"passed": gate_passed, "reason": gate_reason},
-        )
+            if len(tiers_to_run) > 1 or tier == "full":
+                orchestrator.update_stage(mongo_run_id, "meta_learner", "running")
+                with tier_run(tier="meta"):
+                    with traced_stage("train_meta_learner"):
+                        meta_result = _train_meta(all_oof, config)
+                all_metrics["meta"] = meta_result.get("metrics", {})
+                if "artifacts" in meta_result:
+                    artifact_paths.update(meta_result["artifacts"])
+                orchestrator.update_stage(
+                    mongo_run_id, "meta_learner", "completed",
+                    metrics=meta_result.get("metrics"),
+                )
 
-        if not gate_passed:
-            orchestrator.fail_run(run_id, experiment_id, f"Quality gate failed: {gate_reason}")
-            return
+            flat_metrics = {}
+            for k, v in all_metrics.items():
+                if isinstance(v, dict):
+                    for mk, mv in v.items():
+                        if isinstance(mv, (int, float)):
+                            flat_metrics[f"{k}_{mk}"] = mv
+                elif isinstance(v, (int, float)):
+                    flat_metrics[k] = v
 
-        orchestrator.update_stage(run_id, "onnx_export", "running")
-        from .pipelines.onnx_export.nodes_export import export_all_models
-        export_result = export_all_models(artifact_paths, config)
-        if isinstance(export_result, dict):
-            artifact_paths.update(export_result)
-        orchestrator.update_stage(run_id, "onnx_export", "completed")
+            with traced_stage("quality_gate"):
+                orchestrator.update_stage(mongo_run_id, "quality_gate", "running")
+                gate_passed, gate_reason = check_quality_gate(
+                    int(tier) if tier != "full" else 4, flat_metrics
+                )
+                orchestrator.update_stage(
+                    mongo_run_id, "quality_gate",
+                    "completed" if gate_passed else "failed",
+                    metrics={"passed": gate_passed, "reason": gate_reason},
+                )
 
-        artifacts = registry.register_artifacts(run_id, artifact_paths)
+            if not gate_passed:
+                orchestrator.fail_run(
+                    mongo_run_id, experiment_id,
+                    f"Quality gate failed: {gate_reason}",
+                )
+                mlflow.set_tag("pipeline_status", "quality_gate_failed")
+                duration = time.monotonic() - pipeline_start
+                TRAINING_RUN_DURATION.labels(tier=str(tier), status="failed").observe(duration)
+                TRAINING_RUN_TOTAL.labels(tier=str(tier), status="failed").inc()
+                return
 
-        report = generate_report(all_metrics, artifact_paths)
+            with traced_stage("onnx_export"):
+                orchestrator.update_stage(mongo_run_id, "onnx_export", "running")
+                from .pipelines.onnx_export.nodes_export import export_all_models
+                export_result = export_all_models(artifact_paths, config)
+                if isinstance(export_result, dict):
+                    artifact_paths.update(export_result)
+                orchestrator.update_stage(mongo_run_id, "onnx_export", "completed")
 
-        if registry.should_promote(experiment_id, flat_metrics):
-            primary_onnx = next(
-                (p for n, p in artifact_paths.items() if p.endswith(".onnx")), None
+            with traced_stage("model_registration"):
+                artifacts = registry.register_artifacts(mongo_run_id, artifact_paths)
+
+            report = generate_report(all_metrics, artifact_paths)
+
+            if registry.should_promote(experiment_id, flat_metrics):
+                primary_onnx = next(
+                    (p for n, p in artifact_paths.items() if p.endswith(".onnx")),
+                    None,
+                )
+                registry.promote(experiment_id, mongo_run_id, onnx_path=primary_onnx)
+                mlflow.set_tag("promoted", "true")
+
+            loggable_metrics = {
+                k: float(v) for k, v in flat_metrics.items()
+                if isinstance(v, (int, float))
+            }
+            mlflow.log_metrics(loggable_metrics)
+
+            orchestrator.complete_run(
+                mongo_run_id, experiment_id, flat_metrics, artifacts
             )
-            registry.promote(experiment_id, run_id, onnx_path=primary_onnx)
 
-        orchestrator.complete_run(run_id, experiment_id, flat_metrics, artifacts)
-        logger.info("=== Pipeline complete ===")
+            duration = time.monotonic() - pipeline_start
+            mlflow.log_metric("pipeline_duration_seconds", duration)
+            mlflow.set_tag("pipeline_status", "completed")
+            TRAINING_RUN_DURATION.labels(tier=str(tier), status="completed").observe(duration)
+            TRAINING_RUN_TOTAL.labels(tier=str(tier), status="completed").inc()
 
-    except Exception:
-        tb = traceback.format_exc()
-        logger.error("Pipeline failed:\n%s", tb)
-        orchestrator.fail_run(run_id, experiment_id, tb[-500:])
-        raise
+            logger.info("=== Pipeline complete (%.1fs) ===", duration)
+
+        except Exception:
+            tb = traceback.format_exc()
+            logger.error("Pipeline failed:\n%s", tb)
+            orchestrator.fail_run(mongo_run_id, experiment_id, tb[-500:])
+            mlflow.set_tag("pipeline_status", "failed")
+            mlflow.set_tag("error", tb[-250:])
+            duration = time.monotonic() - pipeline_start
+            TRAINING_RUN_DURATION.labels(tier=str(tier), status="failed").observe(duration)
+            TRAINING_RUN_TOTAL.labels(tier=str(tier), status="failed").inc()
+            raise
 
 
 def _train_tier(
@@ -201,7 +281,9 @@ def main() -> None:
     parser.add_argument("--log-level", default="INFO", help="Logging level")
     args = parser.parse_args()
 
-    _setup_logging(args.log_level)
+    setup_structured_logging(args.log_level)
+    init_otel()
+    start_metrics_server()
 
     tier_val = args.tier
     if tier_val and tier_val.isdigit():

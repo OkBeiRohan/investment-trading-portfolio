@@ -15,6 +15,10 @@ import pandas as pd
 from hmmlearn.hmm import GaussianHMM
 from sklearn.preprocessing import StandardScaler
 
+import mlflow
+from ...utils.mlflow_tracking import log_model_params
+from ...utils.observability import TRAINING_RUN_TOTAL, TRAINING_DATA_ROWS
+
 logger = logging.getLogger(__name__)
 
 TIER1_FEATURES = [
@@ -46,10 +50,22 @@ def train_regime_hmm_model(
     train_months = config.get("walk_forward_train_months", 6)
     test_months = config.get("walk_forward_test_months", 1)
 
+    log_model_params({
+        "tier": 1,
+        "model_type": "hmm",
+        "n_components": n_components,
+        "covariance_type": covariance_type,
+        "n_iter": n_iter,
+        "features": features_list,
+    }, prefix="tier1_hmm")
+
     raw = loader.load_features(
         instrument_key, start_date, end_date,
         interval_value=1, interval_unit="day",
     )
+
+    TRAINING_DATA_ROWS.labels(tier="1", table="hmm_features").inc(len(raw))
+
     if raw.empty:
         logger.warning("No daily data for HMM training")
         return {"metrics": {}, "oof": pd.DataFrame(), "artifacts": {}}
@@ -116,6 +132,12 @@ def train_regime_hmm_model(
             fold_idx, converged, persistence,
         )
 
+        mlflow.log_metrics({
+            f"fold_{fold_idx}_converged": float(converged),
+            f"fold_{fold_idx}_state_persistence_days": round(float(persistence), 2),
+            f"fold_{fold_idx}_n_states_used": float(len(set(test_states))),
+        }, step=fold_idx)
+
         for ts, state in zip(df_test["timestamp"].values, test_states):
             one_hot = [0.0] * n_components
             one_hot[int(state)] = 1.0
@@ -142,6 +164,17 @@ def train_regime_hmm_model(
         pickle.dump(best_model, f)
     with open(scaler_path, "wb") as f:
         pickle.dump(best_scaler, f)
+
+    mlflow.log_dict({"transmat": best_model.transmat_.tolist()}, "hmm_transition_matrix.json")
+    mlflow.log_dict({"means": best_model.means_.tolist()}, "hmm_means.json")
+    mlflow.log_metrics({
+        "hmm_avg_persistence_days": avg_persistence,
+        "hmm_n_folds": float(fold_idx),
+        "hmm_converged": float(all(m["converged"] for m in fold_metrics)),
+    })
+    mlflow.log_artifact(hmm_path)
+    mlflow.log_artifact(scaler_path)
+    TRAINING_RUN_TOTAL.labels(tier="1", status="completed").inc()
 
     metrics = {
         "hmm_avg_persistence_days": avg_persistence,

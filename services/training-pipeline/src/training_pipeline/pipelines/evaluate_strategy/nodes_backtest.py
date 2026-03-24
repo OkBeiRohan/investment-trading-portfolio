@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 import numpy as np
 import vectorbt as vbt
+import mlflow
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,16 @@ def simulate_strategy(
         slippage=slippage,
         freq='1m' # Minute frequency
     )
+
+    try:
+        if mlflow.active_run():
+            fig = portfolio.plot()
+            if hasattr(fig, 'figure'):
+                mlflow.log_figure(fig.figure, "equity_curve.png")
+            elif hasattr(fig, 'savefig'):
+                mlflow.log_figure(fig, "equity_curve.png")
+    except Exception:
+        pass
     
     logger.info(f"VectorBT simulation complete. Total Return: {portfolio.total_return():.2%}")
     return portfolio

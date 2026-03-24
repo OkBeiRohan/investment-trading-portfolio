@@ -8,9 +8,12 @@ Compares training-window feature distributions against a recent window
 import logging
 from typing import Optional
 
+import mlflow
 import numpy as np
 import pandas as pd
 from scipy.stats import ks_2samp
+
+from .observability import FEATURE_DRIFT_PCT, FEATURE_DRIFT_PER_FEATURE
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +71,7 @@ def detect_drift(
         is_drift = p < p_threshold
         if is_drift:
             n_drifted += 1
+            FEATURE_DRIFT_PER_FEATURE.labels(feature_name=col).set(float(stat))
         details.append({
             "feature": col,
             "ks_stat": round(float(stat), 6),
@@ -78,6 +82,7 @@ def detect_drift(
     tested = len(details)
     pct = n_drifted / tested if tested > 0 else 0.0
     drifted = pct > drift_pct_threshold
+    FEATURE_DRIFT_PCT.labels(instrument_key="global").set(pct)
 
     if drifted:
         recommendation = "retrain_recommended"
@@ -88,6 +93,22 @@ def detect_drift(
     else:
         recommendation = "no_action"
         logger.info("Drift check OK: %.1f%% drifted", pct * 100)
+
+    try:
+        if mlflow.active_run():
+            mlflow.log_metrics({
+                "drift_pct": round(pct, 4),
+                "drift_n_drifted": float(n_drifted),
+                "drift_n_tested": float(tested),
+            })
+            mlflow.set_tag("drift_detected", str(drifted))
+            mlflow.set_tag("drift_recommendation", recommendation)
+            mlflow.log_dict(
+                {"drifted": drifted, "pct_drifted": round(pct, 4), "details": details[:20]},
+                "drift_report.json",
+            )
+    except Exception:
+        pass
 
     return {
         "drifted": drifted,

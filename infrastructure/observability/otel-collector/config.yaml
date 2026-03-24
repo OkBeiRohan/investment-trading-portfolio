@@ -6,6 +6,46 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+      disk:
+      memory:
+      network:
+      filesystem:
+      load:
+      process:
+        include:
+          match_type: regexp
+          names: ["node", "python", "cargo"]
+
+  filelog:
+    include:
+      - /var/lib/docker/containers/*/*.log
+    start_at: end
+    include_file_path: true
+    include_file_name: false
+    operators:
+      - type: json_parser
+        timestamp:
+          parse_from: attributes.time
+          layout: "%Y-%m-%dT%H:%M:%S.%LZ"
+      - type: move
+        from: attributes.log
+        to: body
+      - type: move
+        from: attributes.stream
+        to: attributes["log.iostream"]
+
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: "mlflow-internal"
+          scrape_interval: 30s
+          static_configs:
+            - targets: ["mlflow-server:5000"]
+
 processors:
   batch:
     timeout: 1s
@@ -22,43 +62,63 @@ processors:
         value: production
         action: insert
 
+  resourcedetection:
+    detectors: [env, system]
+    system:
+      hostname_sources: ["os"]
+
+  filter/healthcheck:
+    logs:
+      exclude:
+        match_type: regexp
+        bodies:
+          - ".*GET /health.*"
+          - ".*GET /ready.*"
+          - ".*GET /metrics.*"
+          - ".*healthcheck.*"
+
+  attributes/loki:
+    actions:
+      - action: insert
+        key: loki.attribute.labels
+        value: "service.name,tier,component,experiment_id,run_id"
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
 exporters:
-  # Metrics -> Prometheus
   prometheus:
     endpoint: "0.0.0.0:8889"
     namespace: "trading_system"
+    resource_to_telemetry_conversion:
+      enabled: true
 
-  # Logs -> Loki
   loki:
     endpoint: "http://loki:3100/loki/api/v1/push"
+    default_labels_enabled:
+      exporter: false
+      job: true
 
-  # Traces -> Tempo
   otlp/tempo:
     endpoint: "tempo:4317"
     tls:
       insecure: true
 
-  # Sentry (Self-hosted)
-  # Note: For production, replace 'host.docker.internal' with the actual Sentry IP/Hostname
-  otlphttp/sentry:
-    endpoint: "http://host.docker.internal:9000/api/1/envelope/"
-    compression: gzip
-    tls:
-      insecure: true
-
 service:
+  extensions: [health_check]
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp/tempo] # Add otlphttp/sentry here if you want traces in Sentry
+      processors: [memory_limiter, resourcedetection, resource, batch]
+      exporters: [otlp/tempo]
 
     metrics:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
+      receivers: [otlp, hostmetrics, prometheus]
+      processors: [memory_limiter, resourcedetection, resource, batch]
       exporters: [prometheus]
 
     logs:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, filter/healthcheck, attributes/loki, resourcedetection, resource, batch]
       exporters: [loki]

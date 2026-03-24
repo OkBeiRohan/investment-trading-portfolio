@@ -15,6 +15,11 @@ import xgboost as xgb
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.preprocessing import StandardScaler
 
+import mlflow
+import mlflow.xgboost
+from ...utils.mlflow_tracking import log_model_params, log_shap_artifact, log_fold_metrics
+from ...utils.observability import TRAINING_EPOCH_DURATION, TRAINING_RUN_TOTAL, TRAINING_DATA_ROWS, traced_stage, update_gpu_metrics
+
 logger = logging.getLogger(__name__)
 
 TIER0_FEATURES = [
@@ -44,6 +49,8 @@ def train_xgboost_gap_model(
 
     Returns dict with keys: model, scaler, metrics, oof, artifacts.
     """
+    mlflow.xgboost.autolog(log_datasets=False, log_models=False)
+
     logger.info("=== Tier 0: XGBoost Gap Predictor (walk-forward) ===")
 
     features_list = config.get("features") or TIER0_FEATURES
@@ -52,11 +59,26 @@ def train_xgboost_gap_model(
     train_months = config.get("walk_forward_train_months", 6)
     test_months = config.get("walk_forward_test_months", 1)
 
+    log_model_params({
+        "tier": 0,
+        "model_type": "xgboost",
+        "objective": xgb_params.get("objective", "reg:squarederror"),
+        "max_depth": xgb_params.get("max_depth", 4),
+        "learning_rate": xgb_params.get("learning_rate", 0.05),
+        "n_estimators": xgb_params.get("n_estimators", 200),
+        "walk_forward_train_months": train_months,
+        "walk_forward_test_months": test_months,
+        "features": features_list,
+    }, prefix="tier0")
+
     raw_features = loader.load_features(
         instrument_key, start_date, end_date,
         interval_value=1, interval_unit="day",
     )
     raw_labels = loader.load_labels(instrument_key, start_date, end_date)
+
+    TRAINING_DATA_ROWS.labels(tier="0", table="features").inc(len(raw_features))
+    TRAINING_DATA_ROWS.labels(tier="0", table="labels").inc(len(raw_labels))
 
     if raw_features.empty or raw_labels.empty:
         logger.warning("No data available for Tier 0 training")
@@ -133,6 +155,12 @@ def train_xgboost_gap_model(
         rmse = float(np.sqrt(mean_squared_error(y_test, preds)))
         direction_acc = float(np.mean(np.sign(preds) == np.sign(y_test)))
 
+        mlflow.log_metrics({
+            f"fold_{fold_idx}_mae": mae,
+            f"fold_{fold_idx}_rmse": rmse,
+            f"fold_{fold_idx}_direction_accuracy": direction_acc,
+        }, step=fold_idx)
+
         fold_metrics.append({"fold": fold_idx, "mae": mae, "rmse": rmse, "direction_accuracy": direction_acc})
         logger.info("Fold %d | MAE=%.5f RMSE=%.5f DirAcc=%.3f", fold_idx, mae, rmse, direction_acc)
 
@@ -160,6 +188,17 @@ def train_xgboost_gap_model(
     scaler_path = "data/06_models/tier0_scaler.pkl"
     with open(scaler_path, "wb") as f:
         pickle.dump(best_scaler, f)
+
+    mlflow.log_metrics({
+        "avg_mae": avg_mae,
+        "avg_rmse": avg_rmse,
+        "avg_direction_accuracy": avg_dir_acc,
+        "n_folds": float(fold_idx),
+    })
+    log_shap_artifact(shap_importance, available_feats, "tier0_shap")
+    mlflow.xgboost.log_model(best_model, "tier0_model")
+    mlflow.log_artifact(scaler_path)
+    TRAINING_RUN_TOTAL.labels(tier="0", status="completed").inc()
 
     metrics = {
         "mae": avg_mae,

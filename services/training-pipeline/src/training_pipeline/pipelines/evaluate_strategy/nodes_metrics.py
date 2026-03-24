@@ -5,6 +5,7 @@ Nodes for Metrics Extraction (Phase 6)
 import logging
 import pandas as pd
 import vectorbt as vbt
+import mlflow
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,19 @@ def calculate_metrics(portfolio: vbt.Portfolio, parameters: Dict[str, Any]) -> D
             "Sortino_Ratio": float(sortino_ratio),
             "Win_Rate_Pct": float(win_rate),
         }
+
+        try:
+            if mlflow.active_run():
+                mlflow.log_metrics({
+                    "backtest_total_return": metrics["Total_Return_Pct"],
+                    "backtest_annualized_return": metrics["Annualized_Return_Pct"],
+                    "backtest_max_drawdown": metrics["Max_Drawdown_Pct"],
+                    "backtest_sharpe_ratio": metrics["Sharpe_Ratio"],
+                    "backtest_sortino_ratio": metrics["Sortino_Ratio"],
+                    "backtest_win_rate": metrics["Win_Rate_Pct"],
+                })
+        except Exception:
+            pass
         
         logger.info(f"Walk-Forward PnL Metrics: {metrics}")
         

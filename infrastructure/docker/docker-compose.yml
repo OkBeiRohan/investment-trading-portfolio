@@ -5,11 +5,11 @@ services:
   # Databases & Infrastructure
   # ==========================================
   questdb:
-    image: questdb/questdb:latest
+    image: questdb/questdb:8.2.2
     ports:
-      - "9000:9000" # REST API / Web Console / ILP
-      - "8812:8812" # PostgreSQL Wire Protocol
-      - "9003:9003" # Min health server
+      - "9000:9000"
+      - "8812:8812"
+      - "9003:9003"
     environment:
       QDB_CAIRO_COMMIT_LAG: 1000
       QDB_CAIRO_MAX_UNCOMMITTED_ROWS: 100000
@@ -17,9 +17,19 @@ services:
       - questdb_data:/root/.questdb
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9003/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   mongodb:
-    image: mongo:7
+    image: mongo:7.0
     ports:
       - "27017:27017"
     command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
@@ -35,214 +45,541 @@ services:
       retries: 5
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   mongo-init:
-    image: mongo:7
+    image: mongo:7.0
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     command: >
-      bash -c "sleep 10 && mongosh --host mongodb:27017 --eval 'try { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] }) } catch (e) { print(e) }'"
+      bash -c "mongosh --host mongodb:27017 --eval 'try { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] }) } catch (e) { print(e) }'"
     networks:
       - trading-net
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   chromadb:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:0.5.23
     ports:
       - "8000:8000"
     volumes:
       - chroma_data:/chroma/chroma
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ==========================================
+  # MLflow Stack
+  # ==========================================
+  mlflow-db:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: mlflow
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: ${MLFLOW_DB_PASSWORD:-mlflow_secret}
+    volumes:
+      - mlflow_db_data:/var/lib/postgresql/data
+    networks:
+      - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow-artifacts:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    ports:
+      - "9010:9000"
+      - "9011:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-mlflow}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-mlflow_secret}
+    volumes:
+      - mlflow_artifacts_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  mlflow-init:
+    image: minio/mc:latest
+    depends_on:
+      mlflow-artifacts:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://mlflow-artifacts:9000 $${MINIO_ROOT_USER:-mlflow} $${MINIO_ROOT_PASSWORD:-mlflow_secret};
+      mc mb --ignore-existing myminio/mlflow;
+      exit 0;
+      "
+    networks:
+      - trading-net
+
+  mlflow-server:
+    build:
+      context: ./mlflow
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql://mlflow:${MLFLOW_DB_PASSWORD:-mlflow_secret}@mlflow-db:5432/mlflow
+      MLFLOW_ARTIFACT_ROOT: s3://mlflow/
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-mlflow}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-mlflow_secret}
+      MLFLOW_S3_ENDPOINT_URL: http://mlflow-artifacts:9000
+    command: >
+      server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql://mlflow:${MLFLOW_DB_PASSWORD:-mlflow_secret}@mlflow-db:5432/mlflow
+      --default-artifact-root s3://mlflow/
+      --workers 4
+    depends_on:
+      mlflow-db:
+        condition: service_healthy
+      mlflow-init:
+        condition: service_completed_successfully
+    networks:
+      - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')\""]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
 
   # ==========================================
   # Core Applications
   # ==========================================
   web:
-    build: ../../apps/web
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       API_URL: http://api:3004
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: web
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   api:
-    build: ../../apps/api
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
     ports:
       - "3004:3004"
+      - "8081:8081"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3004
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: api
     depends_on:
-      - mongodb
-      - redis
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
 
   algo-worker:
-    build: ../../apps/algo-worker
+    build:
+      context: ../..
+      dockerfile: apps/algo-worker/Dockerfile
     ports:
       - "3001:3001"
+      - "8083:8081"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: algo-worker
     volumes:
-      - ../../models:/app/models # ONNX models
+      - ../../models:/app/models
     depends_on:
-      - mongodb
-      - redis
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
   # ==========================================
   # Microservices
   # ==========================================
   market-feeder:
-    build: ../../services/market-feeder
+    build:
+      context: ../..
+      dockerfile: services/market-feeder/Dockerfile
     ports:
       - "3002:3002"
-      - "50051:50051" # gRPC
+      - "50051:50051"
+      - "8084:8081"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       REDIS_URL: redis://redis:6379
       QUESTDB_HOST: questdb
       QUESTDB_PORT: 9000
       GRPC_PORT: 50051
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: market-feeder
     depends_on:
-      - redis
-      - questdb
+      redis:
+        condition: service_healthy
+      questdb:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   data-processor:
-    build: ../../services/data-processor
+    build:
+      context: ../..
+      dockerfile: services/data-processor/Dockerfile
     ports:
       - "3003:3003"
+      - "8085:8081"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       QUESTDB_HOST: questdb
       QUESTDB_PORT: 8812
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: data-processor
     depends_on:
-      - questdb
-      - mongodb
+      questdb:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   wealth-management:
-    build: ../../services/wealth-management
+    build:
+      context: ../..
+      dockerfile: services/wealth-management/Dockerfile
     ports:
       - "3005:3005"
+      - "8086:8081"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3005
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       QUESTDB_HOST: questdb
       REDIS_URL: redis://redis:6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: wealth-management
     depends_on:
-      - mongodb
-      - questdb
-      - redis
+      mongodb:
+        condition: service_healthy
+      questdb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   document-processor:
-    build: ../../services/document-processor
+    build:
+      context: ../..
+      dockerfile: services/document-processor/Dockerfile
     ports:
       - "3006:3006"
+      - "8087:8081"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3006
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: document-processor
     depends_on:
-      - mongodb
-      - redis
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   wealth-analyzer:
-    build: ../../services/wealth-analyzer
+    build:
+      context: ../..
+      dockerfile: services/wealth-analyzer/Dockerfile
     ports:
       - "3007:3007"
+      - "8088:8081"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3007
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       QUESTDB_HOST: questdb
       CHROMA_HOST: chromadb
       CHROMA_PORT: 8000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: wealth-analyzer
     depends_on:
-      - mongodb
-      - questdb
-      - chromadb
+      mongodb:
+        condition: service_healthy
+      questdb:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   notification-service:
-    build: ../../services/notification-service
+    build:
+      context: ../..
+      dockerfile: services/notification-service/Dockerfile
     ports:
-      - "3008:3000" # Map internal 3000 to host 3008
+      - "3008:3000"
+      - "8089:8081"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: notification-service
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   # ==========================================
   # Compute & ML
   # ==========================================
   compute-engine:
-    build: ../../packages/compute-engine
+    build:
+      context: ../..
+      dockerfile: packages/compute-engine/Dockerfile
     environment:
       RUST_LOG: info
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: compute-engine
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   training-pipeline:
-    build: ../../services/training-pipeline
+    build:
+      context: ../..
+      dockerfile: services/training-pipeline/Dockerfile
     ports:
-      - "8888:8888" # Jupyter
+      - "8082:8082"
+      - "8888:8888"
     environment:
       QUESTDB_HOST: questdb
+      QUESTDB_PORT: 8812
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
+      MLFLOW_TRACKING_URI: http://mlflow-server:5000
+      MLFLOW_S3_ENDPOINT_URL: http://mlflow-artifacts:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-mlflow}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-mlflow_secret}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: training-pipeline
+      PROMETHEUS_METRICS_PORT: 8082
+    volumes:
+      - ../../models:/app/models
     depends_on:
-      - questdb
-      - mongodb
+      questdb:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      mlflow-server:
+        condition: service_healthy
     networks:
       - trading-net
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ==========================================
+  # Metric Exporters
+  # ==========================================
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.42.0
+    ports:
+      - "9216:9216"
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017
+    command:
+      - "--mongodb.uri=mongodb://mongodb:27017"
+      - "--collect-all"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
 volumes:
   questdb_data:
   mongo_data:
   redis_data:
   chroma_data:
+  mlflow_db_data:
+  mlflow_artifacts_data:
 
 networks:
   trading-net:
