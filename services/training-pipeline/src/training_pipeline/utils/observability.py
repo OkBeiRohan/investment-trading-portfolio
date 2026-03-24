@@ -101,6 +101,11 @@ TRAINING_GPU_MEMORY = Gauge(
     "GPU memory used in bytes",
 )
 
+TRAINING_GPU_MEMORY_TOTAL = Gauge(
+    "training_gpu_memory_total_bytes",
+    "Total GPU memory in bytes",
+)
+
 TRAINING_DATA_ROWS = Counter(
     "training_data_rows_loaded",
     "Number of data rows loaded for training",
@@ -163,6 +168,7 @@ def update_gpu_metrics() -> None:
         mem_used = torch.cuda.memory_allocated(0)
         mem_total = torch.cuda.get_device_properties(0).total_mem
         TRAINING_GPU_MEMORY.set(mem_used)
+        TRAINING_GPU_MEMORY_TOTAL.set(mem_total)
         TRAINING_GPU_UTILIZATION.set(mem_used / mem_total * 100 if mem_total > 0 else 0)
     except ImportError:
         pass

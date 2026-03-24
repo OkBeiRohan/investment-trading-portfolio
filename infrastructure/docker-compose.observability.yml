@@ -107,7 +107,7 @@ services:
       - ./observability/grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./observability/grafana/provisioning:/etc/grafana/provisioning
     ports:
-      - "3100:3000"
+      - "3300:3000"
     depends_on:
       prometheus:
         condition: service_healthy

@@ -98,7 +98,7 @@ groups:
     interval: 30s
     rules:
       - alert: GPUMemoryHigh
-        expr: training_gpu_utilization > 90
+        expr: training_gpu_memory_used_bytes / training_gpu_memory_total_bytes > 0.90
         for: 10m
         labels:
           severity: warning
@@ -106,6 +106,16 @@ groups:
         annotations:
           summary: "GPU memory utilization above 90%"
           description: "GPU memory has been above 90% for 10 minutes. Training may OOM."
+
+      - alert: GPUComputeHigh
+        expr: training_gpu_utilization > 95
+        for: 10m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU compute utilization above 95%"
+          description: "GPU compute has been above 95% for 10 minutes. Training may be bottlenecked."
 
       - alert: ServiceDown
         expr: up == 0
