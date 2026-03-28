@@ -527,8 +527,6 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: training-pipeline
       PROMETHEUS_METRICS_PORT: 8082
-    volumes:
-      - ../../models:/app/models
     depends_on:
       questdb:
         condition: service_healthy
@@ -542,11 +540,6 @@ services:
       resources:
         limits:
           memory: 16G
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
   # ==========================================
   # Metric Exporters

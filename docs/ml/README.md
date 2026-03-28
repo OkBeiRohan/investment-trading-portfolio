@@ -63,7 +63,7 @@ This directory contains documentation for the **AI trading system** that powers 
 | Document                                                     | Description                                                      |
 | ------------------------------------------------------------ | ---------------------------------------------------------------- |
 | [**TIER0_MODELS.md**](./TIER0_MODELS.md)                     | Pre-Market Gap Predictor (XGBoost, 9:08 AM)                      |
-| [**TIER1_MODELS.md**](./TIER1_MODELS.md)                     | Regime HMM, PatchTST, Mamba model specifications                 |
+| [**TIER1_MODELS.md**](./TIER1_MODELS.md)                     | Regime HMM + PatchTST model specifications                       |
 | [**TIER2_MODELS.md**](./TIER2_MODELS.md)                     | Intraday Navigator (LightGBM + TFT + Mamba, 5m-30m)             |
 | [**TIER3_MODELS.md**](./TIER3_MODELS.md)                     | Microstructure Scalper (LiT Transformer, 100ms ticks)            |
 | [**TIER4_MODELS.md**](./TIER4_MODELS.md)                     | Meta-Learner signal fusion and strategy selection                |
@@ -93,6 +93,7 @@ This directory contains documentation for the **AI trading system** that powers 
 | [**MLFLOW_PLATFORM.md**](./MLFLOW_PLATFORM.md)         | MLflow 3.x platform: tracking, HPO, evaluation, comparison, registry |
 | [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md)     | Python training pipeline (runner, tiers, MLflow native logging)      |
 | [**TRAINING_STRATEGY.md**](./TRAINING_STRATEGY.md)     | CPCV validation, walk-forward, drift detection                       |
+| [**SEBI_COMPLIANCE.md**](./SEBI_COMPLIANCE.md)         | SEBI algo trading compliance: Algo-ID, audit trail, 2FA, VAPT       |
 
 ---
 

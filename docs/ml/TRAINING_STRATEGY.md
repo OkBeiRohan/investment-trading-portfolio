@@ -375,51 +375,53 @@ Key insight: Each test period is evaluated with ALL prior history.
 
 ## Label Generation
 
-### Directional Labels (3-Class)
+### Triple-Barrier Labeling (Volatility-Scaled)
+
+The production labeling strategy uses the **triple-barrier method** (Lopez de Prado, 2018) with volatility-scaled barriers rather than fixed percentage thresholds. Each observation gets three barriers:
+
+1. **Upper barrier (take-profit):** dynamically scaled by recent realized volatility
+2. **Lower barrier (stop-loss):** dynamically scaled by recent realized volatility
+3. **Vertical barrier (max holding time):** the forecast horizon
+
+This produces labels that reflect realistic trading conditions -- direction, risk, and timing -- rather than treating all market conditions equally.
 
 ```python
-def generate_directional_labels(
+def generate_triple_barrier_labels(
     df: pd.DataFrame,
     price_col: str = 'close',
     horizons: list[int] = [5, 15, 30],
-    threshold_pct: float = 0.002
+    vol_lookback: int = 20,
+    vol_multiplier: float = 1.5,
 ) -> pd.DataFrame:
     """
-    Generate multi-horizon directional labels.
+    Generate multi-horizon labels using volatility-scaled triple barriers.
 
-    For each horizon, create:
-    - target_return_{horizon}m: Continuous return
-    - target_direction_{horizon}m: Categorical (DOWN=-1, NEUTRAL=0, UP=1)
+    Barriers are set at +/- vol_multiplier * rolling_std for each horizon.
+    This replaces the fixed threshold_pct approach to account for varying
+    market regimes (volatile vs ranging periods).
 
-    Parameters:
-    -----------
-    horizons : list[int]
-        Forecast horizons in minutes (e.g., [5, 15, 30])
-    threshold_pct : float
-        Threshold for UP/DOWN classification (default: 0.2%)
+    See also: THEORY_AND_EVIDENCE.md for the academic foundation.
     """
     labels = pd.DataFrame(index=df.index)
+    rolling_vol = df[price_col].pct_change().rolling(vol_lookback).std()
 
     for horizon in horizons:
-        # Future return
         future_price = df[price_col].shift(-horizon)
         returns = (future_price - df[price_col]) / df[price_col]
+        threshold = rolling_vol * vol_multiplier
 
         labels[f'target_return_{horizon}m'] = returns
 
-        # Direction classification
         direction = pd.Series(0, index=df.index)  # NEUTRAL
-        direction[returns > threshold_pct] = 1     # UP
-        direction[returns < -threshold_pct] = -1   # DOWN
+        direction[returns > threshold] = 1          # UP (hit upper barrier)
+        direction[returns < -threshold] = -1        # DOWN (hit lower barrier)
 
         labels[f'target_direction_{horizon}m'] = direction
 
-        # Class distribution check
         dist = direction.value_counts(normalize=True)
         print(f"Horizon {horizon}m: DOWN={dist.get(-1, 0):.1%}, "
               f"NEUTRAL={dist.get(0, 0):.1%}, UP={dist.get(1, 0):.1%}")
 
-    # Mark invalid labels (end of dataset)
     max_horizon = max(horizons)
     labels['is_valid'] = True
     labels.iloc[-max_horizon:, labels.columns.get_loc('is_valid')] = False
@@ -959,39 +961,63 @@ def calculate_metrics(
 
 ## Monitoring & Drift Detection
 
+Two complementary drift metrics are used (per Evidently AI best practices):
+
+1. **KS test (Kolmogorov-Smirnov):** Hypothesis test comparing training vs live distributions. Sensitive to any distributional change.
+2. **PSI (Population Stability Index):** Industry-standard metric for population shift. PSI < 0.1 = stable, 0.1-0.25 = moderate shift, > 0.25 = significant drift.
+
 ```python
+import numpy as np
 from scipy.stats import ks_2samp
+
+def compute_psi(expected: np.ndarray, actual: np.ndarray, bins: int = 10) -> float:
+    """Population Stability Index between two distributions."""
+    breakpoints = np.percentile(expected, np.linspace(0, 100, bins + 1))
+    expected_pcts = np.histogram(expected, bins=breakpoints)[0] / len(expected)
+    actual_pcts = np.histogram(actual, bins=breakpoints)[0] / len(actual)
+    expected_pcts = np.clip(expected_pcts, 1e-6, None)
+    actual_pcts = np.clip(actual_pcts, 1e-6, None)
+    return float(np.sum((actual_pcts - expected_pcts) * np.log(actual_pcts / expected_pcts)))
 
 def detect_feature_drift(
     training_features: pd.DataFrame,
     live_features: pd.DataFrame,
-    threshold_pvalue: float = 0.05
+    ks_threshold: float = 0.05,
+    psi_threshold: float = 0.25,
 ) -> dict:
     """
-    Detect distribution drift using Kolmogorov-Smirnov test.
+    Detect distribution drift using KS test + PSI.
+
+    A feature is flagged as drifted if EITHER the KS p-value < ks_threshold
+    OR the PSI > psi_threshold. Results are logged to MLflow artifacts.
     """
     drift_results = {}
 
     for col in training_features.columns:
-        if col in live_features.columns:
-            stat, pvalue = ks_2samp(
-                training_features[col].dropna(),
-                live_features[col].dropna()
-            )
+        if col not in live_features.columns:
+            continue
+        train_vals = training_features[col].dropna().values
+        live_vals = live_features[col].dropna().values
+        if len(train_vals) < 10 or len(live_vals) < 10:
+            continue
 
-            drift_results[col] = {
-                'ks_statistic': stat,
-                'p_value': pvalue,
-                'drift_detected': pvalue < threshold_pvalue
-            }
+        stat, pvalue = ks_2samp(train_vals, live_vals)
+        psi = compute_psi(train_vals, live_vals)
+
+        drift_results[col] = {
+            'ks_statistic': stat,
+            'p_value': pvalue,
+            'psi': psi,
+            'drift_detected': pvalue < ks_threshold or psi > psi_threshold,
+        }
 
     n_drifted = sum(1 for r in drift_results.values() if r['drift_detected'])
 
     return {
         'feature_results': drift_results,
         'n_features_drifted': n_drifted,
-        'drift_ratio': n_drifted / len(drift_results),
-        'should_retrain': n_drifted / len(drift_results) > 0.2  # >20% features drifted
+        'drift_ratio': n_drifted / len(drift_results) if drift_results else 0,
+        'should_retrain': (n_drifted / len(drift_results) > 0.2) if drift_results else False,
     }
 ```
 

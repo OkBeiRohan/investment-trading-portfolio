@@ -1,64 +1,40 @@
-/**
- * Trading Signal Schemas
- * ML model predictions and confidence scores
- */
-
 import { z } from "zod";
-import { PredictionEnum } from "./enums";
-import { mongoDocumentSchema, userScopedSchema, timestampSchema } from "./base";
 
-// ============================================
-// Model Contributions
-// ============================================
-
-export const modelContributionsSchema = z.object({
-  xgboost: z.number(),
-  cnnLstm: z.number(),
-  ginn: z.number(),
-  svm: z.number(),
-});
-
-export type ModelContributions = z.infer<typeof modelContributionsSchema>;
-
-// ============================================
-// Signal Metadata
-// ============================================
-
-export const signalMetadataSchema = z.object({
-  modelVersions: z.record(z.string(), z.string()),
+export const tradingSignalSchema = z.object({
+  instrumentKey: z.string(),
+  timestamp: z.string().datetime(),
+  finalScore: z.number(),
+  confidenceWeights: z.array(z.number()),
+  regimeState: z.number().int().min(0).max(3),
+  tierPredictions: z.record(z.string(), z.number()),
   latencyMs: z.number(),
+  modelVersions: z.record(z.string(), z.string()).optional(),
+  features: z.record(z.string(), z.number()).optional(),
 });
-
-export type SignalMetadata = z.infer<typeof signalMetadataSchema>;
-
-// ============================================
-// Trading Signal
-// ============================================
-
-export const tradingSignalSchema = mongoDocumentSchema
-  .merge(userScopedSchema)
-  .extend({
-    timestamp: z.date(),
-    prediction: PredictionEnum,
-    confidence: z.number().min(0).max(1),
-    probability: z.number().min(0).max(1),
-    modelContributions: modelContributionsSchema,
-    features: z.record(z.string(), z.unknown()),
-    metadata: signalMetadataSchema.optional(),
-  })
-  .merge(timestampSchema);
 
 export type TradingSignal = z.infer<typeof tradingSignalSchema>;
 
-// ============================================
-// Type Utilities
-// ============================================
+export const orderRecordSchema = z.object({
+  orderId: z.string(),
+  experimentId: z.string().optional(),
+  algoId: z.string().optional(),
+  instrumentKey: z.string(),
+  side: z.enum(["BUY", "SELL"]),
+  orderType: z.enum(["MARKET", "LIMIT", "SL", "SL-M"]),
+  quantity: z.number().int().positive(),
+  price: z.number().optional(),
+  triggerPrice: z.number().optional(),
+  status: z.enum(["PENDING", "FILLED", "PARTIALLY_FILLED", "CANCELLED", "REJECTED", "FAILED"]),
+  fillPrice: z.number().optional(),
+  fillQuantity: z.number().optional(),
+  pnl: z.number().optional(),
+  signalScore: z.number(),
+  strategyName: z.string(),
+  sandbox: z.boolean(),
+  clientIp: z.string().optional(),
+  latencyMs: z.number().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime().optional(),
+});
 
-export type TradingSignalCreateInput = Omit<
-  TradingSignal,
-  "_id" | "createdAt" | "updatedAt"
->;
-
-export type TradingSignalUpdateInput = Partial<
-  Omit<TradingSignal, "_id" | "userId" | "createdAt" | "updatedAt">
->;
+export type OrderRecord = z.infer<typeof orderRecordSchema>;

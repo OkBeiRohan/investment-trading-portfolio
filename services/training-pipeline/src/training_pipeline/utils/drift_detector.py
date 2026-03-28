@@ -1,8 +1,12 @@
 """
-Feature drift detection using the Kolmogorov-Smirnov test.
+Feature drift detection using KS test + PSI (Population Stability Index).
 
 Compares training-window feature distributions against a recent window
 (default 7 days) to flag significant distribution shifts.
+
+Two complementary metrics:
+- KS test: hypothesis test for any distributional change
+- PSI: industry-standard for population shift (<0.1 stable, 0.1-0.25 moderate, >0.25 significant)
 """
 
 import logging
@@ -18,11 +22,22 @@ from .observability import FEATURE_DRIFT_PCT, FEATURE_DRIFT_PER_FEATURE
 logger = logging.getLogger(__name__)
 
 
+def _compute_psi(expected: np.ndarray, actual: np.ndarray, bins: int = 10) -> float:
+    """Population Stability Index between two distributions."""
+    breakpoints = np.percentile(expected, np.linspace(0, 100, bins + 1))
+    expected_pcts = np.histogram(expected, bins=breakpoints)[0] / len(expected)
+    actual_pcts = np.histogram(actual, bins=breakpoints)[0] / len(actual)
+    expected_pcts = np.clip(expected_pcts, 1e-6, None)
+    actual_pcts = np.clip(actual_pcts, 1e-6, None)
+    return float(np.sum((actual_pcts - expected_pcts) * np.log(actual_pcts / expected_pcts)))
+
+
 def detect_drift(
     train_df: pd.DataFrame,
     recent_df: pd.DataFrame,
     feature_cols: Optional[list[str]] = None,
     p_threshold: float = 0.05,
+    psi_threshold: float = 0.25,
     drift_pct_threshold: float = 0.20,
 ) -> dict:
     """
@@ -68,7 +83,8 @@ def detect_drift(
         if len(a) < 30 or len(b) < 30:
             continue
         stat, p = ks_2samp(a, b)
-        is_drift = p < p_threshold
+        psi = _compute_psi(a, b)
+        is_drift = p < p_threshold or psi > psi_threshold
         if is_drift:
             n_drifted += 1
             FEATURE_DRIFT_PER_FEATURE.labels(feature_name=col).set(float(stat))
@@ -76,6 +92,7 @@ def detect_drift(
             "feature": col,
             "ks_stat": round(float(stat), 6),
             "p_value": round(float(p), 6),
+            "psi": round(float(psi), 6),
             "drifted": is_drift,
         })
 

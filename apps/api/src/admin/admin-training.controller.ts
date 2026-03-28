@@ -112,7 +112,11 @@ export class AdminTrainingController {
 
   @Post('experiments/:id/run')
   @HttpCode(HttpStatus.CREATED)
-  async triggerRun(@Param('id') id: string, @Session() session: any) {
+  async triggerRun(
+    @Param('id') id: string,
+    @Body() body: { tier?: string; tune?: boolean; nTrials?: number } = {},
+    @Session() session: any,
+  ) {
     const run = await this.trainingRunRepo.create({
       experimentId: id,
       status: 'queued',
@@ -124,11 +128,45 @@ export class AdminTrainingController {
       userId: session.user.id,
       targetId: run._id?.toString(),
       targetType: 'training_run',
-      details: { experimentId: id },
+      details: { experimentId: id, tier: body.tier, tune: body.tune },
     });
 
     this.logger.log(`Training run triggered for experiment ${id} by admin ${session.user.id}`);
-    return run;
+
+    const tier = body.tier ?? 'full';
+    const tuneFlag = body.tune ? '--tune' : '';
+    const nTrials = body.nTrials ?? 30;
+    const cmd = `python -m training_pipeline.runner --experiment-id ${id} --tier ${tier} ${tuneFlag} ${tuneFlag ? `--n-trials ${nTrials}` : ''} --log-level INFO`.trim();
+
+    this.spawnTrainingPipeline(id, run._id?.toString() ?? '', cmd);
+
+    return { ...run.toObject?.() ?? run, command: cmd };
+  }
+
+  private spawnTrainingPipeline(experimentId: string, runId: string, cmd: string) {
+    const { exec } = require('child_process');
+    this.logger.log(`Spawning training pipeline: ${cmd}`);
+
+    const child = exec(cmd, {
+      env: { ...process.env },
+      timeout: 4 * 60 * 60 * 1000,
+    });
+
+    child.stdout?.on('data', (data: string) => {
+      this.logger.log(`[training:${experimentId}] ${data.trim()}`);
+    });
+    child.stderr?.on('data', (data: string) => {
+      this.logger.warn(`[training:${experimentId}] ${data.trim()}`);
+    });
+    child.on('exit', async (code: number) => {
+      const status = code === 0 ? 'completed' : 'failed';
+      this.logger.log(`Training pipeline exited with code ${code} (${status})`);
+      try {
+        await this.trainingRunRepo.updateStatus(runId, status);
+      } catch (e: any) {
+        this.logger.error(`Failed to update run status: ${e.message}`);
+      }
+    });
   }
 
   @Get('experiments/:id/runs')
