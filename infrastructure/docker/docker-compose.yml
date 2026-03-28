@@ -268,14 +268,16 @@ services:
       NODE_ENV: production
       MONGODB_URI: mongodb://mongodb:27017/investment-trading
       REDIS_URL: redis://redis:6379
+      MLFLOW_TRACKING_URI: http://mlflow-server:5000
+      MLFLOW_SERVING_BASE_URL: http://mlflow-model-server
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: algo-worker
-    volumes:
-      - ../../models:/app/models
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mlflow-model-server:
         condition: service_healthy
     networks:
       - trading-net
@@ -284,6 +286,42 @@ services:
       resources:
         limits:
           memory: 2G
+
+  # ==========================================
+  # MLflow Model Serving
+  # ==========================================
+  mlflow-model-server:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/mlflow-serving/Dockerfile
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow-server:5000
+      AWS_ACCESS_KEY_ID: mlflow_user
+      AWS_SECRET_ACCESS_KEY: mlflow_password
+      MLFLOW_S3_ENDPOINT_URL: http://mlflow-artifacts:9000
+    ports:
+      - "5001:5001"
+      - "5002:5002"
+      - "5003:5003"
+      - "5004:5004"
+      - "5005:5005"
+      - "5006:5006"
+    depends_on:
+      mlflow-server:
+        condition: service_healthy
+    networks:
+      - trading-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 4G
 
   # ==========================================
   # Microservices

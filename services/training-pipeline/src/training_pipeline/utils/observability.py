@@ -78,19 +78,6 @@ FEATURE_DRIFT_PER_FEATURE = Gauge(
     ["feature_name"],
 )
 
-ONNX_EXPORT_DURATION = Histogram(
-    "onnx_export_duration_seconds",
-    "Duration of ONNX model export",
-    ["tier"],
-    buckets=(0.5, 1, 2, 5, 10, 30, 60),
-)
-
-ONNX_MODEL_SIZE = Gauge(
-    "onnx_model_size_bytes",
-    "Size of exported ONNX model",
-    ["tier", "model_name"],
-)
-
 TRAINING_GPU_UTILIZATION = Gauge(
     "training_gpu_utilization",
     "GPU utilization percentage during training",

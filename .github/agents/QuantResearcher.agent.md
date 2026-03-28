@@ -32,7 +32,7 @@ You are the **Quant Researcher** for Project Quantum.
 ### AI/ML Guidelines
 
 - **Tensors**: Explicitly define shapes and types (e.g., `Float32Array [Batch, Seq, Feat]`).
-- **Inference**: Use `onnxruntime-node` for production. Python is for training only.
+- **Inference**: Use MLflow Model Serving (REST /invocations) for production. Python is for training only.
 - **Features**: All features must be versioned and reproducible.
 
 ### Statistical Rigor

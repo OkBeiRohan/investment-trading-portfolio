@@ -61,15 +61,15 @@ export class PredictionService implements OnModuleInit {
     this.featureBuffer = new SharedArrayBuffer(1 * 60 * 13 * 4); // Float32: 1 batch, 60 timesteps, 13 features
     this.resultBuffer = new SharedArrayBuffer(3 * 4); // 3 classes (VOL_UP, NEUTRAL, VOL_DOWN)
 
-    // Spawn dedicated GPU worker
+    // Spawn dedicated inference worker (calls MLflow Serving over HTTP)
     this.inferenceWorker = new Worker('./dist/inference-worker.js', {
       workerData: {
         featureBuffer: this.featureBuffer,
         resultBuffer: this.resultBuffer,
-        modelPaths: {
-          xgboost: 'models/xgboost.onnx',
-          cnnlstm: 'models/cnn_lstm.onnx',
-          // ... 8 models
+        mlflowEndpoints: {
+          xgboost: 'http://mlflow-serving-tier0:5001/invocations',
+          lightgbm: 'http://mlflow-serving-tier2:5004/invocations',
+          // ... 8 MLflow Serving endpoints
         },
       },
     });
@@ -104,48 +104,46 @@ export class PredictionService implements OnModuleInit {
 ```
 
 ```typescript
-// Worker Thread (GPU Inference) - Isolated from Event Loop
+// Worker Thread (MLflow Serving Client) - Isolated from Event Loop
 // src/prediction/inference-worker.ts
 
 import { parentPort, workerData } from 'worker_threads';
-import * as ort from 'onnxruntime-node';
 
-// Load models on worker startup (not on main thread)
-const sessions = new Map<string, ort.InferenceSession>();
+const endpoints = new Map<string, string>();
 
-async function initModels() {
-  for (const [name, path] of Object.entries(workerData.modelPaths)) {
-    const session = await ort.InferenceSession.create(path, {
-      executionProviders: [
-        'TensorrtExecutionProvider', // Primary: NVIDIA TensorRT (fastest)
-        'CUDAExecutionProvider', // Fallback: Standard CUDA
-        'CPUExecutionProvider', // Emergency: CPU (if GPU fails)
-      ],
-      graphOptimizationLevel: 'all',
-      enableProfiling: false, // Disable in production (saves 2-5ms)
-      executionMode: 'sequential', // Not parallel (single inference at a time)
-    });
-    sessions.set(name, session);
+async function initEndpoints() {
+  for (const [name, url] of Object.entries(workerData.mlflowEndpoints)) {
+    endpoints.set(name, url as string);
+    // Health-check each MLflow Serving endpoint
+    const health = await fetch(`${url}/../health`).catch(() => null);
+    if (!health?.ok) {
+      console.warn(`MLflow Serving endpoint not ready: ${name} at ${url}`);
+    }
   }
   parentPort.postMessage({ type: 'ready' });
 }
 
-initModels();
+initEndpoints();
 
 // Handle inference requests
 parentPort.on('message', async ({ inferenceId }) => {
   const startTime = performance.now();
 
   // Read features from shared memory (zero-copy)
-  const features = new Float32Array(workerData.featureBuffer);
-  const inputTensor = new ort.Tensor('float32', features, [1, 60, 13]);
+  const features = Array.from(new Float32Array(workerData.featureBuffer));
 
-  // Run ensemble inference
-  const predictions = [];
-  for (const [name, session] of sessions) {
-    const output = await session.run({ input: inputTensor });
-    predictions.push(output.output.data as Float32Array);
-  }
+  // Run ensemble inference via MLflow Serving endpoints (parallel HTTP)
+  const predictions = await Promise.all(
+    Array.from(endpoints.entries()).map(async ([name, url]) => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: [features] }),
+      });
+      const result = await response.json();
+      return result.predictions[0] as number[];
+    })
+  );
 
   // Meta-learner (weighted average)
   const weights = [0.2, 0.18, 0.15, 0.15, 0.12, 0.1, 0.05, 0.05]; // 8 models
@@ -447,94 +445,93 @@ if (global.gc) {
 
 ## 🔥 GPU Inference Optimization
 
-### **1. TensorRT FP16 Quantization**
+### **1. MLflow Serving with GPU Acceleration**
 
-```python
-# training-pipeline: Export models with FP16
-import onnx
-from onnxruntime.quantization import quantize_dynamic, QuantType
+GPU optimization is handled within the MLflow Serving container configuration.
+Models are logged with native MLflow flavors and served with GPU-enabled containers.
 
-# Original model (FP32)
-model = onnx.load('xgboost.onnx')
-
-# Quantize to FP16 (half precision)
-quantize_dynamic(
-    'xgboost.onnx',
-    'xgboost_fp16.onnx',
-    weight_type=QuantType.QFloat16
-)
+```yaml
+# docker-compose.yml - MLflow Serving with GPU
+mlflow-serving-tier2:
+  image: mlflow-serving-gpu:latest
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - capabilities: [gpu]
+  environment:
+    MLFLOW_MODEL_URI: "models:/tier2-tft@champion"
+    MLFLOW_WORKERS: 2
+    GUNICORN_CMD_ARGS: "--timeout 60"
 ```
 
 **Impact**:
 
-- ✅ Inference speed: 50ms → 25ms (2x faster)
-- ✅ Memory: 200MB → 100MB (50% reduction)
-- ✅ Accuracy loss: <0.1% (negligible for trading)
+- ✅ Inference speed: optimized within serving container (TensorRT/CUDA)
+- ✅ No model format conversion needed -- native MLflow flavors
+- ✅ Hot-swap models by updating @champion alias (zero-downtime)
 
 ---
 
 ### **2. Batch Inference (When Applicable)**
 
 ```typescript
-// ❌ BAD: Infer one symbol at a time (3 symbols = 3 GPU calls = 90ms)
+// ❌ BAD: Infer one symbol at a time (3 symbols = 3 HTTP calls = 90ms)
 for (const symbol of ['NIFTY', 'BANKNIFTY', 'FINNIFTY']) {
   const features = getFeatures(symbol);
-  const prediction = await model.infer(features); // 30ms each
+  const prediction = await callMlflowServing(features); // 30ms each
 }
 ```
 
 ```typescript
-// ✅ GOOD: Batch inference (3 symbols = 1 GPU call = 35ms)
+// ✅ GOOD: Batch inference (3 symbols = 1 HTTP call = 35ms)
 const symbols = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
-const batchFeatures = new Float32Array(3 * 60 * 13); // Batch=3
+const batchInputs = symbols.map((s) => getFeatures(s));
+
+const response = await fetch(MLFLOW_ENDPOINT, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ inputs: batchInputs }),
+});
+const result = await response.json();
 
 for (let i = 0; i < symbols.length; i++) {
-  const features = getFeatures(symbols[i]);
-  batchFeatures.set(features, i * 60 * 13);
-}
-
-const batchTensor = new ort.Tensor('float32', batchFeatures, [3, 60, 13]);
-const output = await session.run({ input: batchTensor });
-
-// Split batch results
-for (let i = 0; i < 3; i++) {
-  const prediction = output.output.data.slice(i * 3, (i + 1) * 3);
-  // Process prediction
+  const prediction = result.predictions[i];
 }
 ```
 
 **Impact**:
 
-- ✅ Latency: 90ms → 35ms (60% faster)
-- ✅ GPU utilization: 30% → 90% (better parallelism)
+- ✅ Latency: 90ms -> 35ms (60% faster)
+- ✅ GPU utilization: 30% -> 90% (better parallelism within MLflow Serving)
 
 ---
 
-### **3. Model Pre-Warming**
+### **3. MLflow Serving Pre-Warming**
 
 ```typescript
-// Problem: First inference is slow (TensorRT compilation)
-const session = await ort.InferenceSession.create('model.onnx');
-const prediction = await session.run(...); // 200ms (first time)
-// Subsequent calls: 30ms
+// Problem: First inference is slow (model loading + JIT compilation in serving container)
+// Solution: Pre-warm with dummy data at startup
 
-// Solution: Pre-warm with dummy data
 async onModuleInit() {
-  const session = await ort.InferenceSession.create('model.onnx');
+  const dummyInput = Array.from(new Float32Array(1 * 60 * 13));
 
-  // Run 10 dummy inferences to warm up GPU
-  const dummyInput = new Float32Array(1 * 60 * 13);
-  for (let i = 0; i < 10; i++) {
-    await session.run({ input: new ort.Tensor('float32', dummyInput, [1, 60, 13]) });
+  for (const [name, endpoint] of Object.entries(MLFLOW_ENDPOINTS)) {
+    for (let i = 0; i < 10; i++) {
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: [dummyInput] }),
+      });
+    }
+    this.logger.log(`MLflow Serving endpoint pre-warmed: ${name}`);
   }
-
-  this.logger.log('GPU model pre-warmed, ready for trading');
 }
 ```
 
 **Impact**:
 
-- ✅ First inference: 200ms → 30ms (consistent)
+- ✅ First inference: 200ms -> 30ms (consistent)
 - ✅ No cold-start penalty during live trading
 
 ---
@@ -676,7 +673,7 @@ getMetrics() {
 | ----------------------- | ------------ | ------- | --------- | --------- | ----------- |
 | **Data Ingestion**      | TypeScript   | 5ms     | 1000      | ✅ Yes    | C++ (DPDK)  |
 | **Feature Engineering** | TypeScript   | 10ms    | 1000      | 🔬 Maybe  | Rust        |
-| **Model Inference**     | ONNX Runtime | 30ms    | 100       | ❌ No     | -           |
+| **Model Inference**     | MLflow REST  | 30ms    | 100       | ❌ No     | -           |
 | **Event Bus**           | TypeScript   | <1ms    | 1000      | 🔬 Maybe  | C++         |
 | **Order Routing**       | TypeScript   | 10ms    | 10        | ❌ No     | -           |
 | **Risk Checks**         | TypeScript   | 5ms     | 10        | ❌ No     | -           |

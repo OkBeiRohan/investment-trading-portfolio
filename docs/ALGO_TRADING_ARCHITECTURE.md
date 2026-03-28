@@ -616,7 +616,7 @@ AND LiT says micro_up > 0.6
 → HIGH-CONFIDENCE CE entry with optimal timing
 ```
 
-**Latency Target**: ~5-10ms (ONNX + TensorRT)
+**Latency Target**: ~5-10ms (MLflow Model Serving)
 
 ---
 
@@ -1066,8 +1066,8 @@ reward = -abs(slippage) - λ*delay_penalty - μ*adverse_selection
 
 1. Train on latest data (rolling window)
 2. Validate on out-of-sample data
-3. Export to ONNX (FP16 quantization)
-4. Deploy via versioned container
+3. Register model to MLflow (native flavors, @champion alias)
+4. Deploy via MLflow Model Serving container
 5. Hot-swap without interrupting live processing
 
 **Drift Detection**:
@@ -1338,7 +1338,7 @@ ELSE:
 
 **Inference**:
 
-- Latency: 5-10ms (ONNX + TensorRT)
+- Latency: 5-10ms (MLflow Model Serving)
 - Frequency: Every tick (if latency permits)
 
 **Feature Engineering**:
@@ -1957,7 +1957,7 @@ class EnsembleController:
 | **Languages**   | TypeScript, Python, Rust                    | TypeScript for services, Python for ML, Rust for ultra-low-latency  |
 | **Frameworks**  | NestJS, Next.js 16, PyTorch 2.5             | Production battle-tested frameworks                                 |
 | **Databases**   | QuestDB, MongoDB, Redis                     | Research-validated for trading (QuestDB 22x faster than ClickHouse) |
-| **AI/ML**       | ONNX Runtime (TensorRT), Transformers, CNNs | Hardware-agnostic with GPU acceleration                             |
+| **AI/ML**       | MLflow Model Serving (native flavors), Transformers, CNNs | GPU acceleration via native frameworks                    |
 | **Message Bus** | Redis Streams, Chronicle Queue              | Proven for HFT, microsecond latency                                 |
 | **Monitoring**  | Prometheus, Grafana                         | Industry standard observability                                     |
 | **Deployment**  | Docker, Kubernetes, PM2                     | Flexible deployment options                                         |
@@ -1966,13 +1966,14 @@ class EnsembleController:
 
 ```
 Training:
-  PyTorch 2.5 → Export to ONNX (FP16 quantization)
+  PyTorch 2.5 / LightGBM / XGBoost → Log to MLflow (native model flavors)
 
 Inference:
-  ONNX Runtime v1.19+
-    ├── TensorRT Execution Provider (NVIDIA GPU): <50ms
-    ├── OpenVINO Execution Provider (Intel CPU): <100ms
-    └── CPU Execution Provider (Fallback): <200ms
+  MLflow Model Serving (REST /invocations)
+    ├── @champion alias: Production model version
+    ├── GPU serving (NVIDIA RTX): <50ms
+    ├── CPU serving (fallback): <200ms
+    └── Model Registry: version tracking, stage transitions
 ```
 
 ### Data Storage Architecture

@@ -17,7 +17,11 @@ from sklearn.preprocessing import StandardScaler
 
 import mlflow
 import mlflow.xgboost
-from ...utils.mlflow_tracking import log_model_params, log_shap_artifact, log_fold_metrics, get_xgboost_signature
+from ...utils.mlflow_tracking import (
+    log_model_params, log_shap_artifact, log_fold_metrics, get_xgboost_signature,
+    log_training_dataset, log_evaluation_dataset, log_checkpoint, log_metric_for_checkpoint,
+    infer_model_signature, TIER_MODEL_NAMES,
+)
 from ...utils.observability import TRAINING_EPOCH_DURATION, TRAINING_RUN_TOTAL, TRAINING_DATA_ROWS, traced_stage, update_gpu_metrics
 
 logger = logging.getLogger(__name__)
@@ -49,7 +53,12 @@ def train_xgboost_gap_model(
 
     Returns dict with keys: model, scaler, metrics, oof, artifacts.
     """
-    mlflow.xgboost.autolog(log_datasets=True, log_models=True)
+    mlflow.xgboost.autolog(
+        log_datasets=True, log_models=True,
+        log_input_examples=True, log_model_signatures=True,
+        model_format="json",
+        extra_tags={"tier": "0", "model_type": "gap_predictor"},
+    )
 
     logger.info("=== Tier 0: XGBoost Gap Predictor (walk-forward) ===")
 
@@ -79,6 +88,19 @@ def train_xgboost_gap_model(
 
     TRAINING_DATA_ROWS.labels(tier="0", table="features").inc(len(raw_features))
     TRAINING_DATA_ROWS.labels(tier="0", table="labels").inc(len(raw_labels))
+
+    if not raw_features.empty:
+        log_training_dataset(
+            raw_features, name="tier0_features",
+            source=f"questdb://instrument_features?start={start_date}&end={end_date}",
+            targets=target,
+        )
+    if not raw_labels.empty:
+        log_training_dataset(
+            raw_labels, name="tier0_labels",
+            source=f"questdb://training_labels?start={start_date}&end={end_date}",
+            targets=target,
+        )
 
     if raw_features.empty or raw_labels.empty:
         logger.warning("No data available for Tier 0 training")
@@ -196,8 +218,18 @@ def train_xgboost_gap_model(
         "n_folds": float(fold_idx),
     })
     log_shap_artifact(shap_importance, available_feats, "tier0_shap")
-    signature = get_xgboost_signature(len(available_feats))
-    mlflow.xgboost.log_model(best_model, name="tier0_model", signature=signature)
+    signature = infer_model_signature(
+        X_train[:5] if X_train is not None else np.zeros((1, len(available_feats))),
+        preds[:5] if preds is not None else np.zeros(1),
+    )
+    model_info = log_checkpoint(
+        best_model, flavor="xgboost", name="tier0_gap_predictor",
+        step=fold_idx, signature=signature,
+        input_example=X_train[:5] if X_train is not None else None,
+        registered_model_name=TIER_MODEL_NAMES[0],
+    )
+    log_metric_for_checkpoint("avg_mae", avg_mae, step=fold_idx, model_id=model_info.model_id)
+    log_metric_for_checkpoint("avg_direction_accuracy", avg_dir_acc, step=fold_idx, model_id=model_info.model_id)
     mlflow.log_artifact(scaler_path)
     TRAINING_RUN_TOTAL.labels(tier="0", status="completed").inc()
 

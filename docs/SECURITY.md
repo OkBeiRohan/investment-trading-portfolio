@@ -53,7 +53,7 @@ We follow semantic versioning and provide security updates for the following ver
 3. **training-pipeline (ML Models)**
    - Proprietary trading strategies
    - Model training (8 ensemble models)
-   - ONNX export with FP16 quantization
+   - MLflow model registration (native flavors)
    - Walk-forward validation
    - **Risk Level**: HIGH - Intellectual property
 

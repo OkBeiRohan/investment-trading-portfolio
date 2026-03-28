@@ -234,17 +234,17 @@ pnpm test
 cd apps/algo-worker/ml/training
 python train_xgboost.py
 
-# 2. Export to ONNX
-python export_onnx.py
+# 2. Register model to MLflow
+# The training script logs the model to MLflow and promotes it to @champion alias
 
 # 3. Update model loader
 cd ../../src/engines/signal
 nano model-loader.service.ts
 
 # 4. Add metadata
-# Use ModelMetadataService to register model version
+# Use ModelMetadataService to register model version in MLflow Model Registry
 
-# 5. Test inference
+# 5. Test inference (calls MLflow /invocations endpoint)
 pnpm test models
 ```
 
@@ -529,20 +529,24 @@ docker logs <container-id>
 
 ### Issue 3: Model Loading Errors
 
-**Problem**: ONNX models fail to load
+**Problem**: MLflow model serving fails or returns errors
 
 **Solution**:
 
 ```bash
-# Verify model files exist
-ls apps/algo-worker/ml/models/
+# Verify MLflow serving container is running
+docker ps | grep mlflow-serving
 
-# Re-export models
-cd apps/algo-worker/ml/training
-python export_onnx.py
+# Check MLflow model registry for @champion alias
+mlflow models list --name <model-name>
 
-# Check model checksums
-# Use ModelMetadataService.verifyModelIntegrity()
+# Restart the MLflow serving container
+docker restart mlflow-serving
+
+# Verify the /invocations endpoint responds
+curl -X POST http://localhost:5001/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"dataframe_split": {"columns": ["f1"], "data": [[0.0]]}}'
 ```
 
 ### Issue 4: Python Environment Issues

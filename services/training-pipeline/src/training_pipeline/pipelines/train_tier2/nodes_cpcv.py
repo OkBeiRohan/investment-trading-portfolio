@@ -19,7 +19,11 @@ from sklearn.metrics import roc_auc_score
 
 import mlflow
 import mlflow.lightgbm
-from ...utils.mlflow_tracking import log_model_params, log_shap_artifact, fold_run
+from ...utils.mlflow_tracking import (
+    log_model_params, log_shap_artifact, fold_run,
+    log_training_dataset, log_evaluation_dataset, log_checkpoint,
+    log_metric_for_checkpoint, infer_model_signature, TIER_MODEL_NAMES,
+)
 from ...utils.observability import TRAINING_FOLD_AUC, TRAINING_RUN_TOTAL, TRAINING_DATA_ROWS
 
 logger = logging.getLogger(__name__)
@@ -60,7 +64,11 @@ def train_lightgbm_cpcv(
     Returns dict with: models, metrics, oof, artifacts.
     """
     logger.info("=== Tier 2: LightGBM CPCV (multi-horizon) ===")
-    mlflow.lightgbm.autolog(log_datasets=True, log_models=True)
+    mlflow.lightgbm.autolog(
+        log_datasets=True, log_models=True,
+        log_input_examples=True, log_model_signatures=True,
+        extra_tags={"tier": "2", "model_type": "cpcv_classifier"},
+    )
 
     tier2_cfg = config.get("tier2", config)
     lgb_params = tier2_cfg.get("lightgbm", config.get("lightgbm", {}))
@@ -80,6 +88,19 @@ def train_lightgbm_cpcv(
         interval_value=1, interval_unit="minute",
     )
     raw_labels = loader.load_labels(instrument_key, start_date, end_date)
+
+    if not raw_features.empty:
+        log_training_dataset(
+            raw_features, name="tier2_features",
+            source=f"questdb://instrument_features?start={start_date}&end={end_date}&interval=1m",
+            targets="target_direction_5m",
+        )
+    if not raw_labels.empty:
+        log_training_dataset(
+            raw_labels, name="tier2_labels",
+            source=f"questdb://training_labels?start={start_date}&end={end_date}",
+            targets="target_direction_5m",
+        )
 
     if raw_features.empty or raw_labels.empty:
         logger.error("No feature/label data for Tier 2")

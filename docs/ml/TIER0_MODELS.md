@@ -74,7 +74,7 @@ The model adds value by incorporating global overnight signals (US futures, MCX,
 | **Output**        | `expected_gap_pct`, `expected_volatility`, `opening_bias`, `confidence`                                  |
 | **Training Data** | 4+ years of pre-open snapshots + realized gaps                                                           |
 | **Validation**    | Combinatorial Purged Cross-Validation (CPCV) with strict purging and embargoing                          |
-| **Export**        | ONNX with FP16 quantization                                                                              |
+| **Export**        | MLflow native logging via `mlflow.xgboost.log_model` with `registered_model_name`                        |
 
 ### Why Not Deep Learning?
 
@@ -167,7 +167,7 @@ MCX instruments streamed via Upstox WebSocket (`MCX_FO|*`). Forward-filled from 
 │         │                                                               │
 │         ▼                                                               │
 │  ┌─────────────────────────────────────────────────────┐                │
-│  │ FEATURE VECTOR (24 features) → XGBoost ONNX → Pred  │                │
+│  │ FEATURE VECTOR (24 features) → XGBoost MLflow → Pred │                │
 │  └─────────────────────────────────────────────────────┘                │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -446,27 +446,28 @@ def cpcv_validate_tier0(features, target, n_splits=5, n_test_splits=2, purge_day
 
 ---
 
-## ONNX Export
+## MLflow Model Logging
 
 ```python
-def export_tier0_to_onnx(model, output_path='models/tier0_gap_predictor.onnx'):
-    """Export trained XGBoost to ONNX for algo-worker inference."""
-    from skl2onnx import convert_sklearn
-    from skl2onnx.common.data_types import FloatTensorType
+import mlflow
+import mlflow.xgboost
 
-    initial_type = [('features', FloatTensorType([None, 24]))]  # 24 features (was 12)
-    onnx_model = convert_sklearn(model, initial_types=initial_type)
-
-    with open(output_path, 'wb') as f:
-        f.write(onnx_model.SerializeToString())
-
-    # Validate
-    import onnxruntime as ort
-    session = ort.InferenceSession(output_path)
+def log_tier0_model(model, model_name='tier0-gap-predictor'):
+    """Log trained XGBoost to MLflow Model Registry."""
     test_input = np.random.randn(1, 24).astype(np.float32)  # 24 features
-    onnx_pred = session.run(None, {'features': test_input})[0]
+
+    mlflow.xgboost.log_model(
+        model,
+        artifact_path="model",
+        registered_model_name=model_name,
+        input_example=test_input,
+    )
+
+    # Validate via MLflow model reload
+    loaded = mlflow.xgboost.load_model(f"models:/{model_name}/latest")
+    mlflow_pred = loaded.predict(test_input)
     original_pred = model.predict(test_input)
-    assert np.allclose(onnx_pred, original_pred, atol=1e-4), "ONNX export mismatch!"
+    assert np.allclose(mlflow_pred, original_pred, atol=1e-4), "MLflow model mismatch!"
 ```
 
 ---
@@ -505,31 +506,26 @@ If the model cannot beat this baseline by a statistically significant margin (p 
 
 @Injectable()
 export class Tier0Service {
-  private session: ort.InferenceSession;
+  private mlflowEndpoint: string;
 
   async onModuleInit() {
-    this.session = await ort.InferenceSession.create(
-      "models/tier0_gap_predictor.onnx",
-      { executionProviders: ["CPUExecutionProvider"] }, // CPU is fine for 12 features
-    );
+    this.mlflowEndpoint = this.configService.get("MLFLOW_SERVING_URL")
+      + "/invocations";
   }
 
   @Cron("5 8 9 * * 1-5", { timeZone: "Asia/Kolkata" }) // 09:08:05 IST, weekdays
   async predictGap(): Promise<Tier0Output> {
     const features = await this.collectOvernightFeatures();
 
-    const tensor = new ort.Tensor(
-      "float32",
-      new Float32Array(features),
-      [1, 24], // 24 features: 12 global + 8 MCX + 4 pre-market
-    );
-    const result = await this.session.run({ features: tensor });
+    const result = await this.httpService.post(this.mlflowEndpoint, {
+      inputs: [features], // 24 features: 12 global + 8 MCX + 4 pre-market
+    });
 
     const output: Tier0Output = {
-      expected_gap_pct: result.output.data[0],
+      expected_gap_pct: result.data.predictions[0],
       expected_volatility: this.classifyVolatility(features),
-      opening_bias: this.computeBias(result.output.data[0], features),
-      confidence: this.calibrateConfidence(result),
+      opening_bias: this.computeBias(result.data.predictions[0], features),
+      confidence: this.calibrateConfidence(result.data),
     };
 
     // Cache in Redis for downstream tiers

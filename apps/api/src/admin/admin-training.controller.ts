@@ -17,6 +17,7 @@ import {
   TrainingRunRepository,
   AuditLogRepository,
 } from '@repo/database';
+import { MlflowProxyService } from './mlflow-proxy.service';
 
 @Controller('api/admin/training')
 @UseGuards(AuthGuard)
@@ -27,12 +28,9 @@ export class AdminTrainingController {
     private readonly experimentRepo: ExperimentRepository,
     private readonly trainingRunRepo: TrainingRunRepository,
     private readonly auditLogRepo: AuditLogRepository,
+    private readonly mlflow: MlflowProxyService,
   ) {}
 
-  /**
-   * List experiments with optional filters.
-   * @route GET /api/admin/training/experiments
-   */
   @Get('experiments')
   @HttpCode(HttpStatus.OK)
   async listExperiments(
@@ -41,14 +39,19 @@ export class AdminTrainingController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    // TODO: Implement filtered/paginated experiment listing
-    return { page: +page, limit: +limit, items: [], total: 0 };
+    const experiments = tier
+      ? await this.experimentRepo.findByTier(+tier)
+      : status
+        ? await this.experimentRepo.findByStatus(status)
+        : await this.experimentRepo.findAll();
+
+    const total = experiments.length;
+    const offset = (+page - 1) * +limit;
+    const items = experiments.slice(offset, offset + +limit);
+
+    return { page: +page, limit: +limit, items, total };
   }
 
-  /**
-   * Create a new experiment.
-   * @route POST /api/admin/training/experiments
-   */
   @Post('experiments')
   @HttpCode(HttpStatus.CREATED)
   async createExperiment(@Body() body: any, @Session() session: any) {
@@ -66,20 +69,27 @@ export class AdminTrainingController {
     return experiment;
   }
 
-  /**
-   * Get experiment detail by id.
-   * @route GET /api/admin/training/experiments/:id
-   */
   @Get('experiments/:id')
   @HttpCode(HttpStatus.OK)
   async getExperiment(@Param('id') id: string) {
-    return this.experimentRepo.findById(id);
+    const experiment = await this.experimentRepo.findById(id);
+    if (!experiment) return null;
+
+    let mlflowData: Record<string, unknown> = {};
+    if (experiment.mlflowExperimentId) {
+      try {
+        const mlflowExp = await this.mlflow.getExperiment(experiment.mlflowExperimentId);
+        if (mlflowExp) {
+          mlflowData = { mlflowExperiment: mlflowExp };
+        }
+      } catch (e: any) {
+        this.logger.warn(`MLflow experiment fetch failed: ${e.message}`);
+      }
+    }
+
+    return { ...experiment.toObject(), ...mlflowData };
   }
 
-  /**
-   * Update an experiment.
-   * @route PUT /api/admin/training/experiments/:id
-   */
   @Put('experiments/:id')
   @HttpCode(HttpStatus.OK)
   async updateExperiment(
@@ -100,10 +110,6 @@ export class AdminTrainingController {
     return experiment;
   }
 
-  /**
-   * Trigger a training run for an experiment.
-   * @route POST /api/admin/training/experiments/:id/run
-   */
   @Post('experiments/:id/run')
   @HttpCode(HttpStatus.CREATED)
   async triggerRun(@Param('id') id: string, @Session() session: any) {
@@ -125,10 +131,6 @@ export class AdminTrainingController {
     return run;
   }
 
-  /**
-   * List runs for an experiment.
-   * @route GET /api/admin/training/experiments/:id/runs
-   */
   @Get('experiments/:id/runs')
   @HttpCode(HttpStatus.OK)
   async listRuns(@Param('id') id: string) {
@@ -136,19 +138,98 @@ export class AdminTrainingController {
   }
 
   /**
-   * Get training run details.
-   * @route GET /api/admin/training/runs/:runId
+   * MLflow metrics history for a run (for training curves in the UI).
    */
-  @Get('runs/:runId')
+  @Get('experiments/:id/metrics-history')
   @HttpCode(HttpStatus.OK)
-  async getRunDetails(@Param('runId') runId: string) {
-    return this.trainingRunRepo.findById(runId);
+  async getMetricsHistory(
+    @Param('id') id: string,
+    @Query('metric') metricKey: string,
+  ) {
+    const experiment = await this.experimentRepo.findById(id);
+    if (!experiment?.mlflowRunId) return [];
+    try {
+      return this.mlflow.getMetricHistory(experiment.mlflowRunId, metricKey);
+    } catch {
+      return [];
+    }
   }
 
   /**
-   * Cancel a running training run.
-   * @route POST /api/admin/training/runs/:runId/cancel
+   * MLflow artifact URL for SHAP plots, evaluation reports, etc.
    */
+  @Get('experiments/:id/artifacts')
+  @HttpCode(HttpStatus.OK)
+  async getArtifactUrl(
+    @Param('id') id: string,
+    @Query('path') artifactPath: string,
+  ) {
+    const experiment = await this.experimentRepo.findById(id);
+    if (!experiment?.mlflowRunId) return { url: null };
+    const url = await this.mlflow.getArtifactUrl(experiment.mlflowRunId, artifactPath);
+    return { url };
+  }
+
+  /**
+   * Dataset lineage for a training run.
+   */
+  @Get('experiments/:id/datasets')
+  @HttpCode(HttpStatus.OK)
+  async getDatasetLineage(@Param('id') id: string) {
+    const experiment = await this.experimentRepo.findById(id);
+    if (!experiment?.mlflowRunId) return [];
+    try {
+      return this.mlflow.getRunDatasetInputs(experiment.mlflowRunId);
+    } catch {
+      return [];
+    }
+  }
+
+  @Get('runs/:runId')
+  @HttpCode(HttpStatus.OK)
+  async getRunDetails(@Param('runId') runId: string) {
+    const run = await this.trainingRunRepo.findById(runId);
+    if (!run) return null;
+
+    let mlflowMetrics: Record<string, number> = {};
+    if (run.mlflowRunId) {
+      try {
+        mlflowMetrics = await this.mlflow.getRunMetrics(run.mlflowRunId);
+      } catch {
+        // MLflow not reachable, proceed with MongoDB data
+      }
+    }
+
+    return { ...run.toObject(), mlflowMetrics };
+  }
+
+  /**
+   * System metrics (GPU/CPU) for a training run from MLflow.
+   */
+  @Get('runs/:runId/system-metrics')
+  @HttpCode(HttpStatus.OK)
+  async getSystemMetrics(@Param('runId') runId: string) {
+    const run = await this.trainingRunRepo.findById(runId);
+    if (!run?.mlflowRunId) return {};
+    try {
+      const cpuHistory = await this.mlflow.getMetricHistory(
+        run.mlflowRunId,
+        'system/cpu_utilization_percentage',
+      );
+      const gpuHistory = await this.mlflow.getMetricHistory(
+        run.mlflowRunId,
+        'system/gpu_utilization_percentage',
+      );
+      const memHistory = await this.mlflow.getMetricHistory(
+        run.mlflowRunId,
+        'system/system_memory_usage_percentage',
+      );
+      return { cpu: cpuHistory, gpu: gpuHistory, memory: memHistory };
+    } catch {
+      return {};
+    }
+  }
+
   @Post('runs/:runId/cancel')
   @HttpCode(HttpStatus.OK)
   async cancelRun(@Param('runId') runId: string, @Session() session: any) {
@@ -166,10 +247,6 @@ export class AdminTrainingController {
     return run;
   }
 
-  /**
-   * List all deployed models.
-   * @route GET /api/admin/training/models
-   */
   @Get('models')
   @HttpCode(HttpStatus.OK)
   async listDeployedModels() {
@@ -177,13 +254,55 @@ export class AdminTrainingController {
   }
 
   /**
-   * Deploy a model from an experiment.
-   * @route POST /api/admin/training/models/:id/deploy
+   * Get MLflow Model Registry versions for a registered model.
+   */
+  @Get('models/:name/versions')
+  @HttpCode(HttpStatus.OK)
+  async getModelVersions(@Param('name') name: string) {
+    try {
+      return this.mlflow.getRegisteredModel(name);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get the current @champion version for a model.
+   */
+  @Get('models/:name/champion')
+  @HttpCode(HttpStatus.OK)
+  async getChampionVersion(@Param('name') name: string) {
+    try {
+      return this.mlflow.getModelVersionByAlias(name, 'champion');
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Deploy a model: sets MLflow @champion alias and MongoDB deploy flag.
    */
   @Post('models/:id/deploy')
   @HttpCode(HttpStatus.OK)
   async deployModel(@Param('id') id: string, @Session() session: any) {
-    const experiment = await this.experimentRepo.deploy(id);
+    const experiment = await this.experimentRepo.findById(id);
+    let championVersion: string | undefined;
+
+    if (experiment?.mlflowModelName && experiment?.mlflowRunId) {
+      try {
+        const model = await this.mlflow.getRegisteredModel(experiment.mlflowModelName);
+        const latest = model?.latest_versions?.[0];
+        if (latest) {
+          await this.mlflow.setModelAlias(experiment.mlflowModelName, 'champion', latest.version);
+          championVersion = latest.version;
+          this.logger.log(`Set MLflow @champion alias for ${experiment.mlflowModelName} v${latest.version}`);
+        }
+      } catch (e: any) {
+        this.logger.warn(`MLflow alias set failed: ${e.message}`);
+      }
+    }
+
+    const updated = await this.experimentRepo.deploy(id, championVersion);
 
     await this.auditLogRepo.create({
       action: 'admin.training.model.deploy',
@@ -191,9 +310,23 @@ export class AdminTrainingController {
       userId: session.user.id,
       targetId: id,
       targetType: 'experiment',
+      details: { mlflowChampionVersion: championVersion },
     });
 
     this.logger.log(`Model ${id} deployed by admin ${session.user.id}`);
-    return experiment;
+    return updated;
+  }
+
+  /**
+   * List MLflow experiments (direct proxy).
+   */
+  @Get('mlflow/experiments')
+  @HttpCode(HttpStatus.OK)
+  async listMlflowExperiments() {
+    try {
+      return this.mlflow.searchExperiments();
+    } catch {
+      return [];
+    }
   }
 }

@@ -1,17 +1,22 @@
-# MLflow 3.x Platform: Experiment Tracking, HPO, Evaluation & Model Registry
+# MLflow 3.x Platform: Full ML Lifecycle Management
 
-**Last Updated:** March 24, 2026
+**Last Updated:** March 28, 2026
 
 ## Overview
 
-The institutional training pipeline uses **MLflow 3.x** as the primary experiment store: runs, parameters, metrics, artifacts, and the Model Registry are centralized while MongoDB still receives a dual-write summary for compatibility with the NestJS API.
+The institutional training pipeline uses **MLflow 3.x** as the **primary ML lifecycle platform**: experiment tracking, dataset lineage, model evaluation, model registry, checkpoint versioning, and production model serving are all centralized in MLflow. MongoDB receives a dual-write summary (with MLflow run IDs) for backward compatibility with the NestJS API and web frontend.
 
 The platform supports:
 
-- **Experiment tracking** with nested runs, hardware tags, and MLflow 3.x **system metrics** (GPU, CPU, memory, disk, network).
+- **Experiment tracking** with nested runs, hardware tags, and MLflow 3.x **system metrics** (GPU utilization/memory/temperature, CPU, disk I/O, network I/O via `psutil` + `nvidia-ml-py`).
+- **Dataset tracking** via `mlflow.data.from_pandas()` with `PandasDataset`, `MetaDataset`, automatic digest/schema/profile, and lineage back to QuestDB sources.
+- **Native model logging** via `mlflow.xgboost.log_model()`, `mlflow.pytorch.log_model()`, `mlflow.lightgbm.log_model()`, and `mlflow.pyfunc.log_model()` with `registered_model_name` for one-step log+register.
+- **Checkpoint versioning** with `step` parameter in `log_model()` and `model_id` linkage in `log_metric()` for per-checkpoint metric association.
+- **Model evaluation** through `mlflow.models.evaluate()` with SHAP explainability (`log_explainer=True`), custom trading metrics (`make_metric()`), and custom visualization artifacts (equity curve, drawdown chart).
+- **Model validation** via `mlflow.validate_evaluation_results()` with `MetricThreshold` for automated quality gates.
 - **Hyperparameter optimization** via **Optuna** (TPE sampler) with each trial logged as a nested MLflow child run.
-- **Model evaluation** through `mlflow.models.evaluate()` plus **custom trading metrics** built with `mlflow.models.make_metric()`.
-- **Champion / challenger** comparison and **alias-based** Model Registry workflows (no deprecated stage transitions).
+- **Champion / challenger** comparison with `search_logged_models()` for checkpoint ranking and **alias-based** Model Registry workflows (`@champion`, `@challenger`, `@previous_champion`).
+- **Model serving** via `mlflow models serve` in a dedicated Docker container loading models from the Registry by `@champion` alias, exposing REST `/invocations` endpoints.
 - **HTML and JSON reporting** logged under run artifacts, and **Grafana** dashboards for operational visibility.
 
 **Infrastructure:** The tracking server listens on **port 5000**. The backend store is **PostgreSQL**; artifacts are stored in **MinIO** (S3-compatible). Docker Compose defines **`mlflow-db`**, **`mlflow-artifacts`**, **`mlflow-init`** (bucket bootstrap), and **`mlflow-server`**. Training jobs receive `MLFLOW_TRACKING_URI=http://mlflow-server:5000` and S3 credentials pointed at the MinIO endpoint.
@@ -74,7 +79,7 @@ Runs are structured so the UI shows a clear tree:
 
 ### System Metrics
 
-On startup, `init_mlflow()` calls `mlflow.config.enable_system_metrics_logging()` and `mlflow.config.set_system_metrics_sampling_interval(5)`, so MLflow 3.x records system telemetry at **5-second** intervals where the deployment supports it (GPU utilization/memory/temperature when available, CPU, memory, disk I/O, network I/O). If the SDK or environment cannot enable system metrics, initialization logs a warning and continues.
+On startup, `init_mlflow()` calls `mlflow.enable_system_metrics_logging()` and `mlflow.set_system_metrics_sampling_interval(5)` with `mlflow.set_system_metrics_samples_before_logging(2)`, so MLflow 3.x records system telemetry at **5-second** intervals with 2-sample aggregation (10s logging window). GPU utilization/memory/temperature (when available), CPU, memory, disk I/O, and network I/O are captured. Per-run control is also enabled via `log_system_metrics=True` in `mlflow.start_run()`.
 
 ### Autologging
 

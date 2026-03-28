@@ -248,7 +248,7 @@ def train_lightgbm_tier2(X, y, timestamps):
 | **Input**       | `Float32Array[117]` — single feature vector (current minute)            |
 | **Output**      | `Float32Array[9]` — P(down), P(flat), P(up) × 3 horizons (5m, 15m, 30m) |
 | **Inference**   | ~20ms (CPU)                                                             |
-| **ONNX Export** | `onnxmltools.convert_lightgbm()` with FP16                              |
+| **MLflow Log**  | `mlflow.lightgbm.log_model()` with `registered_model_name`              |
 
 ---
 
@@ -349,7 +349,7 @@ class TFTIntraday(nn.Module):
 | **Input**       | `static: [B, 4]`, `encoder: [B, 120, 76]`, `decoder: [B, 30, 8]`  |
 | **Output**      | `[B, 3, 3]` — quantiles [P10, P50, P90] × horizons [5m, 15m, 30m] |
 | **Inference**   | ~35ms (GPU)                                                       |
-| **ONNX Export** | `torch.onnx.export()` with opset 17, FP16 quantization            |
+| **MLflow Log**  | `mlflow.pytorch.log_model()` with `registered_model_name`          |
 
 ---
 
@@ -430,18 +430,11 @@ class MambaIntraday(nn.Module):
 | **Input**       | `[B, 120, 117]` — 120 minutes × 117 features                    |
 | **Output**      | `[B, 3, 3]` — P(down), P(flat), P(up) × horizons (5m, 15m, 30m) |
 | **Inference**   | ~25ms (GPU)                                                     |
-| **ONNX Export** | `torch.onnx.export()` with opset 17                             |
+| **MLflow Log**  | `mlflow.pytorch.log_model()` with `registered_model_name`       |
 
-### Mamba ONNX Export Limitation
+### Mamba Model Serving
 
-Mamba's selective scan operation uses custom CUDA kernels NOT supported by standard ONNX opsets. `torch.onnx.export()` will fail or produce incorrect results. Options:
-
-1. **Pure PyTorch scan** (recommended for production): Rewrite the scan loop without custom kernels. Slower (~35ms vs ~25ms) but ONNX-compatible
-2. **TorchScript export**: Use `torch.jit.script()` instead of ONNX. Requires the algo-worker to load via libtorch
-3. **Direct PyTorch inference**: Skip ONNX entirely, run Mamba via PyTorch in a Python sidecar process
-4. **onnxruntime-extensions**: Register a custom operator for the selective scan
-
-For Phase 1, option 3 (Python sidecar) is recommended. Migrate to option 1 once the pure-PyTorch Mamba implementation is validated.
+Mamba models are logged via `mlflow.pytorch.log_model()` and served through MLflow Model Serving. Since MLflow loads the native PyTorch model directly, custom CUDA kernels (selective scan) work without any conversion constraints. This eliminates the compatibility issues that previously existed with alternative export formats.
 
 ---
 

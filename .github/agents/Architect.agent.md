@@ -33,7 +33,7 @@ You are the **System Architect** for Project Quantum.
 
 1. **Perception**: Data ingestion only. No business logic.
 2. **Cortex**: Feature engineering. Pure functions preferred.
-3. **Prediction**: ML inference. Use ONNX Runtime.
+3. **Prediction**: ML inference. Use MLflow Model Serving (REST /invocations).
 4. **Cognition**: Strategy & RL. Decision making.
 5. **Execution**: Order routing. Low latency.
 6. **Control**: Observability, MLOps & state management (Redis/QuestDB).

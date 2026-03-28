@@ -3,7 +3,7 @@ Quality gate — enforces institutional-grade metric thresholds per tier.
 
 Uses both custom threshold checks and MLflow 3.x MetricThreshold
 validation. If a model fails the gate, the run is marked failed and
-ONNX export is skipped.
+model registration is skipped.
 """
 
 import logging

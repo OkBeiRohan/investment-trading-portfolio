@@ -3,8 +3,9 @@ MLflow integration module for the institutional training pipeline.
 
 Provides centralized experiment management, nested run tracking,
 model signature inference, system metrics monitoring, alias-based
-model registry, and dual-write to MongoDB for backward compatibility
-with the NestJS API and web frontend.
+model registry, dataset tracking via mlflow.data, checkpoint
+versioning with model_id linkage, and dual-write to MongoDB for
+backward compatibility with the NestJS API and web frontend.
 """
 
 import logging
@@ -16,10 +17,12 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 import mlflow
-from mlflow.models import ModelSignature
+import mlflow.data
+from mlflow.models import ModelSignature, infer_signature
 from mlflow.types.schema import ColSpec, Schema, TensorSpec
 
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +57,12 @@ def init_mlflow(tracking_uri: Optional[str] = None) -> None:
     mlflow.set_tracking_uri(uri)
 
     try:
-        mlflow.config.enable_system_metrics_logging()
-        mlflow.config.set_system_metrics_sampling_interval(5)
-        logger.info("MLflow system metrics logging enabled (5s interval)")
+        mlflow.enable_system_metrics_logging()
+        mlflow.set_system_metrics_sampling_interval(5)
+        mlflow.set_system_metrics_samples_before_logging(2)
+        logger.info(
+            "MLflow system metrics logging enabled (5s interval, 2-sample aggregation)"
+        )
     except Exception as e:
         logger.warning("Could not enable system metrics logging: %s", e)
 
@@ -138,6 +144,7 @@ def pipeline_run(
         experiment_id=experiment_id,
         run_name=run_name,
         tags=tags,
+        log_system_metrics=True,
     ) as run:
         mlflow.log_params(
             {
@@ -383,6 +390,198 @@ def get_champion_run_id(model_name: str) -> Optional[str]:
         return mv.run_id
     except Exception:
         return None
+
+
+# ---------------------------------------------------------------------------
+# Dataset tracking helpers (mlflow.data)
+# ---------------------------------------------------------------------------
+
+
+def log_training_dataset(
+    df: pd.DataFrame,
+    name: str,
+    source: str,
+    targets: str,
+) -> Any:
+    """Create a PandasDataset and log it as a training input."""
+    dataset = mlflow.data.from_pandas(df, source=source, name=name, targets=targets)
+    mlflow.log_input(dataset, context="training")
+    logger.debug("Logged training dataset '%s' (%d rows)", name, len(df))
+    return dataset
+
+
+def log_evaluation_dataset(
+    df: pd.DataFrame,
+    name: str,
+    targets: str,
+    predictions: Optional[str] = None,
+    context: str = "validation",
+) -> Any:
+    """Create a PandasDataset (optionally with predictions) and log it."""
+    kwargs: dict[str, Any] = {"source": "computed", "name": name, "targets": targets}
+    if predictions:
+        kwargs["predictions"] = predictions
+    dataset = mlflow.data.from_pandas(df, **kwargs)
+    mlflow.log_input(dataset, context=context)
+    logger.debug("Logged evaluation dataset '%s' (%d rows, context=%s)", name, len(df), context)
+    return dataset
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint tracking helpers (MLflow 3.x)
+# ---------------------------------------------------------------------------
+
+
+def log_checkpoint(
+    model: Any,
+    flavor: str,
+    name: str,
+    step: int,
+    signature: Optional[ModelSignature] = None,
+    input_example: Any = None,
+    registered_model_name: Optional[str] = None,
+) -> Any:
+    """
+    Log a model checkpoint using the appropriate MLflow flavor.
+
+    Returns the ModelInfo object containing model_id for metric linkage.
+    Supported flavors: 'xgboost', 'lightgbm', 'pytorch', 'sklearn', 'pyfunc'.
+    """
+    log_fn_map = {
+        "xgboost": _log_xgboost_checkpoint,
+        "lightgbm": _log_lightgbm_checkpoint,
+        "pytorch": _log_pytorch_checkpoint,
+        "sklearn": _log_sklearn_checkpoint,
+        "pyfunc": _log_pyfunc_checkpoint,
+    }
+    log_fn = log_fn_map.get(flavor)
+    if not log_fn:
+        raise ValueError(f"Unsupported flavor: {flavor}")
+
+    model_info = log_fn(
+        model, name=name, step=step,
+        signature=signature, input_example=input_example,
+        registered_model_name=registered_model_name,
+    )
+    logger.info("Logged checkpoint '%s' step=%d (model_id=%s)", name, step, model_info.model_id)
+    return model_info
+
+
+def _log_xgboost_checkpoint(model, *, name, step, signature, input_example, registered_model_name):
+    import mlflow.xgboost
+    return mlflow.xgboost.log_model(
+        xgb_model=model, name=name, step=step,
+        signature=signature, input_example=input_example,
+        registered_model_name=registered_model_name,
+        model_format="json",
+    )
+
+
+def _log_lightgbm_checkpoint(model, *, name, step, signature, input_example, registered_model_name):
+    import mlflow.lightgbm
+    return mlflow.lightgbm.log_model(
+        lgb_model=model, name=name, step=step,
+        signature=signature, input_example=input_example,
+        registered_model_name=registered_model_name,
+    )
+
+
+def _log_pytorch_checkpoint(model, *, name, step, signature, input_example, registered_model_name):
+    import mlflow.pytorch
+    return mlflow.pytorch.log_model(
+        pytorch_model=model, name=name, step=step,
+        signature=signature, input_example=input_example,
+        registered_model_name=registered_model_name,
+    )
+
+
+def _log_sklearn_checkpoint(model, *, name, step, signature, input_example, registered_model_name):
+    import mlflow.sklearn
+    return mlflow.sklearn.log_model(
+        sk_model=model, name=name, step=step,
+        signature=signature, input_example=input_example,
+        registered_model_name=registered_model_name,
+    )
+
+
+def _log_pyfunc_checkpoint(model, *, name, step, signature, input_example, registered_model_name):
+    return mlflow.pyfunc.log_model(
+        python_model=model, name=name, step=step,
+        signature=signature, input_example=input_example,
+        registered_model_name=registered_model_name,
+    )
+
+
+def log_metric_for_checkpoint(
+    key: str,
+    value: float,
+    step: int,
+    model_id: str,
+    dataset: Any = None,
+) -> None:
+    """Log a metric linked to a specific model checkpoint and optional dataset."""
+    kwargs: dict[str, Any] = {"key": key, "value": value, "step": step, "model_id": model_id}
+    if dataset is not None:
+        kwargs["dataset"] = dataset
+    mlflow.log_metric(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Model loading helpers
+# ---------------------------------------------------------------------------
+
+
+def load_champion_model(model_name: str) -> Any:
+    """Load the @champion version of a registered model via pyfunc."""
+    uri = f"models:/{model_name}@champion"
+    logger.info("Loading champion model from %s", uri)
+    return mlflow.pyfunc.load_model(uri)
+
+
+def load_model_by_id(model_id: str) -> Any:
+    """Load a specific logged model by its model_id."""
+    uri = f"models:/{model_id}"
+    return mlflow.pyfunc.load_model(uri)
+
+
+def get_best_checkpoint(
+    run_id: str,
+    metric: str,
+    ascending: bool = True,
+) -> Optional[Any]:
+    """
+    Find the best model checkpoint in a run by a metric.
+
+    Uses mlflow.search_logged_models() with order_by.
+    Returns the best LoggedModel or None.
+    """
+    try:
+        order_dir = "ASC" if ascending else "DESC"
+        results = mlflow.search_logged_models(
+            filter_string=f"source_run_id='{run_id}'",
+            order_by=[{"field_name": f"metrics.{metric}", "ascending": ascending}],
+            max_results=1,
+            output_format="list",
+        )
+        if results:
+            best = results[0]
+            logger.info(
+                "Best checkpoint in run %s by %s: %s",
+                run_id, metric, best.name,
+            )
+            return best
+        return None
+    except Exception as e:
+        logger.warning("Could not search logged models for run %s: %s", run_id, e)
+        return None
+
+
+def infer_model_signature(
+    input_data: Any,
+    output_data: Any = None,
+) -> ModelSignature:
+    """Convenience wrapper around mlflow.models.infer_signature."""
+    return infer_signature(input_data, output_data)
 
 
 def _flatten_dict(

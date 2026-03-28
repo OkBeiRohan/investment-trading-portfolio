@@ -1,6 +1,6 @@
 export type TrainingRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type TrainingStageStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
-export type ArtifactType = 'model' | 'onnx' | 'metrics' | 'plot' | 'data' | 'log';
+export type ArtifactType = 'model' | 'mlflow_model' | 'shap_explainer' | 'evaluation_report' | 'metrics' | 'plot' | 'data' | 'log';
 
 export interface ITrainingStage {
   name: string;
@@ -30,6 +30,12 @@ export interface IHardwareInfo {
   platform?: string;
 }
 
+export interface IQualityGateResult {
+  passed: boolean;
+  reason: string;
+  thresholds: Record<string, unknown>;
+}
+
 export interface ITrainingRun {
   experimentId: string;
   pipeline: string;
@@ -39,6 +45,13 @@ export interface ITrainingRun {
   artifacts: ITrainingArtifact[];
   hardware: IHardwareInfo;
   metrics: Record<string, unknown>;
+
+  mlflowRunId?: string;
+  mlflowParentRunId?: string;
+  datasetDigests?: Record<string, string>;
+  evaluationResults?: Record<string, number>;
+  qualityGateResult?: IQualityGateResult;
+
   startedAt?: Date;
   completedAt?: Date;
   totalDuration?: number;

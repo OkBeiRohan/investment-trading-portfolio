@@ -334,8 +334,8 @@ class LiTTransformer(nn.Module):
 | --------------- | -------------------------------------------------------- |
 | **Input**       | LOB: `[B, 30, 4]`, OFI features: `[B, 14]`               |
 | **Output**      | `[B, 3]` — P(down), P(neutral), P(up) in next 10 seconds |
-| **Inference**   | ~8ms (GPU via ONNX)                                      |
-| **ONNX Export** | Dual-input ONNX with dynamic batch axis                  |
+| **Inference**   | ~8ms (GPU via MLflow Model Serving)                      |
+| **MLflow Log**  | `mlflow.pytorch.log_model()` with `registered_model_name` |
 
 ---
 

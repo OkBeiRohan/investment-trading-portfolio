@@ -15,7 +15,7 @@
 5. [Label Generation](#label-generation)
 6. [Model Training Configuration](#model-training-configuration)
 7. [Training Pipeline](#training-pipeline)
-8. [ONNX Export](#onnx-export)
+8. [MLflow Model Logging](#mlflow-model-logging)
 9. [Backtesting Framework](#backtesting-framework)
 10. [Model Update Strategy](#model-update-strategy)
 11. [Monitoring &amp; Drift Detection](#monitoring--drift-detection)
@@ -57,7 +57,7 @@ The training strategy is designed for **financial time-series** with specific ch
 │  └── Rolling:       Online updates for Tier 3 microstructure                │
 │                                                                             │
 │  DEPLOYMENT                                                                 │
-│  ├── Weekly retrain → ONNX export → A/B test → Production                   │
+│  ├── Weekly retrain → MLflow log → A/B test → Production                    │
 │  └── Drift detection → Alert → Emergency retrain                            │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -599,7 +599,7 @@ regime_hmm:
 │                     └───────┬───────┘                                       │
 │                             ↓                                               │
 │                     ┌───────────────┐                                       │
-│                     │ export_onnx   │ → Convert all models to ONNX          │
+│                     │ log_models    │ → Log all models to MLflow Registry    │
 │                     └───────┬───────┘                                       │
 │                             ↓                                               │
 │                     ┌───────────────┐                                       │
@@ -666,89 +666,65 @@ def create_pipeline(**kwargs) -> Pipeline:
             name="train_meta_learner",
         ),
 
-        # ONNX Export
+        # MLflow Model Logging
         node(
-            func=export_all_onnx,
-            inputs=["lgbm_model", "tft_model", "meta_model", "params:export"],
-            outputs="onnx_models",
-            name="export_onnx",
+            func=log_all_models,
+            inputs=["lgbm_model", "tft_model", "meta_model", "params:mlflow"],
+            outputs="registered_models",
+            name="log_models",
         ),
     ])
 ```
 
 ---
 
-## ONNX Export
+## MLflow Model Logging
 
-### Export Functions
+Models are logged via native MLflow flavors with one-step registration. This replaces the previous ONNX export pipeline. Each flavor preserves the original framework format, enabling optimized serving via MLflow Model Serving.
+
+### Logging Functions
 
 ```python
-# src/training_pipeline/pipelines/export/nodes.py
+# src/training_pipeline/pipelines/register/nodes.py
 
-import onnx
-import torch
-from onnxmltools import convert_lightgbm
-from onnxruntime.quantization import quantize_dynamic, QuantType
+import mlflow
+import mlflow.lightgbm
+import mlflow.pytorch
+import mlflow.pyfunc
 
-def export_lightgbm_onnx(
-    model,
-    output_path: str,
-    n_features: int = 46
-) -> str:
-    """Export LightGBM to ONNX."""
-    from onnxmltools.convert.common.data_types import FloatTensorType
-
-    initial_types = [('input', FloatTensorType([None, n_features]))]
-    onnx_model = convert_lightgbm(model, initial_types=initial_types)
-
-    onnx.save_model(onnx_model, output_path)
-
-    # Validate
-    onnx.checker.check_model(output_path)
-
-    return output_path
-
-
-def export_pytorch_onnx(
-    model: torch.nn.Module,
-    output_path: str,
-    input_shape: tuple,
-    quantize: bool = True
-) -> str:
-    """Export PyTorch model to ONNX with optional quantization."""
-    model.eval()
-    dummy_input = torch.randn(*input_shape)
-
-    torch.onnx.export(
-        model,
-        dummy_input,
-        output_path,
-        input_names=['input'],
-        output_names=['output'],
-        dynamic_axes={
-            'input': {0: 'batch'},
-            'output': {0: 'batch'}
-        },
-        opset_version=17,
-        do_constant_folding=True,
+def log_lightgbm_model(model, model_name: str = "tier2-lightgbm") -> str:
+    """Log LightGBM model via native MLflow flavor."""
+    mlflow.lightgbm.log_model(
+        model, artifact_path="model",
+        registered_model_name=model_name,
     )
+    return model_name
 
-    # Optimize
-    from onnxruntime.transformers import optimizer
-    optimized = optimizer.optimize_model(output_path)
-    optimized.save_model_to_file(output_path)
 
-    # Quantize
-    if quantize:
-        quantized_path = output_path.replace('.onnx', '_quantized.onnx')
-        quantize_dynamic(
-            output_path,
-            quantized_path,
-            weight_type=QuantType.QUInt8
-        )
-        return quantized_path
+def log_pytorch_model(
+    model: torch.nn.Module,
+    model_name: str,
+    input_example=None,
+) -> str:
+    """Log PyTorch model via native MLflow flavor."""
+    mlflow.pytorch.log_model(
+        model, artifact_path="model",
+        registered_model_name=model_name,
+        input_example=input_example,
+    )
+    return model_name
 
-    return output_path
+
+def log_all_models(lgbm_model, tft_model, meta_model, mlflow_config: dict) -> dict:
+    """Log all models to MLflow Model Registry."""
+    mlflow.set_tracking_uri(mlflow_config["tracking_uri"])
+
+    registered = {}
+    registered["lightgbm"] = log_lightgbm_model(lgbm_model)
+    registered["tft"] = log_pytorch_model(tft_model, "tier2-tft")
+    registered["meta"] = log_pytorch_model(meta_model, "meta-learner")
+
+    return registered
 ```
 
 ---
@@ -968,7 +944,7 @@ def calculate_metrics(
 │  │   ├── Tier 1: Monthly only (stable)                                      │
 │  │   ├── Tier 2: Weekly (LightGBM, TFT)                                     │
 │  │   └── Tier 3: Daily (online learning for LiT)                            │
-│  ├── 5. Export to ONNX                                                      │
+│  ├── 5. Log models to MLflow Registry                                       │
 │  └── 6. Run validation backtest                                             │
 │                                                                             │
 │  MONDAY 08:00 IST (1hr before market)                                       │

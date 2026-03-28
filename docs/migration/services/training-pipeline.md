@@ -1,6 +1,6 @@
 # Training Pipeline Migration Guide
 
-> **Last Updated**: March 17, 2026  
+> **Last Updated**: March 29, 2026  
 > **Package**: `services/training-pipeline`  
 > **Framework**: Kedro (Python)
 
@@ -22,7 +22,7 @@
 | train_tier3 | 3 | Production |
 | train_meta | 4 | Production |
 | train_ensemble | 2 | Partial |
-| onnx_export | All | Production |
+| mlflow_register | All | Production |
 | evaluate_strategy | All | Production |
 
 ## Step-by-Step
@@ -32,5 +32,5 @@
 3. Create experiment via admin API or MongoDB
 4. Run pipeline: `kedro run --pipeline=train_tier0`
 5. Check MongoDB for experiment metrics
-6. Export to ONNX: `kedro run --pipeline=onnx_export`
-7. Deploy models to algo-worker `models/` directory
+6. Register model in MLflow: training pipelines log and register models natively via MLflow
+7. Promote model to `@champion` alias in MLflow Model Registry for algo-worker consumption

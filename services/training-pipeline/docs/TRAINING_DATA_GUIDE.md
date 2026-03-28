@@ -34,7 +34,7 @@ The training-pipeline uses pre-computed features from QuestDB for model training
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │                      KEDRO TRAINING PIPELINE                             │ │
 │  │                                                                          │ │
-│  │   Data Node ──→ Split ──→ CPCV ──→ Training ──→ ONNX Export             │ │
+│  │   Data Node ──→ Split ──→ CPCV ──→ Training ──→ MLflow Log              │ │
 │  │                                                                          │ │
 │  └─────────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘

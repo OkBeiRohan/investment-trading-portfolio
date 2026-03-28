@@ -29,9 +29,9 @@ This folder contains **core architecture and system-wide documentation** for Qua
 | [ml/AI_TRADING_ARCHITECTURE.md](./ml/AI_TRADING_ARCHITECTURE.md) | 5-tier data-bound hierarchy |
 | [ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) | TFT, Mamba, PatchTST, LiT with code |
 | [ml/META_LEARNER_EXECUTION.md](./ml/META_LEARNER_EXECUTION.md) | Signal fusion, PPO execution |
-| [ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) | CPCV validation, Kedro, ONNX export |
+| [ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) | CPCV validation, MLflow 3.x, native model logging |
 | [ml/FEATURE_STORE.md](./ml/FEATURE_STORE.md) | Redis + QuestDB for consistency |
-| [ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) | **ONNX Runtime in NestJS** |
+| [ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) | **MLflow Model Serving** |
 
 **Service Documentation**:
 
@@ -50,7 +50,7 @@ This folder contains **core architecture and system-wide documentation** for Qua
 
 | App | Port | Description | Docs |
 |-----|------|-------------|------|
-| `algo-worker` | 50051 (gRPC) | Live trading engine with ONNX inference | [README](../apps/algo-worker/README.md) |
+| `algo-worker` | 50051 (gRPC) | Live trading engine with MLflow Model Serving | [README](../apps/algo-worker/README.md) |
 | `api` | 3004 (HTTP) / 50050 (gRPC) | NestJS API gateway with tRPC | [README](../apps/api/README.md) |
 | `web` | 3000 | Next.js dashboard | [README](../apps/web/README.md) |
 
@@ -60,7 +60,7 @@ This folder contains **core architecture and system-wide documentation** for Qua
 |---------|------|-------------|------|
 | `market-feeder` | 50052 (gRPC) | Upstox WebSocket data ingestion | [README](../services/market-feeder/README.md) |
 | `data-processor` | 50053 (gRPC) | Deprecated (→ compute-engine + market-feeder) | [README](../services/data-processor/README.md) |
-| `training-pipeline` | - | Kedro ML training + ONNX export | [README](../services/training-pipeline/README.md) |
+| `training-pipeline` | - | MLflow 3.x training + native model logging | [README](../services/training-pipeline/README.md) |
 | `notification-service` | 50054 (gRPC) | Email/SMS/Push alerts | [README](../services/notification-service/README.md) |
 | `wealth-management` | 50056 (gRPC) | Double-entry ledger | [README](../services/wealth-management/README.md) |
 | `wealth-analyzer` | 50055 (gRPC) | Python AI insights (Phi-3) | [README](../services/wealth-analyzer/README.md) |
@@ -98,7 +98,7 @@ This folder contains **core architecture and system-wide documentation** for Qua
 2. [ml/AI_TRADING_ARCHITECTURE.md](./ml/AI_TRADING_ARCHITECTURE.md) - 5-tier data-bound hierarchy
 3. [ml/TIER1_MODELS.md](./ml/TIER1_MODELS.md) - Model specifications
 4. [ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) - CPCV, Kedro
-5. [ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) - ONNX Runtime
+5. [ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) - MLflow Model Serving
 
 ### Algo Trader
 
@@ -125,8 +125,8 @@ This folder contains **core architecture and system-wide documentation** for Qua
 |-------|------------|----------|
 | **Feature Computation** | Rust (NAPI-RS) | `packages/compute-engine` |
 | **Model Training** | Python (Kedro) | `services/training-pipeline` |
-| **Model Export** | ONNX | Training → Inference |
-| **Live Inference** | NestJS + onnxruntime-node | `apps/algo-worker` |
+| **Model Registry** | MLflow 3.x | Training → Serving |
+| **Live Inference** | NestJS + MLflow Model Serving | `apps/algo-worker` |
 | **API Gateway** | NestJS + tRPC | `apps/api` |
 | **Web Dashboard** | Next.js 16 | `apps/web` |
 | **Time-Series DB** | QuestDB | `packages/database` |
@@ -141,13 +141,13 @@ This folder contains **core architecture and system-wide documentation** for Qua
 ```
 TRAINING (Offline - Python/Kedro)
 ─────────────────────────────────
-QuestDB → training-pipeline → ONNX Models → Storage
+QuestDB → training-pipeline → MLflow Registry → Model Serving
 
 INFERENCE (Live - Rust + NestJS)
 ────────────────────────────────
 Upstox WS → market-feeder → compute-engine (Rust, <5ms)
                                     ↓
-                            algo-worker (ONNX, <50ms)
+                            algo-worker (MLflow, <50ms)
                                     ↓
                             Risk → Execution → Upstox
 ```

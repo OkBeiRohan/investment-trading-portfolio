@@ -2,7 +2,7 @@
 
 > **Institutional-grade training infrastructure with MLflow 3.x tracking, Optuna HPO, automated evaluation, and alias-based model promotion.**
 
-**Last Updated**: March 24, 2026
+**Last Updated**: March 28, 2026
 
 ---
 
@@ -11,13 +11,17 @@
 The training pipeline is a standard Python package (`services/training-pipeline/`) — no Kedro dependency. It implements:
 
 - **5-tier hierarchical model training** (XGBoost, HMM, PatchTST, LightGBM, LiT, Meta-learner)
-- **MLflow 3.x** experiment tracking with system metrics, autologging, and checkpoint versioning
+- **MLflow 3.x** experiment tracking with system metrics (GPU/CPU/memory), autologging, and checkpoint versioning
+- **MLflow Dataset Tracking** via `mlflow.data.from_pandas()` for full data lineage
+- **MLflow Model Evaluation** via `mlflow.models.evaluate()` with SHAP explainability and custom trading metrics
+- **Native MLflow Model Flavors** — models logged directly via `mlflow.xgboost`, `mlflow.pytorch`, `mlflow.lightgbm`, `mlflow.pyfunc` (no ONNX conversion required)
+- **MLflow Model Serving** — production inference via `mlflow models serve` with REST `/invocations` endpoints
 - **Optuna HPO** with per-tier search spaces and nested MLflow child runs
 - **CPCV / walk-forward** validation for temporal financial data
-- **Quality gates** with custom thresholds + MLflow MetricThreshold validation
-- **Champion/challenger** model comparison with auto-promotion
-- **ONNX export** for production inference in the NestJS algo-worker
-- **Dual-write** to MongoDB for backward compatibility with the web frontend
+- **Quality gates** with custom thresholds + `mlflow.validate_evaluation_results()` with `MetricThreshold`
+- **Champion/challenger** model comparison with auto-promotion via `@champion` / `@challenger` aliases
+- **Checkpoint tracking** with `step` parameter and `model_id` metric linkage
+- **Dual-write** to MongoDB with MLflow run IDs, dataset digests, evaluation results, and quality gate status
 
 For the full MLflow platform documentation, see [MLFLOW_PLATFORM.md](./MLFLOW_PLATFORM.md).
 
@@ -46,21 +50,23 @@ For the full MLflow platform documentation, see [MLFLOW_PLATFORM.md](./MLFLOW_PL
               │
               ▼
   5. Model Training (Tier 0–3 + Meta)
+     + mlflow.data dataset logging
+     + native mlflow.flavor.log_model()
               │
               ▼
-  6. Model Evaluation (mlflow.models.evaluate)
+  6. Model Evaluation (mlflow.models.evaluate + SHAP)
               │
               ▼
-  7. Quality Gate (MetricThreshold)
+  7. Quality Gate (mlflow.validate_evaluation_results)
               │
               ▼
-  8. ONNX Export
+  8. Model Registration (MLflow Registry @champion + MongoDB dual-write)
               │
               ▼
-  9. Model Registration (MLflow Registry + MongoDB)
+  9. MLflow Model Serving (REST /invocations)
               │
               ▼
-  10. Reporting (HTML + JSON)
+  10. Reporting (HTML + JSON + MLflow artifacts)
 ```
 
 ---
@@ -133,7 +139,7 @@ mlflow.pytorch.log_model(model, name=f"checkpoint_{epoch}")
 
 ## Quality Gates
 
-Per-tier thresholds enforced before ONNX export:
+Per-tier thresholds enforced before model registration:
 
 | Tier | Metric | Threshold |
 |------|--------|-----------|
@@ -144,24 +150,31 @@ Per-tier thresholds enforced before ONNX export:
 | 3 | lit_direction_accuracy | >= 0.65 |
 | Meta | meta_val_loss | <= 0.5 |
 
-Also validated via `mlflow.validate_evaluation_results()` with MetricThreshold.
+Validated via `mlflow.validate_evaluation_results()` with `MetricThreshold`.
 
 ---
 
-## ONNX Export
+## Model Serving
 
-After quality gates pass, all PyTorch models (PatchTST, LiT, Meta-learner) are exported to ONNX for the algo-worker. XGBoost and LightGBM use native format.
+After quality gates pass, models are registered in the MLflow Registry with `@champion` alias and served via the `mlflow-model-server` Docker container:
+
+```bash
+mlflow models serve -m "models:/trading-tier0-xgboost-gap@champion" -p 5001 --no-conda
+```
+
+The algo-worker calls these endpoints via HTTP `POST /invocations`.
 
 ---
 
 ## Dependencies
 
-Key dependencies (`requirements.txt`):
-- `mlflow>=3.0.0` (tracking, evaluation, registry)
+Key dependencies (`pyproject.toml`):
+- `mlflow>=3.10.1` (tracking, evaluation, registry, serving)
 - `optuna>=4.0.0` (hyperparameter optimization)
 - `torch>=2.4.0` (PatchTST, LiT, Meta-learner)
 - `xgboost>=2.1.3`, `lightgbm>=4.6.0`, `scikit-learn~=1.5.1`
 - `shap>=0.43.0` (feature importance)
+- `psutil>=5.9.0`, `nvidia-ml-py>=12.0.0` (system metrics)
 - `prometheus-client`, `opentelemetry-*` (observability)
 
 ---
@@ -170,5 +183,4 @@ Key dependencies (`requirements.txt`):
 
 - [MLFLOW_PLATFORM.md](./MLFLOW_PLATFORM.md) — Full MLflow 3.x platform documentation
 - [TRAINING_STRATEGY.md](./TRAINING_STRATEGY.md) — CPCV, walk-forward, drift detection
-- [INFERENCE_PIPELINE.md](./INFERENCE_PIPELINE.md) — ONNX Runtime in NestJS
 - [FEATURE_STORE.md](./FEATURE_STORE.md) — Redis + QuestDB feature store

@@ -1,6 +1,6 @@
 # Training Pipeline
 
-> **Kedro-based ML training pipeline with CPCV validation and ONNX export for 5-tier model architecture.**
+> **Kedro-based ML training pipeline with CPCV validation and MLflow model logging for 5-tier model architecture.**
 
 [![Powered by Kedro](https://img.shields.io/badge/powered_by-kedro-ffc900?logo=kedro)](https://kedro.org)
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-The training pipeline trains and exports **production-ready ONNX models** for the algo-worker inference engine.
+The training pipeline trains and logs **production-ready models** to the MLflow Model Registry for serving via MLflow Model Serving.
 
 ### Pipeline Responsibilities
 
@@ -19,7 +19,7 @@ The training pipeline trains and exports **production-ready ONNX models** for th
 |---------------------------|-----------------------------------|
 | Train ML models using historical data | Real-time inference |
 | Validate with CPCV/Walk-Forward | Feature computation (use compute-engine) |
-| Export to ONNX format | Live trading decisions |
+| Log models via native MLflow flavors | Live trading decisions |
 | Track experiments with MLflow | Store raw market data |
 
 ### Models Trained
@@ -61,12 +61,12 @@ The training pipeline trains and exports **production-ready ONNX models** for th
 │  │  │ └── train_tft (Tier 2, CPCV)                              │           ││
 │  │  └──────────────────────────────────────────────────────────┘           ││
 │  │                           ↓                                              ││
-│  │  [train_meta] → [export_onnx] → [backtest] → [validate]                 ││
+│  │  [train_meta] → [log_models] → [backtest] → [validate]                  ││
 │  │                                                                          ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 │                           ↓                                                  │
 │  OUTPUTS                                                                     │
-│  ├── models/*.onnx → algo-worker                                            │
+│  ├── models → MLflow Model Registry → MLflow Serving                        │
 │  ├── metrics → MLflow                                                        │
 │  └── reports → Compliance                                                    │
 │                                                                              │
@@ -94,7 +94,7 @@ kedro run
 # 5. Run specific pipeline
 kedro run --pipeline=data
 kedro run --pipeline=training
-kedro run --pipeline=export
+kedro run --pipeline=register
 kedro run --pipeline=backtest
 ```
 
@@ -124,16 +124,16 @@ kedro run --pipeline=training
 - Generates OOF predictions for meta-learner
 - Trains meta-learner on stacked predictions
 
-### 3. Export Pipeline
+### 3. Model Registration Pipeline
 
 ```bash
-kedro run --pipeline=export
+kedro run --pipeline=register
 ```
 
-- Exports all models to ONNX format
-- Applies quantization for faster inference
-- Validates ONNX models with test samples
-- Uploads to MLflow model registry
+- Logs all models via native MLflow flavors (xgboost, pytorch, lightgbm, pyfunc)
+- Registers models to MLflow Model Registry with `registered_model_name`
+- Validates logged models with test samples
+- Models served via MLflow Model Serving
 
 ### 4. Backtest Pipeline
 
@@ -231,39 +231,42 @@ tft:
   sequence_length: 120
   prediction_horizons: [5, 15, 30]
 
-# Export configuration
-export:
-  output_path: "../../apps/algo-worker/models/"
-  quantize: true
-  opset_version: 17
+# MLflow model logging configuration
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  registry_uri: "http://localhost:5000"
+  serving_endpoint: "http://localhost:5001"
 ```
 
 ---
 
-## ONNX Export
+## MLflow Model Logging
 
 ### Supported Models
 
-| Model | Framework | Export Method | Size |
-|-------|-----------|---------------|------|
-| LightGBM | LightGBM | onnxmltools | ~5MB |
-| TFT | PyTorch | torch.onnx | ~50MB |
-| Regime HMM | hmmlearn | Custom | ~1MB |
-| Meta-Learner | PyTorch | torch.onnx | ~5MB |
+| Model | Framework | MLflow Flavor | Registration |
+|-------|-----------|---------------|--------------|
+| LightGBM | LightGBM | `mlflow.lightgbm` | `registered_model_name="tier2-lightgbm"` |
+| TFT | PyTorch | `mlflow.pytorch` | `registered_model_name="tier2-tft"` |
+| Regime HMM | hmmlearn | `mlflow.pyfunc` | `registered_model_name="tier1-hmm"` |
+| Meta-Learner | PyTorch | `mlflow.pytorch` | `registered_model_name="meta-learner"` |
 
-### Export Code
+### Logging Code
 
 ```python
-# LightGBM
-from onnxmltools import convert_lightgbm
-onnx_model = convert_lightgbm(model, initial_types=[('input', FloatTensorType([None, 46]))])
+import mlflow
+
+# LightGBM — one-step log + register
+mlflow.lightgbm.log_model(model, artifact_path="model",
+                           registered_model_name="tier2-lightgbm")
 
 # PyTorch (TFT, Meta-Learner)
-torch.onnx.export(model, dummy_input, path, opset_version=17)
+mlflow.pytorch.log_model(model, artifact_path="model",
+                          registered_model_name="tier2-tft")
 
-# Quantize for faster inference
-from onnxruntime.quantization import quantize_dynamic
-quantize_dynamic(path, quantized_path)
+# Custom models (HMM via pyfunc wrapper)
+mlflow.pyfunc.log_model(artifact_path="model", python_model=hmm_wrapper,
+                         registered_model_name="tier1-hmm")
 ```
 
 ---
@@ -272,10 +275,10 @@ quantize_dynamic(path, quantized_path)
 
 | Output | Location | Consumer |
 |--------|----------|----------|
-| `lightgbm_46.onnx` | `algo-worker/models/` | Inference engine |
-| `tft_sequence.onnx` | `algo-worker/models/` | Inference engine |
-| `regime_hmm.onnx` | `algo-worker/models/` | Inference engine |
-| `meta_learner.onnx` | `algo-worker/models/` | Inference engine |
+| `tier2-lightgbm` | MLflow Model Registry | MLflow Model Serving |
+| `tier2-tft` | MLflow Model Registry | MLflow Model Serving |
+| `tier1-hmm` | MLflow Model Registry | MLflow Model Serving |
+| `meta-learner` | MLflow Model Registry | MLflow Model Serving |
 | Metrics | MLflow | Dashboard |
 | SHAP plots | `reports/shap/` | Compliance |
 | Backtest report | `reports/backtest/` | Review |
@@ -327,8 +330,7 @@ services/training-pipeline/
 │   ├── 01_raw/                 # Raw data from QuestDB
 │   ├── 02_intermediate/        # Processed features
 │   ├── 03_primary/             # Training datasets
-│   ├── 06_models/              # Trained models
-│   └── 07_onnx/                # Exported ONNX
+│   └── 06_models/              # Trained models (logged to MLflow)
 ├── docs/
 │   ├── TRAINING_DATA_GUIDE.md  # Data access guide
 │   └── source/                 # API docs
@@ -338,7 +340,7 @@ services/training-pipeline/
 │       ├── pipelines/
 │       │   ├── data/           # Data ingestion
 │       │   ├── training/       # Model training
-│       │   ├── export/         # ONNX export
+│       │   ├── register/       # MLflow model registration
 │       │   └── backtest/       # Backtesting
 │       └── utils/              # Shared utilities
 ├── tests/                      # Unit & integration tests
@@ -364,11 +366,11 @@ services/training-pipeline/
 | Service | Relationship |
 |---------|--------------|
 | `compute-engine` | Provides features (historical and live) |
-| `algo-worker` | Consumes ONNX models for live inference |
+| `algo-worker` | Consumes models via MLflow Model Serving |
 | `market-feeder` | Stores raw market data to QuestDB |
 
 ---
 
 **Status**: Active Development  
-**Technology**: Python 3.11+, Kedro, PyTorch, LightGBM, ONNX, MLflow  
+**Technology**: Python 3.11+, Kedro, PyTorch, LightGBM, MLflow  
 **Last Updated**: March 17, 2026

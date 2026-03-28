@@ -2,7 +2,7 @@
 
 **Last Updated**: March 13, 2026
 **Architecture**: 6-Layer Event-Driven | 5-Tier Hierarchical Inference
-**Models**: 8 ONNX models across 5 tiers
+**Models**: 8 MLflow-served models across 5 tiers
 
 ---
 
@@ -32,7 +32,7 @@ apps/algo-worker/
 │   │   │   ├── tier3.service.ts             # Microstructure Scalper (LiT, GPU)
 │   │   │   ├── tier4.service.ts             # Meta-Learner (Contextual Gating Network)
 │   │   │   ├── worker-pool.service.ts       # Manages Worker Thread lifecycle
-│   │   │   ├── onnx-session.config.ts       # ONNX EP configs for all 8 models
+│   │   │   ├── mlflow-client.config.ts       # MLflow Serving endpoint configs for all 8 models
 │   │   │   └── workers/
 │   │   │       ├── tier2-lightgbm.worker.ts # CPU Worker (Core 1)
 │   │   │       ├── tier2-tft.worker.ts      # GPU Worker - TensorRT (Core 2)
@@ -79,7 +79,7 @@ apps/algo-worker/
 │   │
 │   ├── config/                          # Configuration
 │   │   ├── trading.config.ts                 # Trading parameters
-│   │   ├── model.config.ts                   # ONNX model paths + EP configs
+│   │   ├── model.config.ts                   # MLflow Serving endpoints + model URIs
 │   │   ├── risk.config.ts                    # Risk limits + circuit breaker thresholds
 │   │   └── gpu.config.ts                     # CUDA stream + VRAM allocation
 │   │
@@ -91,25 +91,19 @@ apps/algo-worker/
 │   ├── app.module.ts                    # Root NestJS module
 │   └── main.ts                          # Bootstrap with CPU affinity
 │
-├── models/                              # ONNX Models (from training-pipeline)
-│   ├── tier0/
-│   │   └── xgboost_gap.onnx               # Tier 0: XGBoost (500 trees, depth 6)
-│   ├── tier1/
-│   │   ├── hmm_regime.onnx                 # Tier 1: HMM regime detector
-│   │   └── patchtst_trend.onnx             # Tier 1: PatchTST daily trend
-│   ├── tier2/
-│   │   ├── lightgbm_intraday.onnx          # Tier 2: LightGBM (CPU, [1,84])
-│   │   ├── tft_intraday.onnx               # Tier 2: TFT (GPU, [1,120,80])
-│   │   ├── tft_intraday_fp16.engine        # TensorRT FP16 cached engine
-│   │   └── mamba_intraday.onnx             # Tier 2: Mamba (GPU, [1,120,80])
-│   ├── tier3/
-│   │   └── lit_microstructure.onnx          # Tier 3: LiT Transformer (GPU, [1,14])
-│   └── tier4/
-│       └── meta_learner_cgn.onnx            # Tier 4: Contextual Gating Network ([1,24])
+├── config/
+│   └── mlflow-endpoints.ts              # MLflow Model Serving endpoints (no local model files)
+│       # Models are served via MLflow Model Serving containers.
+│       # Each model resolves from MLflow Registry using @champion alias.
+│       # Tier 0: models:/tier0-xgboost-gap@champion
+│       # Tier 1: models:/tier1-hmm-regime@champion, models:/tier1-patchtst-trend@champion
+│       # Tier 2: models:/tier2-lightgbm@champion, models:/tier2-tft@champion, models:/tier2-mamba@champion
+│       # Tier 3: models:/tier3-lit-microstructure@champion
+│       # Tier 4: models:/tier4-meta-learner-cgn@champion
 │
 ├── docs/                                # Documentation
 │   ├── ARCHITECTURE.md                     # 6-layer + 5-tier overview
-│   ├── INFERENCE_ENGINE.md                 # GPU/CPU allocation, ONNX EP config, Worker Threads
+│   ├── INFERENCE_ENGINE.md                 # GPU/CPU allocation, MLflow Serving config, Worker Threads
 │   ├── PERFORMANCE_OPTIMIZATION.md         # Zero-allocation patterns
 │   ├── VISUAL_FLOW.md                      # ASCII flow diagrams
 │   ├── PROJECT_STRUCTURE.md                # This file
@@ -153,7 +147,7 @@ apps/algo-worker/
 | ----- | ----------------- | ----------------------------------------------- | -------------: |
 | **1** | `data-ingestion/` | Redis Streams subscription, event normalization |           <2ms |
 | **2** | `feature-engine/` | 117 features via Rust compute-engine (NAPI-RS)  |           <5ms |
-| **3** | `prediction/`     | 5-tier hierarchical inference (8 ONNX models)   |      <25ms GPU |
+| **3** | `prediction/`     | 5-tier hierarchical inference (8 MLflow models)  |      <25ms GPU |
 | **4** | `strategy-risk/`  | Regime-aware strategy selection + 7 risk checks |          <10ms |
 | **5** | `execution/`      | MARKET/TWAP/VWAP routing + position management  |          <20ms |
 | **6** | `observability/`  | Prometheus, QuestDB, MongoDB persistence        |          Async |
@@ -194,7 +188,7 @@ apps/algo-worker/
 | File                | Description                                                |
 | ------------------- | ---------------------------------------------------------- |
 | `trading.config.ts` | Trading parameters (session times, symbols, timeframes)    |
-| `model.config.ts`   | ONNX model paths, execution provider configs, input shapes |
+| `model.config.ts`   | MLflow Serving endpoints, model URIs, input shapes         |
 | `risk.config.ts`    | Risk limits, circuit breaker thresholds, max drawdown      |
 | `gpu.config.ts`     | CUDA stream allocation, VRAM budgets, TensorRT cache paths |
 
@@ -202,20 +196,20 @@ apps/algo-worker/
 
 ## Model Files
 
-All models are exported from `training-pipeline` and stored in `models/`. The system loads 8 ONNX models organized across 5 tiers.
+All models are registered in MLflow Model Registry by `training-pipeline` and served via MLflow Model Serving containers. The algo-worker calls REST endpoints -- no local model files are stored.
 
-| Model File                      | Tier | Architecture                 | Input Shape    | Execution Provider | Approx. Size |
-| ------------------------------- | ---- | ---------------------------- | -------------- | ------------------ | ------------ |
-| `tier0/xgboost_gap.onnx`        | 0    | XGBoost (500 trees, depth 6) | `[1, 42]`      | CPU                | ~8 MB        |
-| `tier1/hmm_regime.onnx`         | 1    | Hidden Markov Model          | `[1, 20]`      | CPU                | ~2 MB        |
-| `tier1/patchtst_trend.onnx`     | 1    | PatchTST (daily trend)       | `[1, 60, 12]`  | CPU                | ~15 MB       |
-| `tier2/lightgbm_intraday.onnx`  | 2    | LightGBM                     | `[1, 84]`      | CPU                | ~12 MB       |
-| `tier2/tft_intraday.onnx`       | 2    | Temporal Fusion Transformer  | `[1, 120, 80]` | TensorRT (FP16)    | ~45 MB       |
-| `tier2/mamba_intraday.onnx`     | 2    | Mamba (selective SSM)        | `[1, 120, 80]` | CUDA               | ~38 MB       |
-| `tier3/lit_microstructure.onnx` | 3    | LiT Transformer              | `[1, 14]`      | CUDA               | ~10 MB       |
-| `tier4/meta_learner_cgn.onnx`   | 4    | Contextual Gating Network    | `[1, 24]`      | CPU                | ~5 MB        |
+| MLflow Model URI                            | Tier | Architecture                 | Input Shape    | Serving Port | MLflow Flavor    |
+| ------------------------------------------- | ---- | ---------------------------- | -------------- | ------------ | ---------------- |
+| `models:/tier0-xgboost-gap@champion`        | 0    | XGBoost (500 trees, depth 6) | `[1, 42]`      | 5001         | `mlflow.xgboost` |
+| `models:/tier1-hmm-regime@champion`         | 1    | Hidden Markov Model          | `[1, 20]`      | 5002         | `mlflow.sklearn`  |
+| `models:/tier1-patchtst-trend@champion`     | 1    | PatchTST (daily trend)       | `[1, 60, 12]`  | 5003         | `mlflow.pytorch`  |
+| `models:/tier2-lightgbm@champion`           | 2    | LightGBM                     | `[1, 84]`      | 5004         | `mlflow.lightgbm` |
+| `models:/tier2-tft@champion`                | 2    | Temporal Fusion Transformer  | `[1, 120, 80]` | 5005         | `mlflow.pytorch`  |
+| `models:/tier2-mamba@champion`              | 2    | Mamba (selective SSM)        | `[1, 120, 80]` | 5006         | `mlflow.pytorch`  |
+| `models:/tier3-lit-microstructure@champion` | 3    | LiT Transformer              | `[1, 14]`      | 5007         | `mlflow.pytorch`  |
+| `models:/tier4-meta-learner-cgn@champion`   | 4    | Contextual Gating Network    | `[1, 24]`      | 5008         | `mlflow.pytorch`  |
 
-Additionally, `tier2/tft_intraday_fp16.engine` is the TensorRT FP16 cached engine file generated on first inference from `tft_intraday.onnx`. This avoids the ~30s TensorRT compilation penalty on subsequent startups.
+GPU acceleration is handled within the MLflow Serving containers (configured with CUDA/TensorRT). The algo-worker simply sends HTTP requests to the appropriate endpoint.
 
 ---
 
@@ -235,25 +229,25 @@ Main Thread (Core 0)
      ├── Worker Thread 1 (Core 1) ── tier2-lightgbm.worker.ts
      │   EP: CPU
      │   Trigger: Every 60s candle close
-     │   Model: lightgbm_intraday.onnx
+     │   Model: models:/tier2-lightgbm@champion
      │
      ├── Worker Thread 2 (Core 2) ── tier2-tft.worker.ts
      │   EP: TensorRT (FP16)
      │   Trigger: Every 60s candle close
-     │   Model: tft_intraday.onnx / tft_intraday_fp16.engine
+     │   Model: models:/tier2-tft@champion
      │
      ├── Worker Thread 3 (Core 3) ── tier2-mamba.worker.ts
      │   EP: CUDA
      │   Trigger: Every 60s candle close
-     │   Model: mamba_intraday.onnx
+     │   Model: models:/tier2-mamba@champion
      │
      └── Worker Thread 4 (Core 4) ── tier3-lit.worker.ts
          EP: CUDA
          Trigger: Self-driving 100ms loop (independent of candle cycle)
-         Model: lit_microstructure.onnx
+         Model: models:/tier3-lit-microstructure@champion
 ```
 
-Worker lifecycle is managed by `worker-pool.service.ts`. All Worker Threads are spawned at startup and kept alive for the duration of the trading session. ONNX sessions are created once per worker and reused across inference calls.
+Worker lifecycle is managed by `worker-pool.service.ts`. All Worker Threads are spawned at startup and kept alive for the duration of the trading session. HTTP connections to MLflow Serving endpoints are pooled and reused across inference calls.
 
 ---
 
@@ -273,7 +267,7 @@ Worker lifecycle is managed by `worker-pool.service.ts`. All Worker Threads are 
 | Package            | Purpose                                                       |
 | ------------------ | ------------------------------------------------------------- |
 | `@nestjs/*`        | NestJS framework (modules, DI, event emitter, microservices)  |
-| `onnxruntime-node` | ONNX Runtime with CPU, CUDA, and TensorRT execution providers |
+| `undici`           | High-performance HTTP client for MLflow Serving REST calls    |
 | `ioredis`          | Redis client for Streams, pub/sub, and caching                |
 | `pino`             | Structured JSON logging with sub-millisecond overhead         |
 | `prom-client`      | Prometheus metrics (counters, histograms, gauges)             |
@@ -339,7 +333,7 @@ The trading pipeline processes market data through 6 layers in sequence. Each la
 | Document                                                     | Description                                                     |
 | ------------------------------------------------------------ | --------------------------------------------------------------- |
 | [ARCHITECTURE.md](./ARCHITECTURE.md)                         | Full 6-layer + 5-tier architectural overview                    |
-| [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md)                 | GPU/CPU allocation, ONNX EP configuration, Worker Thread design |
+| [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md)                 | GPU/CPU allocation, MLflow Serving config, Worker Thread design  |
 | [PERFORMANCE_OPTIMIZATION.md](./PERFORMANCE_OPTIMIZATION.md) | Zero-allocation patterns, GC tuning, typed array strategies     |
 | [VISUAL_FLOW.md](./VISUAL_FLOW.md)                           | ASCII flow diagrams for all trading scenarios                   |
 | [layers/03-PREDICTION.md](./layers/03-PREDICTION.md)         | Detailed 5-tier prediction layer specification                  |

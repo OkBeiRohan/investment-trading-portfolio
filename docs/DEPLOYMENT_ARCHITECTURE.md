@@ -62,7 +62,7 @@
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  training-pipeline (Python/Kedro + GPU)              │   │
-│  │  Runs nightly to train models, export to ONNX       │   │
+│  │  Runs nightly to train models, register to MLflow   │   │
 │  └──────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -113,12 +113,12 @@
 - **Purpose**:
   - Real-time market data ingestion (Upstox WebSocket)
   - Feature engineering (Rust NAPI-RS + Drift-Adaptive Normalization)
-  - ML inference (ONNX + TensorRT on RTX GPU)
+  - ML inference (MLflow Model Serving on RTX GPU)
   - Order execution (direct Upstox API calls)
   - Position tracking and exit management
 - **Why Local**:
   - **Latency**: <100ms end-to-end required (cloud adds 50-200ms network)
-  - **GPU Access**: TensorRT/CUDA inference needs local RTX GPU
+  - **GPU Access**: MLflow Model Serving with CUDA needs local RTX GPU
   - **Data Privacy**: Market data stays on-premises
   - **No Static IP Compliance**: Not using cloud brokers, local IP acceptable
 - **Performance Target**: <150ms (tick → signal → order)
@@ -165,8 +165,8 @@
 - **Purpose**:
   - Fetch data from QuestDB
   - Train ML models using 5-tier hierarchy (Tier 0: LightGBM/XGBoost; Tier 1: TFT, Mamba, PatchTST, LiT; Tier 2: Conditional specialists; Meta-Learner: PPO signal fusion)
-  - Export to ONNX (FP16 quantization)
-  - Copy to algo-worker/models/ directory
+  - Register models to MLflow (native flavors, @champion alias)
+  - algo-worker calls MLflow Model Serving REST /invocations
 - **Why Local**:
   - **GPU Access**: Training requires RTX GPU (8-12 hours per full training)
   - **Data Access**: Direct QuestDB connection (no cloud egress fees)
@@ -201,8 +201,8 @@
 3. algo-worker Cortex → compute features (Rust) → Redis Stream (local)
    Latency: 2-5ms
 
-4. algo-worker Prediction → ONNX inference (TensorRT GPU) → Redis Stream (local)
-   Latency: 5-15ms (GPU TensorRT)
+4. algo-worker Prediction → MLflow /invocations inference (GPU) → Redis Stream (local)
+   Latency: 5-15ms (MLflow Model Serving)
 
 5. algo-worker Cognition → risk checks → Redis Stream (local)
    Latency: 2-5ms
@@ -234,47 +234,44 @@ Alternative: Pre-compute reports nightly, store in cloud MongoDB, serve directly
 
 ### **1. Node.js Worker Threads for GPU Inference**
 
-**Problem**: GPU inference (ONNX Runtime) blocks Node.js event loop, causing 20-50ms stalls.
+**Problem**: Synchronous HTTP calls to MLflow Model Serving block the Node.js event loop, causing 20-50ms stalls.
 
-**Solution**: Dedicated Worker Thread for ML models.
+**Solution**: Dedicated Worker Thread for ML inference.
 
 ```typescript
 // algo-worker/src/prediction/prediction-worker.ts
 import { Worker } from "worker_threads";
-import { SharedArrayBuffer } from "buffer";
 
 // Main thread (event loop)
-const featureBuffer = new SharedArrayBuffer(1 * 60 * 13 * 8); // 60 timesteps, 13 features, Float64
-const resultBuffer = new SharedArrayBuffer(3 * 8); // 3 classes (VOL_UP, NEUTRAL, VOL_DOWN)
+const worker = new Worker("./inference-worker.js");
 
-const worker = new Worker("./inference-worker.js", {
-  workerData: { featureBuffer, resultBuffer },
-});
-
-// Inference worker (separate thread with GPU access)
+// Inference worker (separate thread)
 // inference-worker.js
-const ort = require("onnxruntime-node");
-const { parentPort, workerData } = require("worker_threads");
+const { parentPort } = require("worker_threads");
 
-const session = await ort.InferenceSession.create("xgboost.onnx", {
-  executionProviders: ["TensorrtExecutionProvider", "CUDAExecutionProvider"],
-});
+const MLFLOW_ENDPOINT = "http://localhost:5001/invocations";
 
-parentPort.on("message", async () => {
-  const features = new Float32Array(workerData.featureBuffer);
-  const output = await session.run({ input: features });
+parentPort.on("message", async (features) => {
+  const response = await fetch(MLFLOW_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataframe_split: {
+        columns: features.columns,
+        data: [features.values],
+      },
+    }),
+  });
 
-  const result = new Float64Array(workerData.resultBuffer);
-  result.set(output.output.data);
-
-  parentPort.postMessage("done");
+  const result = await response.json();
+  parentPort.postMessage(result.predictions);
 });
 ```
 
 **Impact**:
 
 - Eliminates event loop blocking
-- GPU inference no longer delays WebSocket message processing
+- MLflow inference no longer delays WebSocket message processing
 - Latency: 10-30ms (GPU) vs 50-200ms (blocked event loop)
 
 ---
@@ -413,7 +410,7 @@ ssh -R 9000:localhost:9000 user@cloud-api-server
 #### **Scenario 4: RTX GPU Failure**
 
 - **Impact**: ML inference fails
-- **Mitigation**: Fallback to CPU inference (ONNX Runtime CPUExecutionProvider)
+- **Mitigation**: Fallback to CPU-based MLflow Model Serving
 - **Degradation**: Latency increases to 100-200ms (still acceptable for non-HFT)
 
 ---
@@ -498,7 +495,7 @@ ssh -R 9000:localhost:9000 user@cloud-api-server
 ### **1. Worker Threads for GPU Inference** ✅ CRITICAL
 
 - **Impact**: Eliminates event loop blocking (20-50ms saved)
-- **Implementation**: Separate thread for ONNX Runtime, SharedArrayBuffer for data
+- **Implementation**: Dedicated inference worker calling MLflow /invocations endpoint
 
 ### **2. Order Flow Imbalance (OFI)** ✅ HIGH
 

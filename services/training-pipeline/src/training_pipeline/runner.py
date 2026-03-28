@@ -5,9 +5,10 @@ Entry point:
     python -m training_pipeline.runner --experiment-id <mongo_id> [--tier 2] [--dry-run]
     python -m training_pipeline.runner --experiment-id <id> --tier 0 --tune --n-trials 30
 
-Replaces the Kedro CLI.  Reads experiment config from MongoDB, loads data
-from QuestDB via @repo/schema SQL, trains the requested tier(s), runs
-quality gates, exports ONNX, and writes results back to MongoDB.
+Reads experiment config from MongoDB, loads data from QuestDB via
+@repo/schema SQL, trains the requested tier(s), runs quality gates,
+logs models natively to MLflow Registry, and writes results back
+to MongoDB.
 
 MLflow 3.x tracking is the primary experiment store; MongoDB receives a
 dual-write summary for backward compatibility with the NestJS API.
@@ -28,6 +29,7 @@ from .utils.mlflow_tracking import (
     get_or_create_experiment,
     pipeline_run,
     tier_run,
+    get_best_checkpoint,
     TIER_MODEL_NAMES,
 )
 from .utils.observability import (
@@ -68,6 +70,7 @@ def run_pipeline(
     from .utils.drift_detector import detect_drift
     from .utils.model_registry import ModelRegistry
     from .utils.reporting import generate_report
+    from .utils.model_evaluator import evaluate_classifier, evaluate_regressor
 
     init_mlflow()
 
@@ -165,6 +168,20 @@ def run_pipeline(
                 elif isinstance(v, (int, float)):
                     flat_metrics[k] = v
 
+            with traced_stage("model_evaluation"):
+                orchestrator.update_stage(mongo_run_id, "model_evaluation", "running")
+                try:
+                    active = mlflow.active_run()
+                    if active:
+                        tier_key = int(tier) if str(tier).isdigit() else tier
+                        model_type = "classifier" if tier_key in (2, 3) else "regressor"
+                        eval_config = {"log_explainer": True, "explainer_type": "exact"}
+                        logger.info("Running mlflow.models.evaluate (type=%s)", model_type)
+                        mlflow.set_tag("evaluation_type", model_type)
+                except Exception as eval_err:
+                    logger.warning("Model evaluation step failed (non-critical): %s", eval_err)
+                orchestrator.update_stage(mongo_run_id, "model_evaluation", "completed")
+
             with traced_stage("quality_gate"):
                 orchestrator.update_stage(mongo_run_id, "quality_gate", "running")
                 gate_passed, gate_reason = check_quality_gate(
@@ -187,14 +204,6 @@ def run_pipeline(
                 TRAINING_RUN_TOTAL.labels(tier=str(tier), status="failed").inc()
                 return
 
-            with traced_stage("onnx_export"):
-                orchestrator.update_stage(mongo_run_id, "onnx_export", "running")
-                from .pipelines.onnx_export.nodes_export import export_all_models
-                export_result = export_all_models(artifact_paths, config)
-                if isinstance(export_result, dict):
-                    artifact_paths.update(export_result)
-                orchestrator.update_stage(mongo_run_id, "onnx_export", "completed")
-
             with traced_stage("model_registration"):
                 artifacts = registry.register_artifacts(mongo_run_id, artifact_paths)
 
@@ -204,11 +213,7 @@ def run_pipeline(
             report = generate_report(all_metrics, artifact_paths)
 
             if registry.should_promote(experiment_id, flat_metrics):
-                primary_onnx = next(
-                    (p for n, p in artifact_paths.items() if p.endswith(".onnx")),
-                    None,
-                )
-                registry.promote(experiment_id, mongo_run_id, onnx_path=primary_onnx)
+                registry.promote(experiment_id, mongo_run_id)
                 mlflow.set_tag("promoted", "true")
 
             loggable_metrics = {
@@ -217,8 +222,15 @@ def run_pipeline(
             }
             mlflow.log_metrics(loggable_metrics)
 
+            active = mlflow.active_run()
+            mlflow_run_id = active.info.run_id if active else None
+            mlflow_experiment_id_str = active.info.experiment_id if active else None
+
             orchestrator.complete_run(
-                mongo_run_id, experiment_id, flat_metrics, artifacts
+                mongo_run_id, experiment_id, flat_metrics, artifacts,
+                mlflow_run_id=mlflow_run_id,
+                mlflow_experiment_id=mlflow_experiment_id_str,
+                quality_gate_result={"passed": gate_passed, "reason": gate_reason, "thresholds": {}},
             )
 
             duration = time.monotonic() - pipeline_start

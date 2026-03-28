@@ -32,7 +32,7 @@ This directory contains documentation for the **AI trading system** that powers 
 │                                                                             │
 │  INFERENCE (<80ms E2E)                                                      │
 │  ├── 100+ features via Rust compute-engine (<5ms)                           │
-│  ├── ONNX/native ensemble inference (<50ms)                                 │
+│  ├── MLflow Model Serving ensemble inference (<50ms)                        │
 │  └── Meta-learner signal fusion with regime conditioning                    │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -48,14 +48,14 @@ This directory contains documentation for the **AI trading system** that powers 
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | [**DATA_ARCHITECTURE.md**](./DATA_ARCHITECTURE.md)   | Data sources (Indian + Global), QuestDB schemas, Upstox + Yahoo Finance integration |
 | [**MODEL_ARCHITECTURE.md**](./MODEL_ARCHITECTURE.md) | 5-tier model design: Gap → Regime → Direction → Microstructure → Fusion             |
-| [**TRAINING_STRATEGY.md**](./TRAINING_STRATEGY.md)   | CPCV validation, walk-forward, ONNX export                                          |
+| [**TRAINING_STRATEGY.md**](./TRAINING_STRATEGY.md)   | CPCV validation, walk-forward, drift detection                                       |
 
 ### Features & Inference
 
 | Document                                                   | Description                                                     |
 | ---------------------------------------------------------- | --------------------------------------------------------------- |
 | [**FEATURE_SPECIFICATION.md**](./FEATURE_SPECIFICATION.md) | 100+ feature definitions (local + global macro + cyclical time) |
-| [**INFERENCE_PIPELINE.md**](./INFERENCE_PIPELINE.md)       | ONNX Runtime inference architecture                             |
+| [**INFERENCE_PIPELINE.md**](./INFERENCE_PIPELINE.md)       | MLflow Model Serving inference architecture                     |
 | [**FEATURE_STORE.md**](./FEATURE_STORE.md)                 | Redis feature store (direct write, no Feast)                    |
 
 ### Models & Training
@@ -91,7 +91,7 @@ This directory contains documentation for the **AI trading system** that powers 
 | Document                                               | Description                                                          |
 | ------------------------------------------------------ | -------------------------------------------------------------------- |
 | [**MLFLOW_PLATFORM.md**](./MLFLOW_PLATFORM.md)         | MLflow 3.x platform: tracking, HPO, evaluation, comparison, registry |
-| [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md)     | Python training pipeline (runner, tiers, ONNX export)                |
+| [**TRAINING_PIPELINE.md**](./TRAINING_PIPELINE.md)     | Python training pipeline (runner, tiers, MLflow native logging)      |
 | [**TRAINING_STRATEGY.md**](./TRAINING_STRATEGY.md)     | CPCV validation, walk-forward, drift detection                       |
 
 ---
@@ -147,7 +147,7 @@ This directory contains documentation for the **AI trading system** that powers 
 | Metric              | Target              |
 | ------------------- | ------------------- |
 | Feature Computation | <5ms (Rust)         |
-| ML Inference        | <50ms (ONNX/native) |
+| ML Inference        | <50ms (MLflow Serving) |
 | E2E Latency         | <80ms               |
 | LightGBM AUC        | >0.68               |
 | Ensemble Sharpe     | >1.5                |

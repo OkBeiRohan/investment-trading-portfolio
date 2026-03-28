@@ -24,6 +24,8 @@ export interface IExperimentMetrics {
   extraMetrics: Record<string, unknown>;
 }
 
+export type ModelServingFormat = 'mlflow_native' | 'pyfunc';
+
 export interface IExperiment {
   name: string;
   description?: string;
@@ -35,7 +37,14 @@ export interface IExperiment {
   metrics: IExperimentMetrics;
   bestRunId?: string;
   modelPath?: string;
-  onnxPath?: string;
+
+  mlflowExperimentId?: string;
+  mlflowRunId?: string;
+  mlflowModelName?: string;
+  mlflowModelUri?: string;
+  mlflowChampionVersion?: string;
+  modelFormat?: ModelServingFormat;
+
   isDeployed: boolean;
   deployedAt?: Date;
   createdBy: string;

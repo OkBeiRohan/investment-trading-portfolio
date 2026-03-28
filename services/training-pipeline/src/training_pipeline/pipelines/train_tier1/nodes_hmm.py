@@ -16,7 +16,10 @@ from hmmlearn.hmm import GaussianHMM
 from sklearn.preprocessing import StandardScaler
 
 import mlflow
-from ...utils.mlflow_tracking import log_model_params
+from ...utils.mlflow_tracking import (
+    log_model_params, log_training_dataset, log_checkpoint,
+    infer_model_signature, TIER_MODEL_NAMES,
+)
 from ...utils.observability import TRAINING_RUN_TOTAL, TRAINING_DATA_ROWS
 
 logger = logging.getLogger(__name__)

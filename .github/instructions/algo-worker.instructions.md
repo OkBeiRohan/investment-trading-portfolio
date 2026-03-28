@@ -171,7 +171,7 @@ These tiers are orchestrated through the algo-worker's processing engines:
 
 ### SignalEngine
 
-- **Responsibility**: ML inference using ONNX models across Tier 0–3
+- **Responsibility**: ML inference via MLflow Model Serving across Tier 0-3
 - **Input**: Features from Redis Stream (pre-filtered by union config)
 - **Output**: Trading signals (VOL_UP/VOL_DOWN) + confidence
 - **Services**: `ModelLoaderService`, `SignalEngineService`
@@ -420,34 +420,42 @@ await this.redis.set('circuit-breaker:status', 'OPEN', 'EX', 300);
 
 ## ML Model Guidelines
 
-### ONNX Runtime Configuration
+### MLflow Model Serving Configuration
+
+Models are served via MLflow Model Serving containers (REST /invocations). Each tier resolves
+its model through MLflow @champion aliases -- no local model files needed.
 
 ```typescript
-const session = await ort.InferenceSession.create(modelPath, {
-  executionProviders: [
-    'TensorrtExecutionProvider', // NVIDIA GPU (primary)
-    'OpenVINOExecutionProvider', // Intel CPU (fallback)
-    'CPUExecutionProvider', // Universal fallback
-  ],
-  graphOptimizationLevel: 'all',
-  enableProfiling: false, // Disable in production
-});
+const MLFLOW_ENDPOINTS = {
+  tier0: "http://mlflow-serving-tier0:5001/invocations",
+  tier1_hmm: "http://mlflow-serving-tier1:5002/invocations",
+  tier1_patchtst: "http://mlflow-serving-tier1:5003/invocations",
+  tier2_lightgbm: "http://mlflow-serving-tier2:5004/invocations",
+  tier2_tft: "http://mlflow-serving-tier2:5005/invocations",
+  tier2_mamba: "http://mlflow-serving-tier2:5006/invocations",
+  tier3_lit: "http://mlflow-serving-tier3:5007/invocations",
+  tier4_meta: "http://mlflow-serving-tier4:5008/invocations",
+};
 ```
 
-### Tensor Shape Documentation (MANDATORY)
+### Input/Output Shape Documentation (MANDATORY)
 
 Every model inference MUST document input/output shapes:
 
 ```typescript
 /**
- * Infer signal from features
- * @param features - Float32Array, Shape: [Batch=1, Seq=60, Feat=13]
+ * Infer signal from features via MLflow Serving
+ * @param features - number[], Shape: [Batch=1, Seq=60, Feat=13]
  * @returns Prediction, Shape: [Batch=1, Classes=3] (VOL_UP, NEUTRAL, VOL_DOWN)
  */
-async infer(features: Float32Array): Promise<Float32Array> {
-  const inputTensor = new ort.Tensor('float32', features, [1, 60, 13]);
-  const output = await this.session.run({ input: inputTensor });
-  return output.output.data as Float32Array;
+async infer(features: number[]): Promise<number[]> {
+  const response = await fetch(this.endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ inputs: [features] }),
+  });
+  const result = await response.json();
+  return result.predictions[0];
 }
 ```
 
