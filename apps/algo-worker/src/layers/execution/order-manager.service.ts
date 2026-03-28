@@ -8,12 +8,16 @@ import type { OrderIntent } from '../strategy-risk/strategy-selector.service';
 export class OrderManagerService {
   private readonly logger = new Logger(OrderManagerService.name);
   private readonly sandboxMode: boolean;
+  private readonly upstoxApiUrl: string;
+  private accessToken: string | null = null;
 
   constructor(
     private readonly eventEmitter: EventEmitter2,
     private readonly configService: ConfigService,
   ) {
     this.sandboxMode = this.configService.get<string>('TRADING_MODE') !== 'live';
+    this.upstoxApiUrl = 'https://api.upstox.com/v2';
+    this.accessToken = this.configService.get<string>('UPSTOX_ACCESS_TOKEN') ?? null;
     this.logger.log(`Order Manager initialized (mode: ${this.sandboxMode ? 'SANDBOX' : 'LIVE'})`);
   }
 
@@ -23,23 +27,13 @@ export class OrderManagerService {
     const startTime = performance.now();
 
     try {
-      const upstoxPayload = {
-        instrumentToken: intent.instrumentKey,
-        quantity: intent.quantity,
-        transactionType: intent.side,
-        orderType: intent.orderType,
-        product: 'I',
-        validity: 'DAY',
-      };
-
       let orderId: string;
 
-      if (this.sandboxMode) {
+      if (this.sandboxMode || !this.accessToken) {
         orderId = `SIM-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         this.logger.log(`[SANDBOX] Simulated order: ${orderId}`);
       } else {
-        orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        this.logger.log(`[LIVE] Order placed: ${orderId}`);
+        orderId = await this.placeUpstoxOrder(intent);
       }
 
       const latencyMs = performance.now() - startTime;
@@ -48,12 +42,11 @@ export class OrderManagerService {
         orderId,
         intent,
         latencyMs,
-        sandbox: this.sandboxMode,
+        sandbox: this.sandboxMode || !this.accessToken,
         timestamp: new Date().toISOString(),
       });
 
       this.logger.log(`Order filled in ${latencyMs.toFixed(2)}ms: ${orderId}`);
-
     } catch (error: any) {
       this.logger.error(`Order execution failed for ${intent.instrumentKey}: ${error.message}`);
 
@@ -63,5 +56,48 @@ export class OrderManagerService {
         timestamp: new Date().toISOString(),
       });
     }
+  }
+
+  private async placeUpstoxOrder(intent: OrderIntent): Promise<string> {
+    const response = await fetch(`${this.upstoxApiUrl}/order/place`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        quantity: intent.quantity,
+        product: 'I',
+        validity: 'DAY',
+        price: 0,
+        instrument_token: intent.instrumentKey,
+        order_type: intent.orderType,
+        transaction_type: intent.side,
+        disclosed_quantity: 0,
+        trigger_price: 0,
+        is_amo: false,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Upstox order API error (${response.status}): ${text}`);
+    }
+
+    const data = await response.json() as { data?: { order_id?: string } };
+    const orderId = data.data?.order_id;
+    if (!orderId) {
+      throw new Error('No order_id in Upstox response');
+    }
+
+    this.logger.log(`[LIVE] Upstox order placed: ${orderId}`);
+    return orderId;
+  }
+
+  updateAccessToken(token: string) {
+    this.accessToken = token;
+    this.logger.log('Upstox access token updated');
   }
 }

@@ -136,19 +136,19 @@ export class AdminTrainingController {
     const tier = body.tier ?? 'full';
     const tuneFlag = body.tune ? '--tune' : '';
     const nTrials = body.nTrials ?? 30;
-    const cmd = `python -m training_pipeline.runner --experiment-id ${id} --tier ${tier} ${tuneFlag} ${tuneFlag ? `--n-trials ${nTrials}` : ''} --log-level INFO`.trim();
+    const args = `--experiment-id ${id} --tier ${tier} ${tuneFlag} ${tuneFlag ? `--n-trials ${nTrials}` : ''} --log-level INFO`.trim();
 
-    this.spawnTrainingPipeline(id, run._id?.toString() ?? '', cmd);
+    this.triggerTrainingContainer(id, run._id?.toString() ?? '', args);
 
-    return { ...run.toObject?.() ?? run, command: cmd };
+    return { ...run.toObject?.() ?? run, pipelineArgs: args };
   }
 
-  private spawnTrainingPipeline(experimentId: string, runId: string, cmd: string) {
+  private triggerTrainingContainer(experimentId: string, runId: string, args: string) {
     const { exec } = require('child_process');
-    this.logger.log(`Spawning training pipeline: ${cmd}`);
+    const containerCmd = `docker exec training-pipeline python -m training_pipeline.runner ${args}`;
+    this.logger.log(`Triggering training container: ${containerCmd}`);
 
-    const child = exec(cmd, {
-      env: { ...process.env },
+    const child = exec(containerCmd, {
       timeout: 4 * 60 * 60 * 1000,
     });
 
