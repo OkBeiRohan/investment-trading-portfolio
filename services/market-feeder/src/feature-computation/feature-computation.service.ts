@@ -10,6 +10,7 @@ import { MarketCandle, InstrumentFeatures, TrainingLabels } from '@repo/schema';
 import { ContinuousContractBuilder } from './continuous-contract.builder';
 import { ConstituentManagerService } from './constituent-manager.service';
 import type { FeatureInput, FeatureOutput } from '@repo/compute-engine';
+import Redis from 'ioredis';
 
 /**
  * Feature Computation Service v3.0
@@ -32,7 +33,8 @@ import type { FeatureInput, FeatureOutput } from '@repo/compute-engine';
 @Injectable()
 export class FeatureComputationService {
   private readonly logger = new Logger(FeatureComputationService.name);
-  private readonly BATCH_SIZE = 5000; // Process 5000 timestamps at a time for batch insert
+  private readonly BATCH_SIZE = 5000;
+  private readonly redis: Redis;
 
   constructor(
     private readonly computeEngine: ComputeEngineService,
@@ -42,7 +44,9 @@ export class FeatureComputationService {
     private readonly instrumentMasterRepository: InstrumentMasterRepository,
     private readonly continuousContractBuilder: ContinuousContractBuilder,
     private readonly constituentManager: ConstituentManagerService,
-  ) {}
+  ) {
+    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+  }
 
   /**
    * Compute and store features for Nifty 50 spot index
@@ -280,6 +284,28 @@ export class FeatureComputationService {
         );
       } catch (error) {
         this.logger.error('Failed to batch insert training labels', error);
+      }
+    }
+
+    // 8. Publish feature vectors to Redis Stream for algo-worker inference
+    for (const state of marketStatesToInsert) {
+      try {
+        const featureValues = Object.entries(state)
+          .filter(([k, v]) => typeof v === 'number' && k !== 'intervalValue')
+          .map(([, v]) => v as number);
+
+        if (featureValues.length > 0) {
+          await this.redis.xadd(
+            'market.features.live',
+            'MAXLEN', '~', '10000',
+            '*',
+            'instrumentKey', state.instrumentKey,
+            'timestamp', state.timestamp instanceof Date ? state.timestamp.toISOString() : String(state.timestamp),
+            'featuresJson', JSON.stringify(featureValues),
+          );
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to publish features to Redis Stream: ${error}`);
       }
     }
 
@@ -548,23 +574,37 @@ export class FeatureComputationService {
     const horizonScalingFactor = Math.sqrt(horizonMinutes / 5); // Normalize to 5min baseline
     const atrThreshold = k * futAtrPercent * horizonScalingFactor;
 
-    // Determine label
-    // Compare dimensionless returns with dimensionless threshold
     let label: -1 | 0 | 1;
     if (futureReturn > atrThreshold) {
-      label = 1; // UP
+      label = 1;
     } else if (futureReturn < -atrThreshold) {
-      label = -1; // DOWN
+      label = -1;
     } else {
-      label = 0; // NEUTRAL
+      label = 0;
     }
 
-    // Return label for batch insertion
-    return {
+    const result: Record<string, unknown> = {
       timestamp,
-      instrumentKey: '',
-      intervalValue: 0,
-      intervalUnit: 'day',
+      instrumentKey: currentCandle.instrumentKey ?? 'NSE_INDEX|Nifty 50',
+      intervalValue: horizonMinutes,
+      intervalUnit: 'minute' as const,
+      isValid: true,
+      labelQuality: 'CLEAN' as const,
     };
+
+    const fieldMap: Record<number, { ret: string; dir: string }> = {
+      1: { ret: 'targetReturn5m', dir: 'targetDirection5m' },
+      5: { ret: 'targetReturn5m', dir: 'targetDirection5m' },
+      15: { ret: 'targetReturn15m', dir: 'targetDirection15m' },
+      30: { ret: 'targetReturn30m', dir: 'targetDirection30m' },
+    };
+
+    const fields = fieldMap[horizonMinutes];
+    if (fields) {
+      result[fields.ret] = futureReturn;
+      result[fields.dir] = label;
+    }
+
+    return result as TrainingLabels;
   }
 }

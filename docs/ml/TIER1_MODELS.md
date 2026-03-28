@@ -214,6 +214,8 @@ Expanded from 4 to 12 features to include MCX Upstox real-time data alongside Ya
 - **4 states** capture the full landscape: directional (bull/bear) × volatility (calm/volatile)
 - **5+ states** cause overfitting with daily data (~6,500 samples in 26 years)
 
+**Note on ensemble-HMM approaches:** Recent research (AIMS Press DSFE 2025) shows that multi-model ensemble-HMM with voting outperforms a single HMM for regime detection. Our architecture addresses this differently: the single HMM provides regime state as input to the Tier 4 meta-learner, which acts as the ensemble layer by dynamically weighting all tier predictions conditioned on the detected regime. This achieves a similar effect -- regime-aware ensembling -- without duplicating HMM variants.
+
 ### State Transition Matrix (Typical)
 
 ```

@@ -252,31 +252,13 @@ def traced_stage(stage_name: str, attributes: Optional[dict] = None):
 
 def setup_structured_logging(level: str = "INFO") -> None:
     """
-    Configure structured JSON logging with OTEL trace correlation.
+    Configure dual logging: colored console for developers + JSON for OTEL/Loki.
 
-    Replaces basicConfig with a handler that outputs JSON lines
-    including trace_id and span_id when available.
+    Console output uses colored human-readable format (like default loggers).
+    OTEL receives structured JSON via the LogExporter when the collector is available.
     """
     import json as _json
-
-    class _JsonFormatter(logging.Formatter):
-        def format(self, record: logging.LogRecord) -> str:
-            log_entry = {
-                "timestamp": self.formatTime(record, self.datefmt),
-                "level": record.levelname,
-                "logger": record.name,
-                "message": record.getMessage(),
-            }
-            for attr in (
-                "otelTraceID", "otelSpanID", "tier", "experiment_id",
-                "run_id", "stage", "instrument_key",
-            ):
-                val = getattr(record, attr, None)
-                if val:
-                    log_entry[attr] = val
-            if record.exc_info and record.exc_info[1]:
-                log_entry["exception"] = self.formatException(record.exc_info)
-            return _json.dumps(log_entry)
+    import sys
 
     root = logging.getLogger()
     root.setLevel(getattr(logging, level.upper(), logging.INFO))
@@ -284,6 +266,56 @@ def setup_structured_logging(level: str = "INFO") -> None:
     for h in root.handlers[:]:
         root.removeHandler(h)
 
-    handler = logging.StreamHandler()
-    handler.setFormatter(_JsonFormatter(datefmt="%Y-%m-%dT%H:%M:%S"))
-    root.addHandler(handler)
+    is_production = os.environ.get("NODE_ENV") == "production" or os.environ.get("DEPLOYMENT_ENV") == "production"
+
+    if is_production:
+        class _JsonFormatter(logging.Formatter):
+            def format(self, record: logging.LogRecord) -> str:
+                log_entry = {
+                    "timestamp": self.formatTime(record, self.datefmt),
+                    "level": record.levelname,
+                    "logger": record.name,
+                    "message": record.getMessage(),
+                }
+                for attr in (
+                    "otelTraceID", "otelSpanID", "tier", "experiment_id",
+                    "run_id", "stage", "instrument_key",
+                ):
+                    val = getattr(record, attr, None)
+                    if val:
+                        log_entry[attr] = val
+                if record.exc_info and record.exc_info[1]:
+                    log_entry["exception"] = self.formatException(record.exc_info)
+                return _json.dumps(log_entry)
+
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(_JsonFormatter(datefmt="%Y-%m-%dT%H:%M:%S"))
+        root.addHandler(handler)
+    else:
+        try:
+            import coloredlogs
+            coloredlogs.install(
+                level=level.upper(),
+                logger=root,
+                fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
+                datefmt="%H:%M:%S",
+                level_styles={
+                    "debug": {"color": "cyan"},
+                    "info": {"color": "green"},
+                    "warning": {"color": "yellow", "bold": True},
+                    "error": {"color": "red", "bold": True},
+                    "critical": {"color": "red", "bold": True, "background": "white"},
+                },
+                field_styles={
+                    "asctime": {"color": "white", "faint": True},
+                    "name": {"color": "blue"},
+                    "levelname": {"bold": True},
+                },
+            )
+        except ImportError:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setFormatter(logging.Formatter(
+                "%(asctime)s %(name)s %(levelname)s %(message)s",
+                datefmt="%H:%M:%S",
+            ))
+            root.addHandler(handler)

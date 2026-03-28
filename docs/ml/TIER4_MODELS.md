@@ -79,6 +79,8 @@ Without Tier 4, the system would have 4 independent opinions (one per tier) with
 
 ## Component 1: Contextual Gating Network (Meta-Learner)
 
+**Distinction from Lopez de Prado meta-labeling:** Our Tier 4 is a **regime-conditioned gating/fusion network**, not Lopez de Prado's meta-labeling approach. Meta-labeling trains a secondary binary classifier on "should I take this primary signal yes/no?" and uses its predicted probability to size positions. Our approach instead learns **dynamic weights** across all tier predictions conditioned on the current market regime -- it decides *how much* to trust each tier, not *whether* to trade. Both achieve the goal of filtering noise from primary signals, but through different mechanisms. The gating approach is more natural for our multi-tier architecture where each tier specializes in a different time horizon.
+
 ### Why Not Simple Averaging?
 
 Simple averaging of tier outputs ignores regime context:

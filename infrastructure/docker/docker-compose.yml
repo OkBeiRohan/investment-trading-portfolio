@@ -321,7 +321,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 8G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   # ==========================================
   # Microservices
@@ -510,9 +515,11 @@ services:
           memory: 512M
 
   training-pipeline:
+    container_name: training-pipeline
     build:
       context: ../..
       dockerfile: services/training-pipeline/Dockerfile
+    entrypoint: ["python", "-c", "import time; print('Training pipeline ready for jobs'); [time.sleep(3600) for _ in iter(int, 1)]"]
     ports:
       - "8082:8082"
       - "8888:8888"
@@ -527,8 +534,6 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: training-pipeline
       PROMETHEUS_METRICS_PORT: 8082
-    volumes:
-      - ../../models:/app/models
     depends_on:
       questdb:
         condition: service_healthy

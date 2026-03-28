@@ -30,7 +30,7 @@
     "@repo/observability": "workspace:*",
     "@repo/schema": "workspace:*",
     "ioredis": "^5.10.1",
-    "nodemailer": "^8.0.3",
+    "nodemailer": "^8.0.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -57,8 +57,8 @@
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1"
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.57.2"
   },
   "jest": {
     "moduleFileExtensions": [

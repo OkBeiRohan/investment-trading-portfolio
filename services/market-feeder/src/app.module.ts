@@ -6,6 +6,7 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { QuestDBModule, RedisModule } from "@repo/database";
 import { AuthModule } from "@repo/authentication";
+import { ObservabilityModule } from "@repo/observability";
 import { HistoricalDataModule } from "./historical-data/historical-data.module";
 import { IngestionModule } from "./ingestion/ingestion.module";
 import configuration from "./config/configuration";
@@ -17,6 +18,7 @@ import { DatasetGenerationModule } from "./dataset-generation/dataset-generation
   imports: [
     AuthModule,
     RedisModule,
+    ObservabilityModule,
 
     ConfigModule.forRoot({
       isGlobal: true,

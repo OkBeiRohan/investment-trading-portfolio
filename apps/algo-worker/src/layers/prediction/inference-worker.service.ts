@@ -67,12 +67,25 @@ export class InferenceWorkerService {
         predictions.push(dummyScore);
       }
 
-      // Meta-Learner: Fused Gating Network
+      // Tier 1 HMM: Regime detection (informs meta-learner weights)
+      let regimeOneHot = [0, 1, 0, 0]; // Default: regime 1 (bull trending)
+      if (this.modelPool.isHealthy('tier1_hmm')) {
+        try {
+          const hmmPreds = await this.modelPool.predict('tier1_hmm', features.slice(0, 8));
+          const regimeIdx = Math.round(hmmPreds[0] ?? 1);
+          const clampedIdx = Math.max(0, Math.min(3, regimeIdx));
+          regimeOneHot = [0, 0, 0, 0];
+          regimeOneHot[clampedIdx] = 1;
+        } catch {
+          // Fall back to default regime
+        }
+      }
+
+      // Meta-Learner: Regime-conditioned Gating Network
       let finalScore = dummyScore;
       let confidenceWeights = [0.25, 0.25, 0.25, 0.25];
 
       if (this.modelPool.isHealthy('meta_learner')) {
-        const regimeOneHot = [0, 1, 0, 0]; // Default regime 1
         const metaResult = await this.modelPool.predictMeta(predictions, regimeOneHot);
         finalScore = metaResult.finalPred[0] ?? dummyScore;
         confidenceWeights = metaResult.weights.length === 4 ? metaResult.weights : confidenceWeights;

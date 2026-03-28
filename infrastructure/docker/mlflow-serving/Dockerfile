@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         wget curl && \
@@ -10,7 +10,6 @@ RUN pip install --no-cache-dir \
     psycopg2-binary \
     xgboost \
     lightgbm \
-    torch --index-url https://download.pytorch.org/whl/cpu \
     scikit-learn \
     hmmlearn \
     scipy \

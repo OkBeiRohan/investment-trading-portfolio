@@ -33,6 +33,7 @@ dependencies = [
     "opentelemetry-exporter-otlp>=1.29.0",
     "opentelemetry-instrumentation-logging>=0.50b0",
     "matplotlib>=3.9.0",
+    "coloredlogs>=15.0.0",
 ]
 
 [project.scripts]
