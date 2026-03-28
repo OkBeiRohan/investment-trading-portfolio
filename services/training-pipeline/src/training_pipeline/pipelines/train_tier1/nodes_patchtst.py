@@ -15,6 +15,14 @@ from sklearn.preprocessing import StandardScaler
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader, TensorDataset
 
+import mlflow
+import mlflow.pytorch
+from ...utils.mlflow_tracking import (
+    log_model_params, log_training_dataset, log_checkpoint,
+    log_metric_for_checkpoint, infer_model_signature, TIER_MODEL_NAMES,
+)
+from ...utils.observability import TRAINING_EPOCH_LOSS, TRAINING_EPOCH_DURATION, TRAINING_RUN_TOTAL
+
 logger = logging.getLogger(__name__)
 
 TIER1_FEATURES = [
@@ -65,6 +73,8 @@ def train_patchtst_model(
 
     Returns dict with: model, scaler, metrics, oof, artifacts.
     """
+    mlflow.pytorch.autolog(log_models=True)
+
     logger.info("=== Tier 1: PatchTST (walk-forward) ===")
 
     tier1_cfg = config.get("tier1", config)
@@ -79,6 +89,21 @@ def train_patchtst_model(
     forecast_horizon = patch_cfg.get("forecast_horizon", 5)
     train_months = config.get("walk_forward_train_months", 6)
     test_months = config.get("walk_forward_test_months", 1)
+
+    log_model_params({
+        "tier": 1,
+        "model_type": "patchtst",
+        "seq_len": seq_len,
+        "patch_len": patch_len,
+        "d_model": patch_cfg.get("d_model", 64),
+        "n_heads": patch_cfg.get("n_heads", 4),
+        "n_layers": patch_cfg.get("e_layers", 2),
+        "dropout": patch_cfg.get("dropout", 0.0),
+        "forecast_horizon": forecast_horizon,
+        "learning_rate": lr,
+        "epochs": epochs,
+        "batch_size": batch_size,
+    }, prefix="tier1_patchtst")
 
     raw = loader.load_features(
         instrument_key, start_date, end_date,
@@ -159,6 +184,11 @@ def train_patchtst_model(
                 optimizer.step()
                 total_loss += loss.item()
             scheduler.step()
+            train_loss = total_loss / len(dl)
+            mlflow.log_metrics({"train_loss": train_loss}, step=epoch)
+            TRAINING_EPOCH_LOSS.labels(tier="1", model_type="patchtst", loss_type="train").set(train_loss)
+
+        mlflow.pytorch.log_model(model, name=f"tier1_checkpoint_fold{fold_idx}")
 
         test_vals = scaler.transform(df_test[available].values)
         test_targets = df_test[target_col].values
@@ -173,6 +203,8 @@ def train_patchtst_model(
 
         fold_metrics.append({"fold": fold_idx, "test_mse": test_mse})
         logger.info("PatchTST Fold %d | test_MSE=%.6f", fold_idx, test_mse)
+
+        mlflow.log_metrics({f"fold_{fold_idx}_test_mse": test_mse}, step=fold_idx)
 
         test_timestamps = df_test["timestamp"].values
         if len(Xt) > 0:
@@ -201,6 +233,14 @@ def train_patchtst_model(
     import pickle
     with open(scaler_path, "wb") as f:
         pickle.dump(best_scaler, f)
+
+    mlflow.log_metrics({
+        "patchtst_avg_mse": avg_mse,
+        "patchtst_n_folds": float(fold_idx),
+    })
+    mlflow.pytorch.log_model(best_model, name="tier1_patchtst_model")
+    mlflow.log_artifact(scaler_path)
+    TRAINING_RUN_TOTAL.labels(tier="1", status="completed").inc()
 
     metrics = {
         "patchtst_avg_mse": avg_mse,

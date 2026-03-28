@@ -29,7 +29,7 @@
 ### **Core Data Flow**
 
 ```
-Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (ONNX)
+Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (MLflow)
                               <5ms features          <50ms inference
 ```
 
@@ -39,8 +39,8 @@ Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (ONNX)
 | ------------------- | ------------------------- | ---------------------------- |
 | Feature Computation | **Rust (NAPI-RS)**        | `packages/compute-engine`    |
 | Model Training      | Python (Kedro)            | `services/training-pipeline` |
-| Model Export        | ONNX                      | Training → Inference         |
-| Live Inference      | NestJS + onnxruntime-node | `apps/algo-worker`           |
+| Model Registry      | **MLflow** (@champion)    | Training → Inference         |
+| Live Inference      | **MLflow Model Serving**  | `infrastructure/mlflow`      |
 
 ### **algo-worker: 6-Layer Event-Driven Processing Pipeline**
 
@@ -48,7 +48,7 @@ All code must follow the **6-layer processing pipeline** with strict layer separ
 
 1. **Perception** → Subscribe to Redis `features:live` channel (data ingestion)
 2. **Cortex** → Feature buffer and sequence preparation (feature engine)
-3. **Prediction** → ONNX Runtime inference (GPU via Worker Thread)
+3. **Prediction** → MLflow Model Serving inference (REST /invocations)
 4. **Cognition** → Strategy selection + risk management (strategy-risk)
 5. **Execution** → Smart order routing + position tracking
 6. **Control** → Observability (Prometheus metrics, health checks) + multi-tier storage (Redis/QuestDB/MongoDB)
@@ -98,7 +98,7 @@ Fold 2: [--test--][--train--]  # Future data leaks into past!
 - ✅ Use **Combinatorial Purged Cross-Validation** (not standard TimeSeriesSplit)
 - ✅ Apply **purging** (drop data between train/test) and **embargoing** (drop data after test)
 - ✅ Save **out-of-fold predictions** for meta-learner
-- ✅ Export to **ONNX with FP16 quantization** for 2x faster inference
+- ✅ Register models in **MLflow with native flavors** and @champion aliases
 - ✅ Track experiments in **MLflow**
 - ✅ Include **Order Flow Imbalance (OFI)** features for microstructure signals
 - ✅ Train **RL execution agent** (PPO) for optimal order placement
@@ -162,21 +162,22 @@ console.log(result.features); // 117 features
 console.log(result.totalDurationMicros); // ~2000-3000µs
 ```
 
-### @repo/ai-models (ONNX)
+### MLflow Model Serving (Inference)
 
-- Load ONNX models with CUDA/CPU execution providers
-- Pre-warm models on startup (run dummy inference)
+- Models served via MLflow Model Serving containers (REST /invocations)
+- Each tier has a dedicated serving endpoint with @champion alias
 - Monitor inference latency (<50ms p95 target)
-- Use Worker Threads for GPU inference (never block event loop)
+- algo-worker calls serving endpoints over HTTP (non-blocking)
 
 ```typescript
-import * as ort from "onnxruntime-node";
-
-const session = await ort.InferenceSession.create("model.onnx", {
-  executionProviders: ["CUDAExecutionProvider", "CPUExecutionProvider"],
+const response = await fetch("http://mlflow-serving:5001/invocations", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    inputs: [{ features: Array.from(featureVector) }],
+  }),
 });
-const tensor = new ort.Tensor("float32", features, [1, 117]);
-const results = await session.run({ input: tensor });
+const result = await response.json();
 ```
 
 ### tRPC Architecture
@@ -309,19 +310,27 @@ for train_idx, test_idx in tscv.split(features):
 X_train, X_test = train_test_split(features, shuffle=True)  # Temporal leakage!
 ```
 
-### **ONNX Export**
+### **MLflow Model Registration**
 
 ```python
-# ✅ CORRECT: Export with FP16 quantization
-import tf2onnx
+# ✅ CORRECT: Log model with native MLflow flavor
+import mlflow
 
-onnx_model, _ = tf2onnx.convert.from_keras(model, opset=13)
-quantize_dynamic(onnx_model, weight_type=QuantType.QFloat16)
+with mlflow.start_run(run_name="xgboost_fold_final"):
+    mlflow.xgboost.log_model(model, "model", registered_model_name="tier2-lightgbm")
 
-# ✅ CORRECT: Validate ONNX vs. original
+# ✅ CORRECT: Promote to @champion after validation
+from mlflow import MlflowClient
+client = MlflowClient()
+client.set_registered_model_alias("tier2-lightgbm", "champion", version.version)
+
+# ✅ CORRECT: Validate served model vs. original
 original_preds = model.predict(X_test)
-onnx_preds = ort_session.run(None, {input_name: X_test})[0]
-assert np.mean(np.abs(original_preds - onnx_preds)) < 1e-4
+served_preds = requests.post(
+    "http://mlflow-serving:5001/invocations",
+    json={"inputs": X_test.tolist()}
+).json()["predictions"]
+assert np.mean(np.abs(original_preds - served_preds)) < 1e-4
 ```
 
 ### **MLflow Tracking**
@@ -344,7 +353,7 @@ with mlflow.start_run(run_name='xgboost_fold_1'):
 ### **algo-worker**
 
 ❌ Hardcoding Redis keys (use config)
-❌ Blocking event loop with CPU-intensive tasks (use ONNX Runtime async)
+❌ Blocking event loop with CPU-intensive tasks (use async HTTP to MLflow Serving)
 ❌ Skipping SEBI compliance checks
 ❌ Missing Prometheus metrics for layers
 
@@ -375,7 +384,7 @@ with mlflow.start_run(run_name='xgboost_fold_1'):
 
 - Run full pipeline (training-pipeline)
 - Run full trading cycle (algo-worker)
-- Verify ONNX model deployment
+- Verify MLflow model deployment and @champion alias resolution
 
 ---
 

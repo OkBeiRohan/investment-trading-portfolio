@@ -13,14 +13,14 @@ You are working on the **Training Pipeline** - a Kedro-based Python project for 
 ## Project Overview
 
 **Purpose**: ML model training (ONLY), backtesting, and model artifact generation
-**Stack**: Python 3.11+, Kedro, LightGBM, XGBoost, TensorFlow, scikit-learn, ONNX
+**Stack**: Python 3.11+, Kedro, LightGBM, XGBoost, TensorFlow, scikit-learn, MLflow
 
 **Key Responsibilities**:
 
 - Load pre-computed features from QuestDB (computed by compute-engine)
 - Train ensemble ML models (LightGBM, XGBoost, CNN-LSTM, GINN, SVM, Transformer, TFT, LiT)
 - Perform walk-forward validation (Combinatorial Purged Cross-Validation)
-- Export models to ONNX format for algo-worker
+- Register models in MLflow Model Registry with @champion aliases for algo-worker
 - Generate training metrics and performance reports
 
 **CRITICAL**: Training-pipeline does NOT compute features. It ONLY loads pre-computed features from QuestDB.
@@ -134,7 +134,7 @@ training-pipeline/
 │       ├── pipelines/
 │       │   ├── train_ensemble/  # Level-0 models (LightGBM, XGBoost, etc.)
 │       │   ├── train_meta_learner/  # Level-1 stacking
-│       │   ├── export_onnx/     # ONNX conversion
+│       │   ├── register_models/ # MLflow model registration
 │       │   └── backtesting/     # Walk-forward backtest
 │       ├── utils/
 │       │   ├── sql_loader.py    # QuestDB data loader (NOT feature computation)
@@ -217,10 +217,9 @@ oof_lightgbm:
   type: pandas.ParquetDataSet
   filepath: data/07_model_output/oof_lightgbm.parquet
 
-# Output - ONNX models (for algo-worker)
-lightgbm_onnx:
-  type: onnx.ONNXDataSet
-  filepath: data/06_models/lightgbm.onnx
+# Output - MLflow registered models (for algo-worker via MLflow Model Serving)
+# Models are logged to MLflow tracking server, not stored as local files.
+# Use mlflow.<flavor>.log_model() in training nodes instead of catalog output.
 ```
 
 **Key Insight**: All feature columns come from `market_state_encoder_output` table in QuestDB.
@@ -359,55 +358,47 @@ def walk_forward_validation(
     return results
 ```
 
-### 5. Model Export to ONNX
+### 5. Model Registration in MLflow
 
 ```python
-import onnx
-import onnxmltools
-from onnxmltools.convert.xgboost.operator_converters.XGBoost import convert_xgboost
-from onnxconverter_common import FloatTensorType
+import mlflow
+from mlflow import MlflowClient
 
-def export_to_onnx(
+def register_model(
     model,
+    model_name: str,
     feature_names: list,
-    output_path: str,
+    metrics: dict,
 ) -> None:
     """
-    Export trained model to ONNX format
+    Log and register a trained model in MLflow Model Registry.
 
     Args:
-        model: Trained scikit-learn or XGBoost model
-        feature_names: List of feature names
-        output_path: Path to save ONNX file
+        model: Trained scikit-learn, XGBoost, or LightGBM model
+        model_name: Registry name (e.g. "tier2-lightgbm")
+        feature_names: List of feature names (logged as artifact)
+        metrics: Evaluation metrics to log
     """
-    logger.info(f"Exporting model to ONNX: {output_path}")
+    logger.info(f"Registering model in MLflow: {model_name}")
 
-    # Define input type
-    initial_type = [
-        ('float_input', FloatTensorType([None, len(feature_names)]))
-    ]
+    with mlflow.start_run(run_name=f"{model_name}_registration"):
+        mlflow.log_params({"feature_count": len(feature_names)})
+        mlflow.log_metrics(metrics)
 
-    # Convert to ONNX
-    if isinstance(model, xgb.XGBClassifier):
-        onnx_model = onnxmltools.convert_xgboost(
-            model,
-            initial_types=initial_type,
-            target_opset=12,
-        )
-    else:
-        onnx_model = onnxmltools.convert_sklearn(
-            model,
-            initial_types=initial_type,
-            target_opset=12,
-        )
+        if isinstance(model, xgb.XGBClassifier):
+            mlflow.xgboost.log_model(model, "model", registered_model_name=model_name)
+        elif isinstance(model, lgb.LGBMClassifier):
+            mlflow.lightgbm.log_model(model, "model", registered_model_name=model_name)
+        else:
+            mlflow.sklearn.log_model(model, "model", registered_model_name=model_name)
 
-    # Save
-    onnx.save_model(onnx_model, output_path)
+    # Promote to @champion after quality gate passes
+    client = MlflowClient()
+    latest = client.get_latest_versions(model_name, stages=["None"])
+    if latest:
+        client.set_registered_model_alias(model_name, "champion", latest[0].version)
 
-    # Verify
-    onnx.checker.check_model(onnx_model)
-
-    logger.info(f"ONNX model saved and verified: {output_path}")
+    logger.info(f"Model registered and promoted to @champion: {model_name}")
 ```
 
 ### 6. Backtesting with Transaction Costs
@@ -483,7 +474,7 @@ from .nodes import (
     train_cnn_lstm,
     train_ginn,
     train_svm,
-    export_to_onnx,
+    register_model,
     evaluate_model,
 )
 
@@ -497,10 +488,10 @@ def create_pipeline(**kwargs) -> Pipeline:
             name="train_xgboost",
         ),
         node(
-            func=export_to_onnx,
-            inputs=["xgboost_model", "params:feature_names"],
-            outputs="xgboost_onnx",
-            name="export_xgboost_onnx",
+            func=register_model,
+            inputs=["xgboost_model", "params:model_name", "params:feature_names", "xgboost_metrics"],
+            outputs=None,
+            name="register_xgboost_mlflow",
         ),
 
         # CNN-LSTM
@@ -616,7 +607,7 @@ def test_xgboost_training():
 1. ✅ Use Kedro catalog for all data sources
 2. ✅ Implement walk-forward validation
 3. ✅ Model transaction costs and slippage
-4. ✅ Export to ONNX for production use
+4. ✅ Register models in MLflow with @champion aliases for production
 5. ✅ Track experiments with MLflow
 6. ✅ Test on GPU (ArchLinux environment)
 7. ✅ Document hyperparameter choices
@@ -626,7 +617,7 @@ def test_xgboost_training():
 ❌ Hardcoded database connections  
 ❌ Simple train/test split (use walk-forward)  
 ❌ Ignoring transaction costs in backtest  
-❌ Not exporting to ONNX  
+❌ Not registering models in MLflow  
 ❌ Missing random seeds  
 ❌ Training on leaky features
 
@@ -635,6 +626,6 @@ def test_xgboost_training():
 - [Training Pipeline README](./README.md) - Service overview
 - [ML Architecture](../../../docs/ml/README.md) - AI/ML documentation index
 - [TRAINING_PIPELINE.md](../../../docs/ml/TRAINING_PIPELINE.md) - Detailed training docs
-- [INFERENCE_PIPELINE.md](../../../docs/ml/INFERENCE_PIPELINE.md) - ONNX Runtime in NestJS
+- [INFERENCE_PIPELINE.md](../../../docs/ml/INFERENCE_PIPELINE.md) - MLflow Model Serving in NestJS
 - [compute-engine README](../../../packages/compute-engine/README.md) - Feature computation
 

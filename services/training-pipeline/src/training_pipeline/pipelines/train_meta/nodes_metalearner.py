@@ -18,6 +18,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
+import mlflow
+import mlflow.pytorch
+from ...utils.mlflow_tracking import (
+    log_model_params, log_training_dataset, log_checkpoint,
+    log_metric_for_checkpoint, infer_model_signature, TIER_MODEL_NAMES,
+)
+from ...utils.observability import (
+    TRAINING_EPOCH_LOSS, TRAINING_RUN_TOTAL, META_GATING_WEIGHT, update_gpu_metrics
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -105,6 +115,19 @@ def train_meta_learner(
     num_regimes = meta_cfg.get("num_regimes", 4)
     volatile_idx = meta_cfg.get("volatile_regime_idx", 3)
 
+    mlflow.pytorch.autolog(log_models=True)
+    log_model_params({
+        "tier": "meta",
+        "model_type": "gating_network",
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "learning_rate": lr,
+        "num_regimes": num_regimes,
+        "volatile_regime_idx": volatile_idx,
+        "num_models": 4,
+        "hidden_size": meta_cfg.get("hidden_size", 32),
+    }, prefix="meta")
+
     merged = _merge_oof(all_oof, num_regimes)
     if merged is None or len(merged) < 100:
         logger.warning("Insufficient OOF data for meta-learner (%s rows)", len(merged) if merged is not None else 0)
@@ -164,14 +187,28 @@ def train_meta_learner(
         avg_train = train_loss / max(len(train_dl), 1)
         avg_val = val_loss / max(len(val_dl), 1)
 
+        mlflow.log_metrics({
+            "meta_train_loss": avg_train,
+            "meta_val_loss": avg_val,
+        }, step=epoch)
+        TRAINING_EPOCH_LOSS.labels(tier="meta", model_type="gating", loss_type="train").set(avg_train)
+        TRAINING_EPOCH_LOSS.labels(tier="meta", model_type="gating", loss_type="val").set(avg_val)
+        update_gpu_metrics()
+
         if all_weights:
             w = np.concatenate(all_weights, axis=0).mean(axis=0)
             gate_weights_log.append({
                 "epoch": epoch + 1,
                 **{f"tier{i}_weight": round(float(w[i]), 4) for i in range(len(w))},
             })
+            for i in range(len(w)):
+                META_GATING_WEIGHT.labels(tier_index=str(i)).set(float(w[i]))
+                mlflow.log_metric(f"gate_weight_tier{i}", float(w[i]), step=epoch + 1)
 
         logger.info("Meta Epoch %d/%d | train=%.4f val=%.4f", epoch + 1, epochs, avg_train, avg_val)
+
+        if (epoch + 1) % 5 == 0 or epoch == 0:
+            mlflow.pytorch.log_model(model, name=f"meta_checkpoint_epoch{epoch+1}")
 
         if avg_val < best_val_loss:
             best_val_loss = avg_val
@@ -186,12 +223,21 @@ def train_meta_learner(
     model_path = "data/06_models/meta_learner.pt"
     torch.save(model.state_dict(), model_path)
 
+    mlflow.pytorch.log_model(model, name="meta_learner_model")
+    mlflow.log_dict(gate_weights_log, "gate_weights_evolution.json")
+    TRAINING_RUN_TOTAL.labels(tier="meta", status="completed").inc()
+
     metrics = {
         "meta_val_loss": best_val_loss,
         "meta_epochs_run": epoch + 1,
         "meta_n_samples": n,
         "gate_weights_final": gate_weights_log[-1] if gate_weights_log else {},
     }
+    mlflow.log_metrics({
+        "meta_val_loss_final": best_val_loss,
+        "meta_epochs_run": float(epoch + 1),
+        "meta_n_samples": float(n),
+    })
     logger.info("Meta-learner complete — val_loss=%.4f, %d samples, %d epochs", best_val_loss, n, epoch + 1)
 
     return {

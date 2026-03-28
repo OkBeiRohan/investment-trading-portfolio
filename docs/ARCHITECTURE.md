@@ -18,12 +18,12 @@ Build a low-latency, AI-driven trading system that combines deterministic event 
 ```
 investment-trading-portfolio/
 ├── apps/
-│   ├── algo-worker/        # Live trading engine (NestJS, ONNX inference)
+│   ├── algo-worker/        # Live trading engine (NestJS, MLflow inference)
 │   ├── api/                # API gateway (NestJS, tRPC v11)
 │   └── web/                # Investor dashboard (Next.js 16)
 ├── services/
 │   ├── market-feeder/      # Upstox WebSocket data ingestion
-│   ├── training-pipeline/  # Python ML training (CPCV, ONNX export)
+│   ├── training-pipeline/  # Python ML training (CPCV, MLflow registry)
 │   ├── notification-service/
 │   ├── wealth-management/  # Double-entry ledger
 │   ├── wealth-analyzer/    # Python AI insights (Phi-3)
@@ -47,10 +47,10 @@ investment-trading-portfolio/
 |-------|-----------|-------|
 | **Frontend** | Next.js 16 (App Router) | React Server Components, Tailwind |
 | **API** | NestJS 11 + tRPC v11 | End-to-end type-safe RPC |
-| **Trading Engine** | NestJS 11, ONNX Runtime | Event-driven, sub-100ms tick-to-order |
+| **Trading Engine** | NestJS 11, MLflow Serving | Event-driven, sub-100ms tick-to-order |
 | **Feature Engine** | Rust (NAPI-RS) | SIMD-accelerated indicators, <5ms |
-| **ML Training** | Python, PyTorch 2.5 | CPCV validation, ONNX export |
-| **ML Inference** | ONNX Runtime (TensorRT / OpenVINO / CPU) | FP16 quantized, <50ms GPU |
+| **ML Training** | Python, PyTorch 2.5 | CPCV validation, MLflow logging |
+| **ML Inference** | MLflow Model Serving (FastAPI) | Native flavors, @champion aliases, HTTP /invocations |
 | **Time-Series DB** | QuestDB | Tick data, OHLCV, features |
 | **Document DB** | MongoDB 8 | Orders, positions, audit trail |
 | **Cache / Event Bus** | Redis 7 (Streams + Pub/Sub) | Hot state, feature store, circuit breakers |
@@ -73,7 +73,7 @@ Upstox WebSocket ──► market-feeder ──► Redis Streams
                     feature vectors
                          │
                          ▼
-                  algo-worker (ONNX Runtime)
+                  algo-worker (HTTP → MLflow Serving)
                     5-tier prediction
                          │
                          ▼
@@ -94,7 +94,7 @@ QuestDB ──► training-pipeline (Python)
                ├── CPCV split + label generation
                ├── Train Tier 0-3 models
                ├── Train Tier 4 meta-learner
-               ├── ONNX export (FP16)
+               ├── MLflow model logging (native flavors)
                └── MLflow registry ──► algo-worker hot-swap
 ```
 
@@ -202,9 +202,9 @@ Recovery: automatic position liquidation → Slack/email alerts → manual overr
 | [ALGO_TRADING_ARCHITECTURE.md](./ALGO_TRADING_ARCHITECTURE.md) | Deep-dive: 9-layer system design, DRL execution, latency techniques |
 | [docs/ml/README.md](./ml/README.md) | ML documentation hub |
 | [docs/ml/MODEL_ARCHITECTURE.md](./ml/MODEL_ARCHITECTURE.md) | 5-tier model hierarchy with code |
-| [docs/ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) | CPCV validation, ONNX export pipeline |
+| [docs/ml/TRAINING_PIPELINE.md](./ml/TRAINING_PIPELINE.md) | CPCV validation, MLflow model registry pipeline |
 | [docs/ml/FEATURE_STORE.md](./ml/FEATURE_STORE.md) | Redis + QuestDB feature store |
-| [docs/ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) | ONNX Runtime in NestJS |
+| [docs/ml/INFERENCE_PIPELINE.md](./ml/INFERENCE_PIPELINE.md) | MLflow Serving integration in NestJS |
 | [WEB_API_SERVICES.md](./WEB_API_SERVICES.md) | Dashboard, API gateway, monitoring |
 | [DEPLOYMENT_ARCHITECTURE.md](./DEPLOYMENT_ARCHITECTURE.md) | Hybrid local-cloud deployment |
 | [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) | Setup, workflow, debugging |

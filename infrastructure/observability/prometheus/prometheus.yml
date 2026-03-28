@@ -2,8 +2,95 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
 scrape_configs:
-  - job_name: 'otel-collector'
+  # ==========================================
+  # OpenTelemetry Collector
+  # ==========================================
+  - job_name: "otel-collector"
     static_configs:
-      - targets: ['otel-collector:8889']
-      - targets: ['otel-collector:8888']
+      - targets: ["otel-collector:8889"]
+        labels:
+          component: "otel-collector-metrics"
+      - targets: ["otel-collector:8888"]
+        labels:
+          component: "otel-collector-internal"
+
+  # ==========================================
+  # Node.js Application Services (OTEL Prometheus Exporter on 8081)
+  # ==========================================
+  - job_name: "algo-worker"
+    static_configs:
+      - targets: ["algo-worker:8081"]
+    scrape_interval: 10s
+
+  - job_name: "api"
+    static_configs:
+      - targets: ["api:8081"]
+
+  - job_name: "market-feeder"
+    static_configs:
+      - targets: ["market-feeder:8081"]
+    scrape_interval: 10s
+
+  - job_name: "data-processor"
+    static_configs:
+      - targets: ["data-processor:8081"]
+
+  - job_name: "wealth-management"
+    static_configs:
+      - targets: ["wealth-management:8081"]
+
+  - job_name: "notification-service"
+    static_configs:
+      - targets: ["notification-service:8081"]
+
+  - job_name: "document-processor"
+    static_configs:
+      - targets: ["document-processor:8081"]
+
+  - job_name: "wealth-analyzer"
+    static_configs:
+      - targets: ["wealth-analyzer:8081"]
+
+  # ==========================================
+  # ML / Training
+  # ==========================================
+  - job_name: "training-pipeline"
+    static_configs:
+      - targets: ["training-pipeline:8082"]
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  - job_name: "mlflow"
+    static_configs:
+      - targets: ["mlflow-server:5000"]
+    metrics_path: /metrics
+
+  # ==========================================
+  # Database Exporters
+  # ==========================================
+  - job_name: "redis-exporter"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+
+  - job_name: "mongodb-exporter"
+    static_configs:
+      - targets: ["mongodb-exporter:9216"]
+
+  - job_name: "questdb"
+    static_configs:
+      - targets: ["questdb:9003"]
+
+  # ==========================================
+  # Infrastructure
+  # ==========================================
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

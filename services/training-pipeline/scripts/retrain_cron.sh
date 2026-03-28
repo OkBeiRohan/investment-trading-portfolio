@@ -1,9 +1,13 @@
 #!/bin/bash
 # ==============================================================================
-# Automated Model Retraining — MongoDB-Driven Pipeline
+# Automated Model Retraining — MongoDB-Driven Pipeline with MLflow
 #
 # Reads experiment config from MongoDB, trains requested tiers, runs quality
-# gates, exports ONNX, and deploys to algo-worker if promoted.
+# gates, logs models to MLflow Registry with native flavors, and triggers
+# model serving reload via @champion alias promotion.
+#
+# Models are served by the mlflow-model-server container which loads
+# @champion aliases from the MLflow Registry on startup.
 #
 # Execution: Crontab (e.g. 0 2 * * 6 for every Saturday 2AM)
 #   EXPERIMENT_ID must be set in the environment or passed as $1.
@@ -12,7 +16,6 @@
 set -euo pipefail
 
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-ALGO_WORKER_MODELS="${ALGO_WORKER_MODELS:-$PROJECT_ROOT/../../apps/algo-worker/models}"
 EXPERIMENT_ID="${1:-${EXPERIMENT_ID:-}}"
 
 if [ -z "$EXPERIMENT_ID" ]; then
@@ -23,7 +26,7 @@ fi
 cd "$PROJECT_ROOT"
 
 echo "======================================================"
-echo "[$(date)] Starting Automated Retraining"
+echo "[$(date)] Starting Automated Retraining (MLflow-native)"
 echo "  Experiment: $EXPERIMENT_ID"
 echo "======================================================"
 
@@ -38,15 +41,9 @@ if [ $EXIT_CODE -ne 0 ]; then
     exit $EXIT_CODE
 fi
 
-echo "[$(date)] Training complete. Deploying ONNX models..."
-
-if [ -d "data/06_models" ]; then
-    mkdir -p "$ALGO_WORKER_MODELS"
-    cp -f data/06_models/*.onnx "$ALGO_WORKER_MODELS/" 2>/dev/null || true
-    echo "[$(date)] ONNX models copied to $ALGO_WORKER_MODELS"
-else
-    echo "[$(date)] No model directory found — skipping deploy"
-fi
+echo "[$(date)] Training complete."
+echo "[$(date)] Models registered in MLflow Registry with @champion alias."
+echo "[$(date)] MLflow Model Serving will pick up new champion on next health check."
 
 echo "======================================================"
 echo "[$(date)] Retraining complete."

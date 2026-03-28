@@ -49,13 +49,21 @@ export class ExperimentRepository {
       .exec();
   }
 
-  async deploy(id: string): Promise<Experiment | null> {
+  async findByMlflowExperimentId(mlflowExperimentId: string): Promise<Experiment | null> {
+    return this.model.findOne({ mlflowExperimentId }).exec();
+  }
+
+  async deploy(id: string, mlflowChampionVersion?: string): Promise<Experiment | null> {
+    const update: Record<string, any> = {
+      isDeployed: true,
+      deployedAt: new Date(),
+    };
+    if (mlflowChampionVersion) {
+      update.mlflowChampionVersion = mlflowChampionVersion;
+      update.modelFormat = "mlflow_native";
+    }
     return this.model
-      .findByIdAndUpdate(
-        id,
-        { isDeployed: true, deployedAt: new Date() },
-        { returnDocument: 'after' },
-      )
+      .findByIdAndUpdate(id, update, { returnDocument: 'after' })
       .exec();
   }
 

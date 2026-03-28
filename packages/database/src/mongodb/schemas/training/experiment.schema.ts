@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Schema as MongooseSchema } from "mongoose";
-import type { IDataConfig, IExperimentMetrics, IExperiment, ExperimentStatus, ExperimentModelType, ValidationType } from "@repo/schema";
+import type { IDataConfig, IExperimentMetrics, IExperiment, ExperimentStatus, ExperimentModelType, ValidationType, ModelServingFormat } from "@repo/schema";
 
 @Schema({ _id: false })
 export class DataConfig implements IDataConfig {
@@ -119,8 +119,23 @@ export class Experiment extends Document implements IExperiment {
   @Prop()
   modelPath?: string;
 
+  @Prop({ index: true })
+  mlflowExperimentId?: string;
+
   @Prop()
-  onnxPath?: string;
+  mlflowRunId?: string;
+
+  @Prop()
+  mlflowModelName?: string;
+
+  @Prop()
+  mlflowModelUri?: string;
+
+  @Prop()
+  mlflowChampionVersion?: string;
+
+  @Prop({ enum: ["mlflow_native", "pyfunc"] })
+  modelFormat?: ModelServingFormat;
 
   @Prop({ default: false })
   isDeployed: boolean;
@@ -143,3 +158,4 @@ export const ExperimentSchema = SchemaFactory.createForClass(Experiment);
 ExperimentSchema.index({ tier: 1, status: 1 });
 ExperimentSchema.index({ createdBy: 1 });
 ExperimentSchema.index({ isDeployed: 1 });
+ExperimentSchema.index({ mlflowExperimentId: 1 });

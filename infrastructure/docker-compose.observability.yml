@@ -1,21 +1,29 @@
-version: "3.8"
-
 services:
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.114.0
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./observability/otel-collector/config.yaml:/etc/otel-collector-config.yaml
     ports:
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
-      - "8888:8888" # Collector metrics
-      - "8889:8889" # Prometheus exporter
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+      - "8889:8889"
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:13133/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.3.2
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./observability/loki/config.yaml:/etc/loki/local-config.yaml
@@ -24,51 +32,117 @@ services:
       - "3100:3100"
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.6.1
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./observability/tempo/config.yaml:/etc/tempo.yaml
       - tempo_data:/tmp/tempo
     ports:
-      - "3200:3200" # HTTP
-      - "4317"      # OTLP gRPC (internal)
+      - "3200:3200"
+      - "4317"
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3200/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.1
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=90d
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-lifecycle
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.4.0
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./observability/grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./observability/grafana/provisioning:/etc/grafana/provisioning
     ports:
-      - "3000:3000"
+      - "3300:3000"
     depends_on:
-      - prometheus
-      - loki
-      - tempo
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
     networks:
       - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    volumes:
+      - ./observability/promtail/promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - trading-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 volumes:
   loki_data:

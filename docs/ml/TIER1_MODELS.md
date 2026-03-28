@@ -587,25 +587,28 @@ def prepare_tier1_data(
     return df.dropna()
 ```
 
-### ONNX Export
+### MLflow Model Logging
 
 ```python
-# HMM export: serialize model parameters (not ONNX — HMM is not a neural net)
-import pickle
+import mlflow
+import mlflow.pytorch
+import mlflow.pyfunc
 
-def export_hmm(model: RegimeHMM, path='models/tier1_hmm.pkl'):
-    with open(path, 'wb') as f:
-        pickle.dump(model, f)
+# HMM: log via pyfunc wrapper (HMM is not a native MLflow flavor)
+def log_hmm(model: RegimeHMM, model_name='tier1-hmm'):
+    mlflow.pyfunc.log_model(
+        artifact_path="model",
+        python_model=HMMPyfuncWrapper(model),
+        registered_model_name=model_name,
+    )
 
-# PatchTST export: ONNX
-def export_patchtst(model: DailyPatchTST, path='models/tier1_patchtst.onnx'):
+# PatchTST: log via native PyTorch flavor
+def log_patchtst(model: DailyPatchTST, model_name='tier1-patchtst'):
     dummy = torch.randn(1, 512, 15)
-    torch.onnx.export(
-        model, dummy, path,
-        input_names=['daily_features'],
-        output_names=['direction', 'magnitude'],
-        dynamic_axes={'daily_features': {0: 'batch'}},
-        opset_version=17
+    mlflow.pytorch.log_model(
+        model, artifact_path="model",
+        registered_model_name=model_name,
+        input_example=dummy,
     )
 ```
 

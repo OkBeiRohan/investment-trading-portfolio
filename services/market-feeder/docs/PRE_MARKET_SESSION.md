@@ -235,7 +235,7 @@ in the local buffer.
   |
   +-- Trigger Tier 0 XGBoost inference
         Consumer: algo-worker
-        Latency: ~2ms (ONNX runtime)
+        Latency: ~2ms (MLflow inference)
         Input: 12 features (overnight macro + freeze data)
         Output: expected_gap_pct, expected_volatility, opening_bias, confidence
         Cache: tier0:gap:{date} (TTL: 8 hours)
@@ -249,7 +249,7 @@ in the local buffer.
 | Redis write latency | market-feeder writes to Redis in <5ms (local instance) |
 | algo-worker read latency | Redis read + deserialization in <2ms |
 | Buffer for retries | If first capture fails, 5 seconds allows 2-3 retry attempts |
-| ONNX warm-up jitter | First inference after idle may have +1-2ms cold-start overhead |
+| Model warm-up jitter | First inference after idle may have +1-2ms cold-start overhead |
 
 ### Redis Payload: `premarket:freeze`
 
@@ -376,11 +376,11 @@ Aggregate historical daily OHLCV candles and compute the feature vector required
   |
   +-- Tier 1 fires at 09:09:00 IST:
         |
-        +-- HMM regime classification (~3ms ONNX inference):
+        +-- HMM regime classification (~3ms MLflow inference):
         |     Output: BULL_TRENDING | BEAR_TRENDING | VOLATILE | RANGING
         |     + state probabilities, confidence, transition matrix
         |
-        +-- PatchTST daily trend prediction (~5ms ONNX inference):
+        +-- PatchTST daily trend prediction (~5ms MLflow inference):
         |     Input: 512 days x 15 features (rolling window from QuestDB)
         |     Output: daily_direction [-1, +1], daily_magnitude, trend_confidence
         |
@@ -395,8 +395,8 @@ Aggregate historical daily OHLCV candles and compute the feature vector required
 | Component | Latency |
 |---|---|
 | Feature vector assembly | ~2ms |
-| HMM ONNX inference | ~3ms |
-| PatchTST ONNX inference | ~5ms |
+| HMM MLflow inference | ~3ms |
+| PatchTST MLflow inference | ~5ms |
 | Redis publish | ~1ms |
 | **Total** | **~8ms** (from 09:09:00.000) |
 
@@ -489,8 +489,8 @@ some form of pre-market context at 09:15.
 | Overnight data APIs fail (one or more sources timeout or return errors) | Missing macro features in Tier 0 input vector | Use previous trading day's values for the failed sources. Flag affected features as stale in payload metadata. | Tier 0 confidence reduced by 15% per stale feature |
 | Pre-open WebSocket connection fails (cannot connect to Upstox by 09:05) | No live indicative price feed during pre-open | Use GIFT Nifty LTP (from SGX feed) as proxy for gap estimation. GIFT Nifty has >90% correlation with NIFTY opening price. | Tier 0 confidence reduced by 10% |
 | Freeze capture misses (no data at 09:08:05 due to feed interruption) | No equilibrium price for gap calculation | Retry from WebSocket buffer up to 3 times (at 09:08:05, 09:08:07, 09:08:09). If all retries fail, degrade to GIFT Nifty gap as proxy. | Tier 0 confidence reduced by 20% if using proxy |
-| Tier 0 XGBoost fails (ONNX runtime error or timeout) | No gap prediction available | algo-worker operates with default values: expected_gap_pct = 0, expected_volatility = MEDIUM, opening_bias = 0, confidence = 0. Tier 1 runs without Tier 0 features (uses zeros for those 3 inputs). | Tier 1 confidence reduced by 10% |
-| Tier 1 HMM/PatchTST fails (ONNX runtime error or timeout) | No regime classification or daily trend | algo-worker defaults to neutral regime (RANGING) with no gap bias. Position sizing reduced to 50% of normal. | All downstream tiers operate conservatively |
+| Tier 0 XGBoost fails (MLflow serving error or timeout) | No gap prediction available | algo-worker operates with default values: expected_gap_pct = 0, expected_volatility = MEDIUM, opening_bias = 0, confidence = 0. Tier 1 runs without Tier 0 features (uses zeros for those 3 inputs). | Tier 1 confidence reduced by 10% |
+| Tier 1 HMM/PatchTST fails (MLflow serving error or timeout) | No regime classification or daily trend | algo-worker defaults to neutral regime (RANGING) with no gap bias. Position sizing reduced to 50% of normal. | All downstream tiers operate conservatively |
 | QuestDB read failure (cannot query historical daily candles) | Cannot compute 32 daily features for Tier 1 | Use cached previous-day feature vector from Redis. Alert for manual intervention. | Tier 1 confidence reduced by 15% |
 | Redis connection lost | Cannot publish any pre-market data | Reconnect with exponential backoff (100ms, 200ms, 400ms, ..., max 5s). Hold data in local in-memory buffer. Flush buffer on reconnect. | No confidence adjustment if reconnect succeeds within 30s |
 | Clock sync drift exceeds 500ms | Phase timing misalignment; freeze capture may fire too early or late | NTP sync check runs at 08:55. If drift exceeds 500ms, alert is raised and phase timings are adjusted by the measured offset. | No confidence adjustment if corrected before 09:08 |

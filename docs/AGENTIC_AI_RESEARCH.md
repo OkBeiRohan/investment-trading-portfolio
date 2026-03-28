@@ -378,7 +378,7 @@ const riskReport = await agenticSystem.generateRiskReport({
 | ------------------- | ------------------------------------------- | -------------------------------- |
 | **Latency**         | 600-1600ms                                  | 70-140ms ✅                      |
 | **Determinism**     | Non-deterministic (temp > 0)                | Deterministic ✅                 |
-| **Reproducibility** | Hard (LLM updates change output)            | Easy (ONNX models versioned) ✅  |
+| **Reproducibility** | Hard (LLM updates change output)            | Easy (MLflow @champion versioned) ✅ |
 | **Cost**            | $10-100/day (API calls)                     | $0 (local inference) ✅          |
 | **Explainability**  | Natural language reasoning                  | SHAP values (quantitative) ✅    |
 | **Backtesting**     | Impossible (LLM not available historically) | Full history available ✅        |

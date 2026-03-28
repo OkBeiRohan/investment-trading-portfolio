@@ -17,7 +17,6 @@
         ".next/**",
         "!.next/cache/**",
         "dist/**",
-        "*.onnx",
         "*.joblib",
         "target/release/**"
       ],

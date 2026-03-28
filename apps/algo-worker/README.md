@@ -1,11 +1,11 @@
 # Algo Worker — Event-Driven Trading Engine
 
-> **Institutional-grade algorithmic trading engine for NSE index options. Implements a 5-Tier Data-Bound Hierarchical AI architecture with 117-feature Rust compute-engine and ONNX ensemble inference (<80ms E2E).**
+> **Institutional-grade algorithmic trading engine for NSE index options. Implements a 5-Tier Data-Bound Hierarchical AI architecture with 117-feature Rust compute-engine and MLflow Model Serving ensemble inference (<80ms E2E).**
 
 **Last Updated**: March 17, 2026
 **Framework**: NestJS + TypeScript
 **Feature Engine**: Rust (NAPI-RS) + Rayon — 117 features in <5ms
-**ML Inference**: ONNX Runtime (TensorRT/OpenVINO) — <50ms
+**ML Inference**: MLflow Model Serving (REST /invocations) — <50ms
 **Event Bus**: Redis Streams — <1ms delivery
 **Databases**: QuestDB (time-series) + MongoDB (documents) + Redis (hot cache)
 **Broker**: Upstox API (NSE)
@@ -50,7 +50,7 @@ See [docs/ml/](../../docs/ml/) for detailed model architectures.
 | ---------------------- | ------------------------------------ | ---------------------------------------------- | -------------- |
 | **1. Data Ingestion**  | Market data subscription             | MarketDataConsumer, EventNormalizer            | <5ms           |
 | **2. Feature Engine**  | Rust compute-engine (117 features)   | compute-engine (NAPI-RS), FeatureCache         | <5ms           |
-| **3. Prediction**      | 5-tier ONNX ensemble                 | ModelPool, InferenceWorkers, RegimeDetector    | <50ms          |
+| **3. Prediction**      | 5-tier MLflow serving ensemble       | ModelPool, InferenceWorkers, RegimeDetector    | <50ms          |
 | **4. Strategy & Risk** | Strategy selection + risk validation | StrategySelector, RiskValidator, PositionSizer | <10ms          |
 | **5. Execution**       | Order routing + position management  | OrderManager, PositionTracker, ExitEngine      | <20ms          |
 | **6. Observability**   | Metrics, logging, persistence        | Prometheus, CircuitBreaker, QuestDB, MongoDB   | Async          |
@@ -76,7 +76,7 @@ See [docs/ml/](../../docs/ml/) for detailed model architectures.
 └─────────────────────────────────────────────────────────────────────────────┘
                                      ↓
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ LAYER 3: PREDICTION (ONNX Runtime, Worker Threads)                          │
+│ LAYER 3: PREDICTION (MLflow Model Serving, REST endpoints)                  │
 │                                                                              │
 │ Pre-Market (once):                                                          │
 │   Tier 0: XGBoost gap prediction @ 09:08:05 IST                            │
@@ -89,7 +89,7 @@ See [docs/ml/](../../docs/ml/) for detailed model architectures.
 │ Live (every 100ms):                                                         │
 │   Tier 3: LiT Transformer → microstructure pressure (10s horizon)          │
 │                                                                              │
-│ Latency: <50ms (parallel Worker Threads)                                    │
+│ Latency: <50ms (parallel HTTP calls to MLflow endpoints)                    │
 └─────────────────────────────────────────────────────────────────────────────┘
                                      ↓
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -246,13 +246,13 @@ Exits are evaluated in priority order. The first trigger that fires wins:
 ### Core Architecture
 
 - [ARCHITECTURE.md](./docs/ARCHITECTURE.md) — System design overview
-- [INFERENCE_ENGINE.md](./docs/INFERENCE_ENGINE.md) — 117-feature inference pipeline
+- [INFERENCE_ENGINE.md](./docs/INFERENCE_ENGINE.md) — MLflow Model Serving inference pipeline
 
 ### 6-Layer Documentation
 
 - [01-DATA-INGESTION.md](./docs/layers/01-DATA-INGESTION.md) — Market data subscription
 - [02-FEATURE-ENGINE.md](./docs/layers/02-FEATURE-ENGINE.md) — Rust compute-engine integration
-- [03-PREDICTION.md](./docs/layers/03-PREDICTION.md) — ONNX ensemble + regime detection
+- [03-PREDICTION.md](./docs/layers/03-PREDICTION.md) — MLflow serving ensemble + regime detection
 - [04-STRATEGY-RISK.md](./docs/layers/04-STRATEGY-RISK.md) — Strategy selection + risk validation
 - [05-EXECUTION.md](./docs/layers/05-EXECUTION.md) — Order routing + position management
 - [06-OBSERVABILITY.md](./docs/layers/06-OBSERVABILITY.md) — Metrics + persistence + audit
@@ -270,7 +270,7 @@ Exits are evaluated in priority order. The first trigger that fires wins:
 
 - [compute-engine](../../packages/compute-engine/README.md) — Rust feature computation
 - [market-feeder](../../services/market-feeder/README.md) — Real-time data ingestion
-- [training-pipeline](../../services/training-pipeline/README.md) — ONNX model training
+- [training-pipeline](../../services/training-pipeline/README.md) — ML model training + MLflow Registry
 
 ---
 
@@ -281,7 +281,7 @@ Exits are evaluated in priority order. The first trigger that fires wins:
 - Node.js 20+
 - Rust 1.75+ (for compute-engine native build)
 - MongoDB 8.0+, QuestDB 8.0+, Redis 7.0+
-- Pre-trained ONNX models (from training-pipeline)
+- MLflow Tracking Server with registered models (@champion aliases)
 - Upstox API credentials
 
 ### Installation
@@ -296,8 +296,8 @@ pnpm build --filter=@repo/compute-engine
 pnpm build --filter=@repo/schema
 pnpm build --filter=@repo/database
 
-# 3. Copy ONNX models
-cp services/training-pipeline/models/*.onnx apps/algo-worker/models/
+# 3. Start MLflow serving endpoints (models loaded from MLflow Registry)
+docker compose -f infrastructure/docker/docker-compose.yml up mlflow-serving
 
 # 4. Configure environment
 cd apps/algo-worker
@@ -324,8 +324,9 @@ UPSTOX_API_SECRET=your_api_secret
 MAX_DAILY_LOSS=-50000
 MAX_POSITIONS=5
 
-# GPU (optional)
-GPU_ENABLED=true
+# MLflow Model Serving
+MLFLOW_TRACKING_URI=http://localhost:5000
+MLFLOW_SERVING_BASE_URL=http://localhost:5002
 ```
 
 ---
@@ -344,20 +345,13 @@ apps/algo-worker/
 │       ├── 04-STRATEGY-RISK.md
 │       ├── 05-EXECUTION.md
 │       └── 06-OBSERVABILITY.md
-├── models/                          # ONNX model files
-│   ├── tier0_gap_predictor.onnx
-│   ├── tier1_hmm.onnx
-│   ├── tier1_patchtst.onnx
-│   ├── tier2_lightgbm.onnx
-│   ├── tier2_tft.onnx
-│   ├── tier2_mamba.onnx
-│   ├── tier3_lit.onnx
-│   └── tier4_meta_learner.onnx
+├── config/
+│   └── mlflow-endpoints.ts          # MLflow serving endpoint configuration
 ├── src/
 │   ├── layers/                      # 6-Layer Implementation
 │   │   ├── data-ingestion/          # Layer 1: Market data subscription
 │   │   ├── feature-engine/          # Layer 2: Rust compute-engine bridge
-│   │   ├── prediction/              # Layer 3: ONNX inference workers
+│   │   ├── prediction/              # Layer 3: MLflow serving inference
 │   │   ├── strategy-risk/           # Layer 4: Strategy + risk + sizing
 │   │   ├── execution/               # Layer 5: Order routing + exits
 │   │   └── observability/           # Layer 6: Metrics + persistence
@@ -376,7 +370,7 @@ apps/algo-worker/
 | ------------------ | ---------------------- | ----------------------------------------------- |
 | **Framework**      | NestJS + TypeScript    | Application framework with DI                   |
 | **Feature Engine** | Rust (NAPI-RS) + Rayon | 117 features in <5ms                            |
-| **ML Inference**   | ONNX Runtime           | TensorRT/OpenVINO execution providers           |
+| **ML Inference**   | MLflow Model Serving   | REST /invocations endpoints, @champion aliases  |
 | **Event Bus**      | Redis Streams          | <1ms inter-service messaging                    |
 | **Time-Series DB** | QuestDB                | 22x faster than ClickHouse for TSDB workloads   |
 | **Document Store** | MongoDB                | Configuration, audit trail, cold storage        |
@@ -387,6 +381,6 @@ apps/algo-worker/
 
 **Architecture**: 6-Layer Event-Driven with 5-Tier Hierarchical AI
 **Features**: 117 (Rust, <5ms)
-**Inference**: ONNX Ensemble (<50ms)
+**Inference**: MLflow Serving Ensemble (<50ms)
 **Target Latency**: <80ms E2E (p95)
 **Last Updated**: March 17, 2026

@@ -53,7 +53,7 @@ This document describes the **cloud-hosted services** that provide:
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                    algo-worker (NestJS + GPU)                       │   │
 │  │  • Real-time trading                                                │   │
-│  │  • ML inference (ONNX Runtime)                                      │   │
+│  │  • ML inference (MLflow Model Serving)                               │   │
 │  │  • Publishes: positions, orders, signals, metrics                   │   │
 │  │  • Subscribes: user config, commands                                │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │

@@ -3,7 +3,7 @@
 **Version**: 2026 Institutional-Grade
 **Target Latency**: <80ms End-to-End (p95)
 **Features**: 117 (Rust compute-engine, <5ms)
-**Models**: 8 ONNX models across 5 tiers (GPU + CPU)
+**Models**: 8 models across 5 tiers via MLflow Model Serving
 **Last Updated**: March 13, 2026
 
 ---
@@ -97,7 +97,7 @@ See [MODEL_PIPELINE_WORKFLOW.md](../../docs/ml/MODEL_PIPELINE_WORKFLOW.md) for f
 | ---------------------- | -------------------------------------- | ----------------------------------------------- | ------ |
 | **1. Data Ingestion**  | Subscribe to market data + tier caches | RedisConsumer, CacheReader                      | <2ms   |
 | **2. Feature Engine**  | 117 features via Rust compute-engine   | compute-engine (NAPI-RS), FeatureCache          | <5ms   |
-| **3. Prediction**      | 5-tier hierarchical inference          | WorkerPool, OnnxSessions, TierServices          | <25ms  |
+| **3. Prediction**      | 5-tier hierarchical inference          | ModelPool, MLflow HTTP clients, TierServices    | <25ms  |
 | **4. Strategy & Risk** | Regime-conditioned strategy + risk     | StrategySelector, StrikeSelector, RiskValidator | <10ms  |
 | **5. Execution**       | Order routing + position management    | OrderManager, PositionTracker, ExitEngine       | <20ms  |
 | **6. Observability**   | Metrics + persistence + audit          | Prometheus, QuestDB, MongoDB, PinoLogger        | Async  |
@@ -106,26 +106,19 @@ See [MODEL_PIPELINE_WORKFLOW.md](../../docs/ml/MODEL_PIPELINE_WORKFLOW.md) for f
 
 ---
 
-## GPU / CPU Resource Allocation
+## MLflow Model Serving Architecture
 
-| CPU Core | Assignment             | Details                                |
-| -------- | ---------------------- | -------------------------------------- |
-| Core 0   | Node.js Event Loop     | Main thread: Redis, events, Tier 0/1/4 |
-| Core 1   | Tier 2 LightGBM Worker | CPU inference (~5ms)                   |
-| Core 2   | Tier 2 TFT Worker      | GPU inference via TensorRT (~12ms)     |
-| Core 3   | Tier 2 Mamba Worker    | GPU inference via CUDA (~10ms)         |
-| Core 4   | Tier 3 LiT Worker      | GPU inference, 100ms self-driving loop |
-| Core 5   | compute-engine (Rayon) | Runs in market-feeder process          |
-| Core 6-7 | OS / Redis / QuestDB   | Background services                    |
+All ML inference is handled by MLflow Model Serving containers. The algo-worker calls REST endpoints via HTTP POST `/invocations`. Models are loaded from the MLflow Registry using `@champion` aliases.
 
-| GPU Resource   | Assignment                | VRAM               |
-| -------------- | ------------------------- | ------------------ |
-| CUDA Stream 0  | TFT + Mamba (Tier 2)      | ~200 MB            |
-| CUDA Stream 1  | LiT (Tier 3, independent) | ~60 MB             |
-| TensorRT Cache | TFT FP16 engine           | ~120 MB            |
-| Total          |                           | ~460 MB (fits 4GB) |
+| Endpoint               | Model(s)               | Details                                           |
+| ---------------------- | ---------------------- | ------------------------------------------------- |
+| `/tier0/invocations`   | XGBoost                | Fires once/day, @champion alias, ~2ms             |
+| `/tier1/invocations`   | HMM + PatchTST         | Fires once/day, @champion aliases, ~8ms           |
+| `/tier2/invocations`   | LightGBM + TFT + Mamba | Parallel calls every 60s, @champion aliases       |
+| `/tier3/invocations`   | LiT Transformer        | High-frequency 100ms loop, @champion alias        |
+| `/tier4/invocations`   | Meta-Learner           | Fuses all tier outputs every 60s, @champion alias |
 
-See [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) for full GPU/CPU config.
+See [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) for full endpoint configuration and health checks.
 
 ---
 
@@ -203,12 +196,12 @@ See [06-OBSERVABILITY.md](./layers/06-OBSERVABILITY.md)
 
 1. **Data-Bound Hierarchy**: Each tier's historical depth and data resolution determines its model architecture
 2. **Compute Once, Cache, Reuse**: Daily models fire once and are cached. Minute models fire every 60s. Tier 4 only reads caches.
-3. **Worker Thread Isolation**: GPU inference never blocks the Node.js event loop
+3. **HTTP-Based Inference**: MLflow serving endpoints handle compute; algo-worker stays non-blocking
 4. **Event-Driven**: Redis Streams for inter-layer communication
 5. **Rust Performance**: 117 features in <5ms via Rayon (compute-engine in market-feeder process)
-6. **GPU Required**: TFT, Mamba, LiT require GPU for production latency targets
+6. **MLflow Registry**: Models versioned and promoted via @champion aliases; serving containers own GPU/CPU allocation
 7. **SEBI Compliant**: Unique Algo ID, pre-trade risk checks, 5-year audit trail
-8. **Fail-Safe**: Multi-layer circuit breakers, EP fallback chains, worker restart on crash
+8. **Fail-Safe**: Multi-layer circuit breakers, MLflow endpoint health checks, serving container restart on failure
 
 ---
 
@@ -228,7 +221,7 @@ See [06-OBSERVABILITY.md](./layers/06-OBSERVABILITY.md)
 
 ## Related Documentation
 
-- [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) — GPU/CPU allocation, ONNX EP config, Worker Threads
+- [INFERENCE_ENGINE.md](./INFERENCE_ENGINE.md) — MLflow Model Serving endpoints, health checks, @champion loading
 - [VISUAL_FLOW.md](./VISUAL_FLOW.md) — ASCII flow diagrams
 - [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) — Directory layout
 - [PERFORMANCE_OPTIMIZATION.md](./PERFORMANCE_OPTIMIZATION.md) — Zero-allocation patterns

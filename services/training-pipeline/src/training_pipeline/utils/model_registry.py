@@ -1,15 +1,15 @@
 """
-Model registry — ONNX artifact management and promotion.
+Model registry — artifact management and promotion via MongoDB.
 
-After ONNX export, computes SHA-256 checksums, records artifact metadata
-in the MongoDB ``training_runs`` document, compares against the previous
-best run, and auto-promotes the new model if quality gates pass.
+Records artifact metadata (checksums, sizes) in the MongoDB
+``training_runs`` document, compares against the previous best run,
+and auto-promotes the new model if quality gates pass. Model serving
+is handled by MLflow Model Serving (@champion alias).
 """
 
 import hashlib
 import logging
 import os
-from pathlib import Path
 from typing import Optional
 
 from bson import ObjectId
@@ -31,7 +31,7 @@ def _file_size(filepath: str) -> int:
 
 
 class ModelRegistry:
-    """Manages ONNX artifacts and model promotion in MongoDB."""
+    """Manages model artifacts and promotion in MongoDB."""
 
     def __init__(self, db: Database):
         self.experiments = db["experiments"]
@@ -43,37 +43,23 @@ class ModelRegistry:
         artifact_paths: dict[str, str],
     ) -> list[dict]:
         """
-        Compute checksums and sizes for exported model files, then store
-        them in ``training_runs.artifacts[]``.
-
-        Parameters
-        ----------
-        run_id : str
-            The training run ObjectId.
-        artifact_paths : dict[str, str]
-            Mapping of logical name → filesystem path, e.g.
-            ``{"tier0_gap_predictor": "data/06_models/tier0_gap_predictor.onnx"}``.
-
-        Returns
-        -------
-        list[dict]
-            The artifact records written to MongoDB.
+        Compute checksums and sizes for model files and store them
+        in ``training_runs.artifacts[]``.
         """
         artifacts = []
         for name, path in artifact_paths.items():
             if not os.path.exists(path):
-                logger.warning("Artifact not found, skipping: %s → %s", name, path)
+                logger.warning("Artifact not found, skipping: %s -> %s", name, path)
                 continue
-            artifact_type = "onnx" if path.endswith(".onnx") else "model"
             rec = {
                 "name": name,
                 "path": path,
-                "type": artifact_type,
+                "type": "mlflow_model",
                 "sizeBytes": _file_size(path),
                 "checksum": _sha256(path),
             }
             artifacts.append(rec)
-            logger.info("Registered artifact %s (%s, %d bytes)", name, artifact_type, rec["sizeBytes"])
+            logger.info("Registered artifact %s (%d bytes)", name, rec["sizeBytes"])
 
         self.training_runs.update_one(
             {"_id": ObjectId(run_id)},
@@ -101,7 +87,7 @@ class ModelRegistry:
             return True
         better = new_val > old_val
         logger.info(
-            "Promotion check: %s old=%.4f new=%.4f → %s",
+            "Promotion check: %s old=%.4f new=%.4f -> %s",
             primary_metric, old_val, new_val, "PROMOTE" if better else "KEEP_OLD",
         )
         return better
@@ -110,7 +96,6 @@ class ModelRegistry:
         self,
         experiment_id: str,
         run_id: str,
-        onnx_path: Optional[str] = None,
         model_path: Optional[str] = None,
     ) -> None:
         """Update experiment to point at the new best run and mark deployed."""
@@ -122,9 +107,8 @@ class ModelRegistry:
             "isDeployed": True,
             "deployedAt": now,
             "updatedAt": now,
+            "modelFormat": "mlflow_native",
         }
-        if onnx_path:
-            update["onnxPath"] = onnx_path
         if model_path:
             update["modelPath"] = model_path
 

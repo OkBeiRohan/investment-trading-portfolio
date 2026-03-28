@@ -1,0 +1,158 @@
+groups:
+  # ==========================================
+  # ML Training Pipeline Alerts
+  # ==========================================
+  - name: ml_training_alerts
+    interval: 30s
+    rules:
+      - alert: TrainingPipelineFailed
+        expr: increase(training_run_total{status="failed"}[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: training
+        annotations:
+          summary: "Training pipeline failed for tier {{ $labels.tier }}"
+          description: "A training run failed in the last hour. Check MLflow and Loki logs for details."
+
+      - alert: QualityGateFailedConsecutive
+        expr: model_quality_gate_result == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: training
+        annotations:
+          summary: "Quality gate failing for tier {{ $labels.tier }}, metric {{ $labels.metric_name }}"
+          description: "The quality gate has been failing for 5+ minutes. Model may need attention."
+
+      - alert: FeatureDriftDetected
+        expr: feature_drift_pct > 0.20
+        for: 0m
+        labels:
+          severity: warning
+          component: drift
+        annotations:
+          summary: "Feature drift detected for {{ $labels.instrument_key }}"
+          description: "{{ $value | humanizePercentage }} of features have drifted. Consider retraining."
+
+      - alert: TrainingRunTooLong
+        expr: training_run_duration_seconds{status="running"} > 7200
+        for: 5m
+        labels:
+          severity: warning
+          component: training
+        annotations:
+          summary: "Training run for tier {{ $labels.tier }} exceeded 2 hours"
+          description: "A training run has been running for over 2 hours. It may be stuck."
+
+  # ==========================================
+  # Inference & Algo Worker Alerts
+  # ==========================================
+  - name: inference_alerts
+    interval: 15s
+    rules:
+      - alert: InferenceLatencyHigh
+        expr: histogram_quantile(0.95, rate(trading_system_inference_duration_seconds_bucket[5m])) > 0.050
+        for: 5m
+        labels:
+          severity: critical
+          component: inference
+        annotations:
+          summary: "Inference p95 latency exceeds 50ms target"
+          description: "The 95th percentile inference latency is {{ $value | humanizeDuration }}."
+
+      - alert: ModelLoadFailure
+        expr: increase(trading_system_inference_total{status="error"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: inference
+        annotations:
+          summary: "ONNX model inference errors detected"
+          description: "Model inference errors occurred in the last 5 minutes."
+
+      - alert: NoSignalsGenerated
+        expr: rate(trading_system_signal_generated_total[5m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          component: inference
+        annotations:
+          summary: "No trading signals generated in 10 minutes"
+          description: "The algo-worker has not generated any signals. Check model pool and feature stream."
+
+      - alert: MetaLearnerWeightCollapse
+        expr: meta_gating_weight > 0.9
+        for: 15m
+        labels:
+          severity: warning
+          component: meta-learner
+        annotations:
+          summary: "Meta-learner weight collapse on tier {{ $labels.tier_index }}"
+          description: "One tier has gating weight > 0.9 for 15+ min, indicating over-reliance on a single model."
+
+  # ==========================================
+  # Infrastructure Alerts
+  # ==========================================
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      - alert: GPUMemoryHigh
+        expr: training_gpu_memory_used_bytes / training_gpu_memory_total_bytes > 0.90
+        for: 10m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU memory utilization above 90%"
+          description: "GPU memory has been above 90% for 10 minutes. Training may OOM."
+
+      - alert: GPUComputeHigh
+        expr: training_gpu_utilization > 95
+        for: 10m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU compute utilization above 95%"
+          description: "GPU compute has been above 95% for 10 minutes. Training may be bottlenecked."
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.job }} for 2+ minutes."
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Host memory usage above 90%"
+          description: "System memory usage is at {{ $value | humanizePercentage }}."
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Redis memory usage above 80%"
+          description: "Redis is using {{ $value | humanizePercentage }} of configured max memory."
+
+      - alert: MongoDBConnectionsHigh
+        expr: mongodb_connections_current > 500
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "MongoDB connections above 500"
+          description: "Current MongoDB connections: {{ $value }}."

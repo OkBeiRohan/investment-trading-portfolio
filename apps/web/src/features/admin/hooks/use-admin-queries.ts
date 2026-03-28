@@ -105,6 +105,12 @@ export interface Experiment {
   config?: Record<string, unknown>;
   hyperparameters?: Record<string, unknown>;
   metrics?: Record<string, number>;
+  mlflowExperimentId?: string;
+  mlflowRunId?: string;
+  mlflowModelName?: string;
+  mlflowModelUri?: string;
+  mlflowChampionVersion?: string;
+  modelFormat?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -124,7 +130,34 @@ export interface TrainingRun {
   startedAt?: string;
   completedAt?: string;
   metrics?: Record<string, number>;
+  mlflowRunId?: string;
+  evaluationResults?: Record<string, number>;
+  qualityGateResult?: {
+    passed: boolean;
+    reason: string;
+    thresholds: Record<string, unknown>;
+  };
   error?: string;
+}
+
+export interface MetricHistoryPoint {
+  key: string;
+  value: number;
+  timestamp: number;
+  step: number;
+}
+
+export interface DatasetLineage {
+  dataset: { name: string; digest: string; source_type: string };
+  context: string;
+}
+
+export interface MlflowModelVersion {
+  name: string;
+  version: string;
+  run_id: string;
+  status: string;
+  aliases?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +229,85 @@ export function useAdminExperimentRuns(experimentId: string) {
     queryFn: () =>
       adminFetch<TrainingRun[]>(
         `/api/admin/training/experiments/${experimentId}/runs`,
+      ),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// MLflow-Enriched Queries
+// ---------------------------------------------------------------------------
+
+export function useExperimentMetricsHistory(
+  experimentId: string,
+  metricKey: string,
+) {
+  return useSuspenseQuery({
+    queryKey: [...adminKeys.experiments.detail(experimentId), "metrics-history", metricKey] as const,
+    queryFn: () =>
+      adminFetch<MetricHistoryPoint[]>(
+        `/api/admin/training/experiments/${experimentId}/metrics-history?metric=${encodeURIComponent(metricKey)}`,
+      ),
+  });
+}
+
+export function useExperimentArtifactUrl(experimentId: string, path: string) {
+  return useSuspenseQuery({
+    queryKey: [...adminKeys.experiments.detail(experimentId), "artifact", path] as const,
+    queryFn: () =>
+      adminFetch<{ url: string | null }>(
+        `/api/admin/training/experiments/${experimentId}/artifacts?path=${encodeURIComponent(path)}`,
+      ),
+  });
+}
+
+export function useDatasetLineage(experimentId: string) {
+  return useSuspenseQuery({
+    queryKey: [...adminKeys.experiments.detail(experimentId), "datasets"] as const,
+    queryFn: () =>
+      adminFetch<DatasetLineage[]>(
+        `/api/admin/training/experiments/${experimentId}/datasets`,
+      ),
+  });
+}
+
+export function useSystemMetrics(runId: string) {
+  return useSuspenseQuery({
+    queryKey: [...adminKeys.all, "runs", runId, "system-metrics"] as const,
+    queryFn: () =>
+      adminFetch<{
+        cpu: MetricHistoryPoint[];
+        gpu: MetricHistoryPoint[];
+        memory: MetricHistoryPoint[];
+      }>(`/api/admin/training/runs/${runId}/system-metrics`),
+  });
+}
+
+export function useModelVersions(modelName: string) {
+  return useSuspenseQuery({
+    queryKey: [...adminKeys.all, "models", modelName, "versions"] as const,
+    queryFn: () =>
+      adminFetch<{ name: string; latest_versions: MlflowModelVersion[] } | null>(
+        `/api/admin/training/models/${encodeURIComponent(modelName)}/versions`,
+      ),
+  });
+}
+
+export function useChampionVersion(modelName: string) {
+  return useSuspenseQuery({
+    queryKey: [...adminKeys.all, "models", modelName, "champion"] as const,
+    queryFn: () =>
+      adminFetch<MlflowModelVersion | null>(
+        `/api/admin/training/models/${encodeURIComponent(modelName)}/champion`,
+      ),
+  });
+}
+
+export function useMlflowExperiments() {
+  return useSuspenseQuery({
+    queryKey: [...adminKeys.all, "mlflow", "experiments"] as const,
+    queryFn: () =>
+      adminFetch<Array<{ experiment_id: string; name: string; lifecycle_stage: string }>>(
+        `/api/admin/training/mlflow/experiments`,
       ),
   });
 }

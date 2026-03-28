@@ -10,7 +10,7 @@ Comprehensive migration guides for upgrading each component of the Quantum Inves
 - **Auth**: Better Auth (self-hosted, multi-tenant, 2FA, passkeys)
 - **API**: tRPC v11 with NestJS decorators and Rust-powered type generation
 - **Compute**: Rust NAPI-RS v3 (WebAssembly support)
-- **ML**: ONNX Runtime 1.24+ with worker thread support
+- **ML**: MLflow 3.x Model Serving with native flavors and @champion aliases
 - **Databases**: QuestDB (time-series), MongoDB 8.0 (documents), Redis 7+ (hot state)
 - **Observability**: OpenTelemetry + Grafana LGTM (Loki, Grafana, Tempo, Mimir)
 - **Compliance**: SEBI 2025-2026 retail algo trading (April 1, 2026 deadline)
@@ -20,12 +20,12 @@ Comprehensive migration guides for upgrading each component of the Quantum Inves
 ### Apps
 - [Web Dashboard](apps/web.md) -- Next.js 16 with Turbopack, Better Auth client, tRPC v11
 - [API Gateway](apps/api.md) -- NestJS 11, Better Auth server, tRPC decorators
-- [Algo Worker](apps/algo-worker.md) -- 5-tier inference, ONNX Runtime, Redis Streams
+- [Algo Worker](apps/algo-worker.md) -- 5-tier inference, MLflow Model Serving, Redis Streams
 
 ### Services
 - [Market Feeder](services/market-feeder.md) -- Instrument sync, WebSocket, feature computation
 - [Data Processor](services/data-processor.md) -- DEPRECATED, migrate to compute-engine
-- [Training Pipeline](services/training-pipeline.md) -- Kedro, CPCV, ONNX export
+- [Training Pipeline](services/training-pipeline.md) -- MLflow 3.x, CPCV, native model logging
 - [Document Processor](services/document-processor.md) -- LayoutLMv3, OCR
 - [Wealth Management](services/wealth-management.md) -- Double-entry ledger
 - [Wealth Analyzer](services/wealth-analyzer.md) -- AI analytics

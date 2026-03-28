@@ -213,7 +213,7 @@ This is the most critical 15-minute window. Three sub-phases execute sequentiall
   │                                      │
   │  System is in STANDBY mode           │
   │  ├── All models pre-warmed           │
-  │  ├── ONNX sessions loaded            │
+  │  ├── MLflow serving endpoints ready  │
   │  └── Redis connections verified      │
   │                                      │
   09:08: PRE-OPEN FREEZE
@@ -236,7 +236,7 @@ This is the most critical 15-minute window. Three sub-phases execute sequentiall
              │   ├── prev_day_range, prev_day_close_vs_vwap
              │   └── [12 features total]
              │
-             ├── XGBoost ONNX inference (~2ms)
+             ├── XGBoost MLflow inference (~2ms)
              │   └── Output: expected_gap_pct, volatility, bias, confidence
              │
              ├── Publish to Redis: tier0:gap:{date}
@@ -524,10 +524,10 @@ On every tick (for instruments with open positions):
              │   ├── Quality gate: reject if sharpe_p5 < 1.0
              │   └── Compare new vs current model on held-out data
              │
-             ├── ONNX Export (if model promoted):
-             │   ├── PyTorch → ONNX with FP16 quantization
-             │   ├── Validate ONNX output matches original (atol=1e-4)
-             │   └── Deploy to apps/algo-worker/models/
+             ├── MLflow Model Registration (if model promoted):
+             │   ├── Log via native MLflow flavor (xgboost, pytorch, lightgbm, pyfunc)
+             │   ├── Register with registered_model_name for versioning
+             │   └── Serve via MLflow Model Serving endpoint
              │
              └── Drift Detection:
                   ├── ADWIN for feature distribution shifts

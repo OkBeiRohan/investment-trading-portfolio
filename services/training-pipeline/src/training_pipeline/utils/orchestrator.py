@@ -181,6 +181,9 @@ class Orchestrator:
         experiment_id: str,
         metrics: dict,
         artifacts: Optional[list[dict]] = None,
+        mlflow_run_id: Optional[str] = None,
+        mlflow_experiment_id: Optional[str] = None,
+        quality_gate_result: Optional[dict] = None,
     ) -> None:
         """Mark a run as completed and update the parent experiment metrics."""
         now = _utcnow()
@@ -188,31 +191,42 @@ class Orchestrator:
         started = run["startedAt"] if run else now
         duration = (now - started).total_seconds()
 
+        run_update: dict[str, Any] = {
+            "status": "completed",
+            "metrics": metrics,
+            "artifacts": artifacts or [],
+            "completedAt": now,
+            "totalDuration": duration,
+            "updatedAt": now,
+        }
+        if mlflow_run_id:
+            run_update["mlflowRunId"] = mlflow_run_id
+        if mlflow_experiment_id:
+            run_update["mlflowParentRunId"] = mlflow_experiment_id
+        if quality_gate_result:
+            run_update["qualityGateResult"] = quality_gate_result
+
         self.training_runs.update_one(
             {"_id": ObjectId(run_id)},
-            {
-                "$set": {
-                    "status": "completed",
-                    "metrics": metrics,
-                    "artifacts": artifacts or [],
-                    "completedAt": now,
-                    "totalDuration": duration,
-                    "updatedAt": now,
-                }
-            },
+            {"$set": run_update},
         )
+
+        exp_update: dict[str, Any] = {
+            "status": "completed",
+            "metrics": metrics,
+            "bestRunId": ObjectId(run_id),
+            "updatedAt": now,
+        }
+        if mlflow_run_id:
+            exp_update["mlflowRunId"] = mlflow_run_id
+        if mlflow_experiment_id:
+            exp_update["mlflowExperimentId"] = mlflow_experiment_id
+
         self.experiments.update_one(
             {"_id": ObjectId(experiment_id)},
-            {
-                "$set": {
-                    "status": "completed",
-                    "metrics": metrics,
-                    "bestRunId": ObjectId(run_id),
-                    "updatedAt": now,
-                }
-            },
+            {"$set": exp_update},
         )
-        logger.info("Run %s completed in %.1fs", run_id, duration)
+        logger.info("Run %s completed in %.1fs (mlflow_run=%s)", run_id, duration, mlflow_run_id)
 
     def fail_run(
         self,

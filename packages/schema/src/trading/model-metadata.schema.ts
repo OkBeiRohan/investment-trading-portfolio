@@ -36,10 +36,12 @@ export type ModelStatus = z.infer<typeof modelStatusEnum>;
  * Model format enum
  */
 export const modelFormatEnum = z.enum([
-  "ONNX",
-  "PICKLE",
-  "TENSORFLOW",
   "PYTORCH",
+  "MLFLOW_NATIVE",
+  "PYFUNC",
+  "XGBOOST_JSON",
+  "LIGHTGBM",
+  "PICKLE",
   "JOBLIB",
 ]);
 
@@ -99,6 +101,11 @@ export const modelMetadataSchema = z.object({
   filePath: z.string(),
   checksum: z.string(), // MD5 or SHA256 hash
   fileSizeBytes: z.number(),
+
+  // MLflow integration
+  mlflowModelUri: z.string().optional(),
+  mlflowModelId: z.string().optional(),
+  servingEndpoint: z.string().optional(),
 
   // Performance metrics
   performanceMetrics: performanceMetricsSchema.optional(),

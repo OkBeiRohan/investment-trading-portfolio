@@ -12,7 +12,7 @@
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │                         ALGO-WORKER 6-LAYER PIPELINE                           │
 │                          Target: <80ms E2E (p95)                               │
-│                          117 Features | 8 ONNX Models | 5 Tiers               │
+│                          117 Features | 8 MLflow Models | 5 Tiers              │
 │                                                                                │
 │  ┌──────────────────────────────────────────────────────────────────────────┐ │
 │  │ LAYER 1: DATA INGESTION (<2ms)                                          │ │
@@ -446,7 +446,7 @@
 │  │ orders                        │ Every order placed           │ SEBI 2024 │ │
 │  │ signals                       │ Every trading signal         │ compliant │ │
 │  │ risk_events                   │ Circuit breakers, risk logs  │ 5-year    │ │
-│  │ model_versions                │ ONNX model metadata          │ retention │ │
+│  │ model_versions                │ MLflow model metadata         │ retention │ │
 │  │ audit_trail                   │ Unique Algo ID per order     │           │ │
 │  └───────────────────────────────┴─────────────────────────────┴──────────┘ │
 │                                                                                 │

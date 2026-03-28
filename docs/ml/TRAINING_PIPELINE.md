@@ -1,744 +1,186 @@
 # Training Pipeline Architecture
 
-> **Comprehensive training infrastructure for 5-tier hierarchical prediction models with CPCV validation.**
+> **Institutional-grade training infrastructure with MLflow 3.x tracking, Optuna HPO, automated evaluation, and alias-based model promotion.**
+
+**Last Updated**: March 28, 2026
 
 ---
 
 ## Overview
 
-The training pipeline uses a **standard Python pipeline** (no Kedro required) and implements:
+The training pipeline is a standard Python package (`services/training-pipeline/`) — no Kedro dependency. It implements:
 
-- **CPCV (Combinatorial Purged Cross-Validation)** for robust model evaluation
-- **Multi-horizon label generation** for hierarchical predictions
-- **Direct Redis writes** for the online feature store (no Feast)
-- **MLflow model registry** with versioning and rollback
-- **ONNX export** for production inference (PyTorch models only; LightGBM uses native inference)
+- **5-tier hierarchical model training** (XGBoost, HMM, PatchTST, LightGBM, LiT, Meta-learner)
+- **MLflow 3.x** experiment tracking with system metrics (GPU/CPU/memory), autologging, and checkpoint versioning
+- **MLflow Dataset Tracking** via `mlflow.data.from_pandas()` for full data lineage
+- **MLflow Model Evaluation** via `mlflow.models.evaluate()` with SHAP explainability and custom trading metrics
+- **Native MLflow Model Flavors** — models logged directly via `mlflow.xgboost`, `mlflow.pytorch`, `mlflow.lightgbm`, `mlflow.pyfunc` (no ONNX conversion required)
+- **MLflow Model Serving** — production inference via `mlflow models serve` with REST `/invocations` endpoints
+- **Optuna HPO** with per-tier search spaces and nested MLflow child runs
+- **CPCV / walk-forward** validation for temporal financial data
+- **Quality gates** with custom thresholds + `mlflow.validate_evaluation_results()` with `MetricThreshold`
+- **Champion/challenger** model comparison with auto-promotion via `@champion` / `@challenger` aliases
+- **Checkpoint tracking** with `step` parameter and `model_id` metric linkage
+- **Dual-write** to MongoDB with MLflow run IDs, dataset digests, evaluation results, and quality gate status
+
+For the full MLflow platform documentation, see [MLFLOW_PLATFORM.md](./MLFLOW_PLATFORM.md).
 
 ---
 
 ## Pipeline Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    TRAINING PIPELINE                            │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ 1. DATA EXTRACTION                                       │   │
-│  │    QuestDB → Raw OHLCV + OI → Pandas DataFrame           │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ 2. FEATURE ENGINEERING                                   │   │
-│  │    Raw Data → 100+ Features → Redis Feature Store        │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ 3. LABEL GENERATION                                      │   │
-│  │    Multi-horizon labels (H1-H6) + Purging                │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ 4. CPCV SPLITTING                                        │   │
-│  │    Train/Val/Test with purge + embargo                   │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ 5. MODEL TRAINING                                        │   │
-│  │    Tier 0-3 models + Meta-Learner (Tier 4)               │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ 6. VALIDATION & METRICS                                  │   │
-│  │    AUC, Sharpe, Accuracy per horizon                     │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                              ↓                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ 7. ONNX EXPORT & REGISTRY                                │   │
-│  │    Export → Validate → Register → Deploy                 │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        TRAINING PIPELINE (end-to-end)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  1. Data Extraction (QuestDB)
+              │
+              ▼
+  2. Feature Engineering (100+ features)
+              │
+              ▼
+  3. Label Generation (multi-horizon)
+              │
+              ├──────────────────────────────────────┐
+              │                                      │
+              ▼                                      ▼
+  4. [Optional] Hyperparameter Tuning      (skip if no --tune)
+     (Optuna)                              ──────────┘
+              │
+              ▼
+  5. Model Training (Tier 0–3 + Meta)
+     + mlflow.data dataset logging
+     + native mlflow.flavor.log_model()
+              │
+              ▼
+  6. Model Evaluation (mlflow.models.evaluate + SHAP)
+              │
+              ▼
+  7. Quality Gate (mlflow.validate_evaluation_results)
+              │
+              ▼
+  8. Model Registration (MLflow Registry @champion + MongoDB dual-write)
+              │
+              ▼
+  9. MLflow Model Serving (REST /invocations)
+              │
+              ▼
+  10. Reporting (HTML + JSON + MLflow artifacts)
 ```
 
 ---
 
-## 1. CPCV Implementation
-
-### What is CPCV?
-
-**Combinatorial Purged Cross-Validation** addresses two critical issues in financial ML:
-
-1. **Information Leakage**: Labels depend on future prices, so we must remove ("purge") training samples whose label periods overlap with test periods.
-2. **Serial Correlation**: Adjacent samples are correlated, so we add an "embargo" buffer after test periods.
-
-### Implementation
-
-```python
-import numpy as np
-import pandas as pd
-from typing import Generator, Tuple
-from itertools import combinations
-
-class CombinatorialPurgedKFold:
-    """
-    Combinatorial Purged K-Fold Cross-Validation.
-
-    Based on Marcos López de Prado's "Advances in Financial ML".
-    """
-
-    def __init__(
-        self,
-        n_splits: int = 5,
-        n_test_splits: int = 2,
-        purge_gap: int = 60,    # Bars to purge (1 hour for 1-min data)
-        embargo_gap: int = 30   # Bars to embargo (30 min)
-    ):
-        self.n_splits = n_splits
-        self.n_test_splits = n_test_splits
-        self.purge_gap = purge_gap
-        self.embargo_gap = embargo_gap
-
-    def split(
-        self,
-        X: pd.DataFrame,
-        y: pd.Series = None,
-        timestamps: pd.Series = None
-    ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
-        """
-        Generate train/test indices with purging and embargo.
-
-        Yields:
-            train_indices, test_indices for each fold
-        """
-        n_samples = len(X)
-        indices = np.arange(n_samples)
-
-        # Split into n_splits sequential groups
-        group_size = n_samples // self.n_splits
-        groups = [
-            indices[i * group_size:(i + 1) * group_size]
-            for i in range(self.n_splits)
-        ]
-
-        # Handle remainder
-        if n_samples % self.n_splits:
-            groups[-1] = np.concatenate([
-                groups[-1],
-                indices[self.n_splits * group_size:]
-            ])
-
-        # Generate all combinations of test groups
-        for test_group_indices in combinations(
-            range(self.n_splits), self.n_test_splits
-        ):
-            test_indices = np.concatenate([
-                groups[i] for i in test_group_indices
-            ])
-
-            train_indices = []
-            for i in range(self.n_splits):
-                if i not in test_group_indices:
-                    group = groups[i]
-
-                    # Apply purging: remove samples near test boundaries
-                    for test_i in test_group_indices:
-                        test_start = groups[test_i][0]
-                        test_end = groups[test_i][-1]
-
-                        # Purge before test
-                        purge_start = max(0, test_start - self.purge_gap)
-                        # Embargo after test
-                        embargo_end = min(n_samples, test_end + self.embargo_gap)
-
-                        # Remove purged and embargoed samples
-                        group = group[
-                            (group < purge_start) | (group > embargo_end)
-                        ]
-
-                    train_indices.append(group)
-
-            train_indices = np.concatenate(train_indices) if train_indices else np.array([])
-
-            yield np.sort(train_indices), np.sort(test_indices)
-
-    def get_n_splits(self) -> int:
-        """Number of splits generated."""
-        from math import comb
-        return comb(self.n_splits, self.n_test_splits)
-
-
-# Usage example
-def train_with_cpcv(X, y, timestamps, model_class, model_params):
-    """
-    Train model using CPCV and return performance distribution.
-    """
-    cv = CombinatorialPurgedKFold(
-        n_splits=5,
-        n_test_splits=2,
-        purge_gap=60,
-        embargo_gap=30
-    )
-
-    results = []
-    models = []
-
-    for fold, (train_idx, test_idx) in enumerate(cv.split(X, y, timestamps)):
-        print(f"Fold {fold + 1}/{cv.get_n_splits()}")
-        print(f"  Train: {len(train_idx)} samples")
-        print(f"  Test:  {len(test_idx)} samples")
-
-        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-
-        # Train model
-        model = model_class(**model_params)
-        model.fit(X_train, y_train)
-
-        # Evaluate
-        y_pred = model.predict(X_test)
-        y_prob = model.predict_proba(X_test)
-
-        from sklearn.metrics import accuracy_score, roc_auc_score
-
-        acc = accuracy_score(y_test, y_pred)
-        auc = roc_auc_score(y_test, y_prob, multi_class='ovr')
-
-        results.append({
-            'fold': fold,
-            'accuracy': acc,
-            'auc': auc,
-            'train_size': len(train_idx),
-            'test_size': len(test_idx)
-        })
-
-        models.append(model)
-
-    return pd.DataFrame(results), models
-```
-
----
-
-## 2. Multi-Horizon Label Generation
-
-```python
-import pandas as pd
-import numpy as np
-from typing import List, Dict
-
-class MultiHorizonLabeler:
-    """
-    Generate labels for multiple prediction horizons.
-
-    Each horizon uses dynamic thresholds based on typical move sizes.
-    """
-
-    HORIZONS = {
-        'H1': {'seconds': 10, 'name': '10s'},
-        'H2': {'seconds': 60, 'name': '1min'},
-        'H3': {'seconds': 300, 'name': '5min'},
-        'H4': {'seconds': 900, 'name': '15min'},
-        'H5': {'seconds': 3600, 'name': '1hr'},
-        'H6': {'seconds': 21600, 'name': 'EOD'}  # 6 hours ≈ trading session
-    }
-
-    def __init__(
-        self,
-        horizons: List[str] = None,
-        base_threshold: float = 0.001,
-        n_classes: int = 3
-    ):
-        self.horizons = horizons or list(self.HORIZONS.keys())
-        self.base_threshold = base_threshold
-        self.n_classes = n_classes
-
-    def generate_labels(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Generate multi-horizon labels.
-
-        Args:
-            df: DataFrame with 'close' column and datetime index
-
-        Returns:
-            DataFrame with added label columns
-        """
-        result = df.copy()
-
-        # Determine data frequency
-        freq_seconds = (df.index[1] - df.index[0]).total_seconds()
-
-        for horizon in self.horizons:
-            config = self.HORIZONS[horizon]
-            periods = int(config['seconds'] / freq_seconds)
-
-            if periods < 1:
-                periods = 1
-
-            # Forward returns
-            result[f'return_{horizon}'] = (
-                df['close'].shift(-periods) / df['close'] - 1
-            )
-
-            # Dynamic threshold (scales with sqrt of time)
-            threshold = self.base_threshold * np.sqrt(periods)
-
-            # Classification labels
-            if self.n_classes == 3:
-                result[f'label_{horizon}'] = np.select(
-                    [
-                        result[f'return_{horizon}'] < -threshold,
-                        result[f'return_{horizon}'] > threshold
-                    ],
-                    [0, 2],  # DOWN, UP
-                    default=1  # NEUTRAL
-                )
-            elif self.n_classes == 2:
-                result[f'label_{horizon}'] = (
-                    result[f'return_{horizon}'] > 0
-                ).astype(int)
-
-            # Also store threshold for reference
-            result[f'threshold_{horizon}'] = threshold
-
-        return result
-
-    def compute_statistics(self, df: pd.DataFrame) -> Dict:
-        """Compute label distribution statistics."""
-        stats = {}
-
-        for horizon in self.horizons:
-            label_col = f'label_{horizon}'
-            if label_col in df.columns:
-                counts = df[label_col].value_counts(normalize=True)
-                stats[horizon] = {
-                    'down_pct': counts.get(0, 0) * 100,
-                    'neutral_pct': counts.get(1, 0) * 100,
-                    'up_pct': counts.get(2, 0) * 100,
-                    'return_mean': df[f'return_{horizon}'].mean() * 100,
-                    'return_std': df[f'return_{horizon}'].std() * 100
-                }
-
-        return stats
-
-
-# Usage
-labeler = MultiHorizonLabeler()
-df_labeled = labeler.generate_labels(df)
-stats = labeler.compute_statistics(df_labeled)
-
-print("Label Distribution:")
-for horizon, s in stats.items():
-    print(f"  {horizon}: DOWN={s['down_pct']:.1f}% | NEUTRAL={s['neutral_pct']:.1f}% | UP={s['up_pct']:.1f}%")
-```
-
----
-
-## 3. Feature Store Integration
-
-The project uses **direct Redis writes** for the online feature store and **QuestDB** for offline/historical features. There is no Feast dependency.
-
-- **Online store**: Redis hash keys written directly by the compute-engine at ingestion time
-- **Offline store**: QuestDB `instrument_features` table for point-in-time correct training queries
-
-For the complete feature store architecture, schemas, and read/write patterns, see [FEATURE_STORE.md](./FEATURE_STORE.md).
-
----
-
-## 4. Kedro Pipeline Definition
-
-```python
-# src/training_pipeline/pipelines/training/pipeline.py
-from kedro.pipeline import Pipeline, node
-from .nodes import (
-    extract_data,
-    compute_features,
-    generate_labels,
-    split_data_cpcv,
-    train_lightgbm,
-    train_tft,
-    train_mamba,
-    train_meta_learner,
-    validate_models,
-    export_to_onnx,
-    register_models
-)
-
-def create_pipeline(**kwargs) -> Pipeline:
-    return Pipeline([
-        # 1. Data Extraction
-        node(
-            func=extract_data,
-            inputs=["params:data_config"],
-            outputs="raw_data",
-            name="extract_data"
-        ),
-
-        # 2. Feature Engineering
-        node(
-            func=compute_features,
-            inputs=["raw_data", "params:feature_config"],
-            outputs="feature_data",
-            name="compute_features"
-        ),
-
-        # 3. Label Generation
-        node(
-            func=generate_labels,
-            inputs=["feature_data", "params:label_config"],
-            outputs="labeled_data",
-            name="generate_labels"
-        ),
-
-        # 4. CPCV Split
-        node(
-            func=split_data_cpcv,
-            inputs=["labeled_data", "params:cpcv_config"],
-            outputs="data_splits",
-            name="split_data_cpcv"
-        ),
-
-        # 5. Train Models (parallel)
-        node(
-            func=train_lightgbm,
-            inputs=["data_splits", "params:lgb_config"],
-            outputs="lgb_models",
-            name="train_lightgbm"
-        ),
-        node(
-            func=train_tft,
-            inputs=["data_splits", "params:tft_config"],
-            outputs="tft_models",
-            name="train_tft"
-        ),
-        node(
-            func=train_mamba,
-            inputs=["data_splits", "params:mamba_config"],
-            outputs="mamba_models",
-            name="train_mamba"
-        ),
-
-        # 6. Train Meta-Learner
-        node(
-            func=train_meta_learner,
-            inputs=["lgb_models", "tft_models", "mamba_models", "data_splits"],
-            outputs="meta_learner",
-            name="train_meta_learner"
-        ),
-
-        # 7. Validation
-        node(
-            func=validate_models,
-            inputs=["lgb_models", "tft_models", "mamba_models", "meta_learner", "data_splits"],
-            outputs="validation_report",
-            name="validate_models"
-        ),
-
-        # 8. Export to ONNX
-        node(
-            func=export_to_onnx,
-            inputs=["lgb_models", "tft_models", "mamba_models", "meta_learner"],
-            outputs="onnx_models",
-            name="export_to_onnx"
-        ),
-
-        # 9. Register Models
-        node(
-            func=register_models,
-            inputs=["onnx_models", "validation_report"],
-            outputs="model_registry_entries",
-            name="register_models"
-        )
-    ])
-```
-
-### Parameters Configuration
-
-```yaml
-# conf/base/parameters.yml
-data_config:
-  questdb_host: localhost
-  questdb_port: 9000
-  start_date: "2022-01-01"
-  end_date: "2026-01-17"
-  symbols:
-    - NIFTY
-    - BANKNIFTY
-
-feature_config:
-  technical_indicators:
-    - rsi_14
-    - macd
-    - bb_width
-    - atr_percent
-  lookback_periods:
-    short: 14
-    medium: 50
-    long: 200
-
-label_config:
-  horizons: [10, 60, 300, 900, 3600]
-  base_threshold: 0.001
-  n_classes: 3
-
-cpcv_config:
-  n_splits: 5
-  n_test_splits: 2
-  purge_gap: 60
-  embargo_gap: 30
-
-lgb_config:
-  objective: multiclass
-  num_class: 3
-  num_leaves: 64
-  learning_rate: 0.05
-  n_estimators: 1000
-  early_stopping_rounds: 50
-
-tft_config:
-  hidden_size: 128
-  lstm_layers: 2
-  attention_heads: 4
-  lookback: 120
-  horizons: [1, 5, 15, 60]
-  batch_size: 64
-  epochs: 100
-
-mamba_config:
-  d_model: 256
-  d_state: 16
-  n_layers: 6
-  batch_size: 32
-  epochs: 100
-```
-
----
-
-## 5. Model Registry
-
-```python
-import mlflow
-from datetime import datetime
-import json
-
-class ModelRegistry:
-    """
-    Model registry with versioning, metrics, and deployment tracking.
-    """
-
-    def __init__(self, tracking_uri: str = "mlruns"):
-        mlflow.set_tracking_uri(tracking_uri)
-
-    def register_model(
-        self,
-        model_name: str,
-        model_path: str,
-        metrics: dict,
-        params: dict,
-        tags: dict = None
-    ) -> str:
-        """
-        Register a model with metrics and metadata.
-
-        Returns:
-            run_id: MLflow run ID
-        """
-        with mlflow.start_run() as run:
-            # Log parameters
-            mlflow.log_params(params)
-
-            # Log metrics
-            for horizon, horizon_metrics in metrics.items():
-                for metric_name, value in horizon_metrics.items():
-                    mlflow.log_metric(f"{horizon}_{metric_name}", value)
-
-            # Log model
-            mlflow.log_artifact(model_path)
-
-            # Register model
-            mlflow.register_model(
-                f"runs:/{run.info.run_id}/{model_path}",
-                model_name
-            )
-
-            # Tags
-            if tags:
-                for key, value in tags.items():
-                    mlflow.set_tag(key, value)
-
-            return run.info.run_id
-
-    def get_latest_model(self, model_name: str, stage: str = "Production"):
-        """Get the latest production model."""
-        client = mlflow.tracking.MlflowClient()
-
-        latest = client.get_latest_versions(model_name, stages=[stage])
-        if latest:
-            return latest[0]
-        return None
-
-    def promote_model(
-        self,
-        model_name: str,
-        version: int,
-        stage: str = "Production"
-    ):
-        """Promote a model version to a stage."""
-        client = mlflow.tracking.MlflowClient()
-        client.transition_model_version_stage(
-            name=model_name,
-            version=version,
-            stage=stage
-        )
-
-
-# Usage
-registry = ModelRegistry()
-
-# Register after training
-run_id = registry.register_model(
-    model_name="lightgbm_macro",
-    model_path="models/lightgbm_macro.onnx",
-    metrics={
-        'H1': {'auc': 0.69, 'accuracy': 0.62},
-        'H3': {'auc': 0.71, 'accuracy': 0.64}
-    },
-    params={'num_leaves': 64, 'learning_rate': 0.05},
-    tags={'horizon': 'multi', 'version': '2.0.0'}
-)
-
-# Promote to production
-registry.promote_model("lightgbm_macro", version=5, stage="Production")
-```
-
----
-
-## 6. Running the Pipeline
+## Entry Point
 
 ```bash
-# Install dependencies
-pip install kedro mlflow lightgbm torch onnx
+# Standard training
+python -m training_pipeline.runner --experiment-id <mongo_id> --tier 2
 
-# Run full pipeline
-kedro run
+# With HPO
+python -m training_pipeline.runner --experiment-id <id> --tier 0 --tune --n-trials 30
 
-# Run specific nodes
-kedro run --node=train_lightgbm
-kedro run --node=train_tft
+# Full pipeline (all tiers + meta)
+python -m training_pipeline.runner --experiment-id <id> --tier full
 
-# Run with parameters override
-kedro run --params="lgb_config.learning_rate=0.03"
+# Dry run
+python -m training_pipeline.runner --experiment-id <id> --tier 2 --dry-run
+```
 
-# Visualize pipeline
-kedro viz
+CLI flags: `--experiment-id` (required, MongoDB ObjectId), `--tier` (0-4, meta, full), `--tune` (enable Optuna), `--n-trials` (HPO trials, default 30), `--dry-run`, `--log-level`.
+
+---
+
+## Tier Training
+
+### Tier 0: XGBoost Gap Predictor
+Walk-forward validation (6mo train / 1mo test). SHAP feature importance. Autolog with `log_datasets=True, log_models=True`.
+
+### Tier 1: HMM + PatchTST
+HMM regime detection + PatchTST transformer for multi-horizon return forecasting. Per-fold checkpoint tracking. Cosine LR scheduler.
+
+### Tier 2: LightGBM CPCV
+Multi-horizon (5m/15m/30m) direction classification with Combinatorial Purged Cross-Validation. Up to 25 folds per horizon.
+
+### Tier 3: LiT Microstructure
+GRU-based linear transformer for tick-level direction prediction. 90-day rolling windows. Progressive activation (returns neutral when data insufficient).
+
+### Meta-Learner: Regime-Conditioned Gating Network
+Fuses Tier 0-3 OOF predictions via regime-aware dynamic weighting. RegimeTemporalLoss prevents whipsawing. Epoch checkpoints every 5 epochs. Early stopping with patience=5.
+
+---
+
+## MLflow 3.x Integration
+
+### Experiment Organization
+All experiments prefixed `trading/`:
+- `trading/tier-0-xgboost-gap`
+- `trading/tier-1-hmm-patchtst`
+- `trading/tier-2-lightgbm-cpcv`
+- `trading/tier-3-lit-microstructure`
+- `trading/tier-4-meta-learner`
+
+### Model Registry (Alias-Based)
+Uses @champion/@challenger aliases (no deprecated stage transitions):
+```python
+client.set_registered_model_alias(name=model_name, alias="champion", version=mv.version)
+```
+
+Load champion: `mlflow.pyfunc.load_model("models:/trading-tier0-xgboost-gap@champion")`
+
+### Model Logging (MLflow 3 name= API)
+```python
+mlflow.xgboost.log_model(model, name="tier0_model", signature=signature)
+mlflow.pytorch.log_model(model, name="tier1_patchtst_model")
+mlflow.pytorch.log_model(model, name=f"checkpoint_{epoch}")
 ```
 
 ---
 
-## Scheduling
+## Quality Gates
 
-```python
-# ecosystem.config.js (PM2)
-module.exports = {
-  apps: [
-    {
-      name: 'training-pipeline',
-      script: 'kedro',
-      args: 'run',
-      cwd: '/path/to/training-pipeline',
-      cron_restart: '0 2 * * *',  # Run at 2 AM daily
-      autorestart: false,
-      env: {
-        PYTHONPATH: '/path/to/training-pipeline/src'
-      }
-    }
-  ]
-};
-```
+Per-tier thresholds enforced before model registration:
+
+| Tier | Metric | Threshold |
+|------|--------|-----------|
+| 0 | direction_accuracy | >= 0.65 |
+| 0 | mae | <= 0.003 |
+| 2 | auc_5m | >= 0.68 |
+| 2 | auc_std_5m | <= 0.05 |
+| 3 | lit_direction_accuracy | >= 0.65 |
+| Meta | meta_val_loss | <= 0.5 |
+
+Validated via `mlflow.validate_evaluation_results()` with `MetricThreshold`.
 
 ---
 
-## 7. ONNX Export Pipeline
+## Model Serving
 
-### PyTorch to ONNX
+After quality gates pass, models are registered in the MLflow Registry with `@champion` alias and served via the `mlflow-model-server` Docker container:
 
-```python
-import torch
-import onnx
-from onnxruntime.quantization import quantize_dynamic, QuantType
-
-def export_pytorch_to_onnx(
-    model: torch.nn.Module,
-    model_name: str,
-    input_shape: tuple,
-    output_path: str,
-    quantize: bool = True
-) -> str:
-    """Export PyTorch model to ONNX with optional quantization."""
-
-    model.eval()
-    dummy_input = torch.randn(*input_shape)
-
-    onnx_path = f"{output_path}/{model_name}.onnx"
-
-    torch.onnx.export(
-        model,
-        dummy_input,
-        onnx_path,
-        input_names=['input'],
-        output_names=['output'],
-        dynamic_axes={
-            'input': {0: 'batch_size'},
-            'output': {0: 'batch_size'}
-        },
-        opset_version=17,
-        do_constant_folding=True,
-    )
-
-    # Validate
-    onnx_model = onnx.load(onnx_path)
-    onnx.checker.check_model(onnx_model)
-
-    # Quantize for faster inference
-    if quantize:
-        quantized_path = f"{output_path}/{model_name}_quantized.onnx"
-        quantize_dynamic(onnx_path, quantized_path, weight_type=QuantType.QUInt8)
-        return quantized_path
-
-    return onnx_path
+```bash
+mlflow models serve -m "models:/trading-tier0-xgboost-gap@champion" -p 5001 --no-conda
 ```
 
-### LightGBM to ONNX
+The algo-worker calls these endpoints via HTTP `POST /invocations`.
 
-```python
-from skl2onnx import convert_sklearn
-from skl2onnx.common.data_types import FloatTensorType
+---
 
-def export_lightgbm_to_onnx(
-    model,
-    model_name: str,
-    num_features: int,
-    output_path: str
-) -> str:
-    """Export LightGBM model to ONNX."""
+## Dependencies
 
-    initial_type = [('input', FloatTensorType([None, num_features]))]
-
-    onnx_model = convert_sklearn(
-        model,
-        initial_types=initial_type,
-        target_opset=17
-    )
-
-    onnx_path = f"{output_path}/{model_name}.onnx"
-    with open(onnx_path, "wb") as f:
-        f.write(onnx_model.SerializeToString())
-
-    return onnx_path
-```
+Key dependencies (`pyproject.toml`):
+- `mlflow>=3.10.1` (tracking, evaluation, registry, serving)
+- `optuna>=4.0.0` (hyperparameter optimization)
+- `torch>=2.4.0` (PatchTST, LiT, Meta-learner)
+- `xgboost>=2.1.3`, `lightgbm>=4.6.0`, `scikit-learn~=1.5.1`
+- `shap>=0.43.0` (feature importance)
+- `psutil>=5.9.0`, `nvidia-ml-py>=12.0.0` (system metrics)
+- `prometheus-client`, `opentelemetry-*` (observability)
 
 ---
 
 ## Related Documentation
 
-- [AI_TRADING_ARCHITECTURE.md](./AI_TRADING_ARCHITECTURE.md) - Complete system overview
-- [TIER1_MODELS.md](./TIER1_MODELS.md) - Model specifications
-- [INFERENCE_PIPELINE.md](./INFERENCE_PIPELINE.md) - **ONNX Runtime in NestJS** (algo-worker)
-- [FEATURE_STORE.md](./FEATURE_STORE.md) - Redis + QuestDB feature store
+- [MLFLOW_PLATFORM.md](./MLFLOW_PLATFORM.md) — Full MLflow 3.x platform documentation
+- [TRAINING_STRATEGY.md](./TRAINING_STRATEGY.md) — CPCV, walk-forward, drift detection
+- [FEATURE_STORE.md](./FEATURE_STORE.md) — Redis + QuestDB feature store

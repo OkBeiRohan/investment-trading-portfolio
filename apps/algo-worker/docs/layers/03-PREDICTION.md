@@ -1,12 +1,12 @@
 # Layer 3: Prediction Engine — 5-Tier Hierarchical Inference
 
-**Purpose**: Run 5-tier model hierarchy with dedicated Worker Threads, GPU/CPU execution providers, and Redis-cached tier outputs. Produces final trading signal via Tier 4 Meta-Learner fusion.
+**Purpose**: Run 5-tier model hierarchy via MLflow Model Serving REST endpoints with Redis-cached tier outputs. Produces final trading signal via Tier 4 Meta-Learner fusion.
 
 ---
 
 ## Overview
 
-The Prediction layer coordinates 8 ONNX models across 5 tiers, each operating at a different data resolution and schedule. Tier 2 models run in parallel Worker Threads. Tier 3 runs on its own 100ms loop. Tier 4 reads cached outputs from all upstream tiers.
+The Prediction layer coordinates 8 models across 5 tiers via MLflow Model Serving endpoints, each operating at a different data resolution and schedule. Tier 2 models are called in parallel via HTTP POST `/invocations`. Tier 3 runs on its own 100ms loop. Tier 4 reads cached outputs from all upstream tiers.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -18,8 +18,8 @@ The Prediction layer coordinates 8 ONNX models across 5 tiers, each operating at
 │  TIER 3 (every 100ms)→ tier3:microstructure:{ts} ─┘    (fusion)              │
 │                                                                               │
 │  Resolution:   1d candle    │    1m candle       │   100ms LOB               │
-│  GPU/CPU:      CPU only     │    CPU + GPU       │   GPU dedicated           │
-│  Thread:       Main thread  │    Worker Threads  │   Worker Thread           │
+│  Serving:      CPU endpoint │    CPU + GPU eps   │   GPU endpoint            │
+│  Calls:        Sequential   │    Parallel HTTP   │   High-freq HTTP loop     │
 │                                                                               │
 │  Total 60s cycle: <25ms (GPU) │ Tier 3 loop: <10ms per iteration             │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -30,39 +30,38 @@ The Prediction layer coordinates 8 ONNX models across 5 tiers, each operating at
 ## Tier 0: Pre-Market Gap Predictor
 
 **Fires**: Once at 09:08:05 IST (after NSE pre-open freeze)
-**Model**: XGBoost (500 trees, depth 6) via ONNX
-**Thread**: Main thread (no Worker needed — fires once, <2ms)
-**EP**: CPUExecutionProvider
+**Model**: XGBoost (500 trees, depth 6) via MLflow serving
+**Endpoint**: POST `/tier0/invocations`
+**Registry**: `models:/tier0-xgboost@champion`
 
 ```typescript
 @Injectable()
 export class Tier0Service {
-  private session: ort.InferenceSession;
-
-  async onModuleInit() {
-    this.session = await ort.InferenceSession.create(
-      'models/tier0_xgboost.onnx',
-      onnxSessionConfigs.tier0_xgboost,
-    );
-  }
+  constructor(private readonly httpClient: InferenceHttpClient) {}
 
   async predict(overnightFeatures: Tier0Input): Promise<Tier0Output> {
-    // 12 features: gap, gift_nifty_return, es_return, nq_return, brent_return,
-    //              gold_return, dxy_change, us10y_change, vix_close, nikkei_return,
-    //              finbert_sentiment, prev_day_range
-    const input = new Float32Array(Object.values(overnightFeatures));
-    const tensor = new ort.Tensor('float32', input, [1, 12]);
-    const result = await this.session.run({ input: tensor });
+    const response = await this.httpClient.invoke(
+      mlflowEndpoints.tier0_xgboost.url,
+      {
+        dataframe_split: {
+          columns: [
+            'gap', 'gift_nifty_return', 'es_return', 'nq_return', 'brent_return',
+            'gold_return', 'dxy_change', 'us10y_change', 'vix_close', 'nikkei_return',
+            'finbert_sentiment', 'prev_day_range',
+          ],
+          data: [Object.values(overnightFeatures)],
+        },
+      },
+    );
 
-    const output = result.output.data as Float32Array;
+    const output = response.predictions[0];
     const prediction: Tier0Output = {
       expected_gap_pct: output[0],
       expected_volatility_30m: output[1],
-      directional_bias: output[2], // -1 to +1
+      directional_bias: output[2],
       confidence: output[3],
     };
 
-    // Cache for the entire day
     await this.redis.set(`tier0:gap:${today()}`, JSON.stringify(prediction), {
       EX: 28800,
     });
@@ -80,30 +79,32 @@ export class Tier0Service {
 ## Tier 1: Macro Director
 
 **Fires**: Once at 09:09:00 IST
-**Models**: HMM (regime) + PatchTST (daily trend) via ONNX
-**Thread**: Main thread (<8ms total, fires once)
-**EP**: CPUExecutionProvider
+**Models**: HMM (regime) + PatchTST (daily trend) via MLflow serving
+**Endpoints**: POST `/tier1-hmm/invocations` + POST `/tier1-patchtst/invocations`
+**Registry**: `models:/tier1-hmm@champion` + `models:/tier1-patchtst@champion`
 
 ```typescript
 @Injectable()
 export class Tier1Service {
-  private hmmSession: ort.InferenceSession;
-  private patchTstSession: ort.InferenceSession;
+  constructor(private readonly httpClient: InferenceHttpClient) {}
 
   async predict(dailyFeatures: Tier1Input): Promise<Tier1Output> {
-    // Run HMM + PatchTST sequentially (both small, total <8ms)
     const [regime, trend] = await Promise.all([
-      this.runHMM(dailyFeatures.features32), // [1, 32] → regime state
-      this.runPatchTST(dailyFeatures.sequence252), // [1, 252, 32] → trend
+      this.httpClient.invoke(mlflowEndpoints.tier1_hmm.url, {
+        dataframe_split: { columns: [], data: [dailyFeatures.features32] },
+      }),
+      this.httpClient.invoke(mlflowEndpoints.tier1_patchtst.url, {
+        dataframe_split: { columns: [], data: [dailyFeatures.sequence252.flat()] },
+      }),
     ]);
 
     const prediction: Tier1Output = {
-      regime_state: regime.state, // BULL_TRENDING | BEAR_TRENDING | VOLATILE | RANGING
-      regime_confidence: regime.confidence,
-      daily_direction: trend.direction, // -1 to +1
-      daily_magnitude: trend.magnitude,
-      trend_confidence: trend.confidence,
-      regime_probs: regime.probs, // [4] softmax
+      regime_state: regime.predictions.state,
+      regime_confidence: regime.predictions.confidence,
+      daily_direction: trend.predictions.direction,
+      daily_magnitude: trend.predictions.magnitude,
+      trend_confidence: trend.predictions.confidence,
+      regime_probs: regime.predictions.probs,
     };
 
     await this.redis.set(
@@ -125,43 +126,45 @@ export class Tier1Service {
 ## Tier 2: Intraday Navigator
 
 **Fires**: Every 60 seconds on CandleComplete event
-**Models**: LightGBM + TFT + Mamba (parallel ensemble)
-**Threads**: 3 dedicated Worker Threads (1 CPU + 2 GPU)
-**EP**: LightGBM=CPU, TFT=TensorRT/CUDA, Mamba=CUDA
+**Models**: LightGBM + TFT + Mamba (parallel ensemble via MLflow serving)
+**Endpoints**: 3 parallel POST `/invocations` calls
+**Registry**: `models:/tier2-lightgbm@champion`, `models:/tier2-tft@champion`, `models:/tier2-mamba@champion`
 
 ### Parallel Execution
 
 ```typescript
 @Injectable()
 export class Tier2Service {
-  constructor(private workerPool: WorkerPoolService) {}
+  constructor(private readonly httpClient: InferenceHttpClient) {}
 
   async predict(features: Tier2Input): Promise<Tier2Output> {
-    // Read cached Tier 0/1 outputs (appended as regime context)
     const tier0 = await this.redis.get(`tier0:gap:${today()}`);
     const tier1 = await this.redis.get(`tier1:regime:${today()}`);
     const regimeContext = this.buildRegimeContext(tier0, tier1);
 
-    // Augment 1-min features with daily regime context (4 extra features)
     const augmented = this.augmentFeatures(
       features.pointFeatures,
       regimeContext,
     );
 
-    // Fire all 3 models in parallel via Worker Threads
     const start = performance.now();
     const [lgbm, tft, mamba] = await Promise.all([
-      this.workerPool.runLightGBM(augmented), // CPU Worker: ~5ms
-      this.workerPool.runTFT(features.sequence120x80), // GPU Worker: ~12ms
-      this.workerPool.runMamba(features.sequence120x80), // GPU Worker: ~10ms
+      this.httpClient.invoke(mlflowEndpoints.tier2_lightgbm.url, {
+        dataframe_split: { columns: [], data: [augmented] },
+      }),
+      this.httpClient.invoke(mlflowEndpoints.tier2_tft.url, {
+        dataframe_split: { columns: [], data: [features.sequence120x80.flat()] },
+      }),
+      this.httpClient.invoke(mlflowEndpoints.tier2_mamba.url, {
+        dataframe_split: { columns: [], data: [features.sequence120x80.flat()] },
+      }),
     ]);
     const latency = performance.now() - start;
 
-    // Combine (simple average for now, Tier 4 does regime-weighted fusion)
     const prediction: Tier2Output = {
-      lgbm_probs: lgbm.probs, // [3] P(up, down, flat)
-      tft_quantiles: tft.quantiles, // [3×3] quantiles × horizons
-      mamba_probs: mamba.probs, // [3] P(up, down, flat)
+      lgbm_probs: lgbm.predictions,
+      tft_quantiles: tft.predictions,
+      mamba_probs: mamba.predictions,
       ensemble_direction: this.ensembleVote(lgbm, tft, mamba),
       ensemble_confidence: this.ensembleConfidence(lgbm, tft, mamba),
       model_agreement: this.agreement(lgbm, tft, mamba),
@@ -178,34 +181,34 @@ export class Tier2Service {
 }
 ```
 
-### Worker Thread Details
+### MLflow Serving Endpoint Details
 
-| Worker                  | Model    | EP              | Pinned Core | Input Shape    | Latency (GPU) | Latency (CPU) |
-| ----------------------- | -------- | --------------- | ----------- | -------------- | ------------- | ------------- |
-| `tier2-lightgbm.worker` | LightGBM | CPU             | Core 1      | `[1, 84]`      | N/A           | 5ms           |
-| `tier2-tft.worker`      | TFT      | TensorRT > CUDA | Core 2      | `[1, 120, 80]` | **12ms**      | 35ms          |
-| `tier2-mamba.worker`    | Mamba    | CUDA            | Core 3      | `[1, 120, 80]` | **10ms**      | 25ms          |
+| Endpoint                    | Model    | GPU Required | Input Shape    | Latency (GPU) | Latency (CPU) |
+| --------------------------- | -------- | ------------ | -------------- | ------------- | ------------- |
+| `/tier2-lgbm/invocations`  | LightGBM | No           | `[1, 84]`      | N/A           | 5ms           |
+| `/tier2-tft/invocations`   | TFT      | Yes          | `[1, 120, 80]` | **12ms**      | 35ms          |
+| `/tier2-mamba/invocations` | Mamba    | Yes          | `[1, 120, 80]` | **10ms**      | 25ms          |
 
-**Effective Tier 2 latency**: max(5, 12, 10) = **~12ms** (GPU parallel), not 5+12+10=27ms.
+**Effective Tier 2 latency**: max(5, 12, 10) = **~12ms** (parallel HTTP calls), not 5+12+10=27ms.
 
 ---
 
 ## Tier 3: Microstructure Scalper
 
-**Fires**: Every 100ms (self-driving loop in dedicated Worker Thread)
+**Fires**: Every 100ms (self-driving loop calling MLflow endpoint)
 **Model**: LiT Transformer (phased activation)
-**Thread**: Dedicated high-frequency Worker Thread (Core 4)
-**EP**: CUDAExecutionProvider (required — CPU too slow for 100ms loop)
+**Endpoint**: POST `/tier3/invocations`
+**Registry**: `models:/tier3-lit@champion` (GPU container required -- CPU too slow for 100ms loop)
 
 ```typescript
 // Tier 3 runs INDEPENDENTLY of the 60s cycle.
-// Its Worker Thread has its own Redis connection and inference loop.
-// The main thread never calls Tier 3 — it reads the cached output.
+// A setInterval loop calls the MLflow endpoint and caches results to Redis.
+// The 60s cycle reads the cached output.
 
 // In 60s cycle:
 async getTier3Output(): Promise<Tier3Output> {
   const cached = await this.redis.get('tier3:microstructure:latest');
-  if (!cached) return this.defaultTier3Output(); // Neutral with low confidence
+  if (!cached) return this.defaultTier3Output();
   return JSON.parse(cached);
 }
 ```
@@ -231,17 +234,16 @@ Transition is automatic based on accumulated LOB sample count.
 ## Tier 4: Meta-Learner & Strategy Fusion
 
 **Fires**: Every 60 seconds (after Tier 2 completes)
-**Model**: Contextual Gating Network via ONNX
-**Thread**: Main thread (24 inputs, ~2ms)
-**EP**: CPUExecutionProvider
+**Model**: Contextual Gating Network via MLflow serving
+**Endpoint**: POST `/tier4/invocations`
+**Registry**: `models:/tier4-meta@champion`
 
 ```typescript
 @Injectable()
 export class Tier4Service {
-  private session: ort.InferenceSession;
+  constructor(private readonly httpClient: InferenceHttpClient) {}
 
   async predict(): Promise<Tier4Output> {
-    // Read ALL cached tier outputs from Redis
     const [tier0, tier1, tier2, tier3] = await Promise.all([
       this.redis.get(`tier0:gap:${today()}`),
       this.redis.get(`tier1:regime:${today()}`),
@@ -249,7 +251,6 @@ export class Tier4Service {
       this.redis.get('tier3:microstructure:latest'),
     ]);
 
-    // Fuse into 24-dimensional input vector
     const input = this.buildMetaInput(
       JSON.parse(tier0!), // 4 values: gap_pct, volatility, bias, confidence
       JSON.parse(tier1!), // 6 values: regime_probs[4], direction, magnitude
@@ -257,14 +258,16 @@ export class Tier4Service {
       JSON.parse(tier3!), // 5 values: buy_pressure, sell_pressure, slippage, confidence, phase
     );
 
-    const tensor = new ort.Tensor('float32', input, [1, 24]);
-    const result = await this.session.run({ input: tensor });
-    const output = result.output.data as Float32Array;
+    const response = await this.httpClient.invoke(
+      mlflowEndpoints.tier4_meta.url,
+      { dataframe_split: { columns: [], data: [input] } },
+    );
 
+    const output = response.predictions[0];
     return {
-      final_signal: output[0], // -1 (strong sell) to +1 (strong buy)
-      confidence: output[1], // 0 to 1
-      position_action: this.decodeAction(output[2]), // ENTER_LONG | ENTER_SHORT | HOLD | EXIT
+      final_signal: output[0],
+      confidence: output[1],
+      position_action: this.decodeAction(output[2]),
       tier_weights: {
         tier0: output[3],
         tier1: output[4],
@@ -347,15 +350,15 @@ interface PredictionOutput {
 
 ## Latency Budget
 
-| Stage                     | Target    | GPU Actual | CPU-Only Fallback     |
-| ------------------------- | --------- | ---------- | --------------------- |
-| Feature receipt (Redis)   | <1ms      | 0.5ms      | 0.5ms                 |
-| Feature routing           | <1ms      | 0.3ms      | 0.3ms                 |
-| Tier 2 parallel inference | <15ms     | **12ms**   | 35ms (TFT bottleneck) |
-| Tier 3 cache read         | <1ms      | 0.5ms      | 0.5ms                 |
-| Tier 0/1 cache read       | <1ms      | 0.5ms      | 0.5ms                 |
-| Tier 4 Meta-Learner       | <3ms      | 2ms        | 2ms                   |
-| **Total prediction**      | **<25ms** | **~16ms**  | ~39ms                 |
+| Stage                               | Target    | GPU Containers | CPU-Only Containers   |
+| ----------------------------------- | --------- | -------------- | --------------------- |
+| Feature receipt (Redis)             | <1ms      | 0.5ms          | 0.5ms                 |
+| Feature routing                     | <1ms      | 0.3ms          | 0.3ms                 |
+| Tier 2 parallel HTTP /invocations   | <15ms     | **12ms**       | 35ms (TFT bottleneck) |
+| Tier 3 cache read                   | <1ms      | 0.5ms          | 0.5ms                 |
+| Tier 0/1 cache read                 | <1ms      | 0.5ms          | 0.5ms                 |
+| Tier 4 HTTP /invocations            | <3ms      | 2ms            | 2ms                   |
+| **Total prediction**                | **<25ms** | **~16ms**      | ~39ms                 |
 
 ---
 
@@ -372,8 +375,9 @@ interface PredictionOutput {
 - `prediction.signals_total{direction}` — Signal counts by direction
 - `prediction.model_agreement` — Tier 2 sub-model agreement ratio
 - `prediction.confidence_histogram` — Distribution of confidence scores
-- `prediction.gpu_utilization_pct` — GPU usage (nvidia-smi)
-- `prediction.worker_restart_total{tier}` — Worker Thread crash count
+- `prediction.endpoint_health{tier}` — MLflow serving endpoint health status
+- `prediction.http_errors_total{tier,status_code}` — HTTP error count per endpoint
+- `prediction.cache_fallback_total{tier}` — Fallback to cached output count
 
 ---
 
@@ -381,5 +385,5 @@ interface PredictionOutput {
 
 - [02-FEATURE-ENGINE.md](./02-FEATURE-ENGINE.md) — Previous layer (feature computation)
 - [04-STRATEGY-RISK.md](./04-STRATEGY-RISK.md) — Next layer (strategy selection)
-- [INFERENCE_ENGINE.md](../INFERENCE_ENGINE.md) — GPU/CPU allocation details
+- [INFERENCE_ENGINE.md](../INFERENCE_ENGINE.md) — MLflow Model Serving endpoints, health checks, @champion loading
 - [MODEL_PIPELINE_WORKFLOW.md](../../../docs/ml/MODEL_PIPELINE_WORKFLOW.md) — Session timing

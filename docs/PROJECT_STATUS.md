@@ -11,7 +11,7 @@ The project is transitioning to a robust microservices architecture.
 **Current State**:
 
 - **Infrastructure**: ✅ QuestDB (Time-Series) + MongoDB (Metadata) + Redis (Pub/Sub).
-- **Inference**: 🚧 Migration from Python Spawning to **ONNX Runtime** in progress.
+- **Inference**: 🚧 Migration from Python Spawning to **MLflow Model Serving** in progress.
 - **Microservices**: 🔄 `market-feeder` in progress. `data-processor` deprecated (features moved to `compute-engine` + `market-feeder`).
 
 ## Package Status
@@ -211,7 +211,7 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 
 1. **Documentation**
    - ✅ Complete architectural guide (.github/copilot-instructions.md)
-   - ✅ ML setup guide (ML_SETUP_GUIDE.md) - **Updated with ONNX approach**
+   - ✅ ML setup guide (ML_SETUP_GUIDE.md) - **Updated with MLflow Model Serving approach**
    - ✅ ML integration architecture analysis (ML_INTEGRATION_ARCHITECTURE.md)
    - ✅ 4-engine modular design documented
 
@@ -223,11 +223,11 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
    - ✅ Logistic Regression Stacker (meta-model)
    - ✅ Walk-forward validation methodology
    - ✅ Feature engineering pipeline
-   - ✅ **ONNX export pipeline for TypeScript inference**
+   - ✅ **MLflow model registration pipeline for inference**
 
 3. **Integration Strategy**
-   - ✅ Decided on ONNX Runtime approach (TypeScript inference)
-   - ✅ Python training + ONNX export workflow documented
+   - ✅ Decided on MLflow Model Serving approach (REST /invocations)
+   - ✅ Python training + MLflow registration workflow documented
    - ✅ NestJS inference layer architecture designed
 
 #### Pending ⏳
@@ -244,9 +244,9 @@ const quote = await upstox.getQuote("NSE_EQ|RELIANCE");
 
 - [x] Train 8-10 Level-0 models (Core: XGBoost, LightGBM, Mamba, GINN, SVM, PatchTST; Optional: TimesNet-MLP, WFTNet-MLP, KAN, VisionTransformer) in Python
 - [ ] Train Level-1 meta-model (Logistic Regression)
-- [ ] Export all models to ONNX format
+- [ ] Register all models to MLflow Model Registry (@champion alias)
 - [ ] Create SignalEngine module in NestJS
-- [ ] Create ModelLoaderService (onnxruntime-node)
+- [ ] Create ModelLoaderService (MLflow REST /invocations client)
 - [ ] Implement TypeScript inference pipeline
 - [ ] Persist signals to MongoDB via @repo/database
 
@@ -358,13 +358,10 @@ UPSTOX_ACCESS_TOKEN=your_access_token
 BINANCE_API_KEY=your_api_key
 BINANCE_API_SECRET=your_api_secret
 
-# ML Models (ONNX)
-XGBOOST_MODEL_PATH=models/xgboost.onnx
-MAMBA_MODEL_PATH=models/mamba.onnx
-PATCHTST_MODEL_PATH=models/patchtst.onnx
-GINN_MODEL_PATH=models/ginn.onnx
-SVM_MODEL_PATH=models/svm.onnx
-META_LEARNER_PATH=models/meta_learner.onnx
+# ML Models (MLflow Model Serving)
+MLFLOW_TRACKING_URI=http://localhost:5000
+MLFLOW_SERVING_URI=http://localhost:5001
+MLFLOW_MODEL_REGISTRY_ALIAS=champion
 
 # Risk Limits
 MAX_DAILY_LOSS=-50000
@@ -534,7 +531,7 @@ This section compares our current implementation against industry best practices
 
 - Hierarchical 9-layer stack (LightGBM, TFT, LiT + 6-8 conditional models)
 - Tier-based activation (4-7 models run simultaneously, regime-dependent)
-- ONNX Runtime with TensorRT (FP16 quantization)
+- MLflow Model Serving (native model flavors)
 - GPU inference (local RTX) achieving <100ms latency
 - Contextual meta-learner for adaptive model weighting
 
@@ -544,12 +541,12 @@ This section compares our current implementation against industry best practices
    - Status: ⏳ Design Complete ([docs/ml/MODEL_ARCHITECTURE.md](./ml/MODEL_ARCHITECTURE.md)), Not Implemented
    - What: Automated training → export → staging → canary → production
    - Current Pain:
-     - ❌ Manual ONNX export (error-prone)
+     - ❌ Manual model registration (error-prone)
      - ❌ No automated testing before deployment
      - ❌ No rollback mechanism if model underperforms
      - ❌ Hard to track model versions in production
    - Components:
-     - Automated ONNX export with validation
+     - Automated MLflow model registration with validation
      - Shadow mode deployment (log only, no trades)
      - Canary rollout (10% → 50% → 100%)
      - Auto-rollback on performance degradation (Sharpe <0.5)
@@ -580,7 +577,7 @@ This section compares our current implementation against industry best practices
 **Action Items**:
 
 - [ ] Set up model registry (S3 bucket + metadata) (1 week)
-- [ ] Implement automated ONNX export + validation (1 week)
+- [ ] Implement automated MLflow model registration + validation (1 week)
 - [ ] Create canary deployment logic in algo-worker (1 week)
 - [ ] Prototype MAML for fast regime adaptation (3 weeks)
 

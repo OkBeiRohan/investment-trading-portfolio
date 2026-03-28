@@ -17,6 +17,15 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
+import mlflow
+import mlflow.lightgbm
+from ...utils.mlflow_tracking import (
+    log_model_params, log_shap_artifact, fold_run,
+    log_training_dataset, log_evaluation_dataset, log_checkpoint,
+    log_metric_for_checkpoint, infer_model_signature, TIER_MODEL_NAMES,
+)
+from ...utils.observability import TRAINING_FOLD_AUC, TRAINING_RUN_TOTAL, TRAINING_DATA_ROWS
+
 logger = logging.getLogger(__name__)
 
 TIER2_FEATURE_COLUMNS = [
@@ -55,6 +64,11 @@ def train_lightgbm_cpcv(
     Returns dict with: models, metrics, oof, artifacts.
     """
     logger.info("=== Tier 2: LightGBM CPCV (multi-horizon) ===")
+    mlflow.lightgbm.autolog(
+        log_datasets=True, log_models=True,
+        log_input_examples=True, log_model_signatures=True,
+        extra_tags={"tier": "2", "model_type": "cpcv_classifier"},
+    )
 
     tier2_cfg = config.get("tier2", config)
     lgb_params = tier2_cfg.get("lightgbm", config.get("lightgbm", {}))
@@ -75,6 +89,19 @@ def train_lightgbm_cpcv(
     )
     raw_labels = loader.load_labels(instrument_key, start_date, end_date)
 
+    if not raw_features.empty:
+        log_training_dataset(
+            raw_features, name="tier2_features",
+            source=f"questdb://instrument_features?start={start_date}&end={end_date}&interval=1m",
+            targets="target_direction_5m",
+        )
+    if not raw_labels.empty:
+        log_training_dataset(
+            raw_labels, name="tier2_labels",
+            source=f"questdb://training_labels?start={start_date}&end={end_date}",
+            targets="target_direction_5m",
+        )
+
     if raw_features.empty or raw_labels.empty:
         logger.error("No feature/label data for Tier 2")
         return {"metrics": {}, "oof": pd.DataFrame(), "artifacts": {}}
@@ -90,6 +117,18 @@ def train_lightgbm_cpcv(
     if not available_feats:
         logger.error("No Tier 2 features found in data")
         return {"metrics": {}, "oof": pd.DataFrame(), "artifacts": {}}
+
+    TRAINING_DATA_ROWS.labels(tier="2", table="features").inc(len(raw_features))
+    TRAINING_DATA_ROWS.labels(tier="2", table="labels").inc(len(raw_labels))
+    log_model_params({
+        "tier": 2,
+        "model_type": "lightgbm",
+        "dataset_name": dataset_name,
+        "n_folds": len(unique_folds),
+        "horizons": list(HORIZONS.keys()),
+        "n_features": len(available_feats),
+        **{k: v for k, v in lgb_params.items() if not isinstance(v, (dict, list))},
+    }, prefix="tier2")
 
     all_models: dict[str, dict[str, lgb.Booster]] = {}
     all_oof_records: list[dict] = []
@@ -161,6 +200,8 @@ def train_lightgbm_cpcv(
             except ValueError:
                 auc = 0.5
             fold_aucs.append(auc)
+            TRAINING_FOLD_AUC.labels(tier="2", horizon=horizon_key, fold_id=str(fold)).set(auc)
+            mlflow.log_metric(f"auc_{horizon_key}_fold_{fold}", auc, step=fold)
             fold_models[f"fold_{fold}"] = model
             logger.info("Fold %d [%s] AUC=%.4f", fold, horizon_key, auc)
 
@@ -181,6 +222,10 @@ def train_lightgbm_cpcv(
             std_auc = float(np.std(fold_aucs))
             all_metrics[f"auc_{horizon_key}"] = avg_auc
             all_metrics[f"auc_std_{horizon_key}"] = std_auc
+            mlflow.log_metrics({
+                f"avg_auc_{horizon_key}": avg_auc,
+                f"std_auc_{horizon_key}": std_auc,
+            })
             logger.info(
                 "Horizon %s — avg AUC=%.4f std=%.4f (%s)",
                 horizon_key, avg_auc, std_auc,
@@ -199,6 +244,8 @@ def train_lightgbm_cpcv(
 
     all_metrics["shap_top20"] = shap_importance[:20]
     all_metrics["n_horizons"] = len(all_models)
+    log_shap_artifact(shap_importance, available_feats, "tier2_shap")
+    TRAINING_RUN_TOTAL.labels(tier="2", status="completed").inc()
 
     oof_df = pd.DataFrame(all_oof_records)
     if not oof_df.empty:

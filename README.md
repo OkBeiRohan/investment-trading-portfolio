@@ -1,7 +1,7 @@
 # Quantum Investments and Trades
 
 > **Institutional-grade algorithmic trading + Professional wealth management for comprehensive financial sovereignty.**
-> Event-Driven Architecture | Rust Feature Engine | ONNX Inference | SEBI 2025-2026 Compliant
+> Event-Driven Architecture | Rust Feature Engine | MLflow Model Serving | SEBI 2025-2026 Compliant
 
 ---
 
@@ -54,7 +54,7 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 - **⚡ Ultra-Low Latency**:
   - Event-driven core with deterministic sequencer (<10μs event processing)
   - Worker Threads for GPU inference (eliminates main-thread blocking)
-  - ONNX Runtime with TensorRT/OpenVINO (FP16 quantization)
+  - MLflow Model Serving via HTTP /invocations (native flavors: xgboost, pytorch, lightgbm, pyfunc)
   - Object pooling + TypedArrays (eliminates GC pauses)
   - CPU pinning + lock-free data structures
 - **🛡️ Institutional Risk Management**:
@@ -117,7 +117,7 @@ State-of-the-art personal finance system with double-entry bookkeeping, AI-power
 **High-performance feature computation** - the critical bridge between market data and ML inference:
 
 ```
-Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (ONNX)
+Upstox WS → market-feeder → compute-engine (Rust) → algo-worker (MLflow)
                               <5ms features          <50ms inference
 ```
 
@@ -141,9 +141,9 @@ graph TD
         CE -->|Redis Pub/Sub| AW
     end
 
-    subgraph "ML Inference (NestJS + ONNX)"
-        AW[algo-worker] -->|ONNX Runtime| GPU[GPU Inference]
-        GPU -->|<50ms| PRED[Predictions]
+    subgraph "ML Inference (NestJS + MLflow Serving)"
+        AW[algo-worker] -->|HTTP POST /invocations| MLS[MLflow Serving]
+        MLS -->|<50ms| PRED[Predictions]
     end
 
     subgraph "Decision & Execution"
@@ -296,14 +296,14 @@ This system is built on rigorous research from 2024-2025:
 
 1.  **Event-Driven > Microservices** for HFT: Industry studies show deterministic event sequencers achieve lower latency than HTTP-based microservices communication[1].
 2.  **QuestDB** for financial time-series: 2025 benchmark demonstrated 22x speed advantage over ClickHouse and 41x vs. TimescaleDB for OHLCV calculations[2].
-3.  **ONNX Runtime + Execution Providers**: More flexible than standalone TensorRT while achieving near-native performance through hardware-specific EPs[3].
+3.  **MLflow Model Serving + Native Flavors**: Unified serving layer with native framework support (mlflow.xgboost, mlflow.pytorch, mlflow.lightgbm, mlflow.pyfunc) and @champion alias-based deployment via MLflow Registry[3].
 4.  **SEBI 2025-2026 Compliance**: New regulations mandate unique Algo IDs, pre-trade risk checks, and broker-level monitoring for all algorithmic strategies (April 2026 deadline)[4].
 
 ### Key References
 
 - [1] "Deterministic Event-Driven Architecture for HFT" - Medium, 2024
 - [2] "QuestDB vs TimescaleDB Benchmark" - Database Performance Study, 2025
-- [3] "ONNX Runtime Execution Providers" - Microsoft AI Documentation
+- [3] "MLflow Model Serving & Registry" - MLflow Documentation
 - [4] "SEBI Algorithmic Trading Guidelines 2025-2026" - SEBI Official Circular
 
 ---
@@ -316,7 +316,7 @@ This system is built on rigorous research from 2024-2025:
 | **Backend**    | NestJS                              | Modular, production-grade            |
 | **Frontend**   | Next.js 16                          | App Router, Server Components        |
 | **Databases**  | QuestDB, MongoDB, Redis             | Validated for trading (see research) |
-| **AI/ML**      | ONNX Runtime, PyTorch, Transformers | Cross-platform inference             |
+| **AI/ML**      | MLflow Model Serving, PyTorch, Transformers | Unified serving + model registry     |
 | **Event Bus**  | Redis Streams                       | Sub-millisecond latency              |
 | **Monitoring** | Prometheus, Grafana                 | Industry standard                    |
 
