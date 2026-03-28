@@ -301,7 +301,7 @@ export class FeatureComputationService {
             '*',
             'instrumentKey', state.instrumentKey,
             'timestamp', state.timestamp instanceof Date ? state.timestamp.toISOString() : String(state.timestamp),
-            'features', JSON.stringify(featureValues),
+            'featuresJson', JSON.stringify(featureValues),
           );
         }
       } catch (error) {
@@ -583,8 +583,6 @@ export class FeatureComputationService {
       label = 0;
     }
 
-    const horizonKey = horizonMinutes <= 1 ? '1m' : `${horizonMinutes}m`;
-
     const result: Record<string, unknown> = {
       timestamp,
       instrumentKey: currentCandle.instrumentKey ?? 'NSE_INDEX|Nifty 50',
@@ -594,18 +592,17 @@ export class FeatureComputationService {
       labelQuality: 'CLEAN' as const,
     };
 
-    if (horizonMinutes === 5) {
-      result.targetReturn5m = futureReturn;
-      result.targetDirection5m = label;
-    } else if (horizonMinutes === 15) {
-      result.targetReturn15m = futureReturn;
-      result.targetDirection15m = label;
-    } else if (horizonMinutes === 30) {
-      result.targetReturn30m = futureReturn;
-      result.targetDirection30m = label;
-    } else if (horizonMinutes === 1) {
-      result.targetReturn5m = futureReturn;
-      result.targetDirection5m = label;
+    const fieldMap: Record<number, { ret: string; dir: string }> = {
+      1: { ret: 'targetReturn5m', dir: 'targetDirection5m' },
+      5: { ret: 'targetReturn5m', dir: 'targetDirection5m' },
+      15: { ret: 'targetReturn15m', dir: 'targetDirection15m' },
+      30: { ret: 'targetReturn30m', dir: 'targetDirection30m' },
+    };
+
+    const fields = fieldMap[horizonMinutes];
+    if (fields) {
+      result[fields.ret] = futureReturn;
+      result[fields.dir] = label;
     }
 
     return result as TrainingLabels;

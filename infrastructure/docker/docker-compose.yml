@@ -515,9 +515,11 @@ services:
           memory: 512M
 
   training-pipeline:
+    container_name: training-pipeline
     build:
       context: ../..
       dockerfile: services/training-pipeline/Dockerfile
+    entrypoint: ["python", "-c", "import time; print('Training pipeline ready for jobs'); [time.sleep(3600) for _ in iter(int, 1)]"]
     ports:
       - "8082:8082"
       - "8888:8888"

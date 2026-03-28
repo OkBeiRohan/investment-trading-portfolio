@@ -146,7 +146,7 @@ export class AdminTrainingController {
   private triggerTrainingContainer(experimentId: string, runId: string, args: string) {
     const { exec } = require('child_process');
     const containerCmd = `docker exec training-pipeline python -m training_pipeline.runner ${args}`;
-    this.logger.log(`Triggering training container: ${containerCmd}`);
+    this.logger.log(`Triggering training in container: ${containerCmd}`);
 
     const child = exec(containerCmd, {
       timeout: 4 * 60 * 60 * 1000,

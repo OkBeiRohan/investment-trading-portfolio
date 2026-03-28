@@ -41,7 +41,7 @@ class QuestDBTrainingLoader:
     @staticmethod
     def _build_uri_from_env() -> str:
         host = os.environ.get("QUESTDB_HOST", "localhost")
-        port = os.environ.get("QUESTDB_PG_PORT", "8812")
+        port = os.environ.get("QUESTDB_PORT", os.environ.get("QUESTDB_PG_PORT", "8812"))
         user = os.environ.get("QUESTDB_USER", "admin")
         password = os.environ.get("QUESTDB_PASSWORD", "quest")
         return f"postgresql://{user}:{password}@{host}:{port}/qdb"
