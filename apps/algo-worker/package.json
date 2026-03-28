@@ -34,7 +34,7 @@
     "@repo/market-sdk": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/schema": "workspace:*",
-    "bullmq": "^5.71.0",
+    "bullmq": "^5.71.1",
     "ioredis": "^5.10.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -63,8 +63,8 @@
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1"
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.57.2"
   },
   "jest": {
     "moduleFileExtensions": [

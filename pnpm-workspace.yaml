@@ -14,6 +14,7 @@ onlyBuiltDependencies:
   - grpc-tools
   - msgpackr-extract
   - onnxruntime-node
+  - prisma
   - protobufjs
   - protolint
   - sharp
