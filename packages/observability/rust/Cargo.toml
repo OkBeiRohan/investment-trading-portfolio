@@ -9,5 +9,5 @@ opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"] }
 opentelemetry-otlp = "0.31"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tracing-opentelemetry = "0.23"
+tracing-opentelemetry = "0.32"
 tokio = { version = "1", features = ["full"] }
